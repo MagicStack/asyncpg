@@ -322,15 +322,14 @@ cdef class ReadBuffer:
         if self._current_message_ready:
             return True
 
-        if self._length < 5:
-            # 5 == 1 (message type byte) + 4 (message length) --
-            # we need at least that.
-            return False
-
         if self._current_message_type == 0:
+            if self._length < 1:
+                return False
             self._current_message_type = self.read_byte()
 
         if self._current_message_len == 0:
+            if self._length < 4:
+                return False
             self._current_message_len = self.read_int32()
             self._current_message_len_unread = self._current_message_len - 4
 
