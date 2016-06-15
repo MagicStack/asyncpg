@@ -91,8 +91,8 @@ cdef class WriteBuffer:
 
     cdef write_byte(self, char b):
         self._ensure_alloced(1)
-        self._length += 1
         self._buf[self._length] = b
+        self._length += 1
 
     cdef write_cstr(self, bytes string):
         cdef int slen = len(string) + 1
@@ -199,17 +199,17 @@ cdef class ReadBuffer:
         if self._length < 1:
             raise BufferError('not enough data to read one byte')
 
-        if self._current_message_ready:
-            self._current_message_len_unread -= 1
-            if self._current_message_len_unread < 0:
-                raise BufferError('buffer overread')
-
         IF DEBUG:
             if not self._buf0:
                 raise RuntimeError(
                     'debug: first buffer of ReadBuffer is empty')
 
         self._ensure_first_buf()
+
+        if self._current_message_ready:
+            self._current_message_len_unread -= 1
+            if self._current_message_len_unread < 0:
+                raise BufferError('read_byte: buffer overread')
 
         byte = self._buf0[self._pos0]
         self._pos0 += 1
@@ -228,12 +228,12 @@ cdef class ReadBuffer:
             raise BufferError(
                 'not enough data to read {} bytes'.format(nbytes))
 
+        self._ensure_first_buf()
+
         if self._current_message_ready:
             self._current_message_len_unread -= nbytes
             if self._current_message_len_unread < 0:
-                raise BufferError('buffer overread')
-
-        self._ensure_first_buf()
+                raise BufferError('read_bytes: buffer overread')
 
         if self._pos0 + nbytes <= self._len0:
             result = memoryview(self._buf0)
@@ -302,7 +302,7 @@ cdef class ReadBuffer:
 
                 self._current_message_len_unread -= nread
                 if self._current_message_len_unread < 0:
-                    raise BufferError('buffer overread')
+                    raise BufferError('read_cstr: buffer overread')
 
                 return result
 
@@ -314,7 +314,7 @@ cdef class ReadBuffer:
 
                 self._current_message_len_unread -= nread
                 if self._current_message_len_unread < 0:
-                    raise BufferError('buffer overread')
+                    raise BufferError('read_cstr: buffer overread')
 
                 self._ensure_first_buf()
 
@@ -339,12 +339,22 @@ cdef class ReadBuffer:
         self._current_message_ready = 1
         return True
 
+    cdef is_message_consumed(self):
+        if not self._current_message_ready:
+            raise BufferError('is_message_consumed: no message to consume')
+        return self._current_message_len_unread == 0
+
+    cdef consume_message(self):
+        if not self._current_message_ready:
+            raise BufferError('consume_message: no message to consume')
+        return self.read_bytes(self._current_message_len_unread)
+
     cdef discard_message(self):
         if not self._current_message_ready:
             raise BufferError('no message to discard')
 
         if self._current_message_len_unread:
-            discarded = self.read_bytes(self._current_message_len_unread)
+            discarded = self.consume_message()
             IF DEBUG:
                 print('!!! discarding message {!r} unread data: {!r}'.format(
                     chr(self._current_message_type), bytes(discarded)))
