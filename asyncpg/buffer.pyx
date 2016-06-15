@@ -176,6 +176,13 @@ cdef class WriteBuffer:
         self._buf[self._length + 3] = i & 0xFF
         self._length += 4
 
+    @staticmethod
+    cdef WriteBuffer new_message(char type):
+        cdef WriteBuffer buf
+        buf = WriteBuffer.__new__(WriteBuffer)
+        buf.start_message(type)
+        return buf
+
 
 @cython.no_gc_clear
 @cython.freelist(_BUFFER_FREELIST_SIZE)

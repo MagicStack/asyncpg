@@ -213,8 +213,7 @@ cdef class BaseProtocol:
         self._state = CON_STATE_QUERY_IN_PROGRESS
 
         # Compose Query message
-        buf = WriteBuffer()
-        buf.start_message(b'Q')
+        buf = WriteBuffer.new_message(b'Q')
         buf.write_cstr(query.encode())
         buf.end_message()
         self._write(buf)
