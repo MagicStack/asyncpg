@@ -54,6 +54,10 @@ cdef class WriteBuffer:
     def __releasebuffer__(self, Py_buffer *buffer):
         self._view_count -= 1
 
+    cdef inline _check_readonly(self):
+        if self._view_count:
+            raise BufferError('the buffer is in read-only mode')
+
     cdef inline len(self):
         return self._length
 
@@ -80,6 +84,8 @@ cdef class WriteBuffer:
         self._size = new_size
 
     cdef write_buffer(self, WriteBuffer buf):
+        self._check_readonly()
+
         if not buf._length:
             return
 
@@ -90,26 +96,35 @@ cdef class WriteBuffer:
         self._length += buf._length
 
     cdef write_byte(self, char b):
+        self._check_readonly()
+
         self._ensure_alloced(1)
         self._buf[self._length] = b
         self._length += 1
 
     cdef write_cstr(self, bytes string):
         cdef int slen = len(string) + 1
+
+        self._check_readonly()
         self._ensure_alloced(slen)
+
         memcpy(self._buf + self._length,
                <void*>PyBytes_AsString(string),
                slen)
         self._length += slen
 
     cdef write_int16(self, int i):
+        self._check_readonly()
         self._ensure_alloced(2)
+
         self._buf[self._length] = (i >> 8) & 0xFF
         self._buf[self._length + 1] = i & 0xFF
         self._length += 2
 
     cdef write_int32(self, int i):
+        self._check_readonly()
         self._ensure_alloced(4)
+
         self._buf[self._length]     = (i >> 24) & 0xFF
         self._buf[self._length + 1] = (i >> 16) & 0xFF
         self._buf[self._length + 2] = (i >> 8) & 0xFF
@@ -339,14 +354,9 @@ cdef class ReadBuffer:
         self._current_message_ready = 1
         return True
 
-    cdef is_message_consumed(self):
-        if not self._current_message_ready:
-            raise BufferError('is_message_consumed: no message to consume')
-        return self._current_message_len_unread == 0
-
     cdef consume_message(self):
         if not self._current_message_ready:
-            raise BufferError('consume_message: no message to consume')
+            raise BufferError('no message to consume')
         return self.read_bytes(self._current_message_len_unread)
 
     cdef discard_message(self):
