@@ -2,7 +2,7 @@ from cpython cimport Py_buffer
 from libc.string cimport memcpy
 
 
-DEF _BUFFER_INITIAL_SIZE = 256
+DEF _BUFFER_INITIAL_SIZE = 1024
 DEF _BUFFER_MAX_GROW = 65536
 DEF _BUFFER_FREELIST_SIZE = 256
 
@@ -15,26 +15,33 @@ class BufferError(Exception):
 @cython.freelist(_BUFFER_FREELIST_SIZE)
 cdef class WriteBuffer:
     cdef:
+        # Preallocated small buffer
+        bint _smallbuf_inuse
+        char _smallbuf[_BUFFER_INITIAL_SIZE]
+
         char *_buf
 
         # Allocated size
-        int _size
+        size_t _size
 
         # Length of data in the buffer
-        int _length
+        size_t _length
 
         # Number of memoryviews attached to the buffer
         int _view_count
 
+        # True is start_message was used
+        bint _message_mode
+
     def __cinit__(self):
-        self._buf = <char*>PyMem_Malloc(sizeof(char) * _BUFFER_INITIAL_SIZE)
-        if self._buf is NULL:
-            raise MemoryError()
+        self._smallbuf_inuse = True
+        self._buf = self._smallbuf
         self._size = _BUFFER_INITIAL_SIZE
         self._length = 0
+        self._message_mode = 0
 
     def __dealloc__(self):
-        if self._buf is not NULL:
+        if self._buf is not NULL and not self._smallbuf_inuse:
             PyMem_Free(self._buf)
             self._buf = NULL
             self._size = 0
@@ -71,17 +78,55 @@ cdef class WriteBuffer:
 
         if new_size < _BUFFER_MAX_GROW:
             new_size = _BUFFER_MAX_GROW
-        # TODO else: pre-alloc even more
+        else:
+            # Add a little extra
+            new_size += _BUFFER_INITIAL_SIZE
 
-        new_buf = <char*>PyMem_Realloc(<void*>self._buf, new_size)
-        if new_buf is NULL:
-            PyMem_Free(self._buf)
-            self._buf = NULL
-            self._size = 0
-            self._length = 0
-            raise MemoryError()
-        self._buf = new_buf
-        self._size = new_size
+        if self._smallbuf_inuse:
+            new_buf = <char*>PyMem_Malloc(sizeof(char) * new_size)
+            if new_buf is NULL:
+                self._buf = NULL
+                self._size = 0
+                self._length = 0
+                raise MemoryError()
+            memcpy(new_buf, self._buf, self._size)
+            self._size = new_size
+            self._buf = new_buf
+            self._smallbuf_inuse = False
+        else:
+            new_buf = <char*>PyMem_Realloc(<void*>self._buf, new_size)
+            if new_buf is NULL:
+                PyMem_Free(self._buf)
+                self._buf = NULL
+                self._size = 0
+                self._length = 0
+                raise MemoryError()
+            self._buf = new_buf
+            self._size = new_size
+
+    cdef inline start_message(self, char type):
+        if self._length != 0:
+            raise BufferError('cannot start_message for a non-empty buffer')
+        self._ensure_alloced(5)
+        self._message_mode = 1
+        self._buf[0] = type
+        self._length = 5
+
+    cdef inline end_message(self):
+        # "length-1" to exclude the message type byte
+        cdef size_t mlen = self._length - 1
+
+        self._check_readonly()
+        if not self._message_mode:
+            raise BufferError(
+                'end_message can only be called with start_message')
+        if self._length < 5:
+            raise BufferError('end_message: buffer is too small')
+
+        self._buf[1] = (mlen >> 24) & 0xFF
+        self._buf[2] = (mlen >> 16) & 0xFF
+        self._buf[3] = (mlen >> 8) & 0xFF
+        self._buf[4] = mlen & 0xFF
 
     cdef write_buffer(self, WriteBuffer buf):
         self._check_readonly()

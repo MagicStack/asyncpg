@@ -214,14 +214,9 @@ cdef class BaseProtocol:
 
         # Compose Query message
         buf = WriteBuffer()
-        buf.write_byte(b'Q')
-
-        encoded = query.encode()
-
-        # +4 is the length of the "length field (int32)"
-        # +1 is zero byte
-        buf.write_int32(4 + 1 + len(encoded))
-        buf.write_cstr(encoded)
+        buf.start_message(b'Q')
+        buf.write_cstr(query.encode())
+        buf.end_message()
         self._write(buf)
 
     def on_query_row_description(self, data):
