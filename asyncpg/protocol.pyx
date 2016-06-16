@@ -3,14 +3,16 @@
 DEF DEBUG = 1
 
 cimport cython
+cimport cpython
 
 import asyncio
 import collections
 
-include "buffer.pyx"
-
-from .python cimport PyMem_Malloc, PyMem_Realloc, PyMem_Calloc, PyMem_Free
+from .python cimport PyMem_Malloc, PyMem_Realloc, PyMem_Calloc, PyMem_Free, \
+                     PyMemoryView_GET_BUFFER, PyMemoryView_Check
 from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
+
+include "buffer.pyx"
 
 
 DEF CON_STATE_INIT = 0

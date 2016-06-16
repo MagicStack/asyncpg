@@ -7,6 +7,9 @@ DEF _BUFFER_MAX_GROW = 65536
 DEF _BUFFER_FREELIST_SIZE = 256
 
 
+from . cimport hton
+
+
 class BufferError(Exception):
     pass
 
@@ -123,10 +126,7 @@ cdef class WriteBuffer:
         if self._length < 5:
             raise BufferError('end_message: buffer is too small')
 
-        self._buf[1] = (mlen >> 24) & 0xFF
-        self._buf[2] = (mlen >> 16) & 0xFF
-        self._buf[3] = (mlen >> 8) & 0xFF
-        self._buf[4] = mlen & 0xFF
+        hton.pack_int32(&self._buf[1], mlen)
 
     cdef write_buffer(self, WriteBuffer buf):
         self._check_readonly()
@@ -148,32 +148,31 @@ cdef class WriteBuffer:
         self._length += 1
 
     cdef write_cstr(self, bytes string):
-        cdef int slen = len(string) + 1
+        cdef char* buf
+        cdef ssize_t len
 
+        cpython.PyBytes_AsStringAndSize(string, &buf, &len);
+        self.write_bytes(buf, len + 1)
+
+    cdef write_bytes(self, char *data, ssize_t len):
         self._check_readonly()
-        self._ensure_alloced(slen)
+        self._ensure_alloced(len)
 
-        memcpy(self._buf + self._length,
-               <void*>PyBytes_AsString(string),
-               slen)
-        self._length += slen
+        memcpy(self._buf + self._length, <void*>data, len)
+        self._length += len
 
     cdef write_int16(self, int i):
         self._check_readonly()
         self._ensure_alloced(2)
 
-        self._buf[self._length] = (i >> 8) & 0xFF
-        self._buf[self._length + 1] = i & 0xFF
+        hton.pack_int16(&self._buf[self._length], i)
         self._length += 2
 
     cdef write_int32(self, int i):
         self._check_readonly()
         self._ensure_alloced(4)
 
-        self._buf[self._length]     = (i >> 24) & 0xFF
-        self._buf[self._length + 1] = (i >> 16) & 0xFF
-        self._buf[self._length + 2] = (i >> 8) & 0xFF
-        self._buf[self._length + 3] = i & 0xFF
+        hton.pack_int32(&self._buf[self._length], i)
         self._length += 4
 
     @staticmethod
@@ -283,6 +282,31 @@ cdef class ReadBuffer:
         self._length -= 1
         return byte
 
+    cdef inline char* _try_read_bytes(self, int nbytes):
+        # Important: caller must call _ensure_first_buf() prior
+        # to calling try_read_bytes, and must not overread
+
+        cdef:
+            char * result
+
+        if nbytes > self._length:
+            return NULL
+
+        if self._current_message_ready:
+            if self._current_message_len_unread < nbytes:
+                return NULL
+
+        if self._pos0 + nbytes <= self._len0:
+            result = cpython.PyBytes_AsString(self._buf0)
+            result += self._pos0
+            self._pos0 += nbytes
+            self._length -= nbytes
+            if self._current_message_ready:
+                self._current_message_len_unread -= nbytes
+            return result
+        else:
+            return NULL
+
     cdef inline read_bytes(self, int nbytes):
         cdef:
             object result
@@ -323,29 +347,45 @@ cdef class ReadBuffer:
                 result.extend(self._buf0[self._pos0:self._pos0 + nbytes])
                 self._pos0 += nbytes
                 self._length -= nbytes
-                return result
+                return memoryview(result)
 
     cdef inline read_int32(self):
         cdef:
             object buf
-            int i
+            char *cbuf
+            Py_buffer *pybuf
 
-        buf = self.read_bytes(4)
-        i = (<int>buf[0]) << 24
-        i |= (<int>buf[1]) << 16
-        i |= (<int>buf[2]) << 8
-        i |= (<int>buf[3])
-        return i
+        self._ensure_first_buf()
+        cbuf = self._try_read_bytes(4)
+        if cbuf != NULL:
+            return hton.unpack_int32(cbuf)
+        else:
+            buf = self.read_bytes(4)
+            IF DEBUG:
+                if not PyMemoryView_Check(buf):
+                    raise RuntimeError(
+                        'Protocol.read_bytes returned non-memoryview')
+            pybuf = PyMemoryView_GET_BUFFER(buf)
+            return hton.unpack_int32(<char*>(pybuf.buf))
 
     cdef inline read_int16(self):
         cdef:
             object buf
-            int i
+            char *cbuf
+            Py_buffer *pybuf
 
-        buf = self.read_bytes(4)
-        i = (<int>buf[0]) << 8
-        i |= (<int>buf[1])
-        return i
+        self._ensure_first_buf()
+        cbuf = self._try_read_bytes(2)
+        if cbuf != NULL:
+            return hton.unpack_int32(cbuf)
+        else:
+            buf = self.read_bytes(2)
+            IF DEBUG:
+                if not PyMemoryView_Check(buf):
+                    raise RuntimeError(
+                        'Protocol.read_bytes returned non-memoryview')
+            pybuf = PyMemoryView_GET_BUFFER(buf)
+            return hton.unpack_int16(<char*>(pybuf.buf))
 
     cdef inline read_cstr(self):
         if not self._current_message_ready:
