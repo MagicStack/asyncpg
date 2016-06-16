@@ -7,7 +7,7 @@ compile:
 
 debug:
 	cython -a asyncpg/protocol.pyx
-	python setup.py build_ext --inplace
+	python setup.py build_ext --inplace --debug
 
 test:
 	python3 -m unittest discover -s tests -v
