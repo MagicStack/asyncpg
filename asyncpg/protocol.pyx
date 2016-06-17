@@ -8,12 +8,25 @@ cimport cpython
 import asyncio
 import collections
 
+from libc.stdint cimport int16_t, int32_t, uint16_t, uint32_t, int64_t, uint64_t
+
 from .python cimport PyMem_Malloc, PyMem_Realloc, PyMem_Calloc, PyMem_Free, \
                      PyMemoryView_GET_BUFFER, PyMemoryView_Check
 from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
 
+
+cdef class ConnectionSettings:
+    pass
+
+
+include "pgtypes.pxd"
+
 include "buffer.pyx"
-include "codecs.pyx"
+
+include "codecs/int.pyx"
+include "codecs/float.pyx"
+include "codecs/datetime.pyx"
+include "codecs/init.pyx"
 
 
 cdef enum ConnectionStatus:
