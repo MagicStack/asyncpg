@@ -5,6 +5,7 @@ cdef bool_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     if not cpython.PyBool_Check(obj):
         raise ValueError('invalid input for BOOLEAN type')
 
+    buf.write_int32(1)
     buf.write_byte(b'\x01' if obj is True else b'\x00')
 
 
@@ -17,6 +18,7 @@ cdef int2_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     if val < -32767 or val > 32767:
         raise ValueError('integer too large to be encoded as INT2')
 
+    buf.write_int32(2)
     buf.write_int16(val)
 
 
@@ -26,6 +28,8 @@ cdef int2_decode(ConnectionSettings settings, const char* data):
 
 cdef int4_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     cdef long val = cpython.PyLong_AsLong(obj)
+
+    buf.write_int32(4)
     buf.write_int32(val)
 
 
@@ -35,6 +39,7 @@ cdef int4_decode(ConnectionSettings settings, const char* data):
 
 cdef int8_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     cdef long long val = cpython.PyLong_AsLongLong(obj)
+    buf.write_int32(8)
     buf.write_int64(val)
 
 

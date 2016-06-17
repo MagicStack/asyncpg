@@ -92,7 +92,7 @@ cdef class WriteBuffer:
                 self._buf = NULL
                 self._size = 0
                 self._length = 0
-                raise MemoryError()
+                raise MemoryError
             memcpy(new_buf, self._buf, self._size)
             self._size = new_size
             self._buf = new_buf
@@ -104,7 +104,7 @@ cdef class WriteBuffer:
                 self._buf = NULL
                 self._size = 0
                 self._length = 0
-                raise MemoryError()
+                raise MemoryError
             self._buf = new_buf
             self._size = new_size
 
@@ -191,6 +191,12 @@ cdef class WriteBuffer:
         cdef WriteBuffer buf
         buf = WriteBuffer.__new__(WriteBuffer)
         buf.start_message(type)
+        return buf
+
+    @staticmethod
+    cdef WriteBuffer new():
+        cdef WriteBuffer buf
+        buf = WriteBuffer.__new__(WriteBuffer)
         return buf
 
 
@@ -484,7 +490,7 @@ cdef class ReadBuffer:
     cdef ReadBuffer new_message_parser(object data):
         cdef ReadBuffer buf
 
-        buf = ReadBuffer()
+        buf = ReadBuffer.__new__(ReadBuffer)
         buf.feed_data(bytes(data))
 
         buf._current_message_ready = 1

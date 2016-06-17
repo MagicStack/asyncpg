@@ -54,4 +54,4 @@ _map = {
 
 
 def get_python_encoding(pg_encoding):
-    return _map.get(pg_encoding, pg_encoding)
+    return _map.get(pg_encoding.lower(), pg_encoding.lower())

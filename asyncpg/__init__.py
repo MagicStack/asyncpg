@@ -12,6 +12,9 @@ class Connection:
         self._transport = transport
         self._loop = loop
 
+    def get_settings(self):
+        return self._protocol.get_settings()
+
     async def query(self, query):
         waiter = asyncio.Future(loop=self._loop)
         self._protocol.query(query, waiter)
@@ -20,6 +23,19 @@ class Connection:
     async def prepare(self, name, query):
         waiter = asyncio.Future(loop=self._loop)
         self._protocol.prepare(name, query, waiter)
+        state = await waiter
+        return PreparedStatement(self, state)
+
+
+class PreparedStatement:
+    def __init__(self, connection, state):
+        self._connection = connection
+        self._state = state
+
+    async def execute(self, *args):
+        protocol = self._connection._protocol
+        waiter = asyncio.Future(loop=self._connection._loop)
+        protocol.execute(self._state, args, waiter)
         return await waiter
 
 
