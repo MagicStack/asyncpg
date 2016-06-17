@@ -815,6 +815,7 @@ cdef class PreparedStatementState:
             int32_t flen
             list result
             list dec_row
+            int row_len
 
         self._ensure_rows_decoder()
 
@@ -825,6 +826,7 @@ cdef class PreparedStatementState:
                 raise RuntimeError('memoryview expected')
 
             dec_row = []
+            row_len = len(row)
 
             pybuf = PyMemoryView_GET_BUFFER(row)
 
@@ -849,6 +851,9 @@ cdef class PreparedStatementState:
                 dec_row.append(
                     self.rows_codecs[i].decode(self.settings, cbuf, flen))
                 cbuf += flen
+
+                if cbuf - <char*>pybuf.buf > row_len:
+                    raise RuntimeError('buffer overrun')
 
             result.append(dec_row)
 
