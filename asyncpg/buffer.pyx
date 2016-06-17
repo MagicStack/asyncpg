@@ -71,8 +71,8 @@ cdef class WriteBuffer:
     cdef inline len(self):
         return self._length
 
-    cdef inline _ensure_alloced(self, int extra_length):
-        cdef int new_size = extra_length + self._length
+    cdef inline _ensure_alloced(self, size_t extra_length):
+        cdef size_t new_size = extra_length + self._length
 
         if new_size > self._size:
             self._reallocate(new_size)
