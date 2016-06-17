@@ -12,9 +12,9 @@ cdef inline void pack_int16(char* buf, uint16_t x):
     (<uint16_t*>buf)[0] = htons(x)
 
 
-cdef inline uint16_t unpack_int16(const char* buf):
-    cdef uint16_t nx
-    (&nx)[0] = (<uint16_t*>buf)[0]
+cdef inline int16_t unpack_int16(const char* buf):
+    cdef int16_t nx
+    (&nx)[0] = (<int16_t*>buf)[0]
     return ntohs(nx)
 
 
@@ -22,9 +22,9 @@ cdef inline void pack_int32(char* buf, uint32_t x):
     (<uint32_t*>buf)[0] = htonl(x)
 
 
-cdef inline uint32_t unpack_int32(const char* buf):
-    cdef uint32_t nx
-    (&nx)[0] = (<uint32_t*>buf)[0]
+cdef inline int32_t unpack_int32(const char* buf):
+    cdef int32_t nx
+    (&nx)[0] = (<int32_t*>buf)[0]
     return ntohl(nx)
 
 
@@ -33,8 +33,8 @@ cdef inline void pack_int64(char* buf, uint64_t x):
     (<uint32_t*>&buf[4])[0] = htonl(<uint32_t>(x >> 32))
 
 
-cdef inline uint64_t unpack_int64(const char* buf):
-    cdef uint32_t hl = unpack_int32(buf)
-    cdef uint32_t hh = unpack_int32(&buf[4])
+cdef inline int64_t unpack_int64(const char* buf):
+    cdef int32_t hl = unpack_int32(buf)
+    cdef int32_t hh = unpack_int32(&buf[4])
 
-    return (<uint64_t>(hh) << 32) | hl
+    return (<int64_t>(hh) << 32) | <uint32_t>(hl)

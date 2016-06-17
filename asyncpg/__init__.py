@@ -17,6 +17,11 @@ class Connection:
         self._protocol.query(query, waiter)
         return await waiter
 
+    async def prepare(self, name, query):
+        waiter = asyncio.Future(loop=self._loop)
+        self._protocol.prepare(name, query, waiter)
+        return await waiter
+
 
 async def connect(host='localhost', port=5432, user='postgres', *,
                   loop=None):

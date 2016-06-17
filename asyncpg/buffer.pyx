@@ -148,14 +148,17 @@ cdef class WriteBuffer:
         self._buf[self._length] = b
         self._length += 1
 
-    cdef write_cstr(self, bytes string):
+    cdef write_bytes(self, bytes string):
         cdef char* buf
         cdef ssize_t len
 
         cpython.PyBytes_AsStringAndSize(string, &buf, &len);
-        self.write_bytes(buf, len + 1)
+        self.write_cstr(buf, len + 1)
 
-    cdef write_bytes(self, char *data, ssize_t len):
+    cdef write_str(self, str string, str encoding):
+        self.write_bytes(string.encode(encoding))
+
+    cdef write_cstr(self, char *data, ssize_t len):
         self._check_readonly()
         self._ensure_alloced(len)
 
@@ -231,7 +234,7 @@ cdef class ReadBuffer:
         self._current_message_len_unread = 0
         self._current_message_ready = 0
 
-    cdef feed_data(self, bytes data):
+    cdef feed_data(self, data):
         cdef int dlen = len(data)
 
         if dlen == 0:
@@ -283,7 +286,7 @@ cdef class ReadBuffer:
         if self._current_message_ready:
             self._current_message_len_unread -= 1
             if self._current_message_len_unread < 0:
-                raise BufferError('read_byte: buffer overread')
+                raise BufferError('buffer overread')
 
         byte = self._buf0[self._pos0]
         self._pos0 += 1
@@ -315,13 +318,10 @@ cdef class ReadBuffer:
         else:
             return NULL
 
-    cdef inline read_bytes(self, int nbytes):
+    cdef inline read(self, int nbytes):
         cdef:
             object result
             int nread
-
-        if nbytes == 1:
-            return self.read_byte()
 
         if nbytes > self._length:
             raise BufferError(
@@ -332,7 +332,7 @@ cdef class ReadBuffer:
         if self._current_message_ready:
             self._current_message_len_unread -= nbytes
             if self._current_message_len_unread < 0:
-                raise BufferError('read_bytes: buffer overread')
+                raise BufferError('buffer overread')
 
         if self._pos0 + nbytes <= self._len0:
             result = memoryview(self._buf0)
@@ -368,11 +368,11 @@ cdef class ReadBuffer:
         if cbuf != NULL:
             return hton.unpack_int32(cbuf)
         else:
-            buf = self.read_bytes(4)
+            buf = self.read(4)
             IF DEBUG:
                 if not PyMemoryView_Check(buf):
                     raise RuntimeError(
-                        'Protocol.read_bytes returned non-memoryview')
+                        'ReadBuffer.read returned non-memoryview')
             pybuf = PyMemoryView_GET_BUFFER(buf)
             return hton.unpack_int32(<char*>(pybuf.buf))
 
@@ -385,13 +385,13 @@ cdef class ReadBuffer:
         self._ensure_first_buf()
         cbuf = self._try_read_bytes(2)
         if cbuf != NULL:
-            return hton.unpack_int32(cbuf)
+            return hton.unpack_int16(cbuf)
         else:
-            buf = self.read_bytes(2)
+            buf = self.read(2)
             IF DEBUG:
                 if not PyMemoryView_Check(buf):
                     raise RuntimeError(
-                        'Protocol.read_bytes returned non-memoryview')
+                        'ReadBuffer.read returned non-memoryview')
             pybuf = PyMemoryView_GET_BUFFER(buf)
             return hton.unpack_int16(<char*>(pybuf.buf))
 
@@ -457,7 +457,7 @@ cdef class ReadBuffer:
     cdef consume_message(self):
         if not self._current_message_ready:
             raise BufferError('no message to consume')
-        return self.read_bytes(self._current_message_len_unread)
+        return self.read(self._current_message_len_unread)
 
     cdef discard_message(self):
         if not self._current_message_ready:
@@ -479,3 +479,15 @@ cdef class ReadBuffer:
 
     cdef get_message_length(self):
         return self._current_message_len
+
+    @staticmethod
+    cdef ReadBuffer new_message_parser(object data):
+        cdef ReadBuffer buf
+
+        buf = ReadBuffer()
+        buf.feed_data(bytes(data))
+
+        buf._current_message_ready = 1
+        buf._current_message_len_unread = buf._len0
+
+        return buf
