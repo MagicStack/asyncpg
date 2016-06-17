@@ -148,15 +148,17 @@ cdef class WriteBuffer:
         self._buf[self._length] = b
         self._length += 1
 
-    cdef write_bytes(self, bytes string):
+    cdef write_bytestring(self, bytes string):
         cdef char* buf
         cdef ssize_t len
 
-        cpython.PyBytes_AsStringAndSize(string, &buf, &len);
+        cpython.PyBytes_AsStringAndSize(string, &buf, &len)
+        # PyBytes_AsStringAndSize returns a null-terminated buffer,
+        # but the null byte is not counted in len. hence the + 1
         self.write_cstr(buf, len + 1)
 
     cdef write_str(self, str string, str encoding):
-        self.write_bytes(string.encode(encoding))
+        self.write_bytestring(string.encode(encoding))
 
     cdef write_cstr(self, char *data, ssize_t len):
         self._check_readonly()

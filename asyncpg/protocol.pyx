@@ -12,7 +12,8 @@ import collections
 from libc.stdint cimport int16_t, int32_t, uint16_t, uint32_t, int64_t, uint64_t
 
 from .python cimport PyMem_Malloc, PyMem_Realloc, PyMem_Calloc, PyMem_Free, \
-                     PyMemoryView_GET_BUFFER, PyMemoryView_Check
+                     PyMemoryView_GET_BUFFER, PyMemoryView_Check, \
+                     PyUnicode_AsUTF8AndSize
 from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
 
 from . import encodings
@@ -23,9 +24,11 @@ cdef class ConnectionSettings:
         str _encoding
         object _codec
         dict _settings
+        bint _is_utf8
 
     def __cinit__(self):
         self._encoding = 'utf-8'
+        self._is_utf8 = True
         self._settings = {}
         self._codec = codecs.lookup('utf-8')
 
@@ -35,9 +38,10 @@ cdef class ConnectionSettings:
             py_enc = encodings.get_python_encoding(val)
             self._codec = codecs.lookup(py_enc)
             self._encoding = self._codec.name
+            self._is_utf8 = self._encoding == 'utf-8'
 
-    cdef get_encoding(self):
-        return self._encoding
+    cdef inline is_encoding_utf8(self):
+        return self._is_utf8
 
     cdef get_codec(self):
         return self._codec
@@ -56,9 +60,10 @@ include "pgtypes.pxd"
 
 include "buffer.pyx"
 
-include "codecs/int.pyx"
-include "codecs/float.pyx"
 include "codecs/datetime.pyx"
+include "codecs/float.pyx"
+include "codecs/int.pyx"
+include "codecs/text.pyx"
 include "codecs/init.pyx"
 
 
@@ -544,14 +549,14 @@ cdef class CoreProtocol:
         buf.write_int16(3)
         buf.write_int16(0)
 
-        buf.write_bytes(b'client_encoding')
-        buf.write_bytes("'{}'".format(self._encoding).encode('ascii'))
+        buf.write_bytestring(b'client_encoding')
+        buf.write_bytestring("'{}'".format(self._encoding).encode('ascii'))
 
         if self._user:
-            buf.write_bytes(b'user')
+            buf.write_bytestring(b'user')
             buf.write_str(self._user, self._encoding)
 
-        buf.write_bytes(b'')
+        buf.write_bytestring(b'')
 
         # Send the buffer
         outbuf = WriteBuffer()
@@ -768,6 +773,9 @@ cdef class PreparedStatementState:
         for i from 0 <= i < self.cols_num:
             oid = rows_desc[i][3]
             self.rows_codecs[i] = get_core_codec(<uint32_t>oid)
+            if (self.rows_codecs[i] is NULL or
+                    self.rows_codecs[i].decode is NULL):
+                raise RuntimeError('no decoder for OID {}'.format(oid))
 
     cdef _ensure_args_encoder(self):
         cdef:
@@ -795,6 +803,9 @@ cdef class PreparedStatementState:
         for i from 0 <= i < self.args_num:
             p_oid = reader.read_int32()
             self.args_codecs[i] = get_core_codec(<uint32_t>p_oid)
+            if (self.args_codecs[i] is NULL or
+                    self.args_codecs[i].encode is NULL):
+                raise RuntimeError('no encoder for OID {}'.format(p_oid))
 
     cdef _decode_rows(self, rows):
         cdef:
@@ -836,7 +847,7 @@ cdef class PreparedStatementState:
                     continue
 
                 dec_row.append(
-                    self.rows_codecs[i].decode(self.settings, cbuf))
+                    self.rows_codecs[i].decode(self.settings, cbuf, flen))
                 cbuf += flen
 
             result.append(dec_row)
@@ -1050,4 +1061,3 @@ cdef class BaseProtocol(CoreProtocol):
 
 class Protocol(BaseProtocol, asyncio.Protocol):
     pass
-

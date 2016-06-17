@@ -17,10 +17,11 @@ cdef float4_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
     v.f = fval
 
+    buf.write_int32(4)
     buf.write_int32(v.i)
 
 
-cdef float4_decode(ConnectionSettings settings, const char* data):
+cdef float4_decode(ConnectionSettings settings, const char* data, int32_t len):
     cdef _floatconv v
     v.i = hton.unpack_int32(data)
 
@@ -38,10 +39,11 @@ cdef float8_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
     v.f = dval
 
+    buf.write_int32(8)
     buf.write_int64(v.i)
 
 
-cdef float8_decode(ConnectionSettings settings, const char* data):
+cdef float8_decode(ConnectionSettings settings, const char* data, int32_t len):
     cdef _doubleconv v
     v.i = hton.unpack_int64(data)
 

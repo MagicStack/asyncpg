@@ -1,6 +1,7 @@
 cdef struct core_codec:
     object (*encode)(ConnectionSettings settings, WriteBuffer buf, obj)
-    object (*decode)(ConnectionSettings settings, const char *data)
+    object (*decode)(ConnectionSettings settings, const char *data,
+                     int32_t len)
 
 
 cdef core_codec codec_map[MAXBUILTINOID]
@@ -18,6 +19,8 @@ cdef inline core_codec* get_core_codec(uint32_t oid):
 cdef void init_codecs():
     init_int_codecs()
     init_float_codecs()
+    init_datetime_codecs()
+    init_text_codecs()
 
 
 init_codecs()
