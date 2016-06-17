@@ -20,9 +20,9 @@ class Connection:
         self._protocol.query(query, waiter)
         return await waiter
 
-    async def prepare(self, name, query):
+    async def prepare(self, query):
         waiter = asyncio.Future(loop=self._loop)
-        self._protocol.prepare(name, query, waiter)
+        self._protocol.prepare(None, query, waiter)
         state = await waiter
         return PreparedStatement(self, state)
 

@@ -910,6 +910,8 @@ cdef class BaseProtocol(CoreProtocol):
 
         PreparedStatementState _prepared_stmt
 
+        int _id
+
     def __init__(self, connect_waiter, user, loop):
         CoreProtocol.__init__(self, user=user)
         self._loop = loop
@@ -919,6 +921,8 @@ cdef class BaseProtocol(CoreProtocol):
         self._state = STATE_NOT_CONNECTED
 
         self._prepared_stmt = None
+
+        self._id = 0
 
     def get_settings(self):
         return self._settings
@@ -930,6 +934,8 @@ cdef class BaseProtocol(CoreProtocol):
 
     def prepare(self, name, query, waiter):
         self._start_state(STATE_PREPARE_BIND)
+        if name is None:
+            name = self._gen_id('prepared_statement')
         if self._prepared_stmt is not None:
             raise RuntimeError('another prepared statement is set')
 
@@ -952,6 +958,10 @@ cdef class BaseProtocol(CoreProtocol):
             self._prepared_stmt._encode_args(args))
 
         self._waiter = waiter
+
+    cdef _gen_id(self, prefix):
+        self._id += 1
+        return '_{}_{}'.format(self._id, prefix)
 
     cdef _start_state(self, ProtocolState state):
         if self._state != STATE_READY:
