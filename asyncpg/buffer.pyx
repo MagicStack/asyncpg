@@ -453,7 +453,7 @@ cdef class ReadBuffer:
             self._current_message_len = self.read_int32()
             self._current_message_len_unread = self._current_message_len - 4
 
-        if self._length < self._current_message_len:
+        if self._length < self._current_message_len_unread:
             return False
 
         self._current_message_ready = 1

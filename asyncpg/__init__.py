@@ -1,4 +1,6 @@
 import asyncio
+import getpass
+import os
 
 from .protocol import Protocol
 
@@ -26,7 +28,7 @@ class Connection:
         state = await waiter
         return PreparedStatement(self, state)
 
-    async def close(self):
+    def close(self):
         self._transport.close()
 
 
@@ -42,19 +44,70 @@ class PreparedStatement:
         return await waiter
 
 
-async def connect(host='localhost', port=5432, user='postgres', *,
+async def connect(iri=None, *,
+                  host=None, port=None,
+                  user=None, password=None,
+                  dbname=None,
                   loop=None):
 
     if loop is None:
         loop = asyncio.get_event_loop()
 
+    # On env-var -> connection parameter conversion read here:
+    # https://www.postgresql.org/docs/current/static/libpq-envars.html
+
+    if host is None:
+        host = os.getenv('PGHOST')
+        if host is None:
+            host = ['/tmp', '/private/tmp',
+                    '/var/pgsql_socket', '/run/postgresql',
+                    'localhost']
+    if not isinstance(host, list):
+        host = [host]
+
+    if port is None:
+        port = os.getenv('PGPORT')
+        if port is None:
+            port = 5432
+
+    if user is None:
+        user = os.getenv('PGUSER')
+        if user is None:
+            user = getpass.getuser()
+
+    if password is None:
+        password = os.getenv('PGPASSWORD')
+
+    if dbname is None:
+        dbname = os.getenv('PGDATABASE')
+
     connected = _create_future(loop)
-    tr, pr = await loop.create_connection(
-        lambda: Protocol(connected, user, loop),
-        host, port)
+    last_ex = None
+    for h in host:
+        if h.startswith('/'):
+            # UNIX socket name
+            sname = os.path.join(h, '.s.PGSQL.{}'.format(port))
+            try:
+                tr, pr = await loop.create_unix_connection(
+                    lambda: Protocol(connected, user, password, dbname, loop),
+                    sname)
+            except OSError as ex:
+                last_ex = ex
+            else:
+                break
+        else:
+            try:
+                tr, pr = await loop.create_connection(
+                    lambda: Protocol(connected, user, password, dbname, loop),
+                    h, port)
+            except OSError as ex:
+                last_ex = ex
+            else:
+                break
+    else:
+        raise last_ex
 
     await connected
-
     return Connection(pr, tr, loop)
 
 

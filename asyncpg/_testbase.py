@@ -60,6 +60,7 @@ class ConnectedTestCase(TestCase):
 
     def tearDown(self):
         try:
-            self.loop.run_until_complete(self.con.close())
+            self.con.close()
+            self.con = None
         finally:
             super().tearDown()

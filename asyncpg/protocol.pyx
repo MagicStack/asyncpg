@@ -167,6 +167,8 @@ cdef class CoreProtocol:
         ####### Options:
 
         str _user
+        str _password
+        str _dbname
         str _encoding
 
         ####### Connection State:
@@ -186,11 +188,13 @@ cdef class CoreProtocol:
 
         WriteBuffer _after_sync
 
-    def __init__(self, user):
+    def __init__(self, user, password, dbname):
         self.buffer = ReadBuffer()
         self.transport = None
 
         self._user = user
+        self._password = password
+        self._dbname = dbname
 
         self._encoding = 'utf-8'
         self._settings = ConnectionSettings()
@@ -245,6 +249,10 @@ cdef class CoreProtocol:
             elif mtype == b'S':
                 self._parse_server_parameter_status()
 
+            elif mtype == b'Z':
+                # TODO
+                self.buffer.consume_message()
+
             else:
                 print("!!! message type {} arrived from server "
                       "while idle".format(chr(mtype)))
@@ -264,6 +272,8 @@ cdef class CoreProtocol:
 
             elif mtype == b'E':
                 # Error return
+                if self._status == CONNECTION_STARTED:
+                    self._status = CONNECTION_BAD
                 self._parse_server_error_response(True)
                 self._async_status = PGASYNC_READY
                 self._push_result()
@@ -272,7 +282,13 @@ cdef class CoreProtocol:
                 # Backend is ready for new query
                 self._parse_server_ready_for_query()
 
-                if self._after_sync is not None:
+                if self._status == CONNECTION_STARTED:
+                    self._status = CONNECTION_OK
+                    self._result = Result.new(PGRES_COMMAND_OK)
+                    self._async_status = PGASYNC_READY
+                    self._push_result()
+
+                elif self._after_sync is not None:
                     self._async_status = PGASYNC_BUSY
                     self._write(self._after_sync)
                     self._after_sync = None
@@ -406,16 +422,12 @@ cdef class CoreProtocol:
     cdef _parse_server_authentication(self):
         cdef int status
         status = self.buffer.read_int32()
-        if status == 0:
-            # AuthenticationOk
-            self._status = CONNECTION_OK
-            self._async_status = PGASYNC_READY
-            self._result = Result.new(PGRES_COMMAND_OK)
-            self._push_result()
-        else:
+        if status != 0:
+            # 0 == AuthenticationOk
             raise RuntimeError(
                 'unsupported status {} for Authentication (R) '
                 'message'.format(status))
+        self.buffer.consume_message()
 
     cdef _parse_server_parameter_status(self):
         key = self.buffer.read_cstr().decode()
@@ -541,6 +553,7 @@ cdef class CoreProtocol:
         if self._status != CONNECTION_BAD:
             raise RuntimeError('already connected')
 
+        self._status = CONNECTION_STARTED
         self._async_status = PGASYNC_BUSY
 
         # Assemble a startup message
@@ -556,6 +569,14 @@ cdef class CoreProtocol:
         if self._user:
             buf.write_bytestring(b'user')
             buf.write_str(self._user, self._encoding)
+
+        if self._password:
+            buf.write_bytestring(b'password')
+            buf.write_str(self._password, self._encoding)
+
+        if self._dbname:
+            buf.write_bytestring(b'dbname')
+            buf.write_str(self._dbname, self._encoding)
 
         buf.write_bytestring(b'')
 
@@ -681,18 +702,6 @@ cdef class CoreProtocol:
             self._open()
         except Exception as ex:
             self._fatal_error(ex)
-
-
-cdef enum ProtocolState:
-    STATE_NOT_CONNECTED = 0
-    STATE_READY = 10
-
-    STATE_PREPARE_BIND = 20
-    STATE_PREPARE_DESCRIBE = 21
-
-    STATE_EXECUTE = 30
-
-    STATE_QUERY = 40
 
 
 cdef class PreparedStatementState:
@@ -915,6 +924,18 @@ cdef class PreparedStatementState:
         return result
 
 
+cdef enum ProtocolState:
+    STATE_NOT_CONNECTED = 0
+    STATE_READY = 10
+
+    STATE_PREPARE_BIND = 20
+    STATE_PREPARE_DESCRIBE = 21
+
+    STATE_EXECUTE = 30
+
+    STATE_QUERY = 40
+
+
 cdef class BaseProtocol(CoreProtocol):
 
     cdef:
@@ -929,8 +950,8 @@ cdef class BaseProtocol(CoreProtocol):
 
         int _id
 
-    def __init__(self, connect_waiter, user, loop):
-        CoreProtocol.__init__(self, user=user)
+    def __init__(self, connect_waiter, user, password, dbname, loop):
+        CoreProtocol.__init__(self, user, password, dbname)
         self._loop = loop
 
         self._connect_waiter = connect_waiter
@@ -991,21 +1012,22 @@ cdef class BaseProtocol(CoreProtocol):
         cdef:
             ProtocolState old_state = self._state
             PreparedStatementState stmt
+            object waiter
+
+        waiter = self._waiter
 
         if self._state == STATE_NOT_CONNECTED:
             if self._connect_waiter is None:
                 raise RuntimeError(
                     'received connection result without connect_waiter set')
-            self._connect_waiter.set_result(None)
+            waiter = self._connect_waiter
             self._connect_waiter = None
-            self._state = STATE_READY
-            return
 
-        if self._waiter is None:
+        if waiter is None:
             raise RuntimeError(
                 'received result without a Future wating for it')
 
-        if self._waiter.cancelled():
+        if waiter.cancelled():
             # discard the result
             self._state = STATE_READY
             self._waiter = None
@@ -1015,12 +1037,13 @@ cdef class BaseProtocol(CoreProtocol):
             msg = '\n'.join(['{}: {}'.format(k, v)
                 for k, v in result.err_fields.items()])
             exc = Exception(msg)
-            self._waiter.set_exception(exc)
+            waiter.set_exception(exc)
             self._state = STATE_READY
+            self._waiter = None
             return
 
         if self._state == STATE_QUERY:
-            self._waiter.set_result(1)
+            waiter.set_result(1)
             self._state = STATE_READY
 
         elif self._state == STATE_PREPARE_BIND:
@@ -1035,7 +1058,7 @@ cdef class BaseProtocol(CoreProtocol):
                 stmt.row_desc = result.row_desc
             if (stmt.row_desc is not None and
                     stmt.parameters_desc is not None):
-                self._waiter.set_result(stmt)
+                waiter.set_result(stmt)
                 self._prepared_stmt = None
                 self._state = STATE_READY
             else:
@@ -1047,12 +1070,15 @@ cdef class BaseProtocol(CoreProtocol):
             self._prepared_stmt = None
 
             if result.rows is None:
-                self._waiter.set_result(None)
+                waiter.set_result(None)
             else:
-                self._waiter.set_result(
-                    stmt._decode_rows(result.rows))
+                waiter.set_result(stmt._decode_rows(result.rows))
 
             self._state = STATE_READY
+
+        elif self._state == STATE_NOT_CONNECTED:
+            self._state = STATE_READY
+            waiter.set_result(None)
 
         else:
             raise RuntimeError(
