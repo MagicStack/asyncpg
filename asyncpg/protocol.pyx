@@ -17,6 +17,7 @@ from .python cimport PyMem_Malloc, PyMem_Realloc, PyMem_Calloc, PyMem_Free, \
 from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
 
 from . import encodings
+from . cimport hton
 
 
 cdef class ConnectionSettings:

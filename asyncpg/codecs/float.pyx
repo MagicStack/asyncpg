@@ -1,6 +1,4 @@
 from libc cimport math
-from . cimport hton
-
 
 cdef union _floatconv:
     uint32_t i

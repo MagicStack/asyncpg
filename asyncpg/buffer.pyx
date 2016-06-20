@@ -7,9 +7,6 @@ DEF _BUFFER_MAX_GROW = 65536
 DEF _BUFFER_FREELIST_SIZE = 256
 
 
-from . cimport hton
-
-
 class BufferError(Exception):
     pass
 
@@ -167,21 +164,21 @@ cdef class WriteBuffer:
         memcpy(self._buf + self._length, <void*>data, len)
         self._length += len
 
-    cdef write_int16(self, int i):
+    cdef write_int16(self, int16_t i):
         self._check_readonly()
         self._ensure_alloced(2)
 
         hton.pack_int16(&self._buf[self._length], i)
         self._length += 2
 
-    cdef write_int32(self, int i):
+    cdef write_int32(self, int32_t i):
         self._check_readonly()
         self._ensure_alloced(4)
 
         hton.pack_int32(&self._buf[self._length], i)
         self._length += 4
 
-    cdef write_int64(self, int i):
+    cdef write_int64(self, int64_t i):
         self._check_readonly()
         self._ensure_alloced(8)
 

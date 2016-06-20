@@ -1,6 +1,3 @@
-from . cimport hton
-
-
 cdef text_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     cdef:
         char *str

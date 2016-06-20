@@ -46,19 +46,19 @@ utc = datetime.timezone.utc
 
 
 cdef inline _encode_time(WriteBuffer buf, int32_t seconds,
-                         int32_t microseconds):
+                         uint32_t microseconds):
      # XXX: add support for double timestamps
      # int64 timestamps,
      buf.write_int64(<int64_t>seconds * 1000000 + microseconds)
 
 
 cdef inline _decode_time(const char *data, int32_t *seconds,
-                         int32_t *microseconds):
+                         uint32_t *microseconds):
      # XXX: add support for double timestamps
      # int64 timestamps,
-     cdef int64_t ts = hton.unpack_int64(data)
+     cdef uint64_t ts = hton.unpack_int64(data)
      seconds[0] = <int32_t>(ts / 1000000)
-     microseconds[0] = <int32_t>(ts % 1000000)
+     microseconds[0] = <uint32_t>(ts % 1000000)
 
 
 cdef date_encode(ConnectionSettings settings, WriteBuffer buf, obj):
@@ -104,7 +104,7 @@ cdef timestamp_decode(ConnectionSettings settings, const char* data,
                       int32_t len):
     cdef:
         int32_t seconds
-        int32_t microseconds
+        uint32_t microseconds
 
     _decode_time(data, &seconds, &microseconds)
     return datetime.datetime(seconds=seconds + pg_epoch_datetime,
@@ -126,11 +126,12 @@ cdef timestamptz_decode(ConnectionSettings settings, const char* data,
                         int32_t len):
     cdef:
         int32_t seconds
-        int32_t microseconds
+        uint32_t microseconds
 
     _decode_time(data, &seconds, &microseconds)
-    return datetime.datetime(seconds=seconds + pg_epoch_datetime_utc,
-                             microseconds=microseconds, tzinfo=utc)
+
+    ts = seconds + pg_epoch_datetime_utc + (microseconds / 1000000.0)
+    return datetime.datetime.utcfromtimestamp(ts)
 
 
 cdef time_encode(ConnectionSettings settings, WriteBuffer buf, obj):
@@ -148,7 +149,7 @@ cdef time_decode(ConnectionSettings settings, const char* data,
                  int32_t len):
     cdef:
         int32_t seconds
-        int32_t microseconds
+        uint32_t microseconds
 
     _decode_time(data, &seconds, &microseconds)
 
@@ -203,7 +204,7 @@ cdef interval_decode(ConnectionSettings settings, const char* data,
         int32_t days = hton.unpack_int32(&data[8])
         int32_t months = hton.unpack_int32(&data[12])
         int32_t seconds
-        int32_t microseconds
+        uint32_t microseconds
 
     _decode_time(data, &seconds, &microseconds)
 
