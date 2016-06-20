@@ -48,9 +48,13 @@ cdef int8_decode(ConnectionSettings settings, const char* data, int32_t len):
 cdef inline void init_int_codecs():
     codec_map[BOOLOID].encode = bool_encode
     codec_map[BOOLOID].decode = bool_decode
+    codec_map[BOOLOID].format = PG_FORMAT_BINARY
     codec_map[INT2OID].encode = int2_encode
     codec_map[INT2OID].decode = int2_decode
+    codec_map[INT2OID].format = PG_FORMAT_BINARY
     codec_map[INT4OID].encode = int4_encode
     codec_map[INT4OID].decode = int4_decode
+    codec_map[INT4OID].format = PG_FORMAT_BINARY
     codec_map[INT8OID].encode = int8_encode
     codec_map[INT8OID].decode = int8_decode
+    codec_map[INT8OID].format = PG_FORMAT_BINARY

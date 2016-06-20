@@ -51,5 +51,7 @@ cdef float8_decode(ConnectionSettings settings, const char* data, int32_t len):
 cdef inline void init_float_codecs():
     codec_map[FLOAT4OID].encode = float4_encode
     codec_map[FLOAT4OID].decode = float4_decode
+    codec_map[FLOAT4OID].format = PG_FORMAT_BINARY
     codec_map[FLOAT8OID].encode = float8_encode
     codec_map[FLOAT8OID].decode = float8_decode
+    codec_map[FLOAT8OID].format = PG_FORMAT_BINARY

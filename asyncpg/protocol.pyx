@@ -618,7 +618,7 @@ cdef class CoreProtocol:
         self._query_class = PGQUERY_PREPARE
         self._async_status = PGASYNC_BUSY
 
-    cdef _bind(self, str portal_name, str stmt_name, WriteBuffer args):
+    cdef _bind(self, str portal_name, str stmt_name, WriteBuffer bind_data):
         cdef WriteBuffer buf
 
         self._ensure_ready_state()
@@ -627,21 +627,8 @@ cdef class CoreProtocol:
         buf.write_str(portal_name, self._encoding)
         buf.write_str(stmt_name, self._encoding)
 
-        # Specify the number of parameter codes:
-        #   1 - the specified format code is applied to all parameters
-        buf.write_int16(1)
-        # Parameters format:
-        #   1 - binary
-        buf.write_int16(1)
-
         # Arguments
-        buf.write_buffer(args)
-
-        # Specify the result encoding
-        #   1 - the specified format code is applied to all result columns
-        buf.write_int16(1)
-        # Result format: 1 - binary
-        buf.write_int16(1)
+        buf.write_buffer(bind_data)
 
         buf.end_message()
         self._write(buf)
@@ -713,9 +700,11 @@ cdef class PreparedStatementState:
         ConnectionSettings settings
 
         int16_t     args_num
+        bint        have_text_args
         core_codec  **args_codecs
 
         int16_t     cols_num
+        bint        have_text_cols
         core_codec  **rows_codecs
 
 
@@ -737,13 +726,15 @@ cdef class PreparedStatementState:
 
         self.args_num = self.cols_num = -1
 
-    cdef _encode_args(self, args):
+    cdef _encode_bind_msg(self, args):
         cdef:
             int idx
             WriteBuffer writer
             core_codec *codec
 
         self._ensure_args_encoder()
+        self._ensure_rows_decoder()
+
         writer = WriteBuffer.new()
 
         if self.args_num != len(args):
@@ -752,11 +743,29 @@ cdef class PreparedStatementState:
                 'number of parameters ({})'.format(
                     len(args), self.args_num))
 
+        if self.have_text_args:
+            writer.write_int16(self.args_num)
+            for idx from 0 <= idx < self.args_num:
+                codec = self.args_codecs[idx]
+                writer.write_int16(codec.format)
+        else:
+            # All arguments are in binary format
+            writer.write_int32(0x00010001)
+
         writer.write_int16(self.args_num)
 
         for idx from 0 <= idx < self.args_num:
             codec = self.args_codecs[idx]
             codec.encode(self.settings, writer, args[idx])
+
+        if self.have_text_cols:
+            writer.write_int16(self.cols_num)
+            for idx from 0 <= idx < self.cols_num:
+                codec = self.rows_codecs[idx]
+                writer.write_int16(codec.format)
+        else:
+            # All columns are in binary format
+            writer.write_int32(0x00010001)
 
         return writer
 
@@ -786,6 +795,8 @@ cdef class PreparedStatementState:
             if (self.rows_codecs[i] is NULL or
                     self.rows_codecs[i].decode is NULL):
                 raise RuntimeError('no decoder for OID {}'.format(oid))
+            if self.rows_codecs[i].format != PG_FORMAT_BINARY:
+                self.have_text_cols = True
 
     cdef _ensure_args_encoder(self):
         cdef:
@@ -816,6 +827,8 @@ cdef class PreparedStatementState:
             if (self.args_codecs[i] is NULL or
                     self.args_codecs[i].encode is NULL):
                 raise RuntimeError('no encoder for OID {}'.format(p_oid))
+            if self.args_codecs[i].format != PG_FORMAT_BINARY:
+                self.have_text_args = True
 
     cdef _decode_rows(self, rows):
         cdef:
@@ -826,8 +839,6 @@ cdef class PreparedStatementState:
             list result
             list dec_row
             int row_len
-
-        self._ensure_rows_decoder()
 
         result = []
 
@@ -993,7 +1004,7 @@ cdef class BaseProtocol(CoreProtocol):
         self._bind(
             "",
             state.name,
-            self._prepared_stmt._encode_args(args))
+            self._prepared_stmt._encode_bind_msg(args))
 
         self._waiter = waiter
 

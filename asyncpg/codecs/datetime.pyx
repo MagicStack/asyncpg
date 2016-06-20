@@ -215,13 +215,19 @@ cdef interval_decode(ConnectionSettings settings, const char* data,
 cdef inline void init_datetime_codecs():
     codec_map[DATEOID].encode = date_encode
     codec_map[DATEOID].decode = date_decode
+    codec_map[DATEOID].format = PG_FORMAT_BINARY
     codec_map[TIMEOID].encode = time_encode
     codec_map[TIMEOID].decode = time_decode
+    codec_map[TIMEOID].format = PG_FORMAT_BINARY
     codec_map[TIMETZOID].encode = timetz_encode
     codec_map[TIMETZOID].decode = timetz_decode
+    codec_map[TIMETZOID].format = PG_FORMAT_BINARY
     codec_map[TIMESTAMPOID].encode = timestamp_encode
     codec_map[TIMESTAMPOID].decode = timestamp_decode
+    codec_map[TIMESTAMPOID].format = PG_FORMAT_BINARY
     codec_map[TIMESTAMPTZOID].encode = timestamptz_encode
     codec_map[TIMESTAMPTZOID].decode = timestamptz_decode
+    codec_map[TIMESTAMPTZOID].format = PG_FORMAT_BINARY
     codec_map[INTERVALOID].encode = interval_encode
     codec_map[INTERVALOID].decode = interval_decode
+    codec_map[INTERVALOID].format = PG_FORMAT_BINARY
