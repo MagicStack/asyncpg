@@ -61,10 +61,11 @@ include "pgtypes.pxd"
 
 include "buffer.pyx"
 
+include "codecs/text.pyx"
 include "codecs/datetime.pyx"
 include "codecs/float.pyx"
 include "codecs/int.pyx"
-include "codecs/text.pyx"
+include "codecs/numeric.pyx"
 include "codecs/init.pyx"
 
 

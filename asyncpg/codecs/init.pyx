@@ -20,6 +20,7 @@ cdef inline core_codec* get_core_codec(uint32_t oid):
 cdef void init_codecs():
     init_int_codecs()
     init_float_codecs()
+    init_numeric_codecs()
     init_datetime_codecs()
     init_text_codecs()
 
