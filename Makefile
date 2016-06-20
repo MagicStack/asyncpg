@@ -10,4 +10,5 @@ debug:
 	python setup.py build_ext --inplace --debug
 
 test:
-	python3 -m unittest discover -s tests -v
+	PYTHONASYNCIODEBUG=1 python -m unittest discover -s tests
+	python -m unittest discover -s tests

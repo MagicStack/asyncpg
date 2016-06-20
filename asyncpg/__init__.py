@@ -26,6 +26,9 @@ class Connection:
         state = await waiter
         return PreparedStatement(self, state)
 
+    async def close(self):
+        self._transport.close()
+
 
 class PreparedStatement:
     def __init__(self, connection, state):
@@ -45,8 +48,7 @@ async def connect(host='localhost', port=5432, user='postgres', *,
     if loop is None:
         loop = asyncio.get_event_loop()
 
-    connected = asyncio.Future(loop=loop)
-
+    connected = _create_future(loop)
     tr, pr = await loop.create_connection(
         lambda: Protocol(connected, user, loop),
         host, port)
