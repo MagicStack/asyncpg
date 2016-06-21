@@ -62,6 +62,7 @@ include "pgtypes.pxd"
 include "buffer.pyx"
 
 include "codecs/text.pyx"
+include "codecs/bytea.pyx"
 include "codecs/datetime.pyx"
 include "codecs/float.pyx"
 include "codecs/int.pyx"

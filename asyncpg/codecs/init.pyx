@@ -23,6 +23,7 @@ cdef void init_codecs():
     init_numeric_codecs()
     init_datetime_codecs()
     init_text_codecs()
+    init_bytea_codecs()
 
 
 init_codecs()
