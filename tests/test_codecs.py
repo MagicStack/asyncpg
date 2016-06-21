@@ -167,6 +167,10 @@ type_samples = [
         datetime.timedelta(-100, 0),
         datetime.timedelta(-100, -400),
     ]),
+    ('oid[]', [
+        [1, 2, 3, 4],
+        []
+    ])
 ]
 
 
