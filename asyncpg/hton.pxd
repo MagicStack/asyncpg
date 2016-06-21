@@ -9,23 +9,19 @@ cdef extern from "arpa/inet.h":
 
 
 cdef inline void pack_int16(char* buf, int16_t x):
-    (<uint16_t*>buf)[0] = htons(x)
+    (<uint16_t*>buf)[0] = htons(<uint16_t>x)
 
 
 cdef inline int16_t unpack_int16(const char* buf):
-    cdef uint16_t nx
-    (&nx)[0] = (<uint16_t*>buf)[0]
-    return <int16_t>ntohs(nx)
+    return <int16_t>ntohs((<uint16_t*>buf)[0])
 
 
 cdef inline void pack_int32(char* buf, int32_t x):
-    (<uint32_t*>buf)[0] = htonl(x)
+    (<uint32_t*>buf)[0] = htonl(<uint32_t>x)
 
 
 cdef inline int32_t unpack_int32(const char* buf):
-    cdef uint32_t nx
-    (&nx)[0] = (<uint32_t*>buf)[0]
-    return <int32_t>ntohl(nx)
+    return <int32_t>ntohl((<uint32_t*>buf)[0])
 
 
 cdef inline void pack_int64(char* buf, int64_t x):
