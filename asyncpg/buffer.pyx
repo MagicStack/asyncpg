@@ -125,6 +125,7 @@ cdef class WriteBuffer:
             raise BufferError('end_message: buffer is too small')
 
         hton.pack_int32(&self._buf[1], mlen)
+        return self
 
     cdef write_buffer(self, WriteBuffer buf):
         self._check_readonly()

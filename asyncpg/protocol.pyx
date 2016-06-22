@@ -71,6 +71,9 @@ include "codecs/array.pyx"
 include "codecs/init.pyx"
 
 
+cdef bytes SYNC_MESSAGE = bytes(WriteBuffer.new_message(b'S').end_message())
+
+
 cdef enum ConnectionStatus:
     CONNECTION_OK = 0
     CONNECTION_BAD = 1
@@ -212,8 +215,11 @@ cdef class CoreProtocol:
 
         self._after_sync = None
 
-    cdef _write(self, WriteBuffer buf):
+    cdef inline _write(self, WriteBuffer buf):
         self.transport.write(memoryview(buf))
+
+    cdef inline _write_sync_message(self):
+        self.transport.write(SYNC_MESSAGE)
 
     cdef inline _read_server_messages(self):
         cdef:
@@ -539,9 +545,7 @@ cdef class CoreProtocol:
         if self._async_status != PGASYNC_IDLE:
             raise RuntimeError('cannot sync; status is non-idle')
         self._async_status = PGASYNC_BUSY
-        buf = WriteBuffer.new_message(b'S')
-        buf.end_message()
-        self._write(buf)
+        self._write_sync_message()
 
     cdef _ensure_ready_state(self):
         if self._async_status != PGASYNC_IDLE:
@@ -614,9 +618,7 @@ cdef class CoreProtocol:
         buf.end_message()
         self._write(buf)
 
-        buf = WriteBuffer.new_message(b'S')
-        buf.end_message()
-        self._write(buf)
+        self._write_sync_message()
 
         self._query_class = PGQUERY_PREPARE
         self._async_status = PGASYNC_BUSY
@@ -642,9 +644,7 @@ cdef class CoreProtocol:
         buf.end_message()
         self._write(buf)
 
-        buf = WriteBuffer.new_message(b'S')
-        buf.end_message()
-        self._write(buf)
+        self._write_sync_message()
 
         self._result = Result.new(PGRES_TUPLES_OK)
         self._query_class = PGQUERY_EXTENDED
@@ -666,9 +666,7 @@ cdef class CoreProtocol:
         buf.end_message()
         self._write(buf)
 
-        buf = WriteBuffer.new_message(b'S')
-        buf.end_message()
-        self._write(buf)
+        self._write_sync_message()
 
         self._query_class = PGQUERY_DESCRIBE
         self._async_status = PGASYNC_BUSY
