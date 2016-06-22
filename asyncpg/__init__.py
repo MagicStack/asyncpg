@@ -25,9 +25,7 @@ class Connection:
         return await waiter
 
     async def prepare(self, query):
-        waiter = _create_future(self._loop)
-        self._protocol.prepare(None, query, waiter)
-        state = await waiter
+        state = await self._protocol.prepare(None, query)
         return PreparedStatement(self, state)
 
     def close(self):
@@ -41,9 +39,7 @@ class PreparedStatement:
 
     async def execute(self, *args):
         protocol = self._connection._protocol
-        waiter = _create_future(self._connection._loop)
-        protocol.execute(self._state, args, waiter)
-        return await waiter
+        return await protocol.execute(self._state, args)
 
 
 async def connect(iri=None, *,
@@ -84,17 +80,22 @@ async def connect(iri=None, *,
     if dbname is None:
         dbname = os.getenv('PGDATABASE')
 
-    connected = _create_future(loop)
     last_ex = None
-    proto_factory = lambda: Protocol(connected, user, password, dbname, loop)
-
     for h in host:
+        connected = _create_future(loop)
+
         if h.startswith('/'):
             # UNIX socket name
             sname = os.path.join(h, '.s.PGSQL.{}'.format(port))
-            conn = loop.create_unix_connection(proto_factory, sname)
+            conn = loop.create_unix_connection(
+                lambda: Protocol(sname, connected, user,
+                                 password, dbname, loop),
+                sname)
         else:
-            conn = loop.create_connection(proto_factory, h, port)
+            conn = loop.create_connection(
+                lambda: Protocol((h, port), connected, user,
+                                 password, dbname, loop),
+                h, port)
 
         try:
             tr, pr = await asyncio.wait_for(conn, timeout=timeout, loop=loop)

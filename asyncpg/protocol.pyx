@@ -963,6 +963,8 @@ cdef class BaseProtocol(CoreProtocol):
 
         object _connect_waiter
         object _waiter
+        object _address
+        tuple _hash
 
         ProtocolState _state
 
@@ -970,9 +972,11 @@ cdef class BaseProtocol(CoreProtocol):
 
         int _id
 
-    def __init__(self, connect_waiter, user, password, dbname, loop):
+    def __init__(self, address, connect_waiter, user, password, dbname, loop):
         CoreProtocol.__init__(self, user, password, dbname)
         self._loop = loop
+        self._address = address
+        self._hash = (self._address, self._dbname)
 
         self._connect_waiter = connect_waiter
         self._waiter = None
@@ -985,12 +989,13 @@ cdef class BaseProtocol(CoreProtocol):
     def get_settings(self):
         return self._settings
 
-    def query(self, query, waiter):
+    def query(self, query):
         self._start_state(STATE_QUERY)
-        self._waiter = waiter
+        self._waiter = self._create_future()
         self._query(query)
+        return self._waiter
 
-    def prepare(self, name, query, waiter):
+    def prepare(self, name, query):
         self._start_state(STATE_PREPARE_BIND)
         if name is None:
             name = self._gen_id('prepared_statement')
@@ -999,10 +1004,11 @@ cdef class BaseProtocol(CoreProtocol):
 
         self._prepared_stmt = PreparedStatementState(name, self._settings)
 
-        self._waiter = waiter
+        self._waiter = self._create_future()
         self._parse(name, query)
+        return self._waiter
 
-    def execute(self, state, args, waiter):
+    def execute(self, state, args):
         self._start_state(STATE_EXECUTE)
         if type(state) is not PreparedStatementState:
             raise TypeError(
@@ -1015,7 +1021,16 @@ cdef class BaseProtocol(CoreProtocol):
             state.name,
             self._prepared_stmt._encode_bind_msg(args))
 
-        self._waiter = waiter
+        self._waiter = self._create_future()
+        return self._waiter
+
+    cdef inline _create_future(self):
+        try:
+            create_future = self._loop.create_future
+        except AttributeError:
+            return asyncio.Future(loop=self._loop)
+        else:
+            return create_future()
 
     cdef _gen_id(self, prefix):
         self._id += 1
