@@ -1,8 +1,12 @@
 import asyncio
-import asyncpg
+import atexit
 import functools
 import inspect
+import os
 import unittest
+
+
+from asyncpg import cluster as pg_cluster
 
 
 class TestCaseMeta(type(unittest.TestCase)):
@@ -51,12 +55,43 @@ class TestCase(unittest.TestCase, metaclass=TestCaseMeta):
         asyncio.set_event_loop(None)
 
 
-class ConnectedTestCase(TestCase):
+_default_cluster = None
+
+
+def _start_cluster():
+    global _default_cluster
+
+    if _default_cluster is None:
+        pg_host = os.environ.get('PGHOST')
+        if pg_host:
+            # Using existing cluster, assuming it is initialized and running
+            _default_cluster = pg_cluster.RunningCluster()
+        else:
+            _default_cluster = pg_cluster.TempCluster()
+            _default_cluster.init()
+            _default_cluster.start(port=12345)
+            atexit.register(_shutdown_cluster, _default_cluster)
+
+    return _default_cluster
+
+
+def _shutdown_cluster(cluster):
+    cluster.stop()
+    cluster.destroy()
+
+
+class ClusterTestCase(TestCase):
+    def setUp(self):
+        super().setUp()
+        self.cluster = _start_cluster()
+
+
+class ConnectedTestCase(ClusterTestCase):
 
     def setUp(self):
         super().setUp()
         self.con = self.loop.run_until_complete(
-            asyncpg.connect(loop=self.loop))
+            self.cluster.connect(dbname='postgres', loop=self.loop))
 
     def tearDown(self):
         try:
