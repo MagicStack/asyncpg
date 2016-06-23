@@ -112,6 +112,7 @@ async def connect(iri=None, *,
             tr, pr = await asyncio.wait_for(conn, timeout=timeout, loop=loop)
         except (OSError, asyncio.TimeoutError) as ex:
             last_ex = ex
+            tr.close()
         else:
             break
     else:
