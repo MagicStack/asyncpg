@@ -121,6 +121,11 @@ type_samples = [
         b'\x00\x00',
         b'foo'
     )),
+    ('"char"', (
+        b'a',
+        b'b',
+        b'\x00'
+    )),
     ('timestamp', [
         datetime.datetime(3000, 5, 20, 5, 30, 10),
         datetime.datetime(2000, 1, 1, 5, 25, 10),

@@ -35,3 +35,6 @@ cdef inline void init_bytea_codecs():
     codec_map[BYTEAOID].encode = bytea_encode
     codec_map[BYTEAOID].decode = bytea_decode
     codec_map[BYTEAOID].format = PG_FORMAT_BINARY
+    codec_map[CHAROID].encode = bytea_encode
+    codec_map[CHAROID].decode = bytea_decode
+    codec_map[CHAROID].format = PG_FORMAT_BINARY
