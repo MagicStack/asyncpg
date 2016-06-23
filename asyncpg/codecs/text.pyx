@@ -25,7 +25,7 @@ cdef text_decode(ConnectionSettings settings, const char* data, int32_t len):
         return settings.get_codec().decode(bytes)
 
 
-cdef inline void init_text_codecs():
+cdef init_text_codecs():
     textoids = [
         NAMEOID,
         BPCHAROID,
@@ -41,6 +41,7 @@ cdef inline void init_text_codecs():
     ]
 
     for oid in textoids:
-        codec_map[oid].encode = text_encode
-        codec_map[oid].decode = text_decode
-        codec_map[oid].format = PG_FORMAT_BINARY
+        register_core_codec(oid,
+                            <encode_func>&text_encode,
+                            <decode_func>&text_decode,
+                            PG_FORMAT_BINARY)

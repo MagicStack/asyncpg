@@ -31,10 +31,13 @@ cdef bytea_decode(ConnectionSettings settings, const char* data, int32_t len):
     return cpython.PyBytes_FromStringAndSize(data, len)
 
 
-cdef inline void init_bytea_codecs():
-    codec_map[BYTEAOID].encode = bytea_encode
-    codec_map[BYTEAOID].decode = bytea_decode
-    codec_map[BYTEAOID].format = PG_FORMAT_BINARY
-    codec_map[CHAROID].encode = bytea_encode
-    codec_map[CHAROID].decode = bytea_decode
-    codec_map[CHAROID].format = PG_FORMAT_BINARY
+cdef init_bytea_codecs():
+    register_core_codec(BYTEAOID,
+                        <encode_func>&bytea_encode,
+                        <decode_func>&bytea_decode,
+                        PG_FORMAT_BINARY)
+
+    register_core_codec(CHAROID,
+                        <encode_func>&bytea_encode,
+                        <decode_func>&bytea_decode,
+                        PG_FORMAT_BINARY)

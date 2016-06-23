@@ -28,6 +28,7 @@ include "pgtypes.pxi"
 include "settings.pyx"
 include "buffer.pyx"
 
+include "codecs/base.pyx"
 include "codecs/text.pyx"
 include "codecs/bytea.pyx"
 include "codecs/datetime.pyx"

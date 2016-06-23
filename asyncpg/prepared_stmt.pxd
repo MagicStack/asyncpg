@@ -10,11 +10,11 @@ cdef class PreparedStatementState:
 
         int16_t      args_num
         bint         have_text_args
-        core_codec   **args_codecs
+        tuple        args_codecs
 
         int16_t      cols_num
         bint         have_text_cols
-        core_codec   **rows_codecs
+        tuple        rows_codecs
 
     cdef _encode_bind_msg(self, args)
     cdef _ensure_rows_decoder(self)

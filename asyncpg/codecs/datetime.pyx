@@ -250,22 +250,33 @@ cdef interval_decode(ConnectionSettings settings, const char* data,
                               microseconds=microseconds)
 
 
-cdef inline void init_datetime_codecs():
-    codec_map[DATEOID].encode = date_encode
-    codec_map[DATEOID].decode = date_decode
-    codec_map[DATEOID].format = PG_FORMAT_BINARY
-    codec_map[TIMEOID].encode = time_encode
-    codec_map[TIMEOID].decode = time_decode
-    codec_map[TIMEOID].format = PG_FORMAT_BINARY
-    codec_map[TIMETZOID].encode = timetz_encode
-    codec_map[TIMETZOID].decode = timetz_decode
-    codec_map[TIMETZOID].format = PG_FORMAT_BINARY
-    codec_map[TIMESTAMPOID].encode = timestamp_encode
-    codec_map[TIMESTAMPOID].decode = timestamp_decode
-    codec_map[TIMESTAMPOID].format = PG_FORMAT_BINARY
-    codec_map[TIMESTAMPTZOID].encode = timestamptz_encode
-    codec_map[TIMESTAMPTZOID].decode = timestamptz_decode
-    codec_map[TIMESTAMPTZOID].format = PG_FORMAT_BINARY
-    codec_map[INTERVALOID].encode = interval_encode
-    codec_map[INTERVALOID].decode = interval_decode
-    codec_map[INTERVALOID].format = PG_FORMAT_BINARY
+cdef init_datetime_codecs():
+    register_core_codec(DATEOID,
+                        <encode_func>&date_encode,
+                        <decode_func>&date_decode,
+                        PG_FORMAT_BINARY)
+
+    register_core_codec(TIMEOID,
+                        <encode_func>&time_encode,
+                        <decode_func>&time_decode,
+                        PG_FORMAT_BINARY)
+
+    register_core_codec(TIMETZOID,
+                        <encode_func>&timetz_encode,
+                        <decode_func>&timetz_decode,
+                        PG_FORMAT_BINARY)
+
+    register_core_codec(TIMESTAMPOID,
+                        <encode_func>&timestamp_encode,
+                        <decode_func>&timestamp_decode,
+                        PG_FORMAT_BINARY)
+
+    register_core_codec(TIMESTAMPTZOID,
+                        <encode_func>&timestamptz_encode,
+                        <decode_func>&timestamptz_decode,
+                        PG_FORMAT_BINARY)
+
+    register_core_codec(INTERVALOID,
+                        <encode_func>&interval_encode,
+                        <decode_func>&interval_decode,
+                        PG_FORMAT_BINARY)

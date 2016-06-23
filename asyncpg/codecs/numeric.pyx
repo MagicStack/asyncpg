@@ -12,7 +12,9 @@ cdef numeric_decode(ConnectionSettings settings, const char* data, int32_t len):
     return _Dec(str)
 
 
-cdef inline void init_numeric_codecs():
-    codec_map[NUMERICOID].encode = numeric_encode
-    codec_map[NUMERICOID].decode = numeric_decode
-    codec_map[NUMERICOID].format = PG_FORMAT_TEXT
+cdef init_numeric_codecs():
+
+    register_core_codec(NUMERICOID,
+                        <encode_func>&numeric_encode,
+                        <decode_func>&numeric_decode,
+                        PG_FORMAT_TEXT)

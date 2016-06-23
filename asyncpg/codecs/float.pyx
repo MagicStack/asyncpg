@@ -48,10 +48,14 @@ cdef float8_decode(ConnectionSettings settings, const char* data, int32_t len):
     return cpython.PyFloat_FromDouble(v.f)
 
 
-cdef inline void init_float_codecs():
-    codec_map[FLOAT4OID].encode = float4_encode
-    codec_map[FLOAT4OID].decode = float4_decode
-    codec_map[FLOAT4OID].format = PG_FORMAT_BINARY
-    codec_map[FLOAT8OID].encode = float8_encode
-    codec_map[FLOAT8OID].decode = float8_decode
-    codec_map[FLOAT8OID].format = PG_FORMAT_BINARY
+cdef init_float_codecs():
+
+    register_core_codec(FLOAT4OID,
+                        <encode_func>&float4_encode,
+                        <decode_func>&float4_decode,
+                        PG_FORMAT_BINARY)
+
+    register_core_codec(FLOAT8OID,
+                        <encode_func>&float8_encode,
+                        <decode_func>&float8_decode,
+                        PG_FORMAT_BINARY)

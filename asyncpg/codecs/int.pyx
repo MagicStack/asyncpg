@@ -45,22 +45,28 @@ cdef int8_decode(ConnectionSettings settings, const char* data, int32_t len):
     return cpython.PyLong_FromLongLong(hton.unpack_int64(data))
 
 
-cdef inline void init_int_codecs():
-    codec_map[BOOLOID].encode = bool_encode
-    codec_map[BOOLOID].decode = bool_decode
-    codec_map[BOOLOID].format = PG_FORMAT_BINARY
-    codec_map[INT2OID].encode = int2_encode
-    codec_map[INT2OID].decode = int2_decode
-    codec_map[INT2OID].format = PG_FORMAT_BINARY
-    codec_map[INT8OID].encode = int8_encode
-    codec_map[INT8OID].decode = int8_decode
-    codec_map[INT8OID].format = PG_FORMAT_BINARY
+cdef init_int_codecs():
 
+    register_core_codec(BOOLOID,
+                        <encode_func>&bool_encode,
+                        <decode_func>&bool_decode,
+                        PG_FORMAT_BINARY)
+
+    register_core_codec(INT2OID,
+                        <encode_func>&int2_encode,
+                        <decode_func>&int2_decode,
+                        PG_FORMAT_BINARY)
+
+    register_core_codec(INT8OID,
+                        <encode_func>&int8_encode,
+                        <decode_func>&int8_decode,
+                        PG_FORMAT_BINARY)
     int4oids = [
         INT4OID, OIDOID, TIDOID, XIDOID, CIDOID
     ]
 
     for int4oid in int4oids:
-        codec_map[int4oid].encode = int4_encode
-        codec_map[int4oid].decode = int4_decode
-        codec_map[int4oid].format = PG_FORMAT_BINARY
+        register_core_codec(int4oid,
+                            <encode_func>&int4_encode,
+                            <decode_func>&int4_decode,
+                            PG_FORMAT_BINARY)

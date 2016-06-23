@@ -45,7 +45,9 @@ cdef arrayoid_decode(ConnectionSettings settings, const char* data,
     return result
 
 
-cdef inline void init_array_codecs():
-    codec_map[_OIDOID].encode = arrayoid_encode
-    codec_map[_OIDOID].decode = arrayoid_decode
-    codec_map[_OIDOID].format = PG_FORMAT_BINARY
+cdef init_array_codecs():
+
+    register_core_codec(_OIDOID,
+                        <encode_func>&arrayoid_encode,
+                        <decode_func>&arrayoid_decode,
+                        PG_FORMAT_BINARY)
