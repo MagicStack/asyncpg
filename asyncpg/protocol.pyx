@@ -16,6 +16,7 @@ from .python cimport PyMem_Malloc, PyMem_Realloc, PyMem_Calloc, PyMem_Free, \
                      PyUnicode_AsUTF8AndSize
 from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
 
+from . import exceptions
 from . import encodings
 from . cimport hton
 
@@ -1048,7 +1049,9 @@ cdef class BaseProtocol(CoreProtocol):
         if result.status == PGRES_FATAL_ERROR:
             msg = '\n'.join(['{}: {}'.format(k, v)
                 for k, v in result.err_fields.items()])
-            exc = Exception(msg)
+            exc_cls = exceptions.ErrorMeta.get_error_for_code(
+                result.err_fields.get('C'))
+            exc = exc_cls(msg)
             waiter.set_exception(exc)
             self._state = STATE_READY
             self._waiter = None

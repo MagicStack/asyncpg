@@ -2,10 +2,12 @@ import asyncio
 import getpass
 import os
 
+
+from .exceptions import *
 from .protocol import Protocol
 
 
-__all__ = ('connect',)
+__all__ = ('connect',) + exceptions.__all__
 
 
 class Connection:
