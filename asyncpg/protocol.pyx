@@ -583,7 +583,7 @@ cdef class CoreProtocol:
             buf.write_str(self._password, self._encoding)
 
         if self._dbname:
-            buf.write_bytestring(b'dbname')
+            buf.write_bytestring(b'database')
             buf.write_str(self._dbname, self._encoding)
 
         buf.write_bytestring(b'')
