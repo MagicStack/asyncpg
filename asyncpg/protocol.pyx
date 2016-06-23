@@ -39,6 +39,9 @@ include "coreproto.pyx"
 include "prepared_stmt.pyx"
 
 
+cdef dict TYPE_CODECS_CACHE = {}
+
+
 cdef enum ProtocolState:
     STATE_NOT_CONNECTED = 0
     STATE_READY = 10
@@ -59,7 +62,8 @@ cdef class BaseProtocol(CoreProtocol):
         object _connect_waiter
         object _waiter
         object _address
-        tuple _hash
+        tuple  _hash
+        dict   _type_codecs_cache
 
         ProtocolState _state
 
@@ -77,9 +81,23 @@ cdef class BaseProtocol(CoreProtocol):
         self._waiter = None
         self._state = STATE_NOT_CONNECTED
 
+        try:
+            self._type_codecs_cache = TYPE_CODECS_CACHE[self._hash]
+        except KeyError:
+            self._type_codecs_cache = TYPE_CODECS_CACHE[self._hash] = {}
+
         self._prepared_stmt = None
 
         self._id = 0
+
+    def _add_types(self, types):
+        for ti in types:
+            oid = ti[0]
+            is_array_oid = ti[5]
+            print(oid, is_array_oid)
+
+    def clear_type_cache(self):
+        self._type_codecs_cache.clear()
 
     def get_settings(self):
         return self._settings
@@ -104,11 +122,15 @@ cdef class BaseProtocol(CoreProtocol):
         return self._waiter
 
     def execute(self, state, args):
-        self._start_state(STATE_EXECUTE)
         if type(state) is not PreparedStatementState:
             raise TypeError(
                 'state must be an instance of PreparedStatementState')
 
+        if not (<PreparedStatementState>state).types_ready:
+            raise RuntimeError(
+                'state does not have complete types information')
+
+        self._start_state(STATE_EXECUTE)
         self._prepared_stmt = <PreparedStatementState>state
 
         self._bind(
@@ -184,10 +206,13 @@ cdef class BaseProtocol(CoreProtocol):
 
         elif self._state == STATE_PREPARE_DESCRIBE:
             stmt = self._prepared_stmt
+
             if result.parameters_desc is not None:
-                stmt.parameters_desc = result.parameters_desc
+                stmt._set_args_desc(result.parameters_desc)
+
             if result.row_desc is not None:
-                stmt.row_desc = result.row_desc
+                stmt._set_row_desc(result.row_desc)
+
             if (stmt.row_desc is not None and
                     stmt.parameters_desc is not None):
                 waiter.set_result(stmt)

@@ -1,18 +1,20 @@
 cdef class PreparedStatementState:
     cdef:
         readonly str name
-        object row_desc
-        object parameters_desc
+        list         row_desc
+        list         parameters_desc
 
         ConnectionSettings settings
 
-        int16_t     args_num
-        bint        have_text_args
-        core_codec  **args_codecs
+        bint         types_ready
 
-        int16_t     cols_num
-        bint        have_text_cols
-        core_codec  **rows_codecs
+        int16_t      args_num
+        bint         have_text_args
+        core_codec   **args_codecs
+
+        int16_t      cols_num
+        bint         have_text_cols
+        core_codec   **rows_codecs
 
 
     def __cinit__(self, name, settings):
@@ -21,6 +23,7 @@ cdef class PreparedStatementState:
         self.row_desc = self.parameters_desc = None
         self.args_codecs = self.rows_codecs = NULL
         self.args_num = self.cols_num = -1
+        self.types_ready = False
 
     def __dealloc__(self):
         if self.args_codecs is not NULL:
@@ -32,6 +35,35 @@ cdef class PreparedStatementState:
             self.rows_codecs = NULL
 
         self.args_num = self.cols_num = -1
+
+    def _init_types(self):
+        cdef:
+            core_codec* codec
+            set result = set()
+
+        if self.row_desc is None:
+            raise RuntimeError(
+                'unable to init types: no rows descrition')
+
+        if self.parameters_desc is None:
+            raise RuntimeError(
+                'unable to init types: no parameters descrition')
+
+        for p_oid in self.parameters_desc:
+            codec = get_core_codec(<uint32_t>p_oid)
+            if codec is NULL or codec.encode is NULL:
+                result.add(p_oid)
+
+        for rdesc in self.row_desc:
+            codec = get_core_codec(<uint32_t>(rdesc[3]))
+            if codec is NULL or codec.decode is NULL:
+                result.add(rdesc[3])
+
+        if len(result):
+            return result
+        else:
+            self.types_ready = True
+            return True
 
     cdef _encode_bind_msg(self, args):
         cdef:
@@ -78,18 +110,12 @@ cdef class PreparedStatementState:
 
     cdef _ensure_rows_decoder(self):
         cdef:
-            list rows_desc
             int oid
-
-        if self.cols_num >= 0:
-            return
 
         if self.row_desc is None:
             raise RuntimeError(
                 'unable to create rows decoder: no rows descrition')
 
-        rows_desc = PreparedStatementState._decode_row_desc(self.row_desc)
-        self.cols_num = <int16_t>(len(rows_desc))
         if self.cols_num == 0:
             return
 
@@ -97,7 +123,7 @@ cdef class PreparedStatementState:
             sizeof(core_codec*) * self.cols_num)
 
         for i from 0 <= i < self.cols_num:
-            oid = rows_desc[i][3]
+            oid = self.row_desc[i][3]
             self.rows_codecs[i] = get_core_codec(<uint32_t>oid)
             if (self.rows_codecs[i] is NULL or
                     self.rows_codecs[i].decode is NULL):
@@ -107,18 +133,11 @@ cdef class PreparedStatementState:
 
     cdef _ensure_args_encoder(self):
         cdef:
-            ReadBuffer reader
-            int32_t p_oid
-
-        if self.args_num >= 0:
-            return
+            int p_oid
 
         if self.parameters_desc is None:
             raise RuntimeError(
                 'unable to create args encoder: no parameters descrition')
-
-        reader = ReadBuffer.new_message_parser(self.parameters_desc)
-        self.args_num = reader.read_int16()
 
         if self.args_num == 0:
             return
@@ -129,13 +148,21 @@ cdef class PreparedStatementState:
             raise MemoryError
 
         for i from 0 <= i < self.args_num:
-            p_oid = reader.read_int32()
+            p_oid = self.parameters_desc[i]
             self.args_codecs[i] = get_core_codec(<uint32_t>p_oid)
             if (self.args_codecs[i] is NULL or
                     self.args_codecs[i].encode is NULL):
                 raise RuntimeError('no encoder for OID {}'.format(p_oid))
             if self.args_codecs[i].format != PG_FORMAT_BINARY:
                 self.have_text_args = True
+
+    cdef _set_row_desc(self, object desc):
+        self.row_desc = _decode_row_desc(desc)
+        self.cols_num = <int16_t>(len(self.row_desc))
+
+    cdef _set_args_desc(self, object desc):
+        self.parameters_desc = _decode_parameters_desc(desc)
+        self.args_num = <int16_t>(len(self.parameters_desc))
 
     cdef _decode_rows(self, rows):
         cdef:
@@ -187,56 +214,55 @@ cdef class PreparedStatementState:
 
         return result
 
-    @staticmethod
-    cdef _decode_parameters_desc(object desc):
-        cdef:
-            ReadBuffer reader
-            int16_t nparams
-            int32_t p_oid
-            list result
 
-        reader = ReadBuffer.new_message_parser(desc)
-        nparams = reader.read_int16()
-        result = []
+cdef _decode_parameters_desc(object desc):
+    cdef:
+        ReadBuffer reader
+        int16_t nparams
+        int32_t p_oid
+        list result = []
 
-        for i from 0 <= i < nparams:
-            p_oid = reader.read_int32()
-            result.append(p_oid)
+    reader = ReadBuffer.new_message_parser(desc)
+    nparams = reader.read_int16()
 
-        return result
+    for i from 0 <= i < nparams:
+        p_oid = reader.read_int32()
+        result.append(p_oid)
 
-    @staticmethod
-    cdef _decode_row_desc(object desc):
-        cdef:
-            ReadBuffer reader
+    return result
 
-            int16_t nfields
 
-            bytes f_name
-            int32_t f_table_oid
-            int16_t f_column_num
-            int32_t f_dt_oid
-            int16_t f_dt_size
-            int32_t f_dt_mod
-            int16_t f_format
+cdef _decode_row_desc(object desc):
+    cdef:
+        ReadBuffer reader
 
-            list result
+        int16_t nfields
 
-        reader = ReadBuffer.new_message_parser(desc)
-        nfields = reader.read_int16()
-        result = []
+        bytes f_name
+        int32_t f_table_oid
+        int16_t f_column_num
+        int32_t f_dt_oid
+        int16_t f_dt_size
+        int32_t f_dt_mod
+        int16_t f_format
 
-        for i from 0 <= i < nfields:
-            f_name = reader.read_cstr()
-            f_table_oid = reader.read_int32()
-            f_column_num = reader.read_int16()
-            f_dt_oid = reader.read_int32()
-            f_dt_size = reader.read_int16()
-            f_dt_mod = reader.read_int32()
-            f_format = reader.read_int16()
+        list result
 
-            result.append(
-                (f_name, f_table_oid, f_column_num, f_dt_oid,
-                 f_dt_size, f_dt_mod, f_format))
+    reader = ReadBuffer.new_message_parser(desc)
+    nfields = reader.read_int16()
+    result = []
 
-        return result
+    for i from 0 <= i < nfields:
+        f_name = reader.read_cstr()
+        f_table_oid = reader.read_int32()
+        f_column_num = reader.read_int16()
+        f_dt_oid = reader.read_int32()
+        f_dt_size = reader.read_int16()
+        f_dt_mod = reader.read_int32()
+        f_format = reader.read_int16()
+
+        result.append(
+            (f_name, f_table_oid, f_column_num, f_dt_oid,
+             f_dt_size, f_dt_mod, f_format))
+
+    return result

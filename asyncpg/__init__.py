@@ -15,6 +15,7 @@ class Connection:
         self._protocol = protocol
         self._transport = transport
         self._loop = loop
+        self._types_stmt = None
 
     def get_settings(self):
         return self._protocol.get_settings()
@@ -26,6 +27,16 @@ class Connection:
 
     async def prepare(self, query):
         state = await self._protocol.prepare(None, query)
+        while True:
+            ready = state._init_types()
+            if ready is True:
+                break
+            if self._types_stmt is None:
+                self._types_stmt = await self.prepare(INTRO_LOOKUP_TYPE)
+
+            types = await self._types_stmt.execute(list(ready))
+            self._protocol._add_types(types)
+            break
         return PreparedStatement(self, state)
 
     def close(self):
@@ -117,3 +128,29 @@ def _create_future(loop):
         return asyncio.Future(loop=loop)
     else:
         return create_future()
+
+
+INTRO_LOOKUP_TYPE = '''\
+SELECT
+    bt.oid,
+    ns.nspname as namespace,
+    bt.typname,
+    bt.typtype,
+    bt.typlen,
+    bt.typelem,
+    bt.typrelid,
+    ae.oid AS ae_typid,
+    ae.typreceive::oid != 0 AS ae_hasbin_input,
+    ae.typsend::oid != 0 AS ae_hasbin_output
+
+FROM pg_catalog.pg_type bt
+    LEFT JOIN pg_type ae ON (
+        bt.typlen = -1 AND
+        bt.typelem != 0 AND
+        bt.typelem = ae.oid
+    )
+    LEFT JOIN pg_catalog.pg_namespace ns ON (
+        ns.oid = bt.typnamespace)
+WHERE
+    bt.oid = any($1::oid[]);
+'''
