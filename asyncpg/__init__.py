@@ -50,7 +50,8 @@ async def connect(iri=None, *,
                   host=None, port=None,
                   user=None, password=None,
                   dbname=None,
-                  loop=None):
+                  loop=None,
+                  timeout=60):
 
     if loop is None:
         loop = asyncio.get_event_loop()
@@ -85,27 +86,22 @@ async def connect(iri=None, *,
 
     connected = _create_future(loop)
     last_ex = None
+    proto_factory = lambda: Protocol(connected, user, password, dbname, loop)
+
     for h in host:
         if h.startswith('/'):
             # UNIX socket name
             sname = os.path.join(h, '.s.PGSQL.{}'.format(port))
-            try:
-                tr, pr = await loop.create_unix_connection(
-                    lambda: Protocol(connected, user, password, dbname, loop),
-                    sname)
-            except OSError as ex:
-                last_ex = ex
-            else:
-                break
+            conn = loop.create_unix_connection(proto_factory, sname)
         else:
-            try:
-                tr, pr = await loop.create_connection(
-                    lambda: Protocol(connected, user, password, dbname, loop),
-                    h, port)
-            except OSError as ex:
-                last_ex = ex
-            else:
-                break
+            conn = loop.create_connection(proto_factory, h, port)
+
+        try:
+            tr, pr = await asyncio.wait_for(conn, timeout=timeout, loop=loop)
+        except (OSError, asyncio.TimeoutError) as ex:
+            last_ex = ex
+        else:
+            break
     else:
         raise last_ex
 
