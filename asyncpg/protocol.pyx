@@ -8,6 +8,7 @@ cimport cpython
 import asyncio
 import codecs
 import collections
+import socket
 
 from libc.stdint cimport int16_t, int32_t, uint16_t, uint32_t, int64_t, uint64_t
 
@@ -686,6 +687,12 @@ cdef class CoreProtocol:
 
     def connection_made(self, transport):
         self.transport = transport
+
+        sock = transport.get_extra_info('socket')
+        try:
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        except (OSError, NameError):
+            pass
 
         try:
             self._open()
