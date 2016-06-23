@@ -114,7 +114,8 @@ class Cluster:
 
     def stop(self, wait=60):
         process = subprocess.run(
-            [self._pg_ctl, 'stop', '-D', self._data_dir, '-t', str(wait)],
+            [self._pg_ctl, 'stop', '-D', self._data_dir, '-t', str(wait),
+             '-m', 'fast'],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         stderr = process.stderr
