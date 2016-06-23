@@ -22,8 +22,10 @@ from . import encodings
 from . cimport hton
 
 
+include "consts.pxi"
+include "pgtypes.pxi"
+
 include "settings.pyx"
-include "pgtypes.pxd"
 include "buffer.pyx"
 
 include "codecs/text.pyx"
@@ -42,34 +44,7 @@ include "prepared_stmt.pyx"
 cdef dict TYPE_CODECS_CACHE = {}
 
 
-cdef enum ProtocolState:
-    STATE_NOT_CONNECTED = 0
-    STATE_READY = 10
-
-    STATE_PREPARE_BIND = 20
-    STATE_PREPARE_DESCRIBE = 21
-
-    STATE_EXECUTE = 30
-
-    STATE_QUERY = 40
-
-
 cdef class BaseProtocol(CoreProtocol):
-
-    cdef:
-        object _loop
-
-        object _connect_waiter
-        object _waiter
-        object _address
-        tuple  _hash
-        dict   _type_codecs_cache
-
-        ProtocolState _state
-
-        PreparedStatementState _prepared_stmt
-
-        int _id
 
     def __init__(self, address, connect_waiter, user, password, dbname, loop):
         CoreProtocol.__init__(self, user, password, dbname)

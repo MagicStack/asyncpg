@@ -1,9 +1,4 @@
 cdef class ConnectionSettings:
-    cdef:
-        str _encoding
-        object _codec
-        dict _settings
-        bint _is_utf8
 
     def __cinit__(self):
         self._encoding = 'utf-8'

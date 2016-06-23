@@ -2,11 +2,6 @@ from cpython cimport Py_buffer
 from libc.string cimport memcpy
 
 
-DEF _BUFFER_INITIAL_SIZE = 1024
-DEF _BUFFER_MAX_GROW = 65536
-DEF _BUFFER_FREELIST_SIZE = 256
-
-
 class BufferError(Exception):
     pass
 
@@ -14,24 +9,6 @@ class BufferError(Exception):
 @cython.no_gc_clear
 @cython.freelist(_BUFFER_FREELIST_SIZE)
 cdef class WriteBuffer:
-    cdef:
-        # Preallocated small buffer
-        bint _smallbuf_inuse
-        char _smallbuf[_BUFFER_INITIAL_SIZE]
-
-        char *_buf
-
-        # Allocated size
-        size_t _size
-
-        # Length of data in the buffer
-        size_t _length
-
-        # Number of memoryviews attached to the buffer
-        int _view_count
-
-        # True is start_message was used
-        bint _message_mode
 
     def __cinit__(self):
         self._smallbuf_inuse = True
@@ -203,29 +180,6 @@ cdef class WriteBuffer:
 @cython.no_gc_clear
 @cython.freelist(_BUFFER_FREELIST_SIZE)
 cdef class ReadBuffer:
-    cdef:
-        # A deque of buffers (bytes objects)
-        object _bufs
-
-        # A pointer to the first buffer in `_bufs`
-        object _buf0
-
-        # Number of buffers in `_bufs`
-        int _bufs_len
-
-        # A read position in the first buffer in `_bufs`
-        int _pos0
-
-        # Length of the first buffer in `_bufs`
-        int _len0
-
-        # A total number of buffered bytes in ReadBuffer
-        int _length
-
-        char _current_message_type
-        int _current_message_len
-        int _current_message_len_unread
-        bint _current_message_ready
 
     def __cinit__(self):
         self._bufs = collections.deque()
