@@ -17,9 +17,9 @@ cdef class Record:
     def __getitem__(self, item):
         item_cls = type(item)
         if item_cls is str:
-            return self.values[self.mapping[item]]
+            return self.values[<int>(self.mapping[item])]
         elif item_cls is int:
-            return self.values[item]
+            return self.values[<int>item]
 
         if isinstance(item, str):
             return self.values[self.mapping[item]]
