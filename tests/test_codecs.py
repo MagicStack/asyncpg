@@ -243,6 +243,14 @@ class TestCodecs(tb.ConnectedTestCase):
 
             res = list(await st.execute())[0][0]
 
+            self.assertIsNone(res['a'])
+            self.assertEquals(res['b'], '5678')
+            self.assertEquals(res['c'], [9, None, 11])
+
+            self.assertIsNone(res[0])
+            self.assertEquals(res[1], '5678')
+            self.assertEquals(res[2], [9, None, 11])
+
         finally:
             st = await self.con.prepare('DROP TYPE test_composite')
             await st.execute()
@@ -269,7 +277,7 @@ class TestCodecs(tb.ConnectedTestCase):
 
             res = list(await st.execute())[0][0]
 
-            assert res == 3
+            self.assertEquals(res, 3)
 
         finally:
             st = await self.con.prepare('DROP DOMAIN my_dom2')
