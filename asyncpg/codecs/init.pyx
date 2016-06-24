@@ -5,6 +5,7 @@ cdef init_codecs():
     init_datetime_codecs()
     init_text_codecs()
     init_bytea_codecs()
+    init_uuid_codecs()
     init_array_codecs()
 
 

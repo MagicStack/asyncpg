@@ -1,5 +1,6 @@
 import datetime
 import decimal
+import uuid
 
 from asyncpg import _testbase as tb
 
@@ -171,6 +172,10 @@ type_samples = [
         datetime.timedelta(0, 0),
         datetime.timedelta(-100, 0),
         datetime.timedelta(-100, -400),
+    ]),
+    ('uuid', [
+        uuid.UUID('38a4ff5a-3a56-11e6-a6c2-c8f73323c6d4'),
+        uuid.UUID('00000000-0000-0000-0000-000000000000')
     ]),
     ('oid[]', [
         [1, 2, 3, 4],
