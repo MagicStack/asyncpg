@@ -27,15 +27,15 @@ class Connection:
 
     async def prepare(self, query):
         state = await self._protocol.prepare(None, query)
-        while True:
-            ready = state._init_types()
-            if ready is True:
-                break
+
+        ready = state._init_types()
+        if ready is not True:
             if self._types_stmt is None:
                 self._types_stmt = await self.prepare(INTRO_LOOKUP_TYPE)
 
             types = await self._types_stmt.execute(list(ready))
             self._protocol._add_types(types)
+
         return PreparedStatement(self, state)
 
     def close(self):

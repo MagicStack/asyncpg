@@ -42,7 +42,6 @@ cdef class PreparedStatementState:
         self.row_desc = self.parameters_desc = None
         self.args_codecs = self.rows_codecs = None
         self.args_num = self.cols_num = 0
-        self.types_ready = False
         self.cols_mapping = None
 
     def _init_types(self):
@@ -65,7 +64,6 @@ cdef class PreparedStatementState:
         if len(result):
             return result
         else:
-            self.types_ready = True
             return True
 
     cdef _encode_bind_msg(self, args):

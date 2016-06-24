@@ -7,8 +7,6 @@ cdef class PreparedStatementState:
         BaseProtocol protocol
         ConnectionSettings settings
 
-        bint         types_ready
-
         int16_t      args_num
         bint         have_text_args
         tuple        args_codecs

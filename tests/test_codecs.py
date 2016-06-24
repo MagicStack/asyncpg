@@ -246,3 +246,33 @@ class TestCodecs(tb.ConnectedTestCase):
         finally:
             st = await self.con.prepare('DROP TYPE test_composite')
             await st.execute()
+
+    async def test_domains(self):
+        """Test encoding/decoding of composite types"""
+
+        st = await self.con.prepare('''
+            CREATE DOMAIN my_dom AS int
+        ''')
+
+        await st.execute()
+
+        st = await self.con.prepare('''
+            CREATE DOMAIN my_dom2 AS my_dom
+        ''')
+
+        await st.execute()
+
+        try:
+            st = await self.con.prepare('''
+                SELECT 3::my_dom2
+            ''')
+
+            res = list(await st.execute())[0][0]
+
+            assert res == 3
+
+        finally:
+            st = await self.con.prepare('DROP DOMAIN my_dom2')
+            await st.execute()
+            st = await self.con.prepare('DROP DOMAIN my_dom')
+            await st.execute()

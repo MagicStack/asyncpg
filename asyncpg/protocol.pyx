@@ -77,6 +77,7 @@ cdef class BaseProtocol(CoreProtocol):
             oid = ti['oid']
             array_element_oid = ti['elemtype']
             comp_type_attrs = ti['attrtypoids']
+            base_type = ti['basetype']
 
             if self._get_codec(oid) is not None:
                 continue
@@ -109,6 +110,14 @@ cdef class BaseProtocol(CoreProtocol):
                         comp_type_attrs,
                         {name: i for i, name in enumerate(ti['attrnames'])})
 
+            elif ti['kind'] == b'd' and base_type:
+                elem_codec = self._get_codec(base_type)
+                if elem_codec is None:
+                    raise RuntimeError(
+                        'no codec for array element type {}'.format(
+                            base_type))
+
+                self._type_codecs_cache[oid] = elem_codec
             else:
                 raise NotImplementedError
 
@@ -142,10 +151,6 @@ cdef class BaseProtocol(CoreProtocol):
         if type(state) is not PreparedStatementState:
             raise TypeError(
                 'state must be an instance of PreparedStatementState')
-
-        if not (<PreparedStatementState>state).types_ready:
-            raise RuntimeError(
-                'state does not have complete types information')
 
         self._start_state(STATE_EXECUTE)
         self._prepared_stmt = <PreparedStatementState>state
