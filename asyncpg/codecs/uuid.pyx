@@ -4,12 +4,6 @@ _UUID = uuid.UUID
 
 
 cdef uuid_encode(ConnectionSettings settings, WriteBuffer wbuf, obj):
-    cdef:
-        Py_buffer pybuf
-        bint pybuf_used = False
-        char *buf
-        ssize_t len
-
     if cpython.PyUnicode_Check(obj):
         obj = _UUID(obj)
 

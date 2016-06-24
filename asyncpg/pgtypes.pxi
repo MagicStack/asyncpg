@@ -84,4 +84,4 @@ DEF _OIDOID = 1028
 # real MAXBUILTINID really is 10000, as defined in
 # postgresql/src/include/access/transam.h: FirstBootstrapObjectId
 # we define it to be the maximum supported OID value to save memory
-DEF MAXBUILTINOID = 3769 + 1
+DEF MAXBUILTINOID = 3802 + 1

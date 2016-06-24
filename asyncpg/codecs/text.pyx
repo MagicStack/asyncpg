@@ -1,13 +1,19 @@
+cdef inline as_pg_string_and_size(
+        ConnectionSettings settings, obj, char **str, ssize_t *size):
+
+    if settings.is_encoding_utf8():
+        str[0] = PyUnicode_AsUTF8AndSize(obj, size)
+    else:
+        encoded = settings.get_codec().encode(obj)
+        cpython.PyBytes_AsStringAndSize(encoded, str, size)
+
+
 cdef text_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     cdef:
         char *str
         ssize_t size
 
-    if settings.is_encoding_utf8():
-        str = PyUnicode_AsUTF8AndSize(obj, &size)
-    else:
-        encoded = settings.get_codec().encode(obj)
-        cpython.PyBytes_AsStringAndSize(buf, &str, &size)
+    as_pg_string_and_size(settings, obj, &str, &size)
 
     if size > 0x7fffffff:
         raise ValueError('string too long')
