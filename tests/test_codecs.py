@@ -279,6 +279,14 @@ class TestCodecs(tb.ConnectedTestCase):
 
             self.assertEqual(res, 3)
 
+            st = await self.con.prepare('''
+                SELECT NULL::my_dom2
+            ''')
+
+            res = list(await st.execute())[0][0]
+
+            self.assertIsNone(res)
+
         finally:
             st = await self.con.prepare('DROP DOMAIN my_dom2')
             await st.execute()
