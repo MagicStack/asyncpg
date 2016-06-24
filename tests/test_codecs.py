@@ -182,15 +182,19 @@ type_samples = [
         []
     ]),
     ('bigint[]', [
-        [2**42, -2**54, 0],
+        [2 ** 42, -2 ** 54, 0],
         []
     ]),
     ('int[]', [
-        [2**22, -2**24, 0],
+        [2 ** 22, -2 ** 24, 0],
         []
     ]),
     ('time[]', [
         [datetime.time(12, 15, 20), datetime.time(0, 1, 1)],
+        []
+    ]),
+    ('text[]', [
+        ['ABCDE', 'EDCBA'],
         []
     ])
 ]
@@ -198,8 +202,8 @@ type_samples = [
 
 class TestCodecs(tb.ConnectedTestCase):
 
-    async def test_codecs(self):
-        'test basic object I/O--input must equal output'
+    async def test_standard_codecs(self):
+        """Test encoding/decoding of standard data types and arrays thereof"""
         for (typname, sample_data) in type_samples:
             st = await self.con.prepare(
                 "SELECT $1::" + typname
@@ -208,11 +212,37 @@ class TestCodecs(tb.ConnectedTestCase):
             for sample in sample_data:
                 with self.subTest(sample=sample, typname=typname):
                     rsample = list(await st.execute(sample))[0][0]
-                    # if isinstance(rsample, list):
-                    #     rsample = rsample.nest()
                     self.assertEqual(
                         rsample, sample,
                         ("failed to return {} object data as-is; "
                          "gave {!r}, received {!r}").format(typname, sample,
                                                             rsample)
                     )
+
+    async def test_composites(self):
+        """Test encoding/decoding of composite types"""
+
+        st = await self.con.prepare('''
+            CREATE TYPE test_composite AS (
+                a int,
+                b text,
+                c int[]
+            )
+        ''')
+
+        await st.execute()
+
+        try:
+            st = await self.con.prepare('''
+                SELECT ROW(
+                    NULL,
+                    '5678',
+                    ARRAY[9, NULL, 11]::int[]
+                )::test_composite
+            ''')
+
+            res = list(await st.execute())[0][0]
+
+        finally:
+            st = await self.con.prepare('DROP TYPE test_composite')
+            await st.execute()

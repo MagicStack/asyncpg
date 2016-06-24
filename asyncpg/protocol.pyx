@@ -36,6 +36,7 @@ include "codecs/float.pyx"
 include "codecs/int.pyx"
 include "codecs/numeric.pyx"
 include "codecs/array.pyx"
+include "codecs/record.pyx"
 include "codecs/init.pyx"
 
 include "coreproto.pyx"
@@ -68,15 +69,46 @@ cdef class BaseProtocol(CoreProtocol):
         self._id = 0
 
     def _add_types(self, types):
+        cdef:
+            Codec elem_codec
+            list comp_elem_codecs
+
         for ti in types:
             oid = ti['oid']
-            is_array_oid = ti['typelem']
-            array_oid_len = ti['ae_typlen']
-            if is_array_oid and has_core_codec(is_array_oid):
+            array_element_oid = ti['elemtype']
+            comp_type_attrs = ti['attrtypoids']
+
+            if self._get_codec(oid) is not None:
+                continue
+
+            if array_element_oid:
+                # Array type
+                elem_codec = self._get_codec(array_element_oid)
+                if elem_codec is None:
+                    raise RuntimeError(
+                        'no codec for array element type {}'.format(
+                            array_element_oid))
                 self._type_codecs_cache[oid] = \
-                    Codec.new_array_codec(oid,
-                                          get_core_codec(is_array_oid),
-                                          ti[-1])
+                    Codec.new_array_codec(oid, elem_codec)
+
+            elif comp_type_attrs:
+                # Composite element
+                comp_elem_codecs = []
+
+                for typoid in comp_type_attrs:
+                    elem_codec = self._get_codec(typoid)
+                    if elem_codec is None:
+                        raise RuntimeError(
+                            'no codec for composite attribute type {}'.format(
+                                typoid))
+                    comp_elem_codecs.append(elem_codec)
+
+                self._type_codecs_cache[oid] = \
+                    Codec.new_composite_codec(
+                        oid, comp_elem_codecs,
+                        comp_type_attrs,
+                        {name: i for i, name in enumerate(ti['attrnames'])})
+
             else:
                 raise NotImplementedError
 

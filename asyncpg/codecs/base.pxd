@@ -12,6 +12,7 @@ cdef enum CodecType:
     CODEC_C         = 1
     CODEC_PY        = 2
     CODEC_ARRAY     = 3
+    CODEC_COMPOSITE = 4
 
 
 cdef enum CodecFormat:
@@ -32,8 +33,13 @@ cdef class Codec:
         object          py_encoder
         object          py_decoder
 
+        # arrays
         Codec           element_codec
-        ssize_t         element_size
+
+        # composite types
+        list            element_type_oids
+        dict            element_names
+        list            element_codecs
 
     cdef inline encode(self,
                        ConnectionSettings settings,
@@ -51,5 +57,10 @@ cdef class Codec:
 
     @staticmethod
     cdef Codec new_array_codec(uint32_t oid,
-                               Codec element_codec,
-                               ssize_t element_size)
+                               Codec element_codec)
+
+    @staticmethod
+    cdef Codec new_composite_codec(uint32_t oid,
+                                   list element_codecs,
+                                   list element_type_oids,
+                                   dict element_names)

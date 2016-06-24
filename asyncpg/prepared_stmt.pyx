@@ -27,7 +27,10 @@ cdef class Record:
         return self.values[item]
 
     def __repr__(self):
-        return '<Record {}>'.format(self.values)
+        rmap = {i: n for n, i in self.mapping.items()}
+        items = ('{}={!r}'.format(rmap[i], self.values[i])
+                 for i, v in enumerate(self.values))
+        return '<Record {}>'.format(' '.join(items))
 
 
 cdef class PreparedStatementState:
