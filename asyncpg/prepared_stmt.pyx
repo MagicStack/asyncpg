@@ -6,7 +6,7 @@ cdef class PreparedStatementState:
         self.settings = protocol._settings
         self.row_desc = self.parameters_desc = None
         self.args_codecs = self.rows_codecs = None
-        self.args_num = self.cols_num = -1
+        self.args_num = self.cols_num = 0
         self.types_ready = False
 
     def _init_types(self):
@@ -14,23 +14,17 @@ cdef class PreparedStatementState:
             Codec codec
             set result = set()
 
-        if self.row_desc is None:
-            raise RuntimeError(
-                'unable to init types: no rows descrition')
+        if self.parameters_desc:
+            for p_oid in self.parameters_desc:
+                codec = self.protocol._get_codec(<uint32_t>p_oid)
+                if codec is None or not codec.has_encoder():
+                    result.add(p_oid)
 
-        if self.parameters_desc is None:
-            raise RuntimeError(
-                'unable to init types: no parameters descrition')
-
-        for p_oid in self.parameters_desc:
-            codec = self.protocol._get_codec(<uint32_t>p_oid)
-            if codec is None or not codec.has_encoder():
-                result.add(p_oid)
-
-        for rdesc in self.row_desc:
-            codec = self.protocol._get_codec(<uint32_t>(rdesc[3]))
-            if codec is None or not codec.has_decoder():
-                result.add(rdesc[3])
+        if self.row_desc:
+            for rdesc in self.row_desc:
+                codec = self.protocol._get_codec(<uint32_t>(rdesc[3]))
+                if codec is None or not codec.has_decoder():
+                    result.add(rdesc[3])
 
         if len(result):
             return result
@@ -87,10 +81,6 @@ cdef class PreparedStatementState:
             Codec codec
             list codecs = []
 
-        if self.row_desc is None:
-            raise RuntimeError(
-                'unable to create rows decoder: no rows descrition')
-
         if self.cols_num == 0:
             return
 
@@ -111,10 +101,6 @@ cdef class PreparedStatementState:
             int p_oid
             Codec codec
             list codecs = []
-
-        if self.parameters_desc is None:
-            raise RuntimeError(
-                'unable to create args encoder: no parameters descrition')
 
         if self.args_num == 0:
             return

@@ -56,6 +56,7 @@ cdef class BaseProtocol(CoreProtocol):
         self._connect_waiter = connect_waiter
         self._waiter = None
         self._state = STATE_NOT_CONNECTED
+        self._N = 0
 
         try:
             self._type_codecs_cache = TYPE_CODECS_CACHE[self._hash]
@@ -92,6 +93,7 @@ cdef class BaseProtocol(CoreProtocol):
         return self._waiter
 
     def prepare(self, name, query):
+        self._N = 0
         self._start_state(STATE_PREPARE_BIND)
         if name is None:
             name = self._gen_id('prepared_statement')
@@ -181,6 +183,7 @@ cdef class BaseProtocol(CoreProtocol):
             return
 
         if result.status == PGRES_FATAL_ERROR:
+            self._prepared_stmt = None
             msg = '\n'.join(['{}: {}'.format(k, v)
                 for k, v in result.err_fields.items()])
             exc_cls = exceptions.ErrorMeta.get_error_for_code(
@@ -200,6 +203,7 @@ cdef class BaseProtocol(CoreProtocol):
             self._describe(self._prepared_stmt.name, 0)
 
         elif self._state == STATE_PREPARE_DESCRIBE:
+            self._N += 1
             stmt = self._prepared_stmt
 
             if result.parameters_desc is not None:
@@ -208,11 +212,11 @@ cdef class BaseProtocol(CoreProtocol):
             if result.row_desc is not None:
                 stmt._set_row_desc(result.row_desc)
 
-            if (stmt.row_desc is not None and
-                    stmt.parameters_desc is not None):
-                waiter.set_result(stmt)
+            if (self._N == 2):
                 self._prepared_stmt = None
                 self._state = STATE_READY
+                waiter.set_result(stmt)
+
             else:
                 # We keep the same state.
                 return

@@ -41,6 +41,7 @@ cdef class BaseProtocol(CoreProtocol):
         PreparedStatementState _prepared_stmt
 
         int _id
+        int _N
 
     cdef inline Codec _get_codec(self, uint32_t oid)
     cdef inline _create_future(self)
