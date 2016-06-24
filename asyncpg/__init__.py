@@ -142,7 +142,7 @@ SELECT
     ae.oid AS ae_typid,
     ae.typreceive::oid != 0 AS ae_hasbin_input,
     ae.typsend::oid != 0 AS ae_hasbin_output,
-    ae.typlen
+    ae.typlen AS ae_typlen
 
 FROM pg_catalog.pg_type bt
     LEFT JOIN pg_type ae ON (

@@ -69,9 +69,9 @@ cdef class BaseProtocol(CoreProtocol):
 
     def _add_types(self, types):
         for ti in types:
-            oid = ti[0]
-            is_array_oid = ti[5]
-            array_oid_len = ti[-1]
+            oid = ti['oid']
+            is_array_oid = ti['typelem']
+            array_oid_len = ti['ae_typlen']
             if is_array_oid and has_core_codec(is_array_oid):
                 self._type_codecs_cache[oid] = \
                     Codec.new_array_codec(oid,

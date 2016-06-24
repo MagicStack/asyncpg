@@ -14,6 +14,7 @@ cdef class PreparedStatementState:
         tuple        args_codecs
 
         int16_t      cols_num
+        dict         cols_mapping
         bint         have_text_cols
         tuple        rows_codecs
 

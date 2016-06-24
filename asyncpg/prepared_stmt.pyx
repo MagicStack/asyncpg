@@ -1,3 +1,35 @@
+@cython.no_gc_clear
+@cython.freelist(_BUFFER_FREELIST_SIZE)
+cdef class Record:
+
+    cdef:
+        dict mapping
+        list values
+
+    @staticmethod
+    cdef inline Record new(dict mapping, list values):
+        cdef Record rec
+        rec = Record.__new__(Record)
+        rec.mapping = mapping
+        rec.values = values
+        return rec
+
+    def __getitem__(self, item):
+        item_cls = type(item)
+        if item_cls is str:
+            return self.values[self.mapping[item]]
+        elif item_cls is int:
+            return self.values[item]
+
+        if isinstance(item, str):
+            return self.values[self.mapping[item]]
+
+        return self.values[item]
+
+    def __repr__(self):
+        return '<Record {}>'.format(self.values)
+
+
 cdef class PreparedStatementState:
 
     def __cinit__(self, str name, BaseProtocol protocol):
@@ -8,6 +40,7 @@ cdef class PreparedStatementState:
         self.args_codecs = self.rows_codecs = None
         self.args_num = self.cols_num = 0
         self.types_ready = False
+        self.cols_mapping = None
 
     def _init_types(self):
         cdef:
@@ -77,15 +110,21 @@ cdef class PreparedStatementState:
 
     cdef _ensure_rows_decoder(self):
         cdef:
+            dict cols_mapping
+            tuple row
             int oid
             Codec codec
-            list codecs = []
+            list codecs
 
         if self.cols_num == 0:
             return
 
+        cols_mapping = {}
+        codecs = []
         for i from 0 <= i < self.cols_num:
-            oid = self.row_desc[i][3]
+            row = self.row_desc[i]
+            cols_mapping[row[0].decode(self.settings._encoding)] = i
+            oid = row[3]
             codec = self.protocol._get_codec(<uint32_t>oid)
             if codec is None or not codec.has_decoder():
                 raise RuntimeError('no decoder for OID {}'.format(oid))
@@ -94,6 +133,7 @@ cdef class PreparedStatementState:
 
             codecs.append(codec)
 
+        self.cols_mapping = cols_mapping
         self.rows_codecs = tuple(codecs)
 
     cdef _ensure_args_encoder(self):
@@ -173,7 +213,7 @@ cdef class PreparedStatementState:
                 if cbuf - <char*>pybuf.buf > row_len:
                     raise RuntimeError('buffer overrun')
 
-            result.append(dec_row)
+            result.append(Record.new(self.cols_mapping, dec_row))
 
         return result
 
