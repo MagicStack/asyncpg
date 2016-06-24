@@ -141,9 +141,9 @@ type_samples = [
         datetime.date(1, 1, 1),
     ]),
     ('time', [
-            datetime.time(12, 15, 20),
-            datetime.time(0, 1, 1),
-            datetime.time(23, 59, 59),
+        datetime.time(12, 15, 20),
+        datetime.time(0, 1, 1),
+        datetime.time(23, 59, 59),
     ]),
     ('timestamptz', [
         # It's converted to UTC. When it comes back out, it will be in UTC
@@ -178,6 +178,19 @@ type_samples = [
     ]),
     ('smallint[]', [
         [1, 2, 3, 4],
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 0],
+        []
+    ]),
+    ('bigint[]', [
+        [2**42, -2**54, 0],
+        []
+    ]),
+    ('int[]', [
+        [2**22, -2**24, 0],
+        []
+    ]),
+    ('time[]', [
+        [datetime.time(12, 15, 20), datetime.time(0, 1, 1)],
         []
     ])
 ]

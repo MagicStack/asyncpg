@@ -4,6 +4,7 @@ cdef class PreparedStatementState:
         list         row_desc
         list         parameters_desc
 
+        BaseProtocol protocol
         ConnectionSettings settings
 
         bint         types_ready

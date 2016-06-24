@@ -36,7 +36,6 @@ class Connection:
 
             types = await self._types_stmt.execute(list(ready))
             self._protocol._add_types(types)
-            break
         return PreparedStatement(self, state)
 
     def close(self):
@@ -142,7 +141,8 @@ SELECT
     bt.typrelid,
     ae.oid AS ae_typid,
     ae.typreceive::oid != 0 AS ae_hasbin_input,
-    ae.typsend::oid != 0 AS ae_hasbin_output
+    ae.typsend::oid != 0 AS ae_hasbin_output,
+    ae.typlen
 
 FROM pg_catalog.pg_type bt
     LEFT JOIN pg_type ae ON (

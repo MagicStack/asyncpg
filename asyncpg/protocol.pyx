@@ -70,7 +70,14 @@ cdef class BaseProtocol(CoreProtocol):
         for ti in types:
             oid = ti[0]
             is_array_oid = ti[5]
-            print(oid, is_array_oid)
+            array_oid_len = ti[-1]
+            if is_array_oid and has_core_codec(is_array_oid):
+                self._type_codecs_cache[oid] = \
+                    Codec.new_array_codec(oid,
+                                          get_core_codec(is_array_oid),
+                                          ti[-1])
+            else:
+                raise NotImplementedError
 
     def clear_type_cache(self):
         self._type_codecs_cache.clear()
@@ -91,7 +98,7 @@ cdef class BaseProtocol(CoreProtocol):
         if self._prepared_stmt is not None:
             raise RuntimeError('another prepared statement is set')
 
-        self._prepared_stmt = PreparedStatementState(name, self._settings)
+        self._prepared_stmt = PreparedStatementState(name, self)
 
         self._waiter = self._create_future()
         self._parse(name, query)
@@ -116,6 +123,18 @@ cdef class BaseProtocol(CoreProtocol):
 
         self._waiter = self._create_future()
         return self._waiter
+
+    cdef inline Codec _get_codec(self, uint32_t oid):
+        cdef Codec codec
+
+        codec = get_core_codec(oid)
+        if codec is not None:
+            return codec
+
+        try:
+            return self._type_codecs_cache[oid]
+        except KeyError:
+            return None
 
     cdef inline _create_future(self):
         try:

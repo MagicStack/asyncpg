@@ -1,8 +1,9 @@
 cdef class PreparedStatementState:
 
-    def __cinit__(self, name, settings):
+    def __cinit__(self, str name, BaseProtocol protocol):
         self.name = name
-        self.settings = settings
+        self.protocol = protocol
+        self.settings = protocol._settings
         self.row_desc = self.parameters_desc = None
         self.args_codecs = self.rows_codecs = None
         self.args_num = self.cols_num = -1
@@ -22,12 +23,12 @@ cdef class PreparedStatementState:
                 'unable to init types: no parameters descrition')
 
         for p_oid in self.parameters_desc:
-            codec = get_core_codec(<uint32_t>p_oid)
+            codec = self.protocol._get_codec(<uint32_t>p_oid)
             if codec is None or not codec.has_encoder():
                 result.add(p_oid)
 
         for rdesc in self.row_desc:
-            codec = get_core_codec(<uint32_t>(rdesc[3]))
+            codec = self.protocol._get_codec(<uint32_t>(rdesc[3]))
             if codec is None or not codec.has_decoder():
                 result.add(rdesc[3])
 
@@ -95,7 +96,7 @@ cdef class PreparedStatementState:
 
         for i from 0 <= i < self.cols_num:
             oid = self.row_desc[i][3]
-            codec = get_core_codec(<uint32_t>oid)
+            codec = self.protocol._get_codec(<uint32_t>oid)
             if codec is None or not codec.has_decoder():
                 raise RuntimeError('no decoder for OID {}'.format(oid))
             if not codec.is_binary():
@@ -120,7 +121,7 @@ cdef class PreparedStatementState:
 
         for i from 0 <= i < self.args_num:
             p_oid = self.parameters_desc[i]
-            codec = get_core_codec(<uint32_t>p_oid)
+            codec = self.protocol._get_codec(<uint32_t>p_oid)
             if codec is None or not codec.has_encoder():
                 raise RuntimeError('no encoder for OID {}'.format(p_oid))
             if codec.type not in {}:

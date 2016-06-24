@@ -42,6 +42,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         int _id
 
+    cdef inline Codec _get_codec(self, uint32_t oid)
     cdef inline _create_future(self)
     cdef _gen_id(self, prefix)
     cdef _start_state(self, ProtocolState state)

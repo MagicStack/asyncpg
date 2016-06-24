@@ -11,6 +11,7 @@ cdef enum CodecType:
     CODEC_UNDEFINED = 0
     CODEC_C         = 1
     CODEC_PY        = 2
+    CODEC_ARRAY     = 3
 
 
 cdef enum CodecFormat:
@@ -31,6 +32,9 @@ cdef class Codec:
         object          py_encoder
         object          py_decoder
 
+        Codec           element_codec
+        ssize_t         element_size
+
     cdef inline encode(self,
                        ConnectionSettings settings,
                        WriteBuffer buf,
@@ -44,3 +48,8 @@ cdef class Codec:
     cdef has_encoder(self)
     cdef has_decoder(self)
     cdef is_binary(self)
+
+    @staticmethod
+    cdef Codec new_array_codec(uint32_t oid,
+                               Codec element_codec,
+                               ssize_t element_size)

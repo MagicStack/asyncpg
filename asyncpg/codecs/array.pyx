@@ -15,7 +15,8 @@ cdef inline array_encode(ConnectionSettings settings, WriteBuffer buf,
 
 
 cdef arrayoid_encode(ConnectionSettings settings, WriteBuffer buf, items):
-    cdef int32_t oid_val
+    cdef:
+        WriteBuffer elem_data
 
     elem_data = WriteBuffer.new()
 
@@ -27,9 +28,9 @@ cdef arrayoid_encode(ConnectionSettings settings, WriteBuffer buf, items):
 
 cdef arrayoid_decode(ConnectionSettings settings, const char* data,
                      int32_t len):
-    result = []
 
     cdef:
+        list result = []
         int32_t ndims = hton.unpack_int32(data)
         int32_t flags = hton.unpack_int32(&data[4])
         uint32_t elem_oid = hton.unpack_int32(&data[8])
@@ -38,7 +39,7 @@ cdef arrayoid_decode(ConnectionSettings settings, const char* data,
         uint32_t i
 
     if ndims > 0:
-        for i in range(elem_count):
+        for i from 0 <= i < elem_count:
             result.append(int4_decode(settings, ptr, 4))
             ptr += 8
 
