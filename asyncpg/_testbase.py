@@ -96,6 +96,9 @@ class ConnectedTestCase(ClusterTestCase):
     def tearDown(self):
         try:
             self.con.close()
+            # Give event loop another iteration so that connection
+            # transport has a chance to properly close.
+            self.loop.run_until_complete(asyncio.sleep(0, loop=self.loop))
             self.con = None
         finally:
             super().tearDown()
