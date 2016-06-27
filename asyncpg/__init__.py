@@ -106,10 +106,12 @@ async def connect(iri=None, *,
 
     # On env-var -> connection parameter conversion read here:
     # https://www.postgresql.org/docs/current/static/libpq-envars.html
-
+    # Note that env values may be an empty string in cases when
+    # the variable is "unset" by setting it to an empty value
+    #
     if host is None:
         host = os.getenv('PGHOST')
-        if host is None:
+        if not host:
             host = ['/tmp', '/private/tmp',
                     '/var/pgsql_socket', '/run/postgresql',
                     'localhost']
@@ -118,12 +120,12 @@ async def connect(iri=None, *,
 
     if port is None:
         port = os.getenv('PGPORT')
-        if port is None:
+        if not port:
             port = 5432
 
     if user is None:
         user = os.getenv('PGUSER')
-        if user is None:
+        if not user:
             user = getpass.getuser()
 
     if password is None:
