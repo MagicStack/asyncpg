@@ -14,6 +14,12 @@ cdef class Record:
         rec.values = values
         return rec
 
+    def __len__(self):
+        return len(self.values)
+
+    def __iter__(self):
+        return iter(self.values)
+
     def __getitem__(self, item):
         item_cls = type(item)
         if item_cls is str:
