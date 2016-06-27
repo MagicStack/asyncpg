@@ -3,8 +3,11 @@ cdef void* codec_map[MAXBUILTINOID]
 
 cdef class Codec:
 
-    def __cinit__(self, uint32_t oid):
+    def __cinit__(self, uint32_t oid, str name, str schema, str kind):
         self.oid = oid
+        self.name = name
+        self.schema = schema
+        self.kind = kind
         self.type = CODEC_UNDEFINED
         self.c_encoder = self.c_decoder = NULL
         self.py_encoder = self.py_decoder = None
@@ -185,9 +188,12 @@ cdef class Codec:
             has_core_codec(self.oid))
 
     @staticmethod
-    cdef Codec new_array_codec(uint32_t oid, Codec element_codec):
+    cdef Codec new_array_codec(uint32_t oid,
+                               str name,
+                               str schema,
+                               Codec element_codec):
         cdef Codec codec
-        codec = Codec(oid)
+        codec = Codec(oid, name, schema, 'array')
         codec.element_codec = element_codec
         codec.type = CODEC_ARRAY
         codec.format = PG_FORMAT_BINARY
@@ -195,11 +201,13 @@ cdef class Codec:
 
     @staticmethod
     cdef Codec new_composite_codec(uint32_t oid,
+                                   str name,
+                                   str schema,
                                    list element_codecs,
                                    list element_type_oids,
                                    dict element_names):
         cdef Codec codec
-        codec = Codec(oid)
+        codec = Codec(oid, name, schema, 'composite')
         codec.element_names = element_names
         codec.element_type_oids = element_type_oids
         codec.element_codecs = element_codecs
@@ -209,11 +217,14 @@ cdef class Codec:
 
     @staticmethod
     cdef Codec new_python_codec(uint32_t oid,
+                                str name,
+                                str schema,
+                                str kind,
                                 object encoder,
                                 object decoder,
                                 CodecFormat format):
         cdef Codec codec
-        codec = Codec(oid)
+        codec = Codec(oid, name, schema, kind)
         codec.type = CODEC_PY
         codec.format = format
         codec.py_encoder = encoder
@@ -245,8 +256,17 @@ cdef register_core_codec(uint32_t oid,
             'cannot register core codec for OID {}: it is greater '
             'than MAXBUILTINOID'.format(oid))
 
-    cdef Codec codec = Codec(oid)
+    cdef:
+        Codec codec
+        str name
+        str kind
+
+    name = TYPEMAP[oid]
+    kind = 'array' if oid in TYPE_IS_ARRAY else 'scalar'
+
+    codec = Codec(oid, name, 'pg_catalog', kind)
     cpython.Py_INCREF(codec)  # immortalize
+
     codec.type = CODEC_C
     codec.format = format
     codec.c_encoder = encode

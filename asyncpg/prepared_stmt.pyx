@@ -50,6 +50,39 @@ cdef class PreparedStatementState:
         self.args_num = self.cols_num = 0
         self.cols_mapping = None
 
+    def _get_parameters(self):
+        cdef Codec codec
+
+        result = []
+        for oid in self.parameters_desc:
+            codec = self.protocol._get_codec(oid)
+            if codec is None:
+                raise RuntimeError
+            result.append(apg_types.Type(
+                oid, codec.name, codec.kind, codec.schema))
+
+        return tuple(result)
+
+    def _get_attributes(self):
+        cdef Codec codec
+
+        result = []
+        for d in self.row_desc:
+            name = d[0]
+            oid = d[3]
+
+            codec = self.protocol._get_codec(oid)
+            if codec is None:
+                raise RuntimeError
+
+            name = name.decode(self.settings._encoding)
+
+            result.append(
+                apg_types.Attribute(name,
+                    apg_types.Type(oid, codec.name, codec.kind, codec.schema)))
+
+        return tuple(result)
+
     def _init_types(self):
         cdef:
             Codec codec

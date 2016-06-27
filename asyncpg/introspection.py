@@ -111,7 +111,9 @@ ORDER BY
 
 TYPE_BY_NAME = '''\
 SELECT
-    t.oid
+    t.oid,
+    t.typelem     AS elemtype,
+    t.typtype     AS kind
 FROM
     pg_catalog.pg_type AS t
     INNER JOIN pg_catalog.pg_namespace ns ON (ns.oid = t.typnamespace)

@@ -19,6 +19,8 @@ from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
 
 from . import exceptions
 from . import encodings
+from . import types as apg_types
+
 from . cimport hton
 
 
@@ -77,12 +79,18 @@ cdef class BaseProtocol(CoreProtocol):
 
         for ti in types:
             oid = ti['oid']
+
+            if self._get_codec(oid) is not None:
+                continue
+
+            name = ti['name']
+            schema = ti['ns']
             array_element_oid = ti['elemtype']
             comp_type_attrs = ti['attrtypoids']
             base_type = ti['basetype']
 
-            if self._get_codec(oid) is not None:
-                continue
+            if name.startswith('_') and array_element_oid:
+                name = '{}[]'.format(name[1:])
 
             if array_element_oid:
                 # Array type
@@ -92,7 +100,7 @@ cdef class BaseProtocol(CoreProtocol):
                         'no codec for array element type {}'.format(
                             array_element_oid))
                 self._type_codecs_cache[oid] = \
-                    Codec.new_array_codec(oid, elem_codec)
+                    Codec.new_array_codec(oid, name, schema, elem_codec)
 
             elif comp_type_attrs:
                 # Composite element
@@ -108,7 +116,7 @@ cdef class BaseProtocol(CoreProtocol):
 
                 self._type_codecs_cache[oid] = \
                     Codec.new_composite_codec(
-                        oid, comp_elem_codecs,
+                        oid, name, schema, comp_elem_codecs,
                         comp_type_attrs,
                         {name: i for i, name in enumerate(ti['attrnames'])})
 
@@ -123,13 +131,15 @@ cdef class BaseProtocol(CoreProtocol):
             else:
                 raise NotImplementedError
 
-    def _add_python_codec(self, typeoid, encoder, decoder, format):
+    def _add_python_codec(self, typeoid, typename, typeschema, typekind,
+                          encoder, decoder, format):
         if self._get_codec(typeoid) is not None:
             raise ValueError('cannot override codec for type {}'.format(
                 typeoid))
 
         self._type_codecs_cache[typeoid] = \
-            Codec.new_python_codec(typeoid, encoder, decoder, format)
+            Codec.new_python_codec(typeoid, typename, typeschema, typekind,
+                                   encoder, decoder, format)
 
     def clear_type_cache(self):
         self._type_codecs_cache.clear()

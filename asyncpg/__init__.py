@@ -47,13 +47,24 @@ class Connection:
         if self._type_by_name_stmt is None:
             self._type_by_name_stmt = await self.prepare(_intro.TYPE_BY_NAME)
 
-        typeoid = await self._type_by_name_stmt.execute(typename, schema)
-        if not typeoid:
+        typeinfo = await self._type_by_name_stmt.execute(typename, schema)
+        if not typeinfo:
             raise ValueError('unknown type: {}.{}'.format(schema, typename))
+        typeinfo = list(typeinfo)[0]
 
-        typeoid = list(typeoid)[0][0]
+        oid = typeinfo['oid']
+        if typeinfo['kind'] == b'c':
+            typekind = 'composite'
+        elif typeinfo['elemtype'] and typeinfo['kind'] == b'b':
+            typekind = 'array'
+        elif typeinfo['kind'] == b'b':
+            typekind = 'scalar'
+        else:
+            raise ValueError
 
-        self._protocol._add_python_codec(typeoid, encoder, decoder, format)
+        self._protocol._add_python_codec(
+            oid, typename, schema, typekind,
+            encoder, decoder, format)
 
     def close(self):
         self._transport.close()
@@ -63,6 +74,12 @@ class PreparedStatement:
     def __init__(self, connection, state):
         self._connection = connection
         self._state = state
+
+    def get_parameters(self):
+        return self._state._get_parameters()
+
+    def get_attributes(self):
+        return self._state._get_attributes()
 
     async def execute(self, *args):
         protocol = self._connection._protocol

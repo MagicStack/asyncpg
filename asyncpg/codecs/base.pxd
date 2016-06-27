@@ -24,6 +24,10 @@ cdef class Codec:
     cdef:
         uint32_t        oid
 
+        str             name
+        str             schema
+        str             kind
+
         CodecType       type
         CodecFormat     format
 
@@ -57,16 +61,23 @@ cdef class Codec:
 
     @staticmethod
     cdef Codec new_array_codec(uint32_t oid,
+                               str name,
+                               str schema,
                                Codec element_codec)
 
     @staticmethod
     cdef Codec new_composite_codec(uint32_t oid,
+                                   str name,
+                                   str schema,
                                    list element_codecs,
                                    list element_type_oids,
                                    dict element_names)
 
     @staticmethod
     cdef Codec new_python_codec(uint32_t oid,
+                                str name,
+                                str schema,
+                                str kind,
                                 object encoder,
                                 object decoder,
                                 CodecFormat format)
