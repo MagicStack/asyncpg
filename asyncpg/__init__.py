@@ -42,8 +42,20 @@ class Connection:
         return PreparedStatement(self, state)
 
     async def set_type_codec(self, typename, *,
-                             schema='public', encoder, decoder,
-                             format=1):
+                             schema='public', encoder, decoder, binary=False):
+        """Set an encoder/decoder pair for the specified data type
+
+        :param typename:  Name of the data type the codec is for.
+        :param schema:  Schema name of the data type the codec is for
+                        (defaults to 'public')
+        :param encoder:  Callable accepting a single argument and returning
+                         a string or a bytes object (if `binary` is True).
+        :param decoder:  Callable accepting a single string or bytes argument
+                         and returning a decoded object.
+        :param binary:  Specifies whether the codec is able to handle binary
+                        data.  If ``False`` (the default), the data is
+                        expected to be encoded/decoded in text.
+        """
         if self._type_by_name_stmt is None:
             self._type_by_name_stmt = await self.prepare(_intro.TYPE_BY_NAME)
 
@@ -64,7 +76,7 @@ class Connection:
 
         self._protocol._add_python_codec(
             oid, typename, schema, typekind,
-            encoder, decoder, format)
+            encoder, decoder, binary)
 
     def close(self):
         self._transport.close()

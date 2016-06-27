@@ -343,8 +343,7 @@ class TestCodecs(tb.ConnectedTestCase):
             return ','.join('{}=>{}'.format(k, v) for k, v in obj.items())
 
         await self.con.set_type_codec('hstore', encoder=hstore_encoder,
-                                      decoder=hstore_decoder,
-                                      format=0)
+                                      decoder=hstore_decoder)
 
         st = await self.con.prepare('''
             SELECT $1::hstore AS result

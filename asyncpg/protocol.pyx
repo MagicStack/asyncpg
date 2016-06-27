@@ -132,10 +132,12 @@ cdef class BaseProtocol(CoreProtocol):
                 raise NotImplementedError
 
     def _add_python_codec(self, typeoid, typename, typeschema, typekind,
-                          encoder, decoder, format):
+                          encoder, decoder, binary):
         if self._get_codec(typeoid) is not None:
             raise ValueError('cannot override codec for type {}'.format(
                 typeoid))
+
+        format = PG_FORMAT_BINARY if binary else PG_FORMAT_TEXT
 
         self._type_codecs_cache[typeoid] = \
             Codec.new_python_codec(typeoid, typename, typeschema, typekind,
