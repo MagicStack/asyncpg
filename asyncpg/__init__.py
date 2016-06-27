@@ -65,17 +65,13 @@ class Connection:
         typeinfo = list(typeinfo)[0]
 
         oid = typeinfo['oid']
-        if typeinfo['kind'] == b'c':
-            typekind = 'composite'
-        elif typeinfo['elemtype'] and typeinfo['kind'] == b'b':
-            typekind = 'array'
-        elif typeinfo['kind'] == b'b':
-            typekind = 'scalar'
-        else:
-            raise ValueError
+        if typeinfo['kind'] != b'b' or typeinfo['elemtype']:
+            raise ValueError(
+                'cannot use custom codec on non-scalar type {}.{}'.format(
+                    schema, typename))
 
         self._protocol._add_python_codec(
-            oid, typename, schema, typekind,
+            oid, typename, schema, 'scalar',
             encoder, decoder, binary)
 
     def close(self):

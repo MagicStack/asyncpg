@@ -365,3 +365,27 @@ class TestCodecs(tb.ConnectedTestCase):
         self.assertEqual(len(at), 1)
         self.assertEqual(at[0].name, 'result')
         self.assertEqual(at[0].type, pt[0])
+
+        err = 'cannot use custom codec on non-scalar type public._hstore'
+        with self.assertRaisesRegex(ValueError, err):
+            await self.con.set_type_codec('_hstore', encoder=hstore_encoder,
+                                          decoder=hstore_decoder)
+
+        st = await self.con.prepare('''
+            CREATE TYPE mytype AS (a int);
+        ''')
+
+        await st.execute()
+
+        try:
+            err = 'cannot use custom codec on non-scalar type public.mytype'
+            with self.assertRaisesRegex(ValueError, err):
+                await self.con.set_type_codec(
+                    'mytype', encoder=hstore_encoder,
+                    decoder=hstore_decoder)
+        finally:
+            st = await self.con.prepare('''
+                DROP TYPE mytype;
+            ''')
+
+            await st.execute()
