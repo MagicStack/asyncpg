@@ -123,6 +123,14 @@ cdef class BaseProtocol(CoreProtocol):
             else:
                 raise NotImplementedError
 
+    def _add_python_codec(self, typeoid, encoder, decoder, format):
+        if self._get_codec(typeoid) is not None:
+            raise ValueError('cannot override codec for type {}'.format(
+                typeoid))
+
+        self._type_codecs_cache[typeoid] = \
+            Codec.new_python_codec(typeoid, encoder, decoder, format)
+
     def clear_type_cache(self):
         self._type_codecs_cache.clear()
 

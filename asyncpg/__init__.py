@@ -17,6 +17,7 @@ class Connection:
         self._transport = transport
         self._loop = loop
         self._types_stmt = None
+        self._type_by_name_stmt = None
 
     def get_settings(self):
         return self._protocol.get_settings()
@@ -39,6 +40,20 @@ class Connection:
             self._protocol._add_types(types)
 
         return PreparedStatement(self, state)
+
+    async def set_type_codec(self, typename, *,
+                             schema='public', encoder, decoder,
+                             format=1):
+        if self._type_by_name_stmt is None:
+            self._type_by_name_stmt = await self.prepare(_intro.TYPE_BY_NAME)
+
+        typeoid = await self._type_by_name_stmt.execute(typename, schema)
+        if not typeoid:
+            raise ValueError('unknown type: {}.{}'.format(schema, typename))
+
+        typeoid = list(typeoid)[0][0]
+
+        self._protocol._add_python_codec(typeoid, encoder, decoder, format)
 
     def close(self):
         self._transport.close()

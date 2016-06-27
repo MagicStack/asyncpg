@@ -47,6 +47,13 @@ cdef class Codec:
                     self.element_codecs[i].encode(settings, elem_data, item)
             record_encode_frame(settings, buf, elem_data, len(obj))
 
+        elif self.type == CODEC_PY:
+            bb = self.py_encoder(obj)
+            if self.format == PG_FORMAT_BINARY:
+                bytea_encode(settings, buf, bb)
+            else:
+                text_encode(settings, buf, bb)
+
         else:
             raise NotImplementedError
 
@@ -121,6 +128,14 @@ cdef class Codec:
 
             return Record.new(self.element_names, result)
 
+        elif self.type == CODEC_PY:
+            if self.format == PG_FORMAT_BINARY:
+                bb = bytea_decode(settings, data, len)
+            else:
+                bb = text_decode(settings, data, len)
+
+            return self.py_decoder(bb)
+
         else:
             raise NotImplementedError
 
@@ -190,6 +205,19 @@ cdef class Codec:
         codec.element_codecs = element_codecs
         codec.type = CODEC_COMPOSITE
         codec.format = PG_FORMAT_BINARY
+        return codec
+
+    @staticmethod
+    cdef Codec new_python_codec(uint32_t oid,
+                                object encoder,
+                                object decoder,
+                                CodecFormat format):
+        cdef Codec codec
+        codec = Codec(oid)
+        codec.type = CODEC_PY
+        codec.format = format
+        codec.py_encoder = encoder
+        codec.py_decoder = decoder
         return codec
 
 

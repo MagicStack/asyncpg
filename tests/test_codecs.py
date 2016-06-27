@@ -305,3 +305,36 @@ class TestCodecs(tb.ConnectedTestCase):
             await st.execute()
             st = await self.con.prepare('DROP DOMAIN my_dom')
             await st.execute()
+
+    async def test_custom_codec_text(self):
+        """Test encoding/decoding using a custom codec in text mode"""
+
+        st = await self.con.prepare('''
+            CREATE EXTENSION IF NOT EXISTS hstore
+        ''')
+
+        await st.execute()
+
+        def hstore_decoder(data):
+            result = {}
+            items = data.split(',')
+            for item in items:
+                k, _, v = item.partition('=>')
+                result[k.strip('"')] = v.strip('"')
+
+            return result
+
+        def hstore_encoder(obj):
+            return ','.join('{}=>{}'.format(k, v) for k, v in obj.items())
+
+        await self.con.set_type_codec('hstore', encoder=hstore_encoder,
+                                      decoder=hstore_decoder,
+                                      format=0)
+
+        st = await self.con.prepare('''
+            SELECT $1::hstore
+        ''')
+
+        res = list(await st.execute({'ham': 'spam'}))[0][0]
+
+        assert res == {'ham': 'spam'}

@@ -107,3 +107,14 @@ FROM
 ORDER BY
     depth DESC
 '''
+
+
+TYPE_BY_NAME = '''\
+SELECT
+    t.oid
+FROM
+    pg_catalog.pg_type AS t
+    INNER JOIN pg_catalog.pg_namespace ns ON (ns.oid = t.typnamespace)
+WHERE
+    t.typname = $1 AND ns.nspname = $2
+'''

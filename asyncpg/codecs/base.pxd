@@ -64,3 +64,9 @@ cdef class Codec:
                                    list element_codecs,
                                    list element_type_oids,
                                    dict element_names)
+
+    @staticmethod
+    cdef Codec new_python_codec(uint32_t oid,
+                                object encoder,
+                                object decoder,
+                                CodecFormat format)
