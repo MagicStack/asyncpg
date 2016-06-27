@@ -105,7 +105,7 @@ class Cluster:
         self._daemon_process = \
             subprocess.Popen(
                         [self._postgres, '-D', self._data_dir, *extra_args],
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                         preexec_fn=ensure_dead_with_parent)
 
         self._daemon_pid = self._daemon_process.pid
@@ -218,6 +218,7 @@ class Cluster:
                     continue
                 else:
                     con.close()
+                    loop.run_until_complete(asyncio.sleep(0, loop=loop))
         finally:
             loop.close()
 
