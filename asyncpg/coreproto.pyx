@@ -98,6 +98,12 @@ cdef class CoreProtocol:
             # In BUSY state, we can process everything.
 
             if mtype == b'C':
+
+                if self._query_class == PGQUERY_SIMPLE:
+                    # Ignore data for simple query
+                    self.buffer.consume_message()
+                    return DISPATCH_CONTINUE
+
                 # Command complete
                 if self._result is None:
                     self._result = Result.new(PGRES_COMMAND_OK)
@@ -121,6 +127,13 @@ cdef class CoreProtocol:
                 if self._status == CONNECTION_STARTED:
                     self._status = CONNECTION_OK
                     self._result = Result.new(PGRES_COMMAND_OK)
+                    self._async_status = PGASYNC_READY
+                    self._push_result()
+
+                elif self._query_class == PGQUERY_SIMPLE:
+                    # Ignore data for simple query
+                    if self._result is None:
+                        self._result = Result.new(PGRES_COMMAND_OK)
                     self._async_status = PGASYNC_READY
                     self._push_result()
 
@@ -168,7 +181,11 @@ cdef class CoreProtocol:
             elif mtype == b'T':
                 # Row Description
 
-                if (self._result is not None and
+                if self._query_class == PGQUERY_SIMPLE:
+                    # Ignore data for simple query
+                    self.buffer.consume_message()
+
+                elif (self._result is not None and
                         self._result.status == PGRES_FATAL_ERROR):
                     # We've already choked for some reason.  Just discard
                     # the data till we get to the end of the query.
@@ -213,7 +230,11 @@ cdef class CoreProtocol:
             elif mtype == b'D':
                 # Data Row
 
-                if (self._result is not None and
+                if self._query_class == PGQUERY_SIMPLE:
+                    # Ignore data for simple query
+                    self.buffer.consume_message()
+
+                elif (self._result is not None and
                         self._result.status == PGRES_TUPLES_OK):
                     # Read another tuple of a normal query response
                     self._parse_server_data_row()

@@ -22,13 +22,18 @@ class Connection:
     def get_settings(self):
         return self._protocol.get_settings()
 
-    async def query(self, query):
-        waiter = _create_future(self._loop)
-        self._protocol.query(query, waiter)
-        return await waiter
+    async def execute_script(self, script):
+        await self._protocol.query(script)
+
+    async def execute(self, query, *args):
+        stmt = await self._prepare('', query)
+        return await stmt.execute(*args)
 
     async def prepare(self, query):
-        state = await self._protocol.prepare(None, query)
+        return await self._prepare(None, query)
+
+    async def _prepare(self, name, query):
+        state = await self._protocol.prepare(name, query)
 
         ready = state._init_types()
         if ready is not True:
