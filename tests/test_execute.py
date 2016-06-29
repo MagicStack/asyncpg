@@ -9,3 +9,7 @@ class TestExecute(tb.ConnectedTestCase):
 
         r = await self.con.execute('SELECT $1::smallint * 2', 10)
         self.assertEqual(r[0][0], 20)
+
+    async def test_execute_unknownoid(self):
+        r = await self.con.execute("SELECT 'test'")
+        self.assertEqual(r[0][0], 'test')
