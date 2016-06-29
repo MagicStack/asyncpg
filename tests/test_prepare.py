@@ -16,3 +16,11 @@ class TestPrepare(tb.ConnectedTestCase):
     async def test_prepare_2(self):
         with self.assertRaisesRegex(Exception, 'column "a" does not exist'):
             await self.con.prepare('SELECT a')
+
+    async def test_prepare_3(self):
+        st = await self.con.prepare('''
+            SELECT CASE WHEN $1::text IS NULL THEN 'NULL'
+                                              ELSE $1::text END''')
+
+        self.assertEqual((await st.execute('aaa'))[0][0], 'aaa')
+        self.assertEqual((await st.execute(None))[0][0], 'NULL')

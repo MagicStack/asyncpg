@@ -134,8 +134,12 @@ cdef class PreparedStatementState:
         writer.write_int16(self.args_num)
 
         for idx from 0 <= idx < self.args_num:
-            codec = <Codec>(self.args_codecs[idx])
-            codec.encode(self.settings, writer, args[idx])
+            arg = args[idx]
+            if arg is None:
+                writer.write_int32(-1)
+            else:
+                codec = <Codec>(self.args_codecs[idx])
+                codec.encode(self.settings, writer, arg)
 
         if self.have_text_cols:
             writer.write_int16(self.cols_num)
