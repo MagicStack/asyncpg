@@ -41,6 +41,9 @@ class Cluster:
         self._daemon_process = None
         self._connection_addr = None
 
+    def get_data_dir(self):
+        return self._data_dir
+
     def get_status(self):
         if self._pg_ctl is None:
             self._init_env()
@@ -79,9 +82,15 @@ class Cluster:
                 'cluster in {!r} has already been initialized'.format(
                     self._data_dir))
 
+        if settings:
+            extra_args = ['-o'] + ['--{}={}'.format(k, v)
+                                   for k, v in settings.items()]
+        else:
+            extra_args = []
+
         process = subprocess.run(
-                        [self._pg_ctl, 'init', '-D', self._data_dir],
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            [self._pg_ctl, 'init', '-D', self._data_dir] + extra_args,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         stderr = process.stderr
 
@@ -90,7 +99,7 @@ class Cluster:
                 'pg_ctl init exited with status {:d}: {}'.format(
                     process.returncode, stderr.decode()))
 
-    def start(self, wait=60, **settings):
+    def start(self, wait=60, *, server_settings={}, **opts):
         """Start the cluster"""
         status = self.get_status()
         if status == 'running':
@@ -100,7 +109,10 @@ class Cluster:
                 'cluster in {!r} has not been initialized'.format(
                     self._data_dir))
 
-        extra_args = ['--{}={}'.format(k, v) for k, v in settings.items()]
+        extra_args = ['--{}={}'.format(k, v) for k, v in opts.items()]
+
+        for k, v in server_settings.items():
+            extra_args.extend(['-c', '{}={}'.format(k, v)])
 
         self._daemon_process = \
             subprocess.Popen(
@@ -124,6 +136,10 @@ class Cluster:
             raise ClusterError(
                 'pg_ctl stop exited with status {:d}: {}'.format(
                     process.returncode, stderr.decode()))
+
+        if (self._daemon_process is not None and
+                self._daemon_process.returncode is None):
+            self._daemon_process.kill()
 
     def destroy(self):
         status = self.get_status()
@@ -213,12 +229,18 @@ class Cluster:
                         asyncpg.connect(database='postgres', timeout=5,
                                         loop=loop, **self._connection_addr))
                 except (OSError, asyncio.TimeoutError,
-                        asyncpg.ServerNotReadyError):
+                        asyncpg.ServerNotReadyError, asyncpg.ConnectionError):
                     time.sleep(1)
                     continue
+                except asyncpg.Error:
+                    # Any other error other than ServerNotReadyError or
+                    # ConnectionError is interpreted to indicate the server is
+                    # up.
+                    break
                 else:
                     con.close()
                     loop.run_until_complete(asyncio.sleep(0, loop=loop))
+                    break
         finally:
             loop.close()
 

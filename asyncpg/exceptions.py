@@ -27,8 +27,24 @@ class FatalError(Error):
     pass
 
 
+class ConnectionError(FatalError):
+    code = '08000'
+
+
+class ClientCannotConnectError(ConnectionError):
+    code = '08001'
+
+
+class ConnectionRejectionError(ConnectionError):
+    code = '08004'
+
+
 class OperatorInterventionError(FatalError):
     code = '57000'
+
+
+class AuthenticationSpecificationError(FatalError):
+    code = '28000'
 
 
 class ServerNotReadyError(OperatorInterventionError):
