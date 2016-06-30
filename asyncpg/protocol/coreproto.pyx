@@ -21,13 +21,13 @@ cdef class Result:
 
 cdef class CoreProtocol:
 
-    def __init__(self, user, password, dbname):
+    def __init__(self, user, password, database):
         self.buffer = ReadBuffer()
         self.transport = None
 
         self._user = user
         self._password = password
-        self._dbname = dbname
+        self._database = database
 
         self._encoding = 'utf-8'
         self._settings = ConnectionSettings()
@@ -429,9 +429,9 @@ cdef class CoreProtocol:
             buf.write_bytestring(b'password')
             buf.write_str(self._password, self._encoding)
 
-        if self._dbname:
+        if self._database:
             buf.write_bytestring(b'database')
-            buf.write_str(self._dbname, self._encoding)
+            buf.write_str(self._database, self._encoding)
 
         buf.write_bytestring(b'')
 

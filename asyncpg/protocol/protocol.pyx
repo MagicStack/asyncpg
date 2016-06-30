@@ -54,11 +54,11 @@ cdef dict TYPE_CODECS_CACHE = {}
 
 cdef class BaseProtocol(CoreProtocol):
 
-    def __init__(self, address, connect_waiter, user, password, dbname, loop):
-        CoreProtocol.__init__(self, user, password, dbname)
+    def __init__(self, address, connect_waiter, user, password, database, loop):
+        CoreProtocol.__init__(self, user, password, database)
         self._loop = loop
         self._address = address
-        self._hash = (self._address, self._dbname)
+        self._hash = (self._address, self._database)
 
         self._connect_waiter = connect_waiter
         self._waiter = None

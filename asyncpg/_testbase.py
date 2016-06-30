@@ -91,7 +91,7 @@ class ConnectedTestCase(ClusterTestCase):
     def setUp(self):
         super().setUp()
         self.con = self.loop.run_until_complete(
-            self.cluster.connect(dbname='postgres', loop=self.loop))
+            self.cluster.connect(database='postgres', loop=self.loop))
 
     def tearDown(self):
         try:

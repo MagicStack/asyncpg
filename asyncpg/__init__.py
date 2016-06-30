@@ -248,7 +248,7 @@ class Transaction:
 async def connect(iri=None, *,
                   host=None, port=None,
                   user=None, password=None,
-                  dbname=None,
+                  database=None,
                   loop=None,
                   timeout=60):
 
@@ -282,8 +282,8 @@ async def connect(iri=None, *,
     if password is None:
         password = os.getenv('PGPASSWORD')
 
-    if dbname is None:
-        dbname = os.getenv('PGDATABASE')
+    if database is None:
+        database = os.getenv('PGDATABASE')
 
     last_ex = None
     for h in host:
@@ -294,12 +294,12 @@ async def connect(iri=None, *,
             sname = os.path.join(h, '.s.PGSQL.{}'.format(port))
             conn = loop.create_unix_connection(
                 lambda: Protocol(sname, connected, user,
-                                 password, dbname, loop),
+                                 password, database, loop),
                 sname)
         else:
             conn = loop.create_connection(
                 lambda: Protocol((h, port), connected, user,
-                                 password, dbname, loop),
+                                 password, database, loop),
                 h, port)
 
         try:

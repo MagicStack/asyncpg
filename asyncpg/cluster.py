@@ -210,7 +210,7 @@ class Cluster:
 
                 try:
                     con = loop.run_until_complete(
-                        asyncpg.connect(dbname='postgres', timeout=5,
+                        asyncpg.connect(database='postgres', timeout=5,
                                         loop=loop, **self._connection_addr))
                 except (OSError, asyncio.TimeoutError,
                         asyncpg.ServerNotReadyError):
