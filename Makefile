@@ -6,8 +6,9 @@ all: compile
 
 clean:
 	rm -fr dist/ doc/_build/
-	rm -fr asyncpg/*.c asyncpg/*.html asyncpg/*.so build *.egg-info
-	rm -fr asyncpg/codecs/*.html
+	rm -fr asyncpg/protocol/*.c asyncpg/protocol/*.html
+	rm -fr asyncpg/protocol/*.so build *.egg-info
+	rm -fr asyncpg/protocol/codecs/*.html
 	find . -name '__pycache__' | xargs rm -rf
 
 
@@ -16,12 +17,12 @@ check-env:
 
 
 compile: check-env clean
-	cython asyncpg/protocol.pyx
+	cython asyncpg/protocol/protocol.pyx
 	python setup.py build_ext --inplace
 
 
 debug: check-env clean
-	cython -a asyncpg/protocol.pyx
+	cython -a asyncpg/protocol/protocol.pyx
 	python setup.py build_ext --inplace --debug
 
 

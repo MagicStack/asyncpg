@@ -12,16 +12,18 @@ import socket
 
 from libc.stdint cimport int16_t, int32_t, uint16_t, uint32_t, int64_t, uint64_t
 
-from .python cimport PyMem_Malloc, PyMem_Realloc, PyMem_Calloc, PyMem_Free, \
-                     PyMemoryView_GET_BUFFER, PyMemoryView_Check, \
-                     PyUnicode_AsUTF8AndSize
+from asyncpg.protocol.python cimport (
+                     PyMem_Malloc, PyMem_Realloc, PyMem_Calloc, PyMem_Free,
+                     PyMemoryView_GET_BUFFER, PyMemoryView_Check,
+                     PyUnicode_AsUTF8AndSize)
+
 from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
 
-from . import exceptions
-from . import encodings
-from . import types as apg_types
+from asyncpg import exceptions
+from asyncpg import encodings
+from asyncpg import types as apg_types
 
-from . cimport hton
+from asyncpg.protocol cimport hton
 
 
 include "consts.pxi"
