@@ -1,7 +1,6 @@
-from . import introspection as _intro
-from .prepared_stmt import PreparedStatement
-from .protocol import Protocol
-from .transaction import Transaction
+from . import introspection
+from . import prepared_stmt
+from . import transaction
 
 
 class Connection:
@@ -24,27 +23,24 @@ class Connection:
     def transaction(self, *, isolation='read_committed', readonly=False,
                     deferrable=False):
 
-        return Transaction(self, isolation, readonly, deferrable)
+        return transaction.Transaction(self, isolation, readonly, deferrable)
 
     async def execute(self, script):
         await self._protocol.query(script)
 
     async def prepare(self, query):
-        return await self._prepare(None, query)
-
-    async def _prepare(self, name, query):
-        state = await self._protocol.prepare(name, query)
+        state = await self._protocol.prepare(None, query)
 
         ready = state._init_types()
         if ready is not True:
             if self._types_stmt is None:
                 self._types_stmt = await self.prepare(
-                    _intro.INTRO_LOOKUP_TYPES)
+                    introspection.INTRO_LOOKUP_TYPES)
 
             types = await self._types_stmt.get_list(list(ready))
             self._protocol._add_types(types)
 
-        return PreparedStatement(self, state)
+        return prepared_stmt.PreparedStatement(self, state)
 
     async def set_type_codec(self, typename, *,
                              schema='public', encoder, decoder, binary=False):
@@ -62,7 +58,8 @@ class Connection:
                         expected to be encoded/decoded in text.
         """
         if self._type_by_name_stmt is None:
-            self._type_by_name_stmt = await self.prepare(_intro.TYPE_BY_NAME)
+            self._type_by_name_stmt = await self.prepare(
+                introspection.TYPE_BY_NAME)
 
         typeinfo = await self._type_by_name_stmt.get_first_row(
             typename, schema)
