@@ -20,7 +20,6 @@ from asyncpg.protocol.python cimport (
 from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
 
 from asyncpg import exceptions
-from asyncpg import encodings
 from asyncpg import types as apg_types
 
 from asyncpg.protocol cimport hton
@@ -29,6 +28,7 @@ from asyncpg.protocol cimport hton
 include "consts.pxi"
 include "pgtypes.pxi"
 
+include "encodings.pyx"
 include "settings.pyx"
 include "buffer.pyx"
 

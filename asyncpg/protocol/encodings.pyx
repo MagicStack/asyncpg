@@ -1,10 +1,9 @@
 '''Map PostgreSQL encoding names to Python encoding names
 
 https://www.postgresql.org/docs/current/static/multibyte.html#CHARSET-TABLE
-
 '''
 
-_map = {
+cdef dict ENCODINGS_MAP = {
     'abc': 'cp1258',
     'alt': 'cp866',
     'euc_cn': 'euccn',
@@ -53,5 +52,5 @@ _map = {
 }
 
 
-def get_python_encoding(pg_encoding):
-    return _map.get(pg_encoding.lower(), pg_encoding.lower())
+cdef get_python_encoding(pg_encoding):
+    return ENCODINGS_MAP.get(pg_encoding.lower(), pg_encoding.lower())

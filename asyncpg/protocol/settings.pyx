@@ -9,7 +9,7 @@ cdef class ConnectionSettings:
     cdef add_setting(self, str name, str val):
         self._settings[name] = val
         if name == 'client_encoding':
-            py_enc = encodings.get_python_encoding(val)
+            py_enc = get_python_encoding(val)
             self._codec = codecs.lookup(py_enc)
             self._encoding = self._codec.name
             self._is_utf8 = self._encoding == 'utf-8'
