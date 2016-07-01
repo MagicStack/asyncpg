@@ -3,40 +3,50 @@
 cdef class Record:
 
     cdef:
-        dict mapping
-        list values
+        dict _mapping
+        list _values
 
     @staticmethod
     cdef inline Record new(dict mapping, list values):
         cdef Record rec
         rec = Record.__new__(Record)
-        rec.mapping = mapping
-        rec.values = values
+        rec._mapping = mapping
+        rec._values = values
         return rec
 
     def __len__(self):
-        return len(self.values)
+        return len(self._values)
 
     def __iter__(self):
-        return iter(self.values)
+        return iter(self._values)
 
     def __getitem__(self, item):
         item_cls = type(item)
         if item_cls is str:
-            return self.values[<int>(self.mapping[item])]
+            return self._values[<int>(self._mapping[item])]
         elif item_cls is int:
-            return self.values[<int>item]
+            return self._values[<int>item]
 
         if isinstance(item, str):
-            return self.values[self.mapping[item]]
+            return self._values[self._mapping[item]]
 
-        return self.values[item]
+        return self._values[item]
 
     def __repr__(self):
-        rmap = {i: n for n, i in self.mapping.items()}
-        items = ('{}={!r}'.format(rmap[i], self.values[i])
-                 for i, v in enumerate(self.values))
+        rmap = {i: n for n, i in self._mapping.items()}
+        items = ('{}={!r}'.format(rmap[i], self._values[i])
+                 for i, v in enumerate(self._values))
         return '<Record {}>'.format(' '.join(items))
+
+    def items(self):
+        for k, idx in self._mapping.items():
+            yield k, self._values[<int>idx]
+
+    def keys(self):
+        return self._mapping.keys()
+
+    def values(self):
+        return iter(self._values)
 
 
 cdef class PreparedStatementState:
