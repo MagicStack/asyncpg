@@ -11,18 +11,19 @@ class TransactionState(enum.Enum):
     FAILED = 4
 
 
-class Transaction:
+ISOLATION_LEVELS = {'read_committed', 'serializable', 'repeatable_read'}
 
-    ISOLATION_LEVELS = {'read_committed', 'serializable', 'repeatable_read'}
+
+class Transaction:
 
     __slots__ = ('_connection', '_isolation', '_readonly', '_deferrable',
                  '_state', '_nested', '_id')
 
     def __init__(self, connection, isolation, readonly, deferrable):
-        if isolation not in self.ISOLATION_LEVELS:
+        if isolation not in ISOLATION_LEVELS:
             raise ValueError(
                 'isolation is expected to be either of {}, '
-                'got {!r}'.format(self.ISOLATION_LEVELS, isolation))
+                'got {!r}'.format(ISOLATION_LEVELS, isolation))
 
         if isolation != 'serializable':
             if readonly:
