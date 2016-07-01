@@ -15,7 +15,7 @@ class PreparedStatement:
     def get_attributes(self):
         return self._state._get_attributes()
 
-    def __call__(self, *args):
+    def get_aiter(self, *args):
         return PreparedStatementIterator(self, args)
 
     async def get_list(self, *args):

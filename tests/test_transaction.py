@@ -57,7 +57,7 @@ class TestTransaction(tb.ConnectedTestCase):
                 st = await self.con.prepare('SELECT * FROM mytab;')
 
                 recs = []
-                async for rec in st():
+                async for rec in st.get_aiter():
                     recs.append(rec)
 
                 self.assertEqual(len(recs), 2)
