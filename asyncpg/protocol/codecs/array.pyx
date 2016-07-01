@@ -57,21 +57,21 @@ cdef inline array_decode(ConnectionSettings settings, const char *data,
 
 
 cdef arrayoid_encode(ConnectionSettings settings, WriteBuffer buf, items):
-    array_encode(settings, buf, OIDOID, int4_encode, items)
+    array_encode(settings, buf, OIDOID, <encode_func>&int4_encode, items)
 
 
 cdef arrayoid_decode(ConnectionSettings settings, const char* data,
                      int32_t len):
-    return array_decode(settings, data, len, int4_decode)
+    return array_decode(settings, data, len, <decode_func>&int4_decode)
 
 
 cdef arraytext_encode(ConnectionSettings settings, WriteBuffer buf, items):
-    array_encode(settings, buf, TEXTOID, text_encode, items)
+    array_encode(settings, buf, TEXTOID, <encode_func>&text_encode, items)
 
 
 cdef arraytext_decode(ConnectionSettings settings, const char* data,
                       int32_t len):
-    return array_decode(settings, data, len, text_decode)
+    return array_decode(settings, data, len, <decode_func>&text_decode)
 
 
 cdef init_array_codecs():
