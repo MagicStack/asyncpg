@@ -6,12 +6,15 @@ class ErrorMeta(type):
 
     def __new__(mcls, name, bases, dct):
         global __all__
-        __all__ += (name,)
 
         cls = super().__new__(mcls, name, bases, dct)
+        if cls.__module__ == 'asyncpg.exceptions':
+            __all__ += (name,)
+
         code = dct.get('code')
         if code is not None:
             mcls._error_map[code] = cls
+
         return cls
 
     @classmethod
