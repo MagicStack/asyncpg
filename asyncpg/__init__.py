@@ -5,8 +5,9 @@ import os
 
 from . import introspection as _intro
 from .exceptions import *
-from .transaction import Transaction
+from .prepared_stmt import PreparedStatement
 from .protocol import Protocol
+from .transaction import Transaction
 
 
 __all__ = ('connect',) + exceptions.__all__
@@ -34,12 +35,8 @@ class Connection:
 
         return Transaction(self, isolation, readonly, deferrable)
 
-    async def execute_script(self, script):
+    async def execute(self, script):
         await self._protocol.query(script)
-
-    async def execute(self, query, *args):
-        stmt = await self._prepare('', query)
-        return await stmt.execute(*args)
 
     async def prepare(self, query):
         return await self._prepare(None, query)
@@ -53,7 +50,7 @@ class Connection:
                 self._types_stmt = await self.prepare(
                     _intro.INTRO_LOOKUP_TYPES)
 
-            types = await self._types_stmt.execute(list(ready))
+            types = await self._types_stmt.get_list(list(ready))
             self._protocol._add_types(types)
 
         return PreparedStatement(self, state)
@@ -76,10 +73,10 @@ class Connection:
         if self._type_by_name_stmt is None:
             self._type_by_name_stmt = await self.prepare(_intro.TYPE_BY_NAME)
 
-        typeinfo = await self._type_by_name_stmt.execute(typename, schema)
+        typeinfo = await self._type_by_name_stmt.get_first_row(
+            typename, schema)
         if not typeinfo:
             raise ValueError('unknown type: {}.{}'.format(schema, typename))
-        typeinfo = list(typeinfo)[0]
 
         oid = typeinfo['oid']
         if typeinfo['kind'] != b'b' or typeinfo['elemtype']:
@@ -97,25 +94,6 @@ class Connection:
     def _get_unique_id(self):
         self._uid += 1
         return 'id{}'.format(self._uid)
-
-
-class PreparedStatement:
-
-    __slots__ = ('_connection', '_state')
-
-    def __init__(self, connection, state):
-        self._connection = connection
-        self._state = state
-
-    def get_parameters(self):
-        return self._state._get_parameters()
-
-    def get_attributes(self):
-        return self._state._get_attributes()
-
-    async def execute(self, *args):
-        protocol = self._connection._protocol
-        return await protocol.execute(self._state, args)
 
 
 async def connect(iri=None, *,

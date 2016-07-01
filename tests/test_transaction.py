@@ -10,7 +10,7 @@ class TestTransaction(tb.ConnectedTestCase):
         try:
             async with self.con.transaction():
 
-                await self.con.execute_script('''
+                await self.con.execute('''
                     CREATE TABLE mytab (a int);
                 ''')
 
@@ -31,20 +31,20 @@ class TestTransaction(tb.ConnectedTestCase):
         try:
             async with self.con.transaction():
 
-                await self.con.execute_script('''
+                await self.con.execute('''
                     CREATE TABLE mytab (a int);
                 ''')
 
                 async with self.con.transaction():
 
-                    await self.con.execute_script('''
+                    await self.con.execute('''
                         INSERT INTO mytab (a) VALUES (1), (2);
                     ''')
 
                 try:
                     async with self.con.transaction():
 
-                        await self.con.execute_script('''
+                        await self.con.execute('''
                             INSERT INTO mytab (a) VALUES (3), (4);
                         ''')
 
@@ -54,10 +54,15 @@ class TestTransaction(tb.ConnectedTestCase):
                 else:
                     self.fail('ZeroDivisionError was not raised')
 
-                res = await self.con.execute('SELECT * FROM mytab;')
-                self.assertEqual(len(res), 2)
-                self.assertEqual(res[0][0], 1)
-                self.assertEqual(res[1][0], 2)
+                st = await self.con.prepare('SELECT * FROM mytab;')
+
+                recs = []
+                async for rec in st():
+                    recs.append(rec)
+
+                self.assertEqual(len(recs), 2)
+                self.assertEqual(recs[0][0], 1)
+                self.assertEqual(recs[1][0], 2)
 
                 1 / 0
 

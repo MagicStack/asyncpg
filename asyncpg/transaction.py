@@ -86,7 +86,7 @@ class Transaction:
                 query += ';'
 
         try:
-            await self._connection.execute_script(query)
+            await self._connection.execute(query)
         except:
             self._state = TransactionState.FAILED
             raise
@@ -104,7 +104,7 @@ class Transaction:
             query = 'COMMIT;'
 
         try:
-            await self._connection.execute_script(query)
+            await self._connection.execute(query)
         except:
             self._state = TransactionState.FAILED
             raise
@@ -125,7 +125,7 @@ class Transaction:
             query = 'ROLLBACK;'
 
         try:
-            await self._connection.execute_script(query)
+            await self._connection.execute(query)
         except:
             self._state = TransactionState.FAILED
             raise

@@ -224,7 +224,7 @@ class TestCodecs(tb.ConnectedTestCase):
 
             for sample in sample_data:
                 with self.subTest(sample=sample, typname=typname):
-                    rsample = list(await st.execute(sample))[0][0]
+                    rsample = await st.get_value(sample)
                     self.assertEqual(
                         rsample, sample,
                         ("failed to return {} object data as-is; "
@@ -238,15 +238,13 @@ class TestCodecs(tb.ConnectedTestCase):
     async def test_composites(self):
         """Test encoding/decoding of composite types"""
 
-        st = await self.con.prepare('''
+        await self.con.execute('''
             CREATE TYPE test_composite AS (
                 a int,
                 b text,
                 c int[]
             )
         ''')
-
-        await st.execute()
 
         try:
             st = await self.con.prepare('''
@@ -257,7 +255,8 @@ class TestCodecs(tb.ConnectedTestCase):
                 )::test_composite AS test
             ''')
 
-            res = list(await st.execute())[0][0]
+            res = await st.get_list()
+            res = res[0]['test']
 
             self.assertIsNone(res['a'])
             self.assertEqual(res['b'], '5678')
@@ -274,38 +273,31 @@ class TestCodecs(tb.ConnectedTestCase):
             self.assertEqual(at[0].type.kind, 'composite')
 
         finally:
-            st = await self.con.prepare('DROP TYPE test_composite')
-            await st.execute()
+            await self.con.execute('DROP TYPE test_composite')
 
     async def test_domains(self):
         """Test encoding/decoding of composite types"""
 
-        st = await self.con.prepare('''
+        await self.con.execute('''
             CREATE DOMAIN my_dom AS int
         ''')
 
-        await st.execute()
-
-        st = await self.con.prepare('''
+        await self.con.execute('''
             CREATE DOMAIN my_dom2 AS my_dom
         ''')
-
-        await st.execute()
 
         try:
             st = await self.con.prepare('''
                 SELECT 3::my_dom2
             ''')
-
-            res = list(await st.execute())[0][0]
+            res = await st.get_value()
 
             self.assertEqual(res, 3)
 
             st = await self.con.prepare('''
                 SELECT NULL::my_dom2
             ''')
-
-            res = list(await st.execute())[0][0]
+            res = await st.get_value()
 
             self.assertIsNone(res)
 
@@ -316,19 +308,15 @@ class TestCodecs(tb.ConnectedTestCase):
             self.assertEqual(at[0].type.kind, 'scalar')
 
         finally:
-            st = await self.con.prepare('DROP DOMAIN my_dom2')
-            await st.execute()
-            st = await self.con.prepare('DROP DOMAIN my_dom')
-            await st.execute()
+            await self.con.execute('DROP DOMAIN my_dom2')
+            await self.con.execute('DROP DOMAIN my_dom')
 
     async def test_custom_codec_text(self):
         """Test encoding/decoding using a custom codec in text mode"""
 
-        st = await self.con.prepare('''
+        await self.con.execute('''
             CREATE EXTENSION IF NOT EXISTS hstore
         ''')
-
-        await st.execute()
 
         def hstore_decoder(data):
             result = {}
@@ -349,7 +337,8 @@ class TestCodecs(tb.ConnectedTestCase):
             SELECT $1::hstore AS result
         ''')
 
-        res = list(await st.execute({'ham': 'spam'}))[0]['result']
+        res = await st.get_first_row({'ham': 'spam'})
+        res = res['result']
 
         self.assertEqual(res, {'ham': 'spam'})
 
@@ -371,11 +360,9 @@ class TestCodecs(tb.ConnectedTestCase):
             await self.con.set_type_codec('_hstore', encoder=hstore_encoder,
                                           decoder=hstore_decoder)
 
-        st = await self.con.prepare('''
+        await self.con.execute('''
             CREATE TYPE mytype AS (a int);
         ''')
-
-        await st.execute()
 
         try:
             err = 'cannot use custom codec on non-scalar type public.mytype'
@@ -384,8 +371,6 @@ class TestCodecs(tb.ConnectedTestCase):
                     'mytype', encoder=hstore_encoder,
                     decoder=hstore_decoder)
         finally:
-            st = await self.con.prepare('''
+            await self.con.execute('''
                 DROP TYPE mytype;
             ''')
-
-            await st.execute()
