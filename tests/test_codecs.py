@@ -327,7 +327,8 @@ class TestCodecs(tb.ConnectedTestCase):
         ''')
 
         try:
-            await self.con.alias_type('hstore', alias_to='pg_contrib.hstore')
+            await self.con.set_builtin_type_codec(
+                'hstore', codec_name='pg_contrib.hstore')
 
             st = await self.con.prepare('''
                 SELECT $1::hstore AS result

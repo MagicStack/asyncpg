@@ -333,7 +333,7 @@ cdef class DataCodecConfig:
             Codec.new_python_codec(typeoid, typename, typeschema, typekind,
                                    encoder, decoder, format)
 
-    def add_codec_alias(self, typeoid, typename, typeschema, typekind,
+    def set_builtin_type_codec(self, typeoid, typename, typeschema, typekind,
                         alias_to):
         cdef:
             Codec codec

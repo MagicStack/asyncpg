@@ -76,7 +76,15 @@ class Connection:
             oid, typename, schema, 'scalar',
             encoder, decoder, binary)
 
-    async def alias_type(self, typename, *, schema='public', alias_to):
+    async def set_builtin_type_codec(self, typename, *,
+                                     schema='public', codec_name):
+        """Set a builtin codec for the specified data type
+
+        :param typename:  Name of the data type the codec is for.
+        :param schema:  Schema name of the data type the codec is for
+                        (defaults to 'public')
+        :param codec_name:  The name of the builtin codec.
+        """
         if self._type_by_name_stmt is None:
             self._type_by_name_stmt = await self.prepare(
                 introspection.TYPE_BY_NAME)
@@ -92,8 +100,8 @@ class Connection:
                 'cannot alias non-scalar type {}.{}'.format(
                     schema, typename))
 
-        self._protocol.get_settings().add_codec_alias(
-            oid, typename, schema, 'scalar', alias_to)
+        self._protocol.get_settings().set_builtin_type_codec(
+            oid, typename, schema, 'scalar', codec_name)
 
     def close(self):
         self._transport.close()
