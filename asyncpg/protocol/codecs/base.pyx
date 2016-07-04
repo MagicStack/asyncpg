@@ -1,4 +1,5 @@
 cdef void* codec_map[MAXBUILTINOID]
+cdef dict TYPE_CODECS_CACHE = {}
 
 
 cdef class Codec:
@@ -230,6 +231,100 @@ cdef class Codec:
         codec.py_encoder = encoder
         codec.py_decoder = decoder
         return codec
+
+
+cdef class DataCodecConfig:
+    def __init__(self, cache_key):
+        try:
+            self._type_codecs_cache = TYPE_CODECS_CACHE[cache_key]
+        except KeyError:
+            self._type_codecs_cache = TYPE_CODECS_CACHE[cache_key] = {}
+
+    def add_types(self, types):
+        cdef:
+            Codec elem_codec
+            list comp_elem_codecs
+
+        for ti in types:
+            oid = ti['oid']
+
+            if self.get_codec(oid) is not None:
+                continue
+
+            name = ti['name']
+            schema = ti['ns']
+            array_element_oid = ti['elemtype']
+            comp_type_attrs = ti['attrtypoids']
+            base_type = ti['basetype']
+
+            if name.startswith('_') and array_element_oid:
+                name = '{}[]'.format(name[1:])
+
+            if array_element_oid:
+                # Array type
+                elem_codec = self.get_codec(array_element_oid)
+                if elem_codec is None:
+                    raise RuntimeError(
+                        'no codec for array element type {}'.format(
+                            array_element_oid))
+                self._type_codecs_cache[oid] = \
+                    Codec.new_array_codec(oid, name, schema, elem_codec)
+
+            elif comp_type_attrs:
+                # Composite element
+                comp_elem_codecs = []
+
+                for typoid in comp_type_attrs:
+                    elem_codec = self.get_codec(typoid)
+                    if elem_codec is None:
+                        raise RuntimeError(
+                            'no codec for composite attribute type {}'.format(
+                                typoid))
+                    comp_elem_codecs.append(elem_codec)
+
+                self._type_codecs_cache[oid] = \
+                    Codec.new_composite_codec(
+                        oid, name, schema, comp_elem_codecs,
+                        comp_type_attrs,
+                        {name: i for i, name in enumerate(ti['attrnames'])})
+
+            elif ti['kind'] == b'd' and base_type:
+                elem_codec = self.get_codec(base_type)
+                if elem_codec is None:
+                    raise RuntimeError(
+                        'no codec for array element type {}'.format(
+                            base_type))
+
+                self._type_codecs_cache[oid] = elem_codec
+            else:
+                raise NotImplementedError
+
+    def add_python_codec(self, typeoid, typename, typeschema, typekind,
+                         encoder, decoder, binary):
+        if self.get_codec(typeoid) is not None:
+            raise ValueError('cannot override codec for type {}'.format(
+                typeoid))
+
+        format = PG_FORMAT_BINARY if binary else PG_FORMAT_TEXT
+
+        self._type_codecs_cache[typeoid] = \
+            Codec.new_python_codec(typeoid, typename, typeschema, typekind,
+                                   encoder, decoder, format)
+
+    def clear_type_cache(self):
+        self._type_codecs_cache.clear()
+
+    cdef inline Codec get_codec(self, uint32_t oid):
+        cdef Codec codec
+
+        codec = get_core_codec(oid)
+        if codec is not None:
+            return codec
+
+        try:
+            return self._type_codecs_cache[oid]
+        except KeyError:
+            return None
 
 
 cdef inline Codec get_core_codec(uint32_t oid):

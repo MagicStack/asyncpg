@@ -246,6 +246,14 @@ class TestCodecs(tb.ConnectedTestCase):
             )
         ''')
 
+        st = await self.con.prepare('''
+            SELECT ROW(NULL, 1234, '5678')
+        ''')
+
+        res = await st.get_value()
+
+        self.assertEqual(res, [None, 1234, '5678'])
+
         try:
             st = await self.con.prepare('''
                 SELECT ROW(

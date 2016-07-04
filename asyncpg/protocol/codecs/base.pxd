@@ -81,3 +81,10 @@ cdef class Codec:
                                 object encoder,
                                 object decoder,
                                 CodecFormat format)
+
+
+cdef class DataCodecConfig:
+    cdef:
+        dict   _type_codecs_cache
+
+    cdef inline Codec get_codec(self, uint32_t oid)

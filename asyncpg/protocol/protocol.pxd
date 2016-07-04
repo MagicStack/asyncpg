@@ -34,7 +34,6 @@ cdef class BaseProtocol(CoreProtocol):
         object _waiter
         object _address
         tuple  _hash
-        dict   _type_codecs_cache
 
         ProtocolState _state
 
@@ -43,7 +42,6 @@ cdef class BaseProtocol(CoreProtocol):
         int _id
         int _N
 
-    cdef inline Codec _get_codec(self, uint32_t oid)
     cdef inline _create_future(self)
     cdef _gen_id(self, prefix)
     cdef _start_state(self, ProtocolState state)

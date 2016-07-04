@@ -4,7 +4,7 @@ cdef inline as_pg_string_and_size(
     if settings.is_encoding_utf8():
         str[0] = PyUnicode_AsUTF8AndSize(obj, size)
     else:
-        encoded = settings.get_codec().encode(obj)
+        encoded = settings.get_text_codec().encode(obj)
         cpython.PyBytes_AsStringAndSize(encoded, str, size)
 
 
@@ -28,7 +28,7 @@ cdef text_decode(ConnectionSettings settings, const char* data, int32_t len):
         return cpython.PyUnicode_DecodeUTF8(data, len, NULL)
     else:
         bytes = cpython.PyBytes_FromStringAndSize(data, len)
-        return settings.get_codec().decode(bytes)
+        return settings.get_text_codec().decode(bytes)
 
 
 cdef init_text_codecs():

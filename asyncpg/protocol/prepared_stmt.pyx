@@ -65,7 +65,7 @@ cdef class PreparedStatementState:
 
         result = []
         for oid in self.parameters_desc:
-            codec = self.protocol._get_codec(oid)
+            codec = self.settings.get_data_codec(oid)
             if codec is None:
                 raise RuntimeError
             result.append(apg_types.Type(
@@ -81,7 +81,7 @@ cdef class PreparedStatementState:
             name = d[0]
             oid = d[3]
 
-            codec = self.protocol._get_codec(oid)
+            codec = self.settings.get_data_codec(oid)
             if codec is None:
                 raise RuntimeError
 
@@ -100,13 +100,13 @@ cdef class PreparedStatementState:
 
         if self.parameters_desc:
             for p_oid in self.parameters_desc:
-                codec = self.protocol._get_codec(<uint32_t>p_oid)
+                codec = self.settings.get_data_codec(<uint32_t>p_oid)
                 if codec is None or not codec.has_encoder():
                     result.add(p_oid)
 
         if self.row_desc:
             for rdesc in self.row_desc:
-                codec = self.protocol._get_codec(<uint32_t>(rdesc[3]))
+                codec = self.settings.get_data_codec(<uint32_t>(rdesc[3]))
                 if codec is None or not codec.has_decoder():
                     result.add(rdesc[3])
 
@@ -179,7 +179,7 @@ cdef class PreparedStatementState:
             row = self.row_desc[i]
             cols_mapping[row[0].decode(self.settings._encoding)] = i
             oid = row[3]
-            codec = self.protocol._get_codec(<uint32_t>oid)
+            codec = self.settings.get_data_codec(<uint32_t>oid)
             if codec is None or not codec.has_decoder():
                 raise RuntimeError('no decoder for OID {}'.format(oid))
             if not codec.is_binary():
@@ -201,7 +201,7 @@ cdef class PreparedStatementState:
 
         for i from 0 <= i < self.args_num:
             p_oid = self.parameters_desc[i]
-            codec = self.protocol._get_codec(<uint32_t>p_oid)
+            codec = self.settings.get_data_codec(<uint32_t>p_oid)
             if codec is None or not codec.has_encoder():
                 raise RuntimeError('no encoder for OID {}'.format(p_oid))
             if codec.type not in {}:

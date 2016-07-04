@@ -49,9 +49,6 @@ include "coreproto.pyx"
 include "prepared_stmt.pyx"
 
 
-cdef dict TYPE_CODECS_CACHE = {}
-
-
 cdef class BaseProtocol(CoreProtocol):
 
     def __init__(self, address, connect_waiter, user, password, database, loop):
@@ -59,94 +56,16 @@ cdef class BaseProtocol(CoreProtocol):
         self._loop = loop
         self._address = address
         self._hash = (self._address, self._database)
+        self._settings = ConnectionSettings(self._hash)
 
         self._connect_waiter = connect_waiter
         self._waiter = None
         self._state = STATE_NOT_CONNECTED
         self._N = 0
 
-        try:
-            self._type_codecs_cache = TYPE_CODECS_CACHE[self._hash]
-        except KeyError:
-            self._type_codecs_cache = TYPE_CODECS_CACHE[self._hash] = {}
-
         self._prepared_stmt = None
 
         self._id = 0
-
-    def _add_types(self, types):
-        cdef:
-            Codec elem_codec
-            list comp_elem_codecs
-
-        for ti in types:
-            oid = ti['oid']
-
-            if self._get_codec(oid) is not None:
-                continue
-
-            name = ti['name']
-            schema = ti['ns']
-            array_element_oid = ti['elemtype']
-            comp_type_attrs = ti['attrtypoids']
-            base_type = ti['basetype']
-
-            if name.startswith('_') and array_element_oid:
-                name = '{}[]'.format(name[1:])
-
-            if array_element_oid:
-                # Array type
-                elem_codec = self._get_codec(array_element_oid)
-                if elem_codec is None:
-                    raise RuntimeError(
-                        'no codec for array element type {}'.format(
-                            array_element_oid))
-                self._type_codecs_cache[oid] = \
-                    Codec.new_array_codec(oid, name, schema, elem_codec)
-
-            elif comp_type_attrs:
-                # Composite element
-                comp_elem_codecs = []
-
-                for typoid in comp_type_attrs:
-                    elem_codec = self._get_codec(typoid)
-                    if elem_codec is None:
-                        raise RuntimeError(
-                            'no codec for composite attribute type {}'.format(
-                                typoid))
-                    comp_elem_codecs.append(elem_codec)
-
-                self._type_codecs_cache[oid] = \
-                    Codec.new_composite_codec(
-                        oid, name, schema, comp_elem_codecs,
-                        comp_type_attrs,
-                        {name: i for i, name in enumerate(ti['attrnames'])})
-
-            elif ti['kind'] == b'd' and base_type:
-                elem_codec = self._get_codec(base_type)
-                if elem_codec is None:
-                    raise RuntimeError(
-                        'no codec for array element type {}'.format(
-                            base_type))
-
-                self._type_codecs_cache[oid] = elem_codec
-            else:
-                raise NotImplementedError
-
-    def _add_python_codec(self, typeoid, typename, typeschema, typekind,
-                          encoder, decoder, binary):
-        if self._get_codec(typeoid) is not None:
-            raise ValueError('cannot override codec for type {}'.format(
-                typeoid))
-
-        format = PG_FORMAT_BINARY if binary else PG_FORMAT_TEXT
-
-        self._type_codecs_cache[typeoid] = \
-            Codec.new_python_codec(typeoid, typename, typeschema, typekind,
-                                   encoder, decoder, format)
-
-    def clear_type_cache(self):
-        self._type_codecs_cache.clear()
 
     def get_settings(self):
         return self._settings
@@ -187,18 +106,6 @@ cdef class BaseProtocol(CoreProtocol):
         self._waiter = self._create_future()
         return self._waiter
 
-    cdef inline Codec _get_codec(self, uint32_t oid):
-        cdef Codec codec
-
-        codec = get_core_codec(oid)
-        if codec is not None:
-            return codec
-
-        try:
-            return self._type_codecs_cache[oid]
-        except KeyError:
-            return None
-
     cdef inline _create_future(self):
         try:
             create_future = self._loop.create_future
@@ -217,6 +124,9 @@ cdef class BaseProtocol(CoreProtocol):
         if self._waiter is not None:
             raise RuntimeError('waiter is set in "ready" state')
         self._state = state
+
+    cdef _set_server_parameter(self, key, val):
+        self._settings.add_setting(key, val)
 
     cdef _on_result(self, Result result):
         cdef:

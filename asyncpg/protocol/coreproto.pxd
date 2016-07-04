@@ -129,3 +129,4 @@ cdef class CoreProtocol:
     cdef _describe(self, str name, bint is_portal)
     cdef _on_result(self, Result result)
     cdef _on_fatal_error(self, exc)
+    cdef _set_server_parameter(self, key, val)

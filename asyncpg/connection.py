@@ -38,7 +38,7 @@ class Connection:
                     introspection.INTRO_LOOKUP_TYPES)
 
             types = await self._types_stmt.get_list(list(ready))
-            self._protocol._add_types(types)
+            self._protocol.get_settings().register_data_types(types)
 
         return prepared_stmt.PreparedStatement(self, state)
 
@@ -72,7 +72,7 @@ class Connection:
                 'cannot use custom codec on non-scalar type {}.{}'.format(
                     schema, typename))
 
-        self._protocol._add_python_codec(
+        self._protocol.get_settings().add_python_codec(
             oid, typename, schema, 'scalar',
             encoder, decoder, binary)
 

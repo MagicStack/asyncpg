@@ -30,7 +30,6 @@ cdef class CoreProtocol:
         self._database = database
 
         self._encoding = 'utf-8'
-        self._settings = ConnectionSettings()
         self._backend_pid = 0
         self._backend_secret = 0
 
@@ -289,7 +288,7 @@ cdef class CoreProtocol:
     cdef _parse_server_parameter_status(self):
         key = self.buffer.read_cstr().decode()
         val = self.buffer.read_cstr().decode()
-        self._settings.add_setting(key, val)
+        self._set_server_parameter(key, val)
 
     cdef _parse_server_backend_key_data(self):
         self._backend_pid = self.buffer.read_int32()
@@ -523,6 +522,9 @@ cdef class CoreProtocol:
         pass
 
     cdef _on_fatal_error(self, exc):
+        pass
+
+    cdef _set_server_parameter(self, key, val):
         pass
 
     # asyncio callbacks:
