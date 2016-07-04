@@ -59,6 +59,8 @@ cdef class Codec:
     cdef has_decoder(self)
     cdef is_binary(self)
 
+    cdef inline Codec copy(self)
+
     @staticmethod
     cdef Codec new_array_codec(uint32_t oid,
                                str name,
@@ -85,6 +87,7 @@ cdef class Codec:
 
 cdef class DataCodecConfig:
     cdef:
-        dict   _type_codecs_cache
+        dict _type_codecs_cache
+        dict _local_type_codecs
 
     cdef inline Codec get_codec(self, uint32_t oid)

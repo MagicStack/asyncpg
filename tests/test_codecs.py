@@ -319,6 +319,29 @@ class TestCodecs(tb.ConnectedTestCase):
             await self.con.execute('DROP DOMAIN my_dom2')
             await self.con.execute('DROP DOMAIN my_dom')
 
+    async def test_extra_codec_alias(self):
+        """Test encoding/decoding of a builtin non-pg_catalog codec"""
+
+        await self.con.execute('''
+            CREATE EXTENSION IF NOT EXISTS hstore
+        ''')
+
+        try:
+            await self.con.alias_type('hstore', alias_to='pg_contrib.hstore')
+
+            st = await self.con.prepare('''
+                SELECT $1::hstore AS result
+            ''')
+            res = await st.get_first_row({'ham': 'spam', 'nada': None})
+            res = res['result']
+
+            self.assertEqual(res, {'ham': 'spam', 'nada': None})
+
+        finally:
+            await self.con.execute('''
+                DROP EXTENSION hstore
+            ''')
+
     async def test_custom_codec_text(self):
         """Test encoding/decoding using a custom codec in text mode"""
 
@@ -338,47 +361,55 @@ class TestCodecs(tb.ConnectedTestCase):
         def hstore_encoder(obj):
             return ','.join('{}=>{}'.format(k, v) for k, v in obj.items())
 
-        await self.con.set_type_codec('hstore', encoder=hstore_encoder,
-                                      decoder=hstore_decoder)
-
-        st = await self.con.prepare('''
-            SELECT $1::hstore AS result
-        ''')
-
-        res = await st.get_first_row({'ham': 'spam'})
-        res = res['result']
-
-        self.assertEqual(res, {'ham': 'spam'})
-
-        pt = st.get_parameters()
-        self.assertTrue(isinstance(pt, tuple))
-        self.assertEqual(len(pt), 1)
-        self.assertEqual(pt[0].name, 'hstore')
-        self.assertEqual(pt[0].kind, 'scalar')
-        self.assertEqual(pt[0].schema, 'public')
-
-        at = st.get_attributes()
-        self.assertTrue(isinstance(at, tuple))
-        self.assertEqual(len(at), 1)
-        self.assertEqual(at[0].name, 'result')
-        self.assertEqual(at[0].type, pt[0])
-
-        err = 'cannot use custom codec on non-scalar type public._hstore'
-        with self.assertRaisesRegex(ValueError, err):
-            await self.con.set_type_codec('_hstore', encoder=hstore_encoder,
+        try:
+            await self.con.set_type_codec('hstore', encoder=hstore_encoder,
                                           decoder=hstore_decoder)
 
-        await self.con.execute('''
-            CREATE TYPE mytype AS (a int);
-        ''')
+            st = await self.con.prepare('''
+                SELECT $1::hstore AS result
+            ''')
 
-        try:
-            err = 'cannot use custom codec on non-scalar type public.mytype'
+            res = await st.get_first_row({'ham': 'spam'})
+            res = res['result']
+
+            self.assertEqual(res, {'ham': 'spam'})
+
+            pt = st.get_parameters()
+            self.assertTrue(isinstance(pt, tuple))
+            self.assertEqual(len(pt), 1)
+            self.assertEqual(pt[0].name, 'hstore')
+            self.assertEqual(pt[0].kind, 'scalar')
+            self.assertEqual(pt[0].schema, 'public')
+
+            at = st.get_attributes()
+            self.assertTrue(isinstance(at, tuple))
+            self.assertEqual(len(at), 1)
+            self.assertEqual(at[0].name, 'result')
+            self.assertEqual(at[0].type, pt[0])
+
+            err = 'cannot use custom codec on non-scalar type public._hstore'
             with self.assertRaisesRegex(ValueError, err):
-                await self.con.set_type_codec(
-                    'mytype', encoder=hstore_encoder,
-                    decoder=hstore_decoder)
+                await self.con.set_type_codec('_hstore',
+                                              encoder=hstore_encoder,
+                                              decoder=hstore_decoder)
+
+            await self.con.execute('''
+                CREATE TYPE mytype AS (a int);
+            ''')
+
+            try:
+                err = 'cannot use custom codec on non-scalar type ' + \
+                      'public.mytype'
+                with self.assertRaisesRegex(ValueError, err):
+                    await self.con.set_type_codec(
+                        'mytype', encoder=hstore_encoder,
+                        decoder=hstore_decoder)
+            finally:
+                await self.con.execute('''
+                    DROP TYPE mytype;
+                ''')
+
         finally:
             await self.con.execute('''
-                DROP TYPE mytype;
+                DROP EXTENSION hstore
             ''')

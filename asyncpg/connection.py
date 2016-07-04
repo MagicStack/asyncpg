@@ -76,6 +76,25 @@ class Connection:
             oid, typename, schema, 'scalar',
             encoder, decoder, binary)
 
+    async def alias_type(self, typename, *, schema='public', alias_to):
+        if self._type_by_name_stmt is None:
+            self._type_by_name_stmt = await self.prepare(
+                introspection.TYPE_BY_NAME)
+
+        typeinfo = await self._type_by_name_stmt.get_first_row(
+            typename, schema)
+        if not typeinfo:
+            raise ValueError('unknown type: {}.{}'.format(schema, typename))
+
+        oid = typeinfo['oid']
+        if typeinfo['kind'] != b'b' or typeinfo['elemtype']:
+            raise ValueError(
+                'cannot alias non-scalar type {}.{}'.format(
+                    schema, typename))
+
+        self._protocol.get_settings().add_codec_alias(
+            oid, typename, schema, 'scalar', alias_to)
+
     def close(self):
         self._transport.close()
 

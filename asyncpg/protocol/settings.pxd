@@ -11,5 +11,7 @@ cdef class ConnectionSettings:
     cpdef inline get_text_codec(self)
     cpdef inline register_data_types(self, types)
     cpdef inline add_python_codec(self, typeoid, typename, typeschema, typekind,
-                                 encoder, decoder, binary)
+                                  encoder, decoder, binary)
+    cpdef inline add_codec_alias(self, typeoid, typename, typeschema, typekind,
+                                 alias_to)
     cpdef inline Codec get_data_codec(self, uint32_t oid)

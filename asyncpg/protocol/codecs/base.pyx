@@ -1,5 +1,6 @@
 cdef void* codec_map[MAXBUILTINOID]
 cdef dict TYPE_CODECS_CACHE = {}
+cdef dict EXTRA_CODECS = {}
 
 
 cdef class Codec:
@@ -14,6 +15,20 @@ cdef class Codec:
         self.py_encoder = self.py_decoder = None
         self.element_codec = None
 
+    cdef inline Codec copy(self):
+        cdef Codec codec
+
+        codec = Codec(self.oid, self.name, self.schema, self.kind)
+        codec.type = self.type
+        codec.format = self.format
+        codec.c_encoder = self.c_encoder
+        codec.c_decoder = self.c_decoder
+        codec.py_encoder = self.py_encoder
+        codec.py_decoder = self.py_decoder
+        codec.element_codec = self.element_codec
+
+        return codec
+
     cdef inline encode(self,
                        ConnectionSettings settings,
                        WriteBuffer buf,
@@ -27,7 +42,8 @@ cdef class Codec:
         if self.type == CODEC_C:
             ef = self.c_encoder
             if ef is NULL:
-                raise NotImplementedError
+                raise NotImplementedError(
+                    'no encoder for type {}'.format(self.oid))
             ef(settings, buf, obj)
 
         elif self.type == CODEC_ARRAY:
@@ -59,7 +75,8 @@ cdef class Codec:
                 text_encode(settings, buf, bb)
 
         else:
-            raise NotImplementedError
+            raise NotImplementedError(
+                'no encoder for type {}'.format(self.oid))
 
     cdef inline decode(self,
                        ConnectionSettings settings,
@@ -83,7 +100,8 @@ cdef class Codec:
         if self.type == CODEC_C:
             df = self.c_decoder
             if df is NULL:
-                raise NotImplementedError
+                raise NotImplementedError(
+                    'no decoder for type {}'.format(self.oid))
 
             return df(settings, data, len)
 
@@ -141,7 +159,8 @@ cdef class Codec:
             return self.py_decoder(bb)
 
         else:
-            raise NotImplementedError
+            raise NotImplementedError(
+                'no decoder for type {}'.format(self.oid))
 
     cdef has_encoder(self):
         cdef Codec elem_codec
@@ -240,6 +259,8 @@ cdef class DataCodecConfig:
         except KeyError:
             self._type_codecs_cache = TYPE_CODECS_CACHE[cache_key] = {}
 
+        self._local_type_codecs = {}
+
     def add_types(self, types):
         cdef:
             Codec elem_codec
@@ -297,7 +318,8 @@ cdef class DataCodecConfig:
 
                 self._type_codecs_cache[oid] = elem_codec
             else:
-                raise NotImplementedError
+                raise NotImplementedError(
+                    'unhandled data type {!r}'.format(ti))
 
     def add_python_codec(self, typeoid, typename, typeschema, typekind,
                          encoder, decoder, binary):
@@ -307,9 +329,31 @@ cdef class DataCodecConfig:
 
         format = PG_FORMAT_BINARY if binary else PG_FORMAT_TEXT
 
-        self._type_codecs_cache[typeoid] = \
+        self._local_type_codecs[typeoid] = \
             Codec.new_python_codec(typeoid, typename, typeschema, typekind,
                                    encoder, decoder, format)
+
+    def add_codec_alias(self, typeoid, typename, typeschema, typekind,
+                        alias_to):
+        cdef:
+            Codec codec
+            Codec extra_codec
+
+        if self.get_codec(typeoid) is not None:
+            raise ValueError('cannot override codec for type {}'.format(
+                typeoid))
+
+        extra_codec = get_extra_codec(alias_to)
+        if extra_codec is None:
+            raise ValueError('unknown alias target: {}'.format(alias_to))
+
+        codec = extra_codec.copy()
+        codec.oid = typeoid
+        codec.name = typename
+        codec.schema = typeschema
+        codec.kind = typekind
+
+        self._local_type_codecs[typeoid] = codec
 
     def clear_type_cache(self):
         self._type_codecs_cache.clear()
@@ -324,7 +368,10 @@ cdef class DataCodecConfig:
         try:
             return self._type_codecs_cache[oid]
         except KeyError:
-            return None
+            try:
+                return self._local_type_codecs[oid]
+            except KeyError:
+                return None
 
 
 cdef inline Codec get_core_codec(uint32_t oid):
@@ -367,3 +414,27 @@ cdef register_core_codec(uint32_t oid,
     codec.c_encoder = encode
     codec.c_decoder = decode
     codec_map[oid] = <void*>codec
+
+
+cdef register_extra_codec(str name,
+                          encode_func encode,
+                          decode_func decode,
+                          CodecFormat format):
+    cdef:
+        Codec codec
+        str kind
+
+    kind = 'scalar'
+
+    codec = Codec(INVALIDOID, name, None, kind)
+    cpython.Py_INCREF(codec)  # immortalize
+
+    codec.type = CODEC_C
+    codec.format = format
+    codec.c_encoder = encode
+    codec.c_decoder = decode
+    EXTRA_CODECS[name] = codec
+
+
+cdef inline Codec get_extra_codec(str name):
+    return EXTRA_CODECS.get(name)

@@ -7,6 +7,9 @@ cdef inline as_pg_string_and_size(
         encoded = settings.get_text_codec().encode(obj)
         cpython.PyBytes_AsStringAndSize(encoded, str, size)
 
+    if size[0] > 0x7fffffff:
+        raise ValueError('string too long')
+
 
 cdef text_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     cdef:
@@ -15,20 +18,23 @@ cdef text_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
     as_pg_string_and_size(settings, obj, &str, &size)
 
-    if size > 0x7fffffff:
-        raise ValueError('string too long')
-
     buf.write_int32(<int32_t>size)
     buf.write_cstr(str, size)
 
 
-cdef text_decode(ConnectionSettings settings, const char* data, int32_t len):
+cdef inline decode_pg_string(ConnectionSettings settings, const char* data,
+                             int32_t len):
+
     if settings.is_encoding_utf8():
         # decode UTF-8 in strict mode
         return cpython.PyUnicode_DecodeUTF8(data, len, NULL)
     else:
         bytes = cpython.PyBytes_FromStringAndSize(data, len)
         return settings.get_text_codec().decode(bytes)
+
+
+cdef text_decode(ConnectionSettings settings, const char* data, int32_t len):
+    return decode_pg_string(settings, data, len)
 
 
 cdef init_text_codecs():

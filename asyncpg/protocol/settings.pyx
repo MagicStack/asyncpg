@@ -30,6 +30,11 @@ cdef class ConnectionSettings:
         self._data_codecs.add_python_codec(typeoid, typename, typeschema,
                                            typekind, encoder, decoder, binary)
 
+    cpdef inline add_codec_alias(self, typeoid, typename, typeschema, typekind,
+                                 alias_to):
+        self._data_codecs.add_codec_alias(typeoid, typename, typeschema,
+                                          typekind, alias_to)
+
     cpdef inline Codec get_data_codec(self, uint32_t oid):
         return self._data_codecs.get_codec(oid)
 
