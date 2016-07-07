@@ -29,11 +29,12 @@ cdef class BaseProtocol(CoreProtocol):
 
     cdef:
         object _loop
-
-        object _connect_waiter
-        object _waiter
         object _address
         tuple  _hash
+        ConnectionSettings _settings
+        str _last_query
+        object _connect_waiter
+        object _waiter
 
         ProtocolState _state
 

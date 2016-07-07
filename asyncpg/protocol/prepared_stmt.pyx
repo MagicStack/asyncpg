@@ -51,8 +51,9 @@ cdef class Record:
 
 cdef class PreparedStatementState:
 
-    def __cinit__(self, str name, BaseProtocol protocol):
+    def __cinit__(self, str name, str query, BaseProtocol protocol):
         self.name = name
+        self.query = query
         self.protocol = protocol
         self.settings = protocol._settings
         self.row_desc = self.parameters_desc = None

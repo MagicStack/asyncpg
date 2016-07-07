@@ -1,6 +1,7 @@
 cdef class PreparedStatementState:
     cdef:
         readonly str name
+        readonly str query
         list         row_desc
         list         parameters_desc
 

@@ -89,9 +89,6 @@ cdef class CoreProtocol:
         str _encoding
 
         ####### Connection State:
-
-        ConnectionSettings _settings
-
         int _backend_pid
         int _backend_secret
 

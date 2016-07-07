@@ -58,7 +58,7 @@ cdef class BaseProtocol(CoreProtocol):
         self._address = address
         self._hash = (self._address, self._database)
         self._settings = ConnectionSettings(self._hash)
-
+        self._last_query = None
         self._connect_waiter = connect_waiter
         self._waiter = None
         self._state = STATE_NOT_CONNECTED
@@ -74,6 +74,7 @@ cdef class BaseProtocol(CoreProtocol):
     def query(self, query):
         self._start_state(STATE_QUERY)
         self._waiter = self._create_future()
+        self._last_query = query
         self._query(query)
         return self._waiter
 
@@ -85,7 +86,7 @@ cdef class BaseProtocol(CoreProtocol):
         if self._prepared_stmt is not None:
             raise RuntimeError('another prepared statement is set')
 
-        self._prepared_stmt = PreparedStatementState(name, self)
+        self._prepared_stmt = PreparedStatementState(name, query, self)
 
         self._waiter = self._create_future()
         self._parse(name, query)
@@ -98,6 +99,8 @@ cdef class BaseProtocol(CoreProtocol):
 
         self._start_state(STATE_EXECUTE)
         self._prepared_stmt = <PreparedStatementState>state
+
+        self._last_query = self._prepared_stmt.query
 
         self._bind(
             "",
@@ -156,11 +159,8 @@ cdef class BaseProtocol(CoreProtocol):
 
         if result.status == PGRES_FATAL_ERROR:
             self._prepared_stmt = None
-            msg = '\n'.join(['{}: {}'.format(k, v)
-                for k, v in result.err_fields.items()])
-            exc_cls = exceptions.ErrorMeta.get_error_for_code(
-                result.err_fields.get('C'))
-            exc = exc_cls(msg)
+            exc = exceptions.Error.new(result.err_fields,
+                                       query=self._last_query)
             waiter.set_exception(exc)
             self._state = STATE_READY
             self._waiter = None
