@@ -110,6 +110,11 @@ cdef class BaseProtocol(CoreProtocol):
         self._waiter = self._create_future()
         return self._waiter
 
+    def close(self):
+        self._start_state(STATE_CLOSING)
+        self._waiter = self._create_future()
+        return self._waiter
+
     cdef inline _create_future(self):
         try:
             create_future = self._loop.create_future
@@ -217,6 +222,28 @@ cdef class BaseProtocol(CoreProtocol):
 
         if self._state == STATE_READY:
             self._waiter = None
+
+    cdef _on_connection_lost(self, exc):
+        cdef ProtocolState last_state = self._state
+        self._state = STATE_CLOSED
+
+        if last_state is STATE_CLOSING:
+            if exc is None:
+                self._waiter.set_result(None)
+            else:
+                self._waiter.set_exception(exc)
+
+        else:
+            if self._waiter is not None:
+                if not self._waiter.done():
+                    driver_exc = apg_exc.FatalPostgresError(
+                        'connection interrupted in the middle of '
+                        'operation')
+
+                    if exc is not None:
+                        driver_exc.__cause__ = exc
+
+                    self._waiter.set_exception(driver_exc)
 
 
 class Protocol(BaseProtocol, asyncio.Protocol):

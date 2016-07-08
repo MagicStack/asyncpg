@@ -524,6 +524,9 @@ cdef class CoreProtocol:
     cdef _on_fatal_error(self, exc):
         pass
 
+    cdef _on_connection_lost(self, exc):
+        pass
+
     cdef _set_server_parameter(self, key, val):
         pass
 
@@ -540,3 +543,7 @@ cdef class CoreProtocol:
             self._connect()
         except Exception as ex:
             self._fatal_error(ex)
+
+    def connection_lost(self, exc):
+        self._status = CONNECTION_BAD
+        self._on_connection_lost(exc)

@@ -24,6 +24,9 @@ cdef enum ProtocolState:
 
     STATE_QUERY = 40
 
+    STATE_CLOSING = 100
+    STATE_CLOSED = 101
+
 
 cdef class BaseProtocol(CoreProtocol):
 

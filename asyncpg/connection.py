@@ -94,6 +94,7 @@ class Connection:
 
     async def close(self):
         self._transport.close()
+        await self._protocol.close()
 
     def terminate(self):
         self._transport.abort()
