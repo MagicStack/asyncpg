@@ -21,7 +21,8 @@ class TestTransaction(tb.ConnectedTestCase):
         else:
             self.fail('ZeroDivisionError was not raised')
 
-        with self.assertRaisesRegex(asyncpg.Error, '"mytab" does not exist'):
+        with self.assertRaisesRegex(asyncpg.PostgresError,
+                                    '"mytab" does not exist'):
             await self.con.prepare('''
                 SELECT * FROM mytab
             ''')
@@ -71,7 +72,7 @@ class TestTransaction(tb.ConnectedTestCase):
         else:
             self.fail('ZeroDivisionError was not raised')
 
-        with self.assertRaisesRegex(asyncpg.Error, '"mytab" does not exist'):
+        with self.assertRaisesRegex(asyncpg.PostgresError, '"mytab" does not exist'):
             await self.con.prepare('''
                 SELECT * FROM mytab
             ''')

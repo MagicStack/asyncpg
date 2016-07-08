@@ -19,7 +19,7 @@ from asyncpg.protocol.python cimport (
 
 from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
 
-from asyncpg import exceptions
+from asyncpg.exceptions import _base as apg_exc
 from asyncpg import types as apg_types
 
 from asyncpg.protocol cimport hton
@@ -159,8 +159,8 @@ cdef class BaseProtocol(CoreProtocol):
 
         if result.status == PGRES_FATAL_ERROR:
             self._prepared_stmt = None
-            exc = exceptions.Error.new(result.err_fields,
-                                       query=self._last_query)
+            exc = apg_exc.PostgresMessage.new(result.err_fields,
+                                              query=self._last_query)
             waiter.set_exception(exc)
             self._state = STATE_READY
             self._waiter = None

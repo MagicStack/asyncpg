@@ -1,8 +1,16 @@
-__all__ = ()  # Will be completed by ErrorMeta
+##
+# Copyright (c) 2016 MagicStack Inc.
+# All rights reserved.
+#
+# See LICENSE for details.
+##
 
 
-class ErrorMeta(type):
-    _error_map = {}
+__all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError')
+
+
+class PostgresMessageMeta(type):
+    _message_map = {}
     _field_map = {
         'S': 'severity',
         'C': 'sqlstate',
@@ -24,28 +32,23 @@ class ErrorMeta(type):
     }
 
     def __new__(mcls, name, bases, dct):
-        global __all__
-
         cls = super().__new__(mcls, name, bases, dct)
-        if cls.__module__ == 'asyncpg.exceptions':
-            __all__ += (name,)
+        if cls.__module__ == mcls.__module__ and name == '_PostgresMessage':
+            for f in mcls._field_map.values():
+                setattr(cls, f, None)
 
-            if name == 'Error':
-                for f in mcls._field_map.values():
-                    setattr(cls, f, None)
-
-        code = dct.get('code')
+        code = dct.get('sqlstate')
         if code is not None:
-            mcls._error_map[code] = cls
+            mcls._message_map[code] = cls
 
         return cls
 
     @classmethod
-    def get_error_for_code(mcls, code):
-        return mcls._error_map.get(code, Error)
+    def get_message_class_for_sqlstate(mcls, code):
+        return mcls._message_map.get(code, UnknownPostgresError)
 
 
-class Error(Exception, metaclass=ErrorMeta):
+class PostgresMessage(metaclass=PostgresMessageMeta):
     def __str__(self):
         msg = self.message
         if self.detail:
@@ -59,7 +62,7 @@ class Error(Exception, metaclass=ErrorMeta):
     def new(cls, fields, query=None):
         errcode = fields.get('C')
         mcls = cls.__class__
-        exccls = mcls.get_error_for_code(errcode)
+        exccls = mcls.get_message_class_for_sqlstate(errcode)
         mapped = {
             'query': query
         }
@@ -75,29 +78,13 @@ class Error(Exception, metaclass=ErrorMeta):
         return e
 
 
-class FatalError(Error):
-    pass
+class PostgresError(Exception, PostgresMessage):
+    """Base class for all Postgres errors."""
 
 
-class ConnectionError(FatalError):
-    code = '08000'
+class FatalPostgresError(PostgresError):
+    """A fatal error that should result in server disconnection."""
 
 
-class ClientCannotConnectError(ConnectionError):
-    code = '08001'
-
-
-class ConnectionRejectionError(ConnectionError):
-    code = '08004'
-
-
-class OperatorInterventionError(FatalError):
-    code = '57000'
-
-
-class AuthenticationSpecificationError(FatalError):
-    code = '28000'
-
-
-class ServerNotReadyError(OperatorInterventionError):
-    code = '57P03'
+class UnknownPostgresError(FatalPostgresError):
+    """An error with an unknown SQLSTATE code."""

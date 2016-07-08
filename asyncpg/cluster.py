@@ -232,7 +232,7 @@ class Cluster:
                         asyncpg.ServerNotReadyError, asyncpg.ConnectionError):
                     time.sleep(1)
                     continue
-                except asyncpg.Error:
+                except asyncpg.PostgresError:
                     # Any other error other than ServerNotReadyError or
                     # ConnectionError is interpreted to indicate the server is
                     # up.
