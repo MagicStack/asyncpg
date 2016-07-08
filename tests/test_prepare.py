@@ -87,7 +87,7 @@ class TestPrepare(tb.ConnectedTestCase):
                     if inspect.isawaitable(val):
                         await val
 
-        await stmt.free()
+        await stmt.close()
 
         for meth in methods:
             with self.subTest(method=meth, closed=True, initialized=False):

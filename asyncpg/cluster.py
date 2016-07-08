@@ -238,7 +238,7 @@ class Cluster:
                     # up.
                     break
                 else:
-                    con.close()
+                    con.terminate()
                     loop.run_until_complete(asyncio.sleep(0, loop=loop))
                     break
         finally:

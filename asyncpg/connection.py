@@ -92,8 +92,11 @@ class Connection:
         self._protocol.get_settings().set_builtin_type_codec(
             oid, typename, schema, 'scalar', codec_name)
 
-    def close(self):
+    async def close(self):
         self._transport.close()
+
+    def terminate(self):
+        self._transport.abort()
 
     def _get_unique_id(self):
         self._uid += 1

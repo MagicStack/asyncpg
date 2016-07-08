@@ -49,7 +49,7 @@ class PreparedStatement:
             return None
         return data[0]
 
-    async def free(self):
+    async def close(self):
         if self._closed:
             return
 
@@ -109,7 +109,7 @@ class PreparedStatement:
 
     async def __aexit__(self, exc_type, exc, tb):
         self._managed = False
-        await self.free()
+        await self.close()
 
 
 class PreparedStatementIterator:
