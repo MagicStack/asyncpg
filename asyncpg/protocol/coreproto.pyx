@@ -403,7 +403,7 @@ cdef class CoreProtocol:
 
     # Cython API for subclasses:
 
-    cdef _open(self):
+    cdef _connect(self):
         if self._status != CONNECTION_BAD:
             raise RuntimeError('already connected')
 
@@ -537,6 +537,6 @@ cdef class CoreProtocol:
         self.transport = transport
 
         try:
-            self._open()
+            self._connect()
         except Exception as ex:
             self._fatal_error(ex)

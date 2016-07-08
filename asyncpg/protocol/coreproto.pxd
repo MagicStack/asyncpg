@@ -119,7 +119,7 @@ cdef class CoreProtocol:
     cdef _sync(self)
     cdef _ensure_ready_state(self)
 
-    cdef _open(self)
+    cdef _connect(self)
     cdef _query(self, str query)
     cdef _parse(self, str stmt_name, str query)
     cdef _bind(self, str portal_name, str stmt_name, WriteBuffer bind_data)
