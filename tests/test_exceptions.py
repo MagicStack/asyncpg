@@ -13,6 +13,8 @@ class TestExceptions(tb.ConnectedTestCase):
             self.assertFalse(hasattr(asyncpg, err))
             self.assertNotIn(err, asyncpg.__all__)
 
+        self.assertIsNone(asyncpg.PostgresError.schema_name)
+
     async def test_exceptions_unpacking(self):
         with self.assertRaises(asyncpg.UndefinedTableError):
             try:

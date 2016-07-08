@@ -17,18 +17,22 @@ from asyncpg.exceptions import _base as apg_exc
 
 
 _namemap = {
-    'SqlclientUnableToEstablishSqlconnectionError':
-        'ClientCannotConnectError',
-    'SqlserverRejectedEstablishmentOfSqlconnectionError':
-        'ConnectionRejectionError',
-    'SyntaxErrorOrAccessRuleViolationError':
-        'SyntaxOrAccessError',
-    'InternalError':
-        'InternalServerError'
+    '08001': 'ClientCannotConnectError',
+    '08004': 'ConnectionRejectionError',
+    '08006': 'ConnectionFailureError',
+    '38002': 'ModifyingExternalRoutineSQLDataNotPermittedError',
+    '38003': 'ProhibitedExternalRoutineSQLStatementAttemptedError',
+    '38004': 'ReadingExternalRoutineSQLDataNotPermittedError',
+    '39004': 'NullValueInExternalRoutineNotAllowedError',
+    '42000': 'SyntaxOrAccessError',
+    'XX000': 'InternalServerError',
 }
 
 
-def _to_error_name(sqlstatename, msgtype):
+def _get_error_name(sqlstatename, msgtype, sqlstate):
+    if sqlstate in _namemap:
+        return _namemap[sqlstate]
+
     parts = string.capwords(sqlstatename.replace('_', ' ')).split(' ')
     if parts[-1] in {'Exception', 'Failure'}:
         parts[-1] = 'Error'
@@ -51,7 +55,7 @@ def _to_error_name(sqlstatename, msgtype):
     if hasattr(builtins, errname):
         errname = 'Postgres' + errname
 
-    return _namemap.get(errname, errname)
+    return errname
 
 
 def main():
@@ -79,7 +83,7 @@ class {clsname}({base}):
           'from ._base import *\nfrom . import _base\n\n\n'
 
     classes = []
-    clsnames = []
+    clsnames = set()
 
     for line in errcodes.splitlines():
         if not line.strip() or line.startswith('#'):
@@ -98,10 +102,14 @@ class {clsname}({base}):
         msgtype = parts[1]
         name = parts[3]
 
-        clsname = _to_error_name(name, msgtype)
+        clsname = _get_error_name(name, msgtype, sqlstate)
 
         if clsname in {'SuccessfulCompletionError'}:
             continue
+
+        if clsname in clsnames:
+            raise ValueError('dupliate exception class name: {}'.format(
+                clsname))
 
         if new_section:
             section_class = clsname
@@ -117,7 +125,7 @@ class {clsname}({base}):
         else:
             base = section_class
 
-        existing = apg_exc._PostgresMessageMeta.get_message_class_for_sqlstate(
+        existing = apg_exc.PostgresMessageMeta.get_message_class_for_sqlstate(
             sqlstate)
 
         if (existing and existing is not apg_exc.UnknownPostgresError and
@@ -133,11 +141,11 @@ class {clsname}({base}):
             txt = txt.replace('(', '(\n        ', 1)
 
         classes.append(txt)
-        clsnames.append(clsname)
+        clsnames.add(clsname)
 
     buf += '\n\n\n'.join(classes)
 
-    _all = textwrap.wrap(', '.join('{!r}'.format(c) for c in clsnames))
+    _all = textwrap.wrap(', '.join('{!r}'.format(c) for c in sorted(clsnames)))
     buf += '\n\n\n__all__ = _base.__all__ + (\n    {}\n)'.format(
         '\n    '.join(_all))
 

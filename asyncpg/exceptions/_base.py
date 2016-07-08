@@ -6,6 +6,9 @@
 ##
 
 
+import sys
+
+
 __all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError')
 
 
@@ -33,12 +36,24 @@ class PostgresMessageMeta(type):
 
     def __new__(mcls, name, bases, dct):
         cls = super().__new__(mcls, name, bases, dct)
-        if cls.__module__ == mcls.__module__ and name == '_PostgresMessage':
+        if cls.__module__ == mcls.__module__ and name == 'PostgresMessage':
             for f in mcls._field_map.values():
                 setattr(cls, f, None)
 
+        if (cls.__module__ == 'asyncpg' or
+                cls.__module__.startswith('asyncpg.')):
+            mod = sys.modules[cls.__module__]
+            if hasattr(mod, name):
+                raise RuntimeError('exception class redefinition: {}'.format(
+                    name))
+
         code = dct.get('sqlstate')
         if code is not None:
+            existing = mcls._message_map.get(code)
+            if existing is not None:
+                raise TypeError('{} has duplicate SQLSTATE code, which is'
+                                'already defined by {}'.format(
+                                    name, existing.__name__))
             mcls._message_map[code] = cls
 
         return cls
