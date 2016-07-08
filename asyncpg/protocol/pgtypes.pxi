@@ -57,6 +57,7 @@ DEF CASHOID = 790
 DEF FLOAT4OID = 700
 DEF FLOAT8OID = 701
 DEF NUMERICOID = 1700
+DEF VOIDOID = 2278
 
 DEF POINTOID = 600
 DEF LINEOID = 628
@@ -139,6 +140,7 @@ TYPEMAP = {
     FLOAT4OID:        'float4',
     FLOAT8OID:        'float8',
     NUMERICOID:       'numeric',
+    VOIDOID:          'void',
     POINTOID:         'point',
     LINEOID:          'line',
     LSEGOID:          'lseg',

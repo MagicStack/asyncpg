@@ -45,6 +45,7 @@ include "codecs/array.pyx"
 include "codecs/record.pyx"
 include "codecs/hstore.pyx"
 include "codecs/init.pyx"
+include "codecs/special.pyx"
 
 include "coreproto.pyx"
 include "prepared_stmt.pyx"

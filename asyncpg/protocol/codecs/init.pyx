@@ -9,5 +9,6 @@ cdef init_codecs():
     init_uuid_codecs()
     init_array_codecs()
     init_record_codecs()
+    init_special_codecs()
 
 init_codecs()
