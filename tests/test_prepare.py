@@ -112,6 +112,9 @@ class TestPrepare(tb.ConnectedTestCase):
                                     'closed in the middle'):
             await fut
 
+        # Test that it's OK to call close again
+        await self.con.close()
+
     async def test_prepare_10_interrupted_terminate(self):
         stmt = await self.con.prepare('''SELECT pg_sleep(10)''')
         fut = self.loop.create_task(stmt.get_value())
@@ -126,4 +129,5 @@ class TestPrepare(tb.ConnectedTestCase):
                                     'closed in the middle'):
             await fut
 
+        # Test that it's OK to call terminate again
         self.con.terminate()
