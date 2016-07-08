@@ -84,7 +84,7 @@ class TestPrepare(tb.ConnectedTestCase):
             with self.subTest(method=meth, closed=False, initialized=False):
                 with self.assertRaisesRegex(RuntimeError, 'not initialized'):
                     val = getattr(stmt, meth)()
-                    if inspect.iscoroutine(val):
+                    if inspect.isawaitable(val):
                         await val
 
         await stmt.free()
@@ -93,5 +93,5 @@ class TestPrepare(tb.ConnectedTestCase):
             with self.subTest(method=meth, closed=True, initialized=False):
                 with self.assertRaisesRegex(RuntimeError, 'cannot.*closed'):
                     val = getattr(stmt, meth)()
-                    if inspect.iscoroutine(val):
+                    if inspect.isawaitable(val):
                         await val
