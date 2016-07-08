@@ -1,3 +1,5 @@
+import asyncio
+import asyncpg
 import inspect
 
 from asyncpg import _testbase as tb
@@ -95,3 +97,33 @@ class TestPrepare(tb.ConnectedTestCase):
                     val = getattr(stmt, meth)()
                     if inspect.isawaitable(val):
                         await val
+
+    async def test_prepare_9_interrupted_close(self):
+        stmt = await self.con.prepare('''SELECT pg_sleep(10)''')
+        fut = self.loop.create_task(stmt.get_list())
+
+        await asyncio.sleep(0.2, loop=self.loop)
+
+        self.assertFalse(self.con.is_closed())
+        await self.con.close()
+        self.assertTrue(self.con.is_closed())
+
+        with self.assertRaisesRegex(asyncpg.ConnectionDoesNotExistError,
+                                    'closed in the middle'):
+            await fut
+
+    async def test_prepare_10_interrupted_terminate(self):
+        stmt = await self.con.prepare('''SELECT pg_sleep(10)''')
+        fut = self.loop.create_task(stmt.get_value())
+
+        await asyncio.sleep(0.2, loop=self.loop)
+
+        self.assertFalse(self.con.is_closed())
+        self.con.terminate()
+        self.assertTrue(self.con.is_closed())
+
+        with self.assertRaisesRegex(asyncpg.ConnectionDoesNotExistError,
+                                    'closed in the middle'):
+            await fut
+
+        self.con.terminate()

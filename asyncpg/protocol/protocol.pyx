@@ -19,8 +19,9 @@ from asyncpg.protocol.python cimport (
 
 from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
 
-from asyncpg.exceptions import _base as apg_exc
+from asyncpg.exceptions import _base as apg_exc_base
 from asyncpg import types as apg_types
+from asyncpg import exceptions as apg_exc
 
 from asyncpg.protocol cimport hton
 
@@ -111,10 +112,29 @@ cdef class BaseProtocol(CoreProtocol):
         self._waiter = self._create_future()
         return self._waiter
 
+    def is_closed(self):
+        return self._state == STATE_CLOSING or self._state == STATE_CLOSED
+
     def close(self):
+        if self._state != STATE_READY:
+            # Some operation is in progress; throw an error in any
+            # awaiting waiter.
+            self._handle_waiter_on_connection_lost(None)
+            self._state = STATE_READY
+
         self._start_state(STATE_CLOSING)
         self._waiter = self._create_future()
         return self._waiter
+
+    cdef _handle_waiter_on_connection_lost(self, cause):
+        if self._waiter is not None and not self._waiter.done():
+            exc = apg_exc.ConnectionDoesNotExistError(
+                'connection was closed in the middle of '
+                'operation')
+            if cause is not None:
+                exc.__cause__ = cause
+            self._waiter.set_exception(exc)
+            self._waiter = None
 
     cdef inline _create_future(self):
         try:
@@ -130,7 +150,8 @@ cdef class BaseProtocol(CoreProtocol):
 
     cdef _start_state(self, ProtocolState state):
         if self._state != STATE_READY:
-            raise RuntimeError('"ready" state expected')
+            raise RuntimeError(
+                'cannot set state {}; "ready" state expected'.format(state))
         if self._waiter is not None:
             raise RuntimeError('waiter is set in "ready" state')
         self._state = state
@@ -145,6 +166,12 @@ cdef class BaseProtocol(CoreProtocol):
             object waiter
 
         waiter = self._waiter
+
+        if self._state == STATE_CLOSING or self._state == STATE_CLOSED:
+            # The connection is lost; if any waiter is awaiting,
+            # throw an error in it
+            self._handle_waiter_on_connection_lost(None)
+            return
 
         if self._state == STATE_NOT_CONNECTED:
             if self._connect_waiter is None:
@@ -165,8 +192,8 @@ cdef class BaseProtocol(CoreProtocol):
 
         if result.status == PGRES_FATAL_ERROR:
             self._prepared_stmt = None
-            exc = apg_exc.PostgresMessage.new(result.err_fields,
-                                              query=self._last_query)
+            exc = apg_exc_base.PostgresMessage.new(result.err_fields,
+                                                   query=self._last_query)
             waiter.set_exception(exc)
             self._state = STATE_READY
             self._waiter = None
@@ -229,22 +256,18 @@ cdef class BaseProtocol(CoreProtocol):
         self._state = STATE_CLOSED
 
         if last_state is STATE_CLOSING:
+            # The connection was lost because
+            # Protocol.close() was called
             if exc is None:
                 self._waiter.set_result(None)
             else:
                 self._waiter.set_exception(exc)
 
         else:
-            if self._waiter is not None:
-                if not self._waiter.done():
-                    driver_exc = apg_exc.FatalPostgresError(
-                        'connection interrupted in the middle of '
-                        'operation')
-
-                    if exc is not None:
-                        driver_exc.__cause__ = exc
-
-                    self._waiter.set_exception(driver_exc)
+            # The connection was lost because it was
+            # terminated or due to another error;
+            # Throw an error in any awaiting waiter.
+            self._handle_waiter_on_connection_lost(exc)
 
 
 class Protocol(BaseProtocol, asyncio.Protocol):

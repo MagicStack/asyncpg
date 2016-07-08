@@ -49,4 +49,4 @@ cdef class BaseProtocol(CoreProtocol):
     cdef inline _create_future(self)
     cdef _gen_id(self, prefix)
     cdef _start_state(self, ProtocolState state)
-    cdef _on_result(self, Result result)
+    cdef _handle_waiter_on_connection_lost(self, cause)

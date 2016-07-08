@@ -6,7 +6,7 @@ from . import transaction
 class Connection:
 
     __slots__ = ('_protocol', '_transport', '_loop', '_types_stmt',
-                 '_type_by_name_stmt', '_top_xact', '_uid')
+                 '_type_by_name_stmt', '_top_xact', '_uid', '_aborted')
 
     def __init__(self, protocol, transport, loop):
         self._protocol = protocol
@@ -16,6 +16,7 @@ class Connection:
         self._type_by_name_stmt = None
         self._top_xact = None
         self._uid = 0
+        self._aborted = False
 
     def get_settings(self):
         return self._protocol.get_settings()
@@ -92,11 +93,17 @@ class Connection:
         self._protocol.get_settings().set_builtin_type_codec(
             oid, typename, schema, 'scalar', codec_name)
 
+    def is_closed(self):
+        return self._protocol.is_closed() or self._aborted
+
     async def close(self):
+        if self.is_closed():
+            return
         self._transport.close()
         await self._protocol.close()
 
     def terminate(self):
+        self._aborted = True
         self._transport.abort()
 
     def _get_unique_id(self):
