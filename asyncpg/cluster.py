@@ -49,8 +49,8 @@ class Cluster:
             self._init_env()
 
         process = subprocess.run(
-                        [self._pg_ctl, 'status', '-D', self._data_dir],
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            [self._pg_ctl, 'status', '-D', self._data_dir],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = process.stdout, process.stderr
 
         if process.returncode == 4:
@@ -76,7 +76,7 @@ class Cluster:
             host=conn_addr[0], port=conn_addr[1], loop=loop, **kwargs)
 
     def init(self, **settings):
-        """Initialize cluster"""
+        """Initialize cluster."""
         if self.get_status() != 'not-initialized':
             raise ClusterError(
                 'cluster in {!r} has already been initialized'.format(
@@ -100,7 +100,7 @@ class Cluster:
                     process.returncode, stderr.decode()))
 
     def start(self, wait=60, *, server_settings={}, **opts):
-        """Start the cluster"""
+        """Start the cluster."""
         status = self.get_status()
         if status == 'running':
             return
@@ -116,9 +116,9 @@ class Cluster:
 
         self._daemon_process = \
             subprocess.Popen(
-                        [self._postgres, '-D', self._data_dir, *extra_args],
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                        preexec_fn=ensure_dead_with_parent)
+                [self._postgres, '-D', self._data_dir, *extra_args],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                preexec_fn=ensure_dead_with_parent)
 
         self._daemon_pid = self._daemon_process.pid
 
@@ -304,8 +304,9 @@ class Cluster:
 
 
 class TempCluster(Cluster):
-    def __init__(self, *, data_dir_suffix=None, data_dir_prefix=None,
-                          data_dir_parent=None, pg_config_path=None):
+    def __init__(self, *,
+                 data_dir_suffix=None, data_dir_prefix=None,
+                 data_dir_parent=None, pg_config_path=None):
         self._data_dir = tempfile.mkdtemp(suffix=data_dir_suffix,
                                           prefix=data_dir_prefix,
                                           dir=data_dir_parent)

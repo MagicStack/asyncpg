@@ -216,7 +216,7 @@ type_samples = [
 class TestCodecs(tb.ConnectedTestCase):
 
     async def test_standard_codecs(self):
-        """Test encoding/decoding of standard data types and arrays thereof"""
+        """Test encoding/decoding of standard data types and arrays thereof."""
         for (typname, intname, sample_data) in type_samples:
             st = await self.con.prepare(
                 "SELECT $1::" + typname
@@ -236,8 +236,7 @@ class TestCodecs(tb.ConnectedTestCase):
             self.assertEqual(at[0].type.name, intname)
 
     async def test_composites(self):
-        """Test encoding/decoding of composite types"""
-
+        """Test encoding/decoding of composite types."""
         await self.con.execute('''
             CREATE TYPE test_composite AS (
                 a int,
@@ -284,8 +283,7 @@ class TestCodecs(tb.ConnectedTestCase):
             await self.con.execute('DROP TYPE test_composite')
 
     async def test_domains(self):
-        """Test encoding/decoding of composite types"""
-
+        """Test encoding/decoding of composite types."""
         await self.con.execute('''
             CREATE DOMAIN my_dom AS int
         ''')
@@ -320,8 +318,7 @@ class TestCodecs(tb.ConnectedTestCase):
             await self.con.execute('DROP DOMAIN my_dom')
 
     async def test_extra_codec_alias(self):
-        """Test encoding/decoding of a builtin non-pg_catalog codec"""
-
+        """Test encoding/decoding of a builtin non-pg_catalog codec."""
         await self.con.execute('''
             CREATE EXTENSION IF NOT EXISTS hstore
         ''')
@@ -344,8 +341,7 @@ class TestCodecs(tb.ConnectedTestCase):
             ''')
 
     async def test_custom_codec_text(self):
-        """Test encoding/decoding using a custom codec in text mode"""
-
+        """Test encoding/decoding using a custom codec in text mode."""
         await self.con.execute('''
             CREATE EXTENSION IF NOT EXISTS hstore
         ''')

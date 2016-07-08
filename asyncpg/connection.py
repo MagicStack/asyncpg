@@ -33,7 +33,7 @@ class Connection:
 
     async def set_type_codec(self, typename, *,
                              schema='public', encoder, decoder, binary=False):
-        """Set an encoder/decoder pair for the specified data type
+        """Set an encoder/decoder pair for the specified data type.
 
         :param typename:  Name of the data type the codec is for.
         :param schema:  Schema name of the data type the codec is for
@@ -67,7 +67,7 @@ class Connection:
 
     async def set_builtin_type_codec(self, typename, *,
                                      schema='public', codec_name):
-        """Set a builtin codec for the specified data type
+        """Set a builtin codec for the specified data type.
 
         :param typename:  Name of the data type the codec is for.
         :param schema:  Schema name of the data type the codec is for
