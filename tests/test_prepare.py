@@ -1,3 +1,5 @@
+import inspect
+
 from asyncpg import _testbase as tb
 
 
@@ -55,3 +57,41 @@ class TestPrepare(tb.ConnectedTestCase):
     async def test_prepare_5_unknownoid(self):
         s = await self.con.prepare("SELECT 'test'")
         self.assertEqual(await s.get_value(), 'test')
+
+    async def test_prepare_6_with(self):
+        async with self.con.prepare('SELECT $1::smallint') as stmt:
+            self.assertEqual(await stmt.get_value(10), 10)
+
+    async def test_prepare_7_with(self):
+        with self.assertRaisesRegex(RuntimeError, 'nested.*async with'):
+            async with self.con.prepare('SELECT $1::smallint') as stmt:
+                async with stmt:
+                    pass
+
+        with self.assertRaisesRegex(RuntimeError, 'nested.*async with'):
+            s = await self.con.prepare("SELECT 'test'")
+            async with s:
+                async with s:
+                    pass
+
+    async def test_prepare_8_uninitialized(self):
+        methods = {'get_parameters', 'get_attributes', 'get_aiter',
+                   'get_list', 'get_value', 'get_first_row'}
+
+        stmt = self.con.prepare('SELECT $1::smallint')
+
+        for meth in methods:
+            with self.subTest(method=meth, closed=False, initialized=False):
+                with self.assertRaisesRegex(RuntimeError, 'not initialized'):
+                    val = getattr(stmt, meth)()
+                    if inspect.iscoroutine(val):
+                        await val
+
+        await stmt.free()
+
+        for meth in methods:
+            with self.subTest(method=meth, closed=True, initialized=False):
+                with self.assertRaisesRegex(RuntimeError, 'cannot.*closed'):
+                    val = getattr(stmt, meth)()
+                    if inspect.iscoroutine(val):
+                        await val

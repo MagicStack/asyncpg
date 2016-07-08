@@ -28,19 +28,8 @@ class Connection:
     async def execute(self, script):
         await self._protocol.query(script)
 
-    async def prepare(self, query):
-        state = await self._protocol.prepare(None, query)
-
-        ready = state._init_types()
-        if ready is not True:
-            if self._types_stmt is None:
-                self._types_stmt = await self.prepare(
-                    introspection.INTRO_LOOKUP_TYPES)
-
-            types = await self._types_stmt.get_list(list(ready))
-            self._protocol.get_settings().register_data_types(types)
-
-        return prepared_stmt.PreparedStatement(self, state)
+    def prepare(self, query):
+        return prepared_stmt.PreparedStatement(self, query)
 
     async def set_type_codec(self, typename, *,
                              schema='public', encoder, decoder, binary=False):
