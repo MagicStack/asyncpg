@@ -238,7 +238,6 @@ cdef class PreparedStatementState:
             if not PyMemoryView_Check(row):
                 raise RuntimeError('memoryview expected')
 
-            dec_row = []
             row_len = len(row)
 
             pybuf = PyMemoryView_GET_BUFFER(row)
@@ -253,17 +252,21 @@ cdef class PreparedStatementState:
                     'different from what was described ({})'.format(
                         fnum, self.cols_num))
 
-            for i from 0 <= i < self.cols_num:
+            dec_row = cpython.PyList_New(fnum)
+            for i from 0 <= i < fnum:
                 flen = hton.unpack_int32(cbuf)
                 cbuf += 4
 
                 if flen == -1:
-                    dec_row.append(None)
+                    cpython.Py_INCREF(None)
+                    cpython.PyList_SET_ITEM(dec_row, i, None)
                     continue
 
                 codec = <Codec>self.rows_codecs[i]
 
-                dec_row.append(codec.decode(self.settings, cbuf, flen))
+                val = codec.decode(self.settings, cbuf, flen)
+                cpython.Py_INCREF(val)
+                cpython.PyList_SET_ITEM(dec_row, i, val)
                 cbuf += flen
 
                 if cbuf - <char*>pybuf.buf > row_len:
