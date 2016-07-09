@@ -1,6 +1,7 @@
 import asyncio
 import getpass
 import os
+import socket
 import urllib.parse
 
 from .exceptions import *
@@ -33,8 +34,9 @@ async def connect(dsn=None, *,
     last_ex = None
     for h in host:
         connected = _create_future(loop)
+        unix = h.startswith('/')
 
-        if h.startswith('/'):
+        if unix:
             # UNIX socket name
             sname = os.path.join(h, '.s.PGSQL.{}'.format(port))
             conn = loop.create_unix_connection(
@@ -52,6 +54,11 @@ async def connect(dsn=None, *,
         except (OSError, asyncio.TimeoutError) as ex:
             last_ex = ex
         else:
+            if not unix:
+                sock = tr.get_extra_info('socket')
+                if hasattr(socket, 'TCP_NODELAY'):
+                    sock.setsockopt(socket.IPPROTO_TCP,
+                                    socket.TCP_NODELAY, 1)
             break
     else:
         raise last_ex
