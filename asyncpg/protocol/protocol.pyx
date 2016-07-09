@@ -245,7 +245,9 @@ cdef class BaseProtocol(CoreProtocol):
             if result.rows is None:
                 waiter.set_result(None)
             else:
-                waiter.set_result(stmt._decode_rows(result.rows))
+                rows = result.rows
+                result.rows = None
+                waiter.set_result(stmt._decode_rows(rows))
 
             self._state = STATE_READY
 

@@ -220,7 +220,7 @@ cdef class PreparedStatementState:
         self.parameters_desc = _decode_parameters_desc(desc)
         self.args_num = <int16_t>(len(self.parameters_desc))
 
-    cdef _decode_rows(self, rows):
+    cdef _decode_rows(self, list rows):
         cdef:
             Codec codec
             Py_buffer *pybuf
@@ -230,10 +230,11 @@ cdef class PreparedStatementState:
             list result
             list dec_row
             int row_len
+            int idx
 
-        result = []
+        for idx in range(len(rows)):
+            row = rows[idx]
 
-        for row in rows:
             if not PyMemoryView_Check(row):
                 raise RuntimeError('memoryview expected')
 
@@ -268,9 +269,9 @@ cdef class PreparedStatementState:
                 if cbuf - <char*>pybuf.buf > row_len:
                     raise RuntimeError('buffer overrun')
 
-            result.append(Record.new(self.cols_mapping, dec_row))
+            rows[idx] = Record.new(self.cols_mapping, dec_row)
 
-        return result
+        return rows
 
 
 cdef _decode_parameters_desc(object desc):
