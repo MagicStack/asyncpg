@@ -29,3 +29,4 @@ debug: check-env clean
 test:
 	PYTHONASYNCIODEBUG=1 python -m unittest discover -s tests
 	python -m unittest discover -s tests
+	USE_UVLOOP=1 python -m unittest discover -s tests
