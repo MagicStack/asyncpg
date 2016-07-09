@@ -238,11 +238,9 @@ cdef class PreparedStatementState:
             if not PyMemoryView_Check(row):
                 raise RuntimeError('memoryview expected')
 
-            row_len = len(row)
-
             pybuf = PyMemoryView_GET_BUFFER(row)
-
             cbuf = <char*>pybuf.buf
+            row_len = pybuf.len
             fnum = hton.unpack_int16(cbuf)
             cbuf += 2
 
