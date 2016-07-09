@@ -123,6 +123,13 @@ cdef class WriteBuffer:
         self._buf[self._length] = b
         self._length += 1
 
+    cdef write_bytes(self, bytes data):
+        cdef char* buf
+        cdef ssize_t len
+
+        cpython.PyBytes_AsStringAndSize(data, &buf, &len)
+        self.write_cstr(buf, len)
+
     cdef write_bytestring(self, bytes string):
         cdef char* buf
         cdef ssize_t len

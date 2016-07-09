@@ -79,7 +79,8 @@ cdef class CoreProtocol:
 
             if mtype == b'E':
                 # Notice; ignore it
-                self.buffer.consume_message()
+                # self.buffer.consume_message()
+                pass
 
             elif mtype == b'S':
                 self._parse_server_parameter_status()
@@ -150,12 +151,7 @@ cdef class CoreProtocol:
 
             elif mtype == b'1':
                 # Parse Complete
-                # If we're doing prepare, we're done; else ignore
-                if self._query_class == PGQUERY_PREPARE:
-                    if self._result is None:
-                        self._result = Result.new(PGRES_COMMAND_OK)
-                    self._async_status = PGASYNC_READY
-                    self._push_result()
+                pass
 
             elif mtype == b'2':
                 # Bind Complete
@@ -457,21 +453,33 @@ cdef class CoreProtocol:
         self._async_status = PGASYNC_BUSY
         self._write(buf)
 
-    cdef _parse(self, str stmt_name, str query):
-        cdef WriteBuffer buf
+    cdef _prepare(self, str stmt_name, str query):
+        cdef:
+            WriteBuffer packet
+            WriteBuffer buf
 
         self._ensure_ready_state()
+
+        packet = WriteBuffer.new()
 
         buf = WriteBuffer.new_message(b'P')
         buf.write_str(stmt_name, self._encoding)
         buf.write_str(query, self._encoding)
         buf.write_int16(0)
         buf.end_message()
-        self._write(buf)
+        packet.write_buffer(buf)
 
-        self._write_sync_message()
+        buf = WriteBuffer.new_message(b'D')
+        buf.write_byte(b'S')
+        buf.write_str(stmt_name, self._encoding)
+        buf.end_message()
+        packet.write_buffer(buf)
 
-        self._query_class = PGQUERY_PREPARE
+        packet.write_bytes(SYNC_MESSAGE)
+
+        self.transport.write(memoryview(packet))
+
+        self._query_class = PGQUERY_DESCRIBE
         self._async_status = PGASYNC_BUSY
 
     cdef _bind(self, str portal_name, str stmt_name, WriteBuffer bind_data):
@@ -499,27 +507,6 @@ cdef class CoreProtocol:
 
         self._result = Result.new(PGRES_TUPLES_OK)
         self._query_class = PGQUERY_EXTENDED
-        self._async_status = PGASYNC_BUSY
-
-    cdef _describe(self, str name, bint is_portal):
-        cdef WriteBuffer buf
-
-        self._ensure_ready_state()
-
-        buf = WriteBuffer.new_message(b'D')
-
-        if is_portal:
-            buf.write_byte(b'P')
-        else:
-            buf.write_byte(b'S')
-
-        buf.write_str(name, self._encoding)
-        buf.end_message()
-        self._write(buf)
-
-        self._write_sync_message()
-
-        self._query_class = PGQUERY_DESCRIBE
         self._async_status = PGASYNC_BUSY
 
     cdef _close(self, str name, bint is_portal):

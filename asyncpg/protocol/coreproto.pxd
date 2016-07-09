@@ -122,9 +122,8 @@ cdef class CoreProtocol:
 
     cdef _connect(self)
     cdef _query(self, str query)
-    cdef _parse(self, str stmt_name, str query)
+    cdef _prepare(self, str stmt_name, str query)
     cdef _bind(self, str portal_name, str stmt_name, WriteBuffer bind_data)
-    cdef _describe(self, str name, bint is_portal)
     cdef _close(self, str name, bint is_portal)
 
     cdef _on_result(self, Result result)

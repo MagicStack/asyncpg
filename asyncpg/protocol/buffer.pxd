@@ -26,6 +26,7 @@ cdef class WriteBuffer:
     cdef inline end_message(self)
     cdef write_buffer(self, WriteBuffer buf)
     cdef write_byte(self, char b)
+    cdef write_bytes(self, bytes data)
     cdef write_bytestring(self, bytes string)
     cdef write_str(self, str string, str encoding)
     cdef write_cstr(self, char *data, ssize_t len)

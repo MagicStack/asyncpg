@@ -82,7 +82,7 @@ cdef class BaseProtocol(CoreProtocol):
 
     def prepare(self, name, query):
         self._N = 0
-        self._start_state(STATE_PREPARE_BIND)
+        self._start_state(STATE_PREPARE_DESCRIBE)
         if name is None:
             name = self._gen_id('prepared_statement')
         if self._prepared_stmt is not None:
@@ -91,7 +91,7 @@ cdef class BaseProtocol(CoreProtocol):
         self._prepared_stmt = PreparedStatementState(name, query, self)
 
         self._waiter = self._create_future()
-        self._parse(name, query)
+        self._prepare(name, query)
         return self._waiter
 
     def execute(self, state, args):
@@ -214,10 +214,6 @@ cdef class BaseProtocol(CoreProtocol):
         if self._state == STATE_QUERY:
             waiter.set_result(1)
             self._state = STATE_READY
-
-        elif self._state == STATE_PREPARE_BIND:
-            self._state = STATE_PREPARE_DESCRIBE
-            self._describe(self._prepared_stmt.name, 0)
 
         elif self._state == STATE_PREPARE_DESCRIBE:
             self._N += 1
