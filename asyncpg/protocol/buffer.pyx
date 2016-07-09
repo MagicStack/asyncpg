@@ -236,6 +236,12 @@ cdef class ReadBuffer:
                         'debug: second buffer of ReadBuffer is empty')
 
     cdef inline read_byte(self):
+        cdef char* first_byte
+
+        first_byte = self._try_read_bytes(1)
+        if first_byte != NULL:
+            return first_byte[0]
+
         if self._length < 1:
             raise BufferError('not enough data to read one byte')
 
@@ -262,6 +268,7 @@ cdef class ReadBuffer:
 
         cdef:
             char * result
+            Py_buffer *pybuf
 
         if nbytes > self._length:
             return NULL
@@ -271,7 +278,8 @@ cdef class ReadBuffer:
                 return NULL
 
         if self._pos0 + nbytes <= self._len0:
-            result = cpython.PyBytes_AsString(self._buf0)
+            pybuf = PyMemoryView_GET_BUFFER(self._buf0_view)
+            result = <char*>pybuf.buf
             result += self._pos0
             self._pos0 += nbytes
             self._length -= nbytes
