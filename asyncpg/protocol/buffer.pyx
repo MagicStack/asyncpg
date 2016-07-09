@@ -238,29 +238,17 @@ cdef class ReadBuffer:
     cdef inline read_byte(self):
         cdef char* first_byte
 
-        first_byte = self._try_read_bytes(1)
-        if first_byte != NULL:
-            return first_byte[0]
-
-        if self._length < 1:
-            raise BufferError('not enough data to read one byte')
-
         IF DEBUG:
             if not self._buf0:
                 raise RuntimeError(
                     'debug: first buffer of ReadBuffer is empty')
 
         self._ensure_first_buf()
+        first_byte = self._try_read_bytes(1)
+        if first_byte is NULL:
+            raise BufferError('not enough data to read one byte')
 
-        if self._current_message_ready:
-            self._current_message_len_unread -= 1
-            if self._current_message_len_unread < 0:
-                raise BufferError('buffer overread')
-
-        byte = self._buf0[self._pos0]
-        self._pos0 += 1
-        self._length -= 1
-        return byte
+        return first_byte[0]
 
     cdef inline char* _try_read_bytes(self, int nbytes):
         # Important: caller must call _ensure_first_buf() prior
