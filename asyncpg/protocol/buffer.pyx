@@ -185,6 +185,7 @@ cdef class ReadBuffer:
         self._bufs = collections.deque()
         self._bufs_len = 0
         self._buf0 = None
+        self._buf0_view = None
         self._pos0 = 0
         self._len0 = 0
         self._length = 0
@@ -208,6 +209,7 @@ cdef class ReadBuffer:
             # First buffer
             self._len0 = dlen
             self._buf0 = data
+            self._buf0_view = memoryview(self._buf0)
 
         self._bufs_len += 1
 
@@ -223,6 +225,7 @@ cdef class ReadBuffer:
             # Shouldn't fail, since we've checked that `_length >= 1`
             # in the beginning of this method.
             self._buf0 = self._bufs[0]
+            self._buf0_view = memoryview(self._buf0)
 
             self._pos0 = 0
             self._len0 = len(self._buf0)
@@ -295,8 +298,7 @@ cdef class ReadBuffer:
                 raise BufferError('buffer overread')
 
         if self._pos0 + nbytes <= self._len0:
-            result = memoryview(self._buf0)
-            result = result[self._pos0 : self._pos0 + nbytes]
+            result = self._buf0_view[self._pos0 : self._pos0 + nbytes]
             self._pos0 += nbytes
             self._length -= nbytes
             return result
@@ -304,7 +306,7 @@ cdef class ReadBuffer:
         result = bytearray()
         while True:
             if self._pos0 + nbytes > self._len0:
-                result.extend(self._buf0[self._pos0:])
+                result.extend(self._buf0_view[self._pos0:])
                 nread = self._len0 - self._pos0
                 self._pos0 = self._len0
                 self._length -= nread
@@ -312,7 +314,7 @@ cdef class ReadBuffer:
                 self._ensure_first_buf()
 
             else:
-                result.extend(self._buf0[self._pos0:self._pos0 + nbytes])
+                result.extend(self._buf0_view[self._pos0:self._pos0 + nbytes])
                 self._pos0 += nbytes
                 self._length -= nbytes
                 return memoryview(result)
@@ -370,7 +372,7 @@ cdef class ReadBuffer:
         while True:
             pos = self._buf0.find(b'\x00', self._pos0)
             if pos >= 0:
-                result += self._buf0[self._pos0 : pos]
+                result += self._buf0_view[self._pos0 : pos]
                 nread = pos - self._pos0 + 1
                 self._pos0 = pos + 1
                 self._length -= nread
@@ -382,7 +384,7 @@ cdef class ReadBuffer:
                 return result
 
             else:
-                result += self._buf0[self._pos0:]
+                result += self._buf0_view[self._pos0:]
                 nread = self._len0 - self._pos0
                 self._pos0 = self._len0
                 self._length -= nread

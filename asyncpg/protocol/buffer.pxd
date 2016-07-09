@@ -47,6 +47,7 @@ cdef class ReadBuffer:
 
         # A pointer to the first buffer in `_bufs`
         object _buf0
+        object _buf0_view
 
         # Number of buffers in `_bufs`
         int _bufs_len
