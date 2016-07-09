@@ -131,3 +131,10 @@ class TestPrepare(tb.ConnectedTestCase):
 
         # Test that it's OK to call terminate again
         self.con.terminate()
+
+    async def test_prepare_11_connection_reset(self):
+        stmt = await self.con.prepare('SELECT $1::smallint')
+        await self.con.reset()
+
+        with self.assertRaisesRegex(RuntimeError, 'cannot.*closed'):
+            stmt.get_parameters()

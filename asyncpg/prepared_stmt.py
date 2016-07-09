@@ -58,6 +58,7 @@ class PreparedStatement:
         if self._state is None:
             return
 
+        await self._connection._protocol.close_statement(self._state)
         self._state = None
 
     # Private methods:

@@ -163,7 +163,11 @@ cdef class CoreProtocol:
 
             elif mtype == b'3':
                 # Close Complete
-                pass
+                if self._query_class == PGQUERY_CLOSE:
+                    self._async_status = PGASYNC_READY
+                    if self._result is None:
+                        self._result = Result.new(PGRES_COMMAND_OK)
+                    self._push_result()
 
             elif mtype == b'S':
                 # Parameter Status
@@ -516,6 +520,27 @@ cdef class CoreProtocol:
         self._write_sync_message()
 
         self._query_class = PGQUERY_DESCRIBE
+        self._async_status = PGASYNC_BUSY
+
+    cdef _close(self, str name, bint is_portal):
+        cdef WriteBuffer buf
+
+        self._ensure_ready_state()
+
+        buf = WriteBuffer.new_message(b'C')
+
+        if is_portal:
+            buf.write_byte(b'P')
+        else:
+            buf.write_byte(b'S')
+
+        buf.write_str(name, self._encoding)
+        buf.end_message()
+        self._write(buf)
+
+        self._write_sync_message()
+
+        self._query_class = PGQUERY_CLOSE
         self._async_status = PGASYNC_BUSY
 
     cdef _on_result(self, Result result):

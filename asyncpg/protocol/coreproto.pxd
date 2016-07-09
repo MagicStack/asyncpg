@@ -26,6 +26,7 @@ cdef enum QueryClass:
     PGQUERY_EXTENDED = 1             # full Extended protocol (PQexecParams)
     PGQUERY_PREPARE = 2              # Parse only (PQprepare)
     PGQUERY_DESCRIBE = 3             # Describe Statement or Portal
+    PGQUERY_CLOSE = 4
 
 cdef enum ExecStatusType:
     PGRES_EMPTY_QUERY = 0            # empty query string was executed
@@ -124,6 +125,8 @@ cdef class CoreProtocol:
     cdef _parse(self, str stmt_name, str query)
     cdef _bind(self, str portal_name, str stmt_name, WriteBuffer bind_data)
     cdef _describe(self, str name, bint is_portal)
+    cdef _close(self, str name, bint is_portal)
+
     cdef _on_result(self, Result result)
     cdef _on_fatal_error(self, exc)
     cdef _on_connection_lost(self, exc)

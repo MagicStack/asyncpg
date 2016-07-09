@@ -6,7 +6,8 @@ from . import transaction
 class Connection:
 
     __slots__ = ('_protocol', '_transport', '_loop', '_types_stmt',
-                 '_type_by_name_stmt', '_top_xact', '_uid', '_aborted')
+                 '_type_by_name_stmt', '_top_xact', '_uid', '_aborted',
+                 '_prepared')
 
     def __init__(self, protocol, transport, loop):
         self._protocol = protocol
@@ -17,6 +18,7 @@ class Connection:
         self._top_xact = None
         self._uid = 0
         self._aborted = False
+        self._prepared = set()
 
     def get_settings(self):
         return self._protocol.get_settings()
@@ -30,7 +32,9 @@ class Connection:
         await self._protocol.query(script)
 
     def prepare(self, query):
-        return prepared_stmt.PreparedStatement(self, query)
+        stmt = prepared_stmt.PreparedStatement(self, query)
+        self._prepared.add(stmt)
+        return stmt
 
     async def set_type_codec(self, typename, *,
                              schema='public', encoder, decoder, binary=False):
@@ -92,6 +96,21 @@ class Connection:
 
         self._protocol.get_settings().set_builtin_type_codec(
             oid, typename, schema, 'scalar', codec_name)
+
+    async def reset(self):
+        """Close all associated prepared statements and cursors."""
+        whitelist = set()
+        if self._types_stmt is not None:
+            whitelist.add(self._types_stmt)
+        if self._type_by_name_stmt is not None:
+            whitelist.add(self._type_by_name_stmt)
+
+        for stmt in self._prepared:
+            if stmt in whitelist:
+                continue
+            await stmt.close()
+
+        self._prepared = whitelist
 
     def is_closed(self):
         return self._protocol.is_closed() or self._aborted

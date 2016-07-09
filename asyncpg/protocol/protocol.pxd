@@ -24,6 +24,8 @@ cdef enum ProtocolState:
 
     STATE_QUERY = 40
 
+    STATE_CLOSE_STMT = 50
+
     STATE_CLOSING = 100
     STATE_CLOSED = 101
 
