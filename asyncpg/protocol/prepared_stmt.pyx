@@ -171,7 +171,7 @@ cdef class PreparedStatementState:
             Codec codec
             list codecs
 
-        if self.cols_num == 0:
+        if self.cols_num == 0 or self.cols_mapping is not None:
             return
 
         cols_mapping = {}
@@ -197,7 +197,7 @@ cdef class PreparedStatementState:
             Codec codec
             list codecs = []
 
-        if self.args_num == 0:
+        if self.args_num == 0 or self.args_codecs is not None:
             return
 
         for i from 0 <= i < self.args_num:
