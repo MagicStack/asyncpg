@@ -3,6 +3,8 @@ cdef class PreparedStatementState:
         readonly str name
         readonly str query
         readonly bint closed
+        readonly int refs
+
         list         row_desc
         list         parameters_desc
 

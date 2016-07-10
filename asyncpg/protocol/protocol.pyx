@@ -116,14 +116,23 @@ cdef class BaseProtocol(CoreProtocol):
         return self._state == STATE_CLOSING or self._state == STATE_CLOSED
 
     def close_statement(self, state):
+        cdef PreparedStatementState s
+
         if type(state) is not PreparedStatementState:
             raise TypeError(
                 'state must be an instance of PreparedStatementState')
 
+        s = <PreparedStatementState>state
+
+        if s.refs != 0:
+            raise RuntimeError(
+                'cannot close prepared statement; refs == {} != 0'.format(
+                    s.refs))
+
         self._start_state(STATE_EXECUTE)
 
-        self._close((<PreparedStatementState>state).name, False)
-        (<PreparedStatementState>state).closed = True
+        self._close(s.name, False)
+        s.closed = True
 
         self._waiter = self._create_future()
         return self._waiter

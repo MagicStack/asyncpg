@@ -10,6 +10,7 @@ class PreparedStatement:
         self._connection = connection
         self._state = state
         self._query = query
+        state.attach()
 
     def get_parameters(self):
         self.__check_open()
@@ -50,6 +51,9 @@ class PreparedStatement:
     def __check_open(self):
         if self._state.closed:
             raise RuntimeError('prepared statement is closed')
+
+    def __del__(self):
+        self._state.detach()
 
 
 class PreparedStatementIterator:

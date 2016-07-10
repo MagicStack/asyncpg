@@ -63,6 +63,7 @@ cdef class PreparedStatementState:
         self.args_num = self.cols_num = 0
         self.cols_mapping = None
         self.closed = False
+        self.refs = 0
 
     def _get_parameters(self):
         cdef Codec codec
@@ -118,6 +119,15 @@ cdef class PreparedStatementState:
             return result
         else:
             return True
+
+    def attach(self):
+        self.refs += 1
+
+    def detach(self):
+        self.refs -= 1
+
+    def mark_closed(self):
+        self.closed = True
 
     cdef _encode_bind_msg(self, args):
         cdef:

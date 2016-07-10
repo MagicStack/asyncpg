@@ -1,3 +1,5 @@
+import collections
+
 from . import introspection
 from . import prepared_stmt
 from . import transaction
@@ -6,7 +8,8 @@ from . import transaction
 class Connection:
 
     __slots__ = ('_protocol', '_transport', '_loop', '_types_stmt',
-                 '_type_by_name_stmt', '_top_xact', '_uid', '_aborted')
+                 '_type_by_name_stmt', '_top_xact', '_uid', '_aborted',
+                 '_stmt_cache_max_size', '_stmt_cache', '_stmts_to_close')
 
     def __init__(self, protocol, transport, loop):
         self._protocol = protocol
@@ -17,6 +20,10 @@ class Connection:
         self._top_xact = None
         self._uid = 0
         self._aborted = False
+
+        self._stmt_cache_max_size = 100
+        self._stmt_cache = collections.OrderedDict()
+        self._stmts_to_close = set()
 
     def get_settings(self):
         return self._protocol.get_settings()
@@ -30,6 +37,15 @@ class Connection:
         await self._protocol.query(script)
 
     async def prepare(self, query):
+        try:
+            state = self._stmt_cache[query]
+        except KeyError:
+            pass
+        else:
+            self._stmt_cache.move_to_end(query, last=True)
+            if not state.closed:
+                return prepared_stmt.PreparedStatement(self, query, state)
+
         protocol = self._protocol
         state = await protocol.prepare(None, query)
 
@@ -41,6 +57,13 @@ class Connection:
 
             types = await self._types_stmt.get_list(list(ready))
             protocol.get_settings().register_data_types(types)
+
+        if len(self._stmt_cache) > self._stmt_cache_max_size - 1:
+            old_query, old_state = self._stmt_cache.popitem(last=False)
+            self._stmts_to_close.add(old_state)
+            await self._cleanup_stmts()
+
+        self._stmt_cache[query] = state
 
         return prepared_stmt.PreparedStatement(self, query, state)
 
@@ -111,13 +134,38 @@ class Connection:
     async def close(self):
         if self.is_closed():
             return
-        self._transport.close()
+        self._close_stmts()
+        self._aborted = True
+        self._transport.abort()
         await self._protocol.close()
 
     def terminate(self):
+        self._close_stmts()
         self._aborted = True
         self._transport.abort()
 
     def _get_unique_id(self):
         self._uid += 1
         return 'id{}'.format(self._uid)
+
+    def _close_stmts(self):
+        for stmt in self._stmt_cache.values():
+            stmt.mark_closed()
+
+        for stmt in self._stmts_to_close:
+            stmt.mark_closed()
+
+        self._stmt_cache.clear()
+        self._stmts_to_close.clear()
+
+    async def _cleanup_stmts(self):
+        removed = None
+        for stmt in self._stmts_to_close:
+            if stmt.refs == 0:
+                await self._protocol.close_statement(stmt)
+                if removed is None:
+                    removed = set()
+                removed.add(stmt)
+
+        if removed is not None:
+            self._stmts_to_close -= removed
