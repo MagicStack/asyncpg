@@ -220,7 +220,7 @@ cdef class PreparedStatementState:
         self.parameters_desc = _decode_parameters_desc(desc)
         self.args_num = <int16_t>(len(self.parameters_desc))
 
-    cdef _decode_rows(self, list rows):
+    cdef _decode_row(self, Memory mem):
         cdef:
             Codec codec
             Py_buffer *pybuf
@@ -231,45 +231,39 @@ cdef class PreparedStatementState:
             list dec_row
             int row_len
             int idx
-            Memory mem
 
-        for idx in range(len(rows)):
-            mem = <Memory>rows[idx]
+        cbuf = mem.buf
+        row_len = mem.length
+        fnum = hton.unpack_int16(cbuf)
+        cbuf += 2
 
-            cbuf = mem.buf
-            row_len = mem.length
-            fnum = hton.unpack_int16(cbuf)
-            cbuf += 2
+        if fnum != self.cols_num:
+            raise RuntimeError(
+                'number of columns in result ({}) is '
+                'different from what was described ({})'.format(
+                    fnum, self.cols_num))
 
-            if fnum != self.cols_num:
-                raise RuntimeError(
-                    'number of columns in result ({}) is '
-                    'different from what was described ({})'.format(
-                        fnum, self.cols_num))
+        dec_row = cpython.PyList_New(fnum)
+        for i from 0 <= i < fnum:
+            flen = hton.unpack_int32(cbuf)
+            cbuf += 4
 
-            dec_row = cpython.PyList_New(fnum)
-            for i from 0 <= i < fnum:
-                flen = hton.unpack_int32(cbuf)
-                cbuf += 4
+            if flen == -1:
+                cpython.Py_INCREF(None)
+                cpython.PyList_SET_ITEM(dec_row, i, None)
+                continue
 
-                if flen == -1:
-                    cpython.Py_INCREF(None)
-                    cpython.PyList_SET_ITEM(dec_row, i, None)
-                    continue
+            codec = <Codec>self.rows_codecs[i]
 
-                codec = <Codec>self.rows_codecs[i]
+            val = codec.decode(self.settings, cbuf, flen)
+            cpython.Py_INCREF(val)
+            cpython.PyList_SET_ITEM(dec_row, i, val)
+            cbuf += flen
 
-                val = codec.decode(self.settings, cbuf, flen)
-                cpython.Py_INCREF(val)
-                cpython.PyList_SET_ITEM(dec_row, i, val)
-                cbuf += flen
+            if cbuf - <char*>mem.buf > row_len:
+                raise RuntimeError('buffer overrun')
 
-                if cbuf - <char*>mem.buf > row_len:
-                    raise RuntimeError('buffer overrun')
-
-            rows[idx] = Record.new(self.cols_mapping, dec_row)
-
-        return rows
+        return Record.new(self.cols_mapping, dec_row)
 
 
 cdef _decode_parameters_desc(object desc):

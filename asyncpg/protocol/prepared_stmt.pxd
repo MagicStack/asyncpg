@@ -22,4 +22,4 @@ cdef class PreparedStatementState:
     cdef _ensure_args_encoder(self)
     cdef _set_row_desc(self, object desc)
     cdef _set_args_desc(self, object desc)
-    cdef _decode_rows(self, list rows)
+    cdef _decode_row(self, Memory mem)

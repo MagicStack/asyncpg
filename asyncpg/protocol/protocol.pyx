@@ -171,6 +171,9 @@ cdef class BaseProtocol(CoreProtocol):
     cdef _set_server_parameter(self, key, val):
         self._settings.add_setting(key, val)
 
+    cdef _decode_row(self, Memory mem):
+        return self._prepared_stmt._decode_row(mem)
+
     cdef _on_result(self, Result result):
         cdef:
             ProtocolState old_state = self._state
@@ -241,9 +244,7 @@ cdef class BaseProtocol(CoreProtocol):
             if result.rows is None:
                 waiter.set_result(None)
             else:
-                rows = result.rows
-                result.rows = None
-                waiter.set_result(stmt._decode_rows(rows))
+                waiter.set_result(result.rows)
 
             self._state = STATE_READY
 

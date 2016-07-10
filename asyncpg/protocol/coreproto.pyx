@@ -343,7 +343,8 @@ cdef class CoreProtocol:
         if self._result.rows is None:
             self._result.rows = []
 
-        self._result.rows.append(self.buffer.consume_message())
+        self._result.rows.append(
+            self._decode_row(self.buffer.consume_message()))
 
     cdef _parse_server_error_response(self, is_error):
         cdef:
@@ -541,6 +542,9 @@ cdef class CoreProtocol:
 
     cdef _set_server_parameter(self, key, val):
         pass
+
+    cdef _decode_row(self, Memory mem):
+        return mem
 
     # asyncio callbacks:
 
