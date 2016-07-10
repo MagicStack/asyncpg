@@ -244,22 +244,25 @@ cdef class ReadBuffer:
             raise BufferError('empty first buffer')
 
         if self._pos0 == self._len0:
-            # The first buffer is fully read, discard it
-            self._bufs.popleft()
-            self._bufs_len -= 1
+            self._switch_to_next_buf()
 
-            # Shouldn't fail, since we've checked that `_length >= 1`
-            # in the beginning of this method.
-            self._buf0 = self._bufs[0]
-            self._buf0_view = memoryview(self._buf0)
+    cdef _switch_to_next_buf(self):
+        # The first buffer is fully read, discard it
+        self._bufs.popleft()
+        self._bufs_len -= 1
 
-            self._pos0 = 0
-            self._len0 = len(self._buf0)
+        # Shouldn't fail, since we've checked that `_length >= 1`
+        # in _ensure_first_buf()
+        self._buf0 = self._bufs[0]
+        self._buf0_view = memoryview(self._buf0)
 
-            IF DEBUG:
-                if self._len0 < 1:
-                    raise RuntimeError(
-                        'debug: second buffer of ReadBuffer is empty')
+        self._pos0 = 0
+        self._len0 = len(self._buf0)
+
+        IF DEBUG:
+            if self._len0 < 1:
+                raise RuntimeError(
+                    'debug: second buffer of ReadBuffer is empty')
 
     cdef inline read_byte(self):
         cdef char* first_byte
@@ -463,7 +466,7 @@ cdef class ReadBuffer:
         self._current_message_ready = 1
         return True
 
-    cdef char* try_consume_message(self, int32_t* len):
+    cdef inline char* try_consume_message(self, int32_t* len):
         if not self._current_message_ready:
             return NULL
 

@@ -81,6 +81,7 @@ cdef class ReadBuffer:
 
     cdef feed_data(self, data)
     cdef inline _ensure_first_buf(self)
+    cdef _switch_to_next_buf(self)
     cdef inline read_byte(self)
     cdef inline char* _try_read_bytes(self, int nbytes)
     cdef inline read(self, int nbytes)
@@ -88,7 +89,7 @@ cdef class ReadBuffer:
     cdef inline read_int16(self)
     cdef inline read_cstr(self)
     cdef has_message(self)
-    cdef char* try_consume_message(self, int32_t* len)
+    cdef inline char* try_consume_message(self, int32_t* len)
     cdef consume_message(self)
     cdef discard_message(self)
     cdef inline char get_message_type(self)
