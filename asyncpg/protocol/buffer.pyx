@@ -281,8 +281,9 @@ cdef class ReadBuffer:
             char * result
             Py_buffer *pybuf
 
-        if nbytes > self._length:
-            return NULL
+        IF DEBUG:
+            if nbytes > self._length:
+                return NULL
 
         if self._current_message_ready:
             if self._current_message_len_unread < nbytes:
@@ -304,28 +305,21 @@ cdef class ReadBuffer:
         cdef:
             object result
             int nread
-            Py_buffer *pybuf
+            char *buf
+
+        self._ensure_first_buf()
+        buf = self._try_read_bytes(nbytes)
+        if buf != NULL:
+            return Memory.new(buf, self._buf0_view, nbytes)
 
         if nbytes > self._length:
             raise BufferError(
                 'not enough data to read {} bytes'.format(nbytes))
 
-        self._ensure_first_buf()
-
         if self._current_message_ready:
             self._current_message_len_unread -= nbytes
             if self._current_message_len_unread < 0:
                 raise BufferError('buffer overread')
-
-        if self._pos0 + nbytes <= self._len0:
-            pybuf = PyMemoryView_GET_BUFFER(self._buf0_view)
-            result = Memory.new(
-                <char*>pybuf.buf + self._pos0,
-                self._buf0,
-                nbytes)
-            self._pos0 += nbytes
-            self._length -= nbytes
-            return result
 
         result = bytearray()
         while True:
@@ -350,7 +344,6 @@ cdef class ReadBuffer:
         cdef:
             Memory mem
             char *cbuf
-            Py_buffer *pybuf
 
         self._ensure_first_buf()
         cbuf = self._try_read_bytes(4)
@@ -364,7 +357,6 @@ cdef class ReadBuffer:
         cdef:
             Memory mem
             char *cbuf
-            Py_buffer *pybuf
 
         self._ensure_first_buf()
         cbuf = self._try_read_bytes(2)
@@ -383,9 +375,29 @@ cdef class ReadBuffer:
         cdef:
             int pos
             int nread
-            bytes result = b''
+            bytes result
+            char* buf
+            char* buf_start
+            Py_buffer *pybuf
 
         self._ensure_first_buf()
+
+        pybuf = PyMemoryView_GET_BUFFER(self._buf0_view)
+        buf_start = <char*>pybuf.buf
+        buf = buf_start + self._pos0
+        while buf - buf_start < self._len0:
+            if buf[0] == 0:
+                pos = buf - buf_start
+                nread = pos - self._pos0
+                buf = self._try_read_bytes(nread + 1)
+                if buf != NULL:
+                    return cpython.PyBytes_FromStringAndSize(buf, nread)
+                else:
+                    break
+            else:
+                buf += 1
+
+        result = b''
         while True:
             pos = self._buf0.find(b'\x00', self._pos0)
             if pos >= 0:
@@ -446,7 +458,8 @@ cdef class ReadBuffer:
             discarded = self.consume_message()
             IF DEBUG:
                 print('!!! discarding message {!r} unread data: {!r}'.format(
-                    chr(self._current_message_type), bytes(discarded)))
+                    chr(self._current_message_type),
+                    (<Memory>discarded).as_bytes()))
 
         self._current_message_type = 0
         self._current_message_len = 0
