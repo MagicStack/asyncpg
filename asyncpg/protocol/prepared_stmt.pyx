@@ -62,6 +62,7 @@ cdef class PreparedStatementState:
         self.args_codecs = self.rows_codecs = None
         self.args_num = self.cols_num = 0
         self.cols_mapping = None
+        self.closed = False
 
     def _get_parameters(self):
         cdef Codec codec

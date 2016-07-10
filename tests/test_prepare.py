@@ -60,45 +60,22 @@ class TestPrepare(tb.ConnectedTestCase):
         s = await self.con.prepare("SELECT 'test'")
         self.assertEqual(await s.get_value(), 'test')
 
-    async def test_prepare_6_with(self):
-        async with self.con.prepare('SELECT $1::smallint') as stmt:
-            self.assertEqual(await stmt.get_value(10), 10)
-
-    async def test_prepare_7_with(self):
-        with self.assertRaisesRegex(RuntimeError, 'nested.*async with'):
-            async with self.con.prepare('SELECT $1::smallint') as stmt:
-                async with stmt:
-                    pass
-
-        with self.assertRaisesRegex(RuntimeError, 'nested.*async with'):
-            s = await self.con.prepare("SELECT 'test'")
-            async with s:
-                async with s:
-                    pass
-
-    async def test_prepare_8_uninitialized(self):
+    async def test_prepare_6_closed(self):
         methods = {'get_parameters', 'get_attributes', 'get_aiter',
                    'get_list', 'get_value', 'get_first_row'}
 
-        stmt = self.con.prepare('SELECT $1::smallint')
-
-        for meth in methods:
-            with self.subTest(method=meth, closed=False, initialized=False):
-                with self.assertRaisesRegex(RuntimeError, 'not initialized'):
-                    val = getattr(stmt, meth)()
-                    if inspect.isawaitable(val):
-                        await val
-
-        await stmt.close()
+        stmt = await self.con.prepare('SELECT $1::smallint')
+        await self.con._protocol.close_statement(stmt._state)
 
         for meth in methods:
             with self.subTest(method=meth, closed=True, initialized=False):
-                with self.assertRaisesRegex(RuntimeError, 'cannot.*closed'):
+                with self.assertRaisesRegex(RuntimeError,
+                                            'prepared statement is closed'):
                     val = getattr(stmt, meth)()
                     if inspect.isawaitable(val):
                         await val
 
-    async def test_prepare_9_interrupted_close(self):
+    async def test_prepare_7_interrupted_close(self):
         stmt = await self.con.prepare('''SELECT pg_sleep(10)''')
         fut = self.loop.create_task(stmt.get_list())
 
@@ -115,7 +92,7 @@ class TestPrepare(tb.ConnectedTestCase):
         # Test that it's OK to call close again
         await self.con.close()
 
-    async def test_prepare_10_interrupted_terminate(self):
+    async def test_prepare_8_interrupted_terminate(self):
         stmt = await self.con.prepare('''SELECT pg_sleep(10)''')
         fut = self.loop.create_task(stmt.get_value())
 
@@ -132,23 +109,16 @@ class TestPrepare(tb.ConnectedTestCase):
         # Test that it's OK to call terminate again
         self.con.terminate()
 
-    async def test_prepare_11_connection_reset(self):
-        stmt = await self.con.prepare('SELECT $1::smallint')
-        await self.con.reset()
-
-        with self.assertRaisesRegex(RuntimeError, 'cannot.*closed'):
-            stmt.get_parameters()
-
-    async def test_prepare_12_big_result(self):
-        async with self.con.prepare('select generate_series(0,10000)') as stmt:
-            result = await stmt.get_list()
+    async def test_prepare_9_big_result(self):
+        stmt = await self.con.prepare('select generate_series(0,10000)')
+        result = await stmt.get_list()
 
         self.assertEqual(len(result), 10001)
         self.assertEqual(
             [r[0] for r in result],
             list(range(10001)))
 
-    async def test_prepare_13_raise_error(self):
+    async def test_prepare_10_raise_error(self):
         # Stress test ReadBuffer.read_cstr()
         msg = '0' * 1024 * 100
         query = """

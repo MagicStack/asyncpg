@@ -123,6 +123,7 @@ cdef class BaseProtocol(CoreProtocol):
         self._start_state(STATE_EXECUTE)
 
         self._close((<PreparedStatementState>state).name, False)
+        (<PreparedStatementState>state).closed = True
 
         self._waiter = self._create_future()
         return self._waiter

@@ -2,6 +2,7 @@ cdef class PreparedStatementState:
     cdef:
         readonly str name
         readonly str query
+        readonly bint closed
         list         row_desc
         list         parameters_desc
 
