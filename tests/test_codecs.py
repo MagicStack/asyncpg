@@ -191,30 +191,30 @@ type_samples = [
         '{"a": [1, 2], "b": 0}'
     ]),
     ('oid[]', 'oid[]', [
-        [1, 2, 3, 4],
-        []
+        (1, 2, 3, 4),
+        ()
     ]),
     ('smallint[]', 'int2[]', [
-        [1, 2, 3, 4],
-        [1, 2, 3, 4, 5, 6, 7, 8, 9, 0],
-        []
+        (1, 2, 3, 4),
+        (1, 2, 3, 4, 5, 6, 7, 8, 9, 0),
+        ()
     ]),
     ('bigint[]', 'int8[]', [
-        [2 ** 42, -2 ** 54, 0],
-        []
+        (2 ** 42, -2 ** 54, 0),
+        ()
     ]),
     ('int[]', 'int4[]', [
-        [2 ** 22, -2 ** 24, 0],
-        []
+        (2 ** 22, -2 ** 24, 0),
+        ()
     ]),
     ('time[]', 'time[]', [
-        [datetime.time(12, 15, 20), datetime.time(0, 1, 1)],
-        []
+        (datetime.time(12, 15, 20), datetime.time(0, 1, 1)),
+        ()
     ]),
     ('text[]', 'text[]', [
-        ['ABCDE', 'EDCBA'],
-        [],
-        ['A' * 1024 * 1024] * 10
+        ('ABCDE', 'EDCBA'),
+        (),
+        ('A' * 1024 * 1024,) * 10
     ])
 ]
 
@@ -273,11 +273,11 @@ class TestCodecs(tb.ConnectedTestCase):
 
             self.assertIsNone(res['a'])
             self.assertEqual(res['b'], '5678')
-            self.assertEqual(res['c'], [9, None, 11])
+            self.assertEqual(res['c'], (9, None, 11))
 
             self.assertIsNone(res[0])
             self.assertEqual(res[1], '5678')
-            self.assertEqual(res[2], [9, None, 11])
+            self.assertEqual(res[2], (9, None, 11))
 
             at = st.get_attributes()
             self.assertEqual(len(at), 1)

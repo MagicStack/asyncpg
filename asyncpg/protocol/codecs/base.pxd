@@ -41,7 +41,7 @@ cdef class Codec:
         Codec           element_codec
 
         # composite types
-        list            element_type_oids
+        tuple           element_type_oids
         dict            element_names
         list            element_codecs
 
@@ -72,7 +72,7 @@ cdef class Codec:
                                    str name,
                                    str schema,
                                    list element_codecs,
-                                   list element_type_oids,
+                                   tuple element_type_oids,
                                    dict element_names)
 
     @staticmethod

@@ -88,7 +88,7 @@ cdef class Codec:
             decode_func df
 
             # For arrays:
-            list result
+            tuple result
             int32_t ndims
             uint32_t elem_count
             const char *ptr
@@ -107,25 +107,29 @@ cdef class Codec:
             return df(settings, data, len)
 
         elif self.type == CODEC_ARRAY:
-            result = []
             ndims = hton.unpack_int32(data)
             elem_count = hton.unpack_int32(&data[12])
             ptr = &data[20]
             if ndims > 0:
+                result = cpython.PyTuple_New(elem_count)
                 for i in range(elem_count):
                     elem_len = hton.unpack_int32(ptr)
                     ptr += 4
                     if elem_len == -1:
-                        result.append(None)
+                        elem = None
                     else:
-                        result.append(self.element_codec.decode(
-                            settings, ptr, elem_len))
+                        elem = self.element_codec.decode(
+                            settings, ptr, elem_len)
                         ptr += elem_len
+                    cpython.Py_INCREF(elem)
+                    cpython.PyTuple_SET_ITEM(result, i, elem)
+            else:
+                result = ()
             return result
 
         elif self.type == CODEC_COMPOSITE:
             elem_count = hton.unpack_int32(data)
-            result = []
+            result = cpython.PyTuple_New(elem_count)
             ptr = &data[4]
             for i in range(elem_count):
                 elem_typ = self.element_type_oids[i]
@@ -143,13 +147,16 @@ cdef class Codec:
                 ptr += 4
 
                 if elem_len == -1:
-                    result.append(None)
+                    elem = None
                 else:
                     elem_codec = self.element_codecs[i]
-                    result.append(elem_codec.decode(settings, ptr, elem_len))
+                    elem = elem_codec.decode(settings, ptr, elem_len)
                     ptr += elem_len
 
-            return Record.new(self.element_names, tuple(result))
+                cpython.Py_INCREF(elem)
+                cpython.PyTuple_SET_ITEM(result, i, elem)
+
+            return Record.new(self.element_names, result)
 
         elif self.type == CODEC_PY:
             if self.format == PG_FORMAT_BINARY:
@@ -225,7 +232,7 @@ cdef class Codec:
                                    str name,
                                    str schema,
                                    list element_codecs,
-                                   list element_type_oids,
+                                   tuple element_type_oids,
                                    dict element_names):
         cdef Codec codec
         codec = Codec(oid, name, schema, 'composite')

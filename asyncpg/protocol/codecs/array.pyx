@@ -35,23 +35,29 @@ cdef inline array_encode(ConnectionSettings settings, WriteBuffer buf,
 cdef inline array_decode(ConnectionSettings settings, const char *data,
                          int32_t len, decode_func decoder):
      cdef:
-         list result = []
          int32_t ndims = hton.unpack_int32(data)
          int32_t flags = hton.unpack_int32(&data[4])
          uint32_t elem_oid = hton.unpack_int32(&data[8])
          uint32_t elem_count = hton.unpack_int32(&data[12])
+         tuple result
          const char *ptr = &data[20]
          uint32_t i
          int32_t elem_len
 
      if ndims > 0:
+         result = cpython.PyTuple_New(elem_count)
+
          for i in range(elem_count):
              elem_len = hton.unpack_int32(ptr)
              if elem_len == -1:
-                 result.append(None)
+                 elem = None
              else:
-                 result.append(decoder(settings, &ptr[4], elem_len))
+                 elem = decoder(settings, &ptr[4], elem_len)
+             cpython.Py_INCREF(elem)
+             cpython.PyTuple_SET_ITEM(result, i, elem)
              ptr += 4 + elem_len
+     else:
+         result = ()
 
      return result
 
