@@ -171,8 +171,8 @@ cdef class BaseProtocol(CoreProtocol):
     cdef _set_server_parameter(self, key, val):
         self._settings.add_setting(key, val)
 
-    cdef _decode_row(self, Memory mem):
-        return self._prepared_stmt._decode_row(mem)
+    cdef _decode_row(self, const char* buf, int32_t buf_len):
+        return self._prepared_stmt._decode_row(buf, buf_len)
 
     cdef _on_result(self, Result result):
         cdef:

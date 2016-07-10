@@ -59,24 +59,24 @@ cdef class ReadBuffer:
         object _bufs
 
         # A pointer to the first buffer in `_bufs`
-        object _buf0
+        bytes _buf0
         object _buf0_view
 
         # Number of buffers in `_bufs`
-        int _bufs_len
+        int32_t _bufs_len
 
         # A read position in the first buffer in `_bufs`
-        int _pos0
+        int32_t _pos0
 
         # Length of the first buffer in `_bufs`
-        int _len0
+        int32_t _len0
 
         # A total number of buffered bytes in ReadBuffer
-        int _length
+        int32_t _length
 
         char _current_message_type
         int _current_message_len
-        int _current_message_len_unread
+        int32_t _current_message_len_unread
         bint _current_message_ready
 
     cdef feed_data(self, data)
@@ -88,6 +88,7 @@ cdef class ReadBuffer:
     cdef inline read_int16(self)
     cdef inline read_cstr(self)
     cdef has_message(self)
+    cdef char* try_consume_message(self, int32_t* len)
     cdef consume_message(self)
     cdef discard_message(self)
     cdef get_message_type(self)

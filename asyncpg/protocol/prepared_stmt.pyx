@@ -220,18 +220,14 @@ cdef class PreparedStatementState:
         self.parameters_desc = _decode_parameters_desc(desc)
         self.args_num = <int16_t>(len(self.parameters_desc))
 
-    cdef _decode_row(self, Memory mem):
+    cdef _decode_row(self, const char* cbuf, int32_t buf_len):
         cdef:
             Codec codec
-            char *cbuf
             int16_t fnum
             int32_t flen
             list dec_row
-            int row_len
             int i
 
-        cbuf = mem.buf
-        row_len = mem.length
         fnum = hton.unpack_int16(cbuf)
         cbuf += 2
 
@@ -261,7 +257,7 @@ cdef class PreparedStatementState:
             cpython.PyList_SET_ITEM(dec_row, i, val)
             cbuf += flen
 
-            if cbuf - <char*>mem.buf > row_len:
+            if cbuf - <char*>cbuf > buf_len:
                 raise RuntimeError('buffer overrun')
 
         return Record.new(self.cols_mapping, dec_row)

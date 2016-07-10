@@ -337,14 +337,26 @@ cdef class CoreProtocol:
             self._push_result()
 
     cdef _parse_server_data_row(self):
+        cdef:
+            char* buf
+            int32_t buf_len
+            object row
+            Memory mem
+
         # See fe-protocol3.c:getAnotherTuple
         assert self._result is not None
 
         if self._result.rows is None:
             self._result.rows = []
 
-        self._result.rows.append(
-            self._decode_row(self.buffer.consume_message()))
+        buf = self.buffer.try_consume_message(&buf_len)
+        if buf != NULL:
+            row = self._decode_row(buf, buf_len)
+        else:
+            mem = <Memory>(self.buffer.consume_message())
+            row = self._decode_row(mem.buf, mem.length)
+
+        self._result.rows.append(row)
 
     cdef _parse_server_error_response(self, is_error):
         cdef:
@@ -543,8 +555,8 @@ cdef class CoreProtocol:
     cdef _set_server_parameter(self, key, val):
         pass
 
-    cdef _decode_row(self, Memory mem):
-        return mem
+    cdef _decode_row(self, const char* buf, int32_t buf_len):
+        return NotImplemented
 
     # asyncio callbacks:
 

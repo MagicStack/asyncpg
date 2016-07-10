@@ -126,7 +126,7 @@ cdef class CoreProtocol:
     cdef _bind(self, str portal_name, str stmt_name, WriteBuffer bind_data)
     cdef _close(self, str name, bint is_portal)
 
-    cdef _decode_row(self, Memory mem)
+    cdef _decode_row(self, const char* buf, int32_t buf_len)
 
     cdef _on_result(self, Result result)
     cdef _on_fatal_error(self, exc)

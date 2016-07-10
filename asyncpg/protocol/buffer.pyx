@@ -350,7 +350,7 @@ cdef class ReadBuffer:
         if cbuf != NULL:
             return hton.unpack_int32(cbuf)
         else:
-            mem = self.read(4)
+            mem = <Memory>(self.read(4))
             return hton.unpack_int32(mem.buf)
 
     cdef inline read_int16(self):
@@ -363,7 +363,7 @@ cdef class ReadBuffer:
         if cbuf != NULL:
             return hton.unpack_int16(cbuf)
         else:
-            mem = self.read(2)
+            mem = <Memory>(self.read(2))
             return hton.unpack_int16(mem.buf)
 
     cdef inline read_cstr(self):
@@ -425,18 +425,33 @@ cdef class ReadBuffer:
                 self._ensure_first_buf()
 
     cdef has_message(self):
+        cdef:
+            char* cbuf
+
         if self._current_message_ready:
             return True
 
         if self._current_message_type == 0:
             if self._length < 1:
                 return False
-            self._current_message_type = self.read_byte()
+            self._ensure_first_buf()
+            cbuf = self._try_read_bytes(1)
+            if cbuf == NULL:
+                raise BufferError(
+                    'failed to read one byte on a non-empty buffer')
+            self._current_message_type = cbuf[0]
 
         if self._current_message_len == 0:
             if self._length < 4:
                 return False
-            self._current_message_len = self.read_int32()
+
+            self._ensure_first_buf()
+            cbuf = self._try_read_bytes(4)
+            if cbuf != NULL:
+                self._current_message_len = hton.unpack_int32(cbuf)
+            else:
+                self._current_message_len = self.read_int32()
+
             self._current_message_len_unread = self._current_message_len - 4
 
         if self._length < self._current_message_len_unread:
@@ -444,6 +459,16 @@ cdef class ReadBuffer:
 
         self._current_message_ready = 1
         return True
+
+    cdef char* try_consume_message(self, int32_t* len):
+        if not self._current_message_ready:
+            return NULL
+
+        self._ensure_first_buf()
+        buf = self._try_read_bytes(self._current_message_len_unread)
+        if buf != NULL:
+            len[0] = self._current_message_len_unread
+        return buf
 
     cdef consume_message(self):
         if not self._current_message_ready:
