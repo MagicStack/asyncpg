@@ -1,5 +1,5 @@
 @cython.no_gc_clear
-@cython.freelist(_BUFFER_FREELIST_SIZE)
+@cython.freelist(_RECORD_FREELIST_SIZE)
 cdef class Record:
 
     cdef:
@@ -223,14 +223,11 @@ cdef class PreparedStatementState:
     cdef _decode_row(self, Memory mem):
         cdef:
             Codec codec
-            Py_buffer *pybuf
             char *cbuf
             int16_t fnum
             int32_t flen
-            list result
             list dec_row
             int row_len
-            int idx
 
         cbuf = mem.buf
         row_len = mem.length

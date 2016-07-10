@@ -6,7 +6,7 @@ class BufferError(Exception):
     pass
 
 @cython.no_gc_clear
-@cython.freelist(1024)
+@cython.freelist(_MEMORY_FREELIST_SIZE)
 cdef class Memory:
 
     cdef as_bytes(self):
