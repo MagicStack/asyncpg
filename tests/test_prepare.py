@@ -147,3 +147,17 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual(
             [r[0] for r in result],
             list(range(10001)))
+
+    async def test_prepare_13_raise_error(self):
+        # Stress test ReadBuffer.read_cstr()
+        msg = '0' * 1024 * 100
+        query = """
+        DO language plpgsql $$
+        BEGIN
+        RAISE EXCEPTION '{}';
+        END
+        $$;""".format(msg)
+
+        stmt = await self.con.prepare(query)
+        with self.assertRaisesRegex(asyncpg.RaiseError, msg):
+            await stmt.get_value()
