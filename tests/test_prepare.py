@@ -138,3 +138,12 @@ class TestPrepare(tb.ConnectedTestCase):
 
         with self.assertRaisesRegex(RuntimeError, 'cannot.*closed'):
             stmt.get_parameters()
+
+    async def test_prepare_12_big_result(self):
+        async with self.con.prepare('select generate_series(0,10000)') as stmt:
+            result = await stmt.get_list()
+
+        self.assertEqual(len(result), 10001)
+        self.assertEqual(
+            [r[0] for r in result],
+            list(range(10001)))

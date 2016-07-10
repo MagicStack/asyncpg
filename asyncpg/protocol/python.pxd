@@ -9,3 +9,4 @@ cdef extern from "Python.h":
     int PyMemoryView_Check(object)
     Py_buffer *PyMemoryView_GET_BUFFER(object)
     char* PyUnicode_AsUTF8AndSize(object unicode, ssize_t *size) except NULL
+    char* PyByteArray_AsString(object)

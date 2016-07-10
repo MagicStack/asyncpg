@@ -231,16 +231,13 @@ cdef class PreparedStatementState:
             list dec_row
             int row_len
             int idx
+            Memory mem
 
         for idx in range(len(rows)):
-            row = rows[idx]
+            mem = <Memory>rows[idx]
 
-            if not PyMemoryView_Check(row):
-                raise RuntimeError('memoryview expected')
-
-            pybuf = PyMemoryView_GET_BUFFER(row)
-            cbuf = <char*>pybuf.buf
-            row_len = pybuf.len
+            cbuf = mem.buf
+            row_len = mem.length
             fnum = hton.unpack_int16(cbuf)
             cbuf += 2
 
@@ -267,7 +264,7 @@ cdef class PreparedStatementState:
                 cpython.PyList_SET_ITEM(dec_row, i, val)
                 cbuf += flen
 
-                if cbuf - <char*>pybuf.buf > row_len:
+                if cbuf - <char*>mem.buf > row_len:
                     raise RuntimeError('buffer overrun')
 
             rows[idx] = Record.new(self.cols_mapping, dec_row)

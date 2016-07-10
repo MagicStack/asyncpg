@@ -15,7 +15,7 @@ from libc.stdint cimport int16_t, int32_t, uint16_t, uint32_t, int64_t, uint64_t
 from asyncpg.protocol.python cimport (
                      PyMem_Malloc, PyMem_Realloc, PyMem_Calloc, PyMem_Free,
                      PyMemoryView_GET_BUFFER, PyMemoryView_Check,
-                     PyUnicode_AsUTF8AndSize)
+                     PyUnicode_AsUTF8AndSize, PyByteArray_AsString)
 
 from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
 

@@ -1,3 +1,15 @@
+cdef class Memory:
+    cdef:
+        char* buf
+        object owner
+        int length
+
+    cdef as_bytes(self)
+
+    @staticmethod
+    cdef inline Memory new(char* buf, object owner, int length)
+
+
 cdef class WriteBuffer:
     cdef:
         # Preallocated small buffer

@@ -5,6 +5,22 @@ from libc.string cimport memcpy
 class BufferError(Exception):
     pass
 
+@cython.no_gc_clear
+@cython.freelist(1024)
+cdef class Memory:
+
+    cdef as_bytes(self):
+        return cpython.PyBytes_FromStringAndSize(self.buf, self.length)
+
+    @staticmethod
+    cdef inline Memory new(char* buf, object owner, int length):
+        cdef Memory mem
+        mem = Memory.__new__(Memory)
+        mem.buf = buf
+        mem.owner = owner
+        mem.length = length
+        return mem
+
 
 @cython.no_gc_clear
 @cython.freelist(_BUFFER_FREELIST_SIZE)
@@ -288,6 +304,7 @@ cdef class ReadBuffer:
         cdef:
             object result
             int nread
+            Py_buffer *pybuf
 
         if nbytes > self._length:
             raise BufferError(
@@ -301,7 +318,11 @@ cdef class ReadBuffer:
                 raise BufferError('buffer overread')
 
         if self._pos0 + nbytes <= self._len0:
-            result = self._buf0_view[self._pos0 : self._pos0 + nbytes]
+            pybuf = PyMemoryView_GET_BUFFER(self._buf0_view)
+            result = Memory.new(
+                <char*>pybuf.buf + self._pos0,
+                self._buf0,
+                nbytes)
             self._pos0 += nbytes
             self._length -= nbytes
             return result
@@ -320,11 +341,14 @@ cdef class ReadBuffer:
                 result.extend(self._buf0_view[self._pos0:self._pos0 + nbytes])
                 self._pos0 += nbytes
                 self._length -= nbytes
-                return memoryview(result)
+                return Memory.new(
+                    PyByteArray_AsString(result),
+                    result,
+                    len(result))
 
     cdef inline read_int32(self):
         cdef:
-            object buf
+            Memory mem
             char *cbuf
             Py_buffer *pybuf
 
@@ -333,17 +357,12 @@ cdef class ReadBuffer:
         if cbuf != NULL:
             return hton.unpack_int32(cbuf)
         else:
-            buf = self.read(4)
-            IF DEBUG:
-                if not PyMemoryView_Check(buf):
-                    raise RuntimeError(
-                        'ReadBuffer.read returned non-memoryview')
-            pybuf = PyMemoryView_GET_BUFFER(buf)
-            return hton.unpack_int32(<char*>(pybuf.buf))
+            mem = self.read(4)
+            return hton.unpack_int32(mem.buf)
 
     cdef inline read_int16(self):
         cdef:
-            object buf
+            Memory mem
             char *cbuf
             Py_buffer *pybuf
 
@@ -352,13 +371,8 @@ cdef class ReadBuffer:
         if cbuf != NULL:
             return hton.unpack_int16(cbuf)
         else:
-            buf = self.read(2)
-            IF DEBUG:
-                if not PyMemoryView_Check(buf):
-                    raise RuntimeError(
-                        'ReadBuffer.read returned non-memoryview')
-            pybuf = PyMemoryView_GET_BUFFER(buf)
-            return hton.unpack_int16(<char*>(pybuf.buf))
+            mem = self.read(2)
+            return hton.unpack_int16(mem.buf)
 
     cdef inline read_cstr(self):
         if not self._current_message_ready:
