@@ -4,10 +4,10 @@ cdef class Record:
 
     cdef:
         dict _mapping
-        list _values
+        tuple _values
 
     @staticmethod
-    cdef inline Record new(dict mapping, list values):
+    cdef inline Record new(dict mapping, tuple values):
         cdef Record rec
         rec = Record.__new__(Record)
         rec._mapping = mapping
@@ -225,7 +225,7 @@ cdef class PreparedStatementState:
             Codec codec
             int16_t fnum
             int32_t flen
-            list dec_row
+            tuple dec_row
             int i
 
         fnum = hton.unpack_int16(cbuf)
@@ -240,21 +240,21 @@ cdef class PreparedStatementState:
         if self.rows_codecs is None or len(self.rows_codecs) < fnum:
             raise RuntimeError('invalid rows_codecs')
 
-        dec_row = cpython.PyList_New(fnum)
+        dec_row = cpython.PyTuple_New(fnum)
         for i from 0 <= i < fnum:
             flen = hton.unpack_int32(cbuf)
             cbuf += 4
 
             if flen == -1:
                 cpython.Py_INCREF(None)
-                cpython.PyList_SET_ITEM(dec_row, i, None)
+                cpython.PyTuple_SET_ITEM(dec_row, i, None)
                 continue
 
             codec = <Codec>cpython.PyTuple_GET_ITEM(self.rows_codecs, i)
 
             val = codec.decode(self.settings, cbuf, flen)
             cpython.Py_INCREF(val)
-            cpython.PyList_SET_ITEM(dec_row, i, val)
+            cpython.PyTuple_SET_ITEM(dec_row, i, val)
             cbuf += flen
 
             if cbuf - <char*>cbuf > buf_len:

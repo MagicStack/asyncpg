@@ -148,7 +148,7 @@ cdef class Codec:
                     result.append(elem_codec.decode(settings, ptr, elem_len))
                     ptr += elem_len
 
-            return Record.new(self.element_names, result)
+            return Record.new(self.element_names, tuple(result))
 
         elif self.type == CODEC_PY:
             if self.format == PG_FORMAT_BINARY:
