@@ -120,7 +120,12 @@ type_samples = [
         bytes(range(256)),
         bytes(range(255, -1, -1)),
         b'\x00\x00',
-        b'foo'
+        b'foo',
+        b'f' * 1024 * 1024
+    )),
+    ('text', 'text', (
+        '',
+        'A' * (1024 * 1024 + 11)
     )),
     ('"char"', 'char', (
         b'a',
@@ -208,7 +213,8 @@ type_samples = [
     ]),
     ('text[]', 'text[]', [
         ['ABCDE', 'EDCBA'],
-        []
+        [],
+        ['A' * 1024 * 1024] * 10
     ])
 ]
 
