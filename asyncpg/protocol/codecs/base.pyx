@@ -3,6 +3,7 @@ cdef dict TYPE_CODECS_CACHE = {}
 cdef dict EXTRA_CODECS = {}
 
 
+@cython.final
 cdef class Codec:
 
     def __cinit__(self, uint32_t oid, str name, str schema, str kind):
@@ -15,7 +16,7 @@ cdef class Codec:
         self.py_encoder = self.py_decoder = None
         self.element_codec = None
 
-    cdef inline Codec copy(self):
+    cdef Codec copy(self):
         cdef Codec codec
 
         codec = Codec(self.oid, self.name, self.schema, self.kind)
@@ -29,10 +30,10 @@ cdef class Codec:
 
         return codec
 
-    cdef inline encode(self,
-                       ConnectionSettings settings,
-                       WriteBuffer buf,
-                       object obj):
+    cdef encode(self,
+                ConnectionSettings settings,
+                WriteBuffer buf,
+                object obj):
 
         cdef:
             encode_func ef
@@ -78,10 +79,10 @@ cdef class Codec:
             raise NotImplementedError(
                 'no encoder for type {}'.format(self.oid))
 
-    cdef inline decode(self,
-                       ConnectionSettings settings,
-                       const char *data,
-                       int32_t len):
+    cdef decode(self,
+                ConnectionSettings settings,
+                const char *data,
+                int32_t len):
 
         cdef:
             decode_func df

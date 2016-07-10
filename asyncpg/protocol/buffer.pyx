@@ -6,6 +6,7 @@ class BufferError(Exception):
     pass
 
 @cython.no_gc_clear
+@cython.final
 @cython.freelist(_MEMORY_FREELIST_SIZE)
 cdef class Memory:
 
@@ -23,6 +24,7 @@ cdef class Memory:
 
 
 @cython.no_gc_clear
+@cython.final
 @cython.freelist(_BUFFER_FREELIST_SIZE)
 cdef class WriteBuffer:
 
@@ -201,6 +203,7 @@ cdef class WriteBuffer:
 
 
 @cython.no_gc_clear
+@cython.final
 @cython.freelist(_BUFFER_FREELIST_SIZE)
 cdef class ReadBuffer:
 
@@ -491,10 +494,10 @@ cdef class ReadBuffer:
         self._current_message_ready = 0
         self._current_message_len_unread = 0
 
-    cdef get_message_type(self):
+    cdef inline char get_message_type(self):
         return self._current_message_type
 
-    cdef get_message_length(self):
+    cdef inline int32_t get_message_length(self):
         return self._current_message_len
 
     @staticmethod

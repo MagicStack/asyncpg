@@ -1,4 +1,5 @@
 @cython.no_gc_clear
+@cython.final
 @cython.freelist(_RECORD_FREELIST_SIZE)
 cdef class Record:
 
@@ -49,6 +50,7 @@ cdef class Record:
         return iter(self._values)
 
 
+@cython.final
 cdef class PreparedStatementState:
 
     def __cinit__(self, str name, str query, BaseProtocol protocol):
