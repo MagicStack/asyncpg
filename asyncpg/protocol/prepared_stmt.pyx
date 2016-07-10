@@ -228,6 +228,7 @@ cdef class PreparedStatementState:
             int32_t flen
             list dec_row
             int row_len
+            int i
 
         cbuf = mem.buf
         row_len = mem.length
@@ -240,6 +241,9 @@ cdef class PreparedStatementState:
                 'different from what was described ({})'.format(
                     fnum, self.cols_num))
 
+        if self.rows_codecs is None or len(self.rows_codecs) < fnum:
+            raise RuntimeError('invalid rows_codecs')
+
         dec_row = cpython.PyList_New(fnum)
         for i from 0 <= i < fnum:
             flen = hton.unpack_int32(cbuf)
@@ -250,7 +254,7 @@ cdef class PreparedStatementState:
                 cpython.PyList_SET_ITEM(dec_row, i, None)
                 continue
 
-            codec = <Codec>self.rows_codecs[i]
+            codec = <Codec>cpython.PyTuple_GET_ITEM(self.rows_codecs, i)
 
             val = codec.decode(self.settings, cbuf, flen)
             cpython.Py_INCREF(val)
