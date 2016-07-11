@@ -285,6 +285,10 @@ class TestCodecs(tb.ConnectedTestCase):
             at = st.get_attributes()
             self.assertEqual(at[0].type.name, intname)
 
+    async def test_void_decode(self):
+        stmt = await self.con.prepare('select pg_sleep(0)')
+        self.assertIsNone(await stmt.get_value())
+
     async def test_composites(self):
         """Test encoding/decoding of composite types."""
         await self.con.execute('''
