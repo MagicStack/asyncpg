@@ -22,7 +22,8 @@ setup(
     include_package_data=True,
     ext_modules=[
         Extension("asyncpg.protocol.protocol",
-                  ["asyncpg/protocol/protocol.c"],
-                  extra_compile_args=['-O2'])
+                  ["asyncpg/protocol/record/recordobj.c",
+                   "asyncpg/protocol/protocol.c"],
+                  extra_compile_args=['-O3'])
     ]
 )
