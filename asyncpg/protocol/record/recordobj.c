@@ -67,6 +67,7 @@ record_dealloc(ApgRecordObject *o)
 
     Py_XDECREF(o->mapping);
     o->mapping = NULL;
+    o->mapping_hash = -1;
 
     Py_TRASHCAN_SAFE_BEGIN(o)
     if (len > 0) {
