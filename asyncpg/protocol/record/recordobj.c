@@ -52,6 +52,8 @@ ApgRecord_New(PyObject *mapping, Py_ssize_t size)
     o->mapping = mapping;
     o->mapping_hash = -1;
 
+    o->self_hash = -1;
+
     _PyObject_GC_TRACK(o);
     return (PyObject *) o;
 }
@@ -64,6 +66,8 @@ record_dealloc(ApgRecordObject *o)
     Py_ssize_t len = Py_SIZE(o);
 
     PyObject_GC_UnTrack(o);
+
+    o->self_hash = -1;
 
     Py_XDECREF(o->mapping);
     o->mapping = NULL;
@@ -143,9 +147,16 @@ record_hash(ApgRecordObject *v)
 {
     Py_uhash_t x;  /* Unsigned for defined overflow behavior. */
     Py_hash_t y;
-    Py_ssize_t len = Py_SIZE(v);
+    Py_ssize_t len;
     PyObject **p;
-    Py_uhash_t mult = _PyHASH_MULTIPLIER;
+    Py_uhash_t mult;
+
+    if (v->self_hash != -1) {
+        return v->self_hash;
+    }
+
+    len = Py_SIZE(v);
+    mult = _PyHASH_MULTIPLIER;
 
     x = 0x345678UL;
     y = record_get_mapping_hash(v);
@@ -169,6 +180,7 @@ record_hash(ApgRecordObject *v)
     if (x == (Py_uhash_t)-1) {
         x = -2;
     }
+    v->self_hash = x;
     return x;
 }
 
