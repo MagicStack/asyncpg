@@ -282,6 +282,11 @@ class TestCodecs(tb.ConnectedTestCase):
                     else:
                         self.assertEqual(rsample, sample, err_msg)
 
+            with self.subTest(sample=None, typname=typname):
+                # Test that None is handled for all types.
+                rsample = await st.get_value(None)
+                self.assertIsNone(rsample)
+
             at = st.get_attributes()
             self.assertEqual(at[0].type.name, intname)
 
