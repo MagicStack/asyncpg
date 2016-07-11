@@ -1,5 +1,6 @@
 import datetime
 import decimal
+import math
 import uuid
 
 from asyncpg import _testbase as tb
@@ -220,6 +221,35 @@ type_samples = [
         ('ABCDE', 'EDCBA'),
         (),
         ('A' * 1024 * 1024,) * 10
+    ]),
+    ('float8', 'float8', [
+        1.1,
+        -1.1,
+        0,
+        2,
+        1e-4,
+        -1e-20,
+        122.2e-100,
+        2e5,
+        math.pi,
+        math.e,
+        math.inf,
+        -math.inf,
+        math.nan
+    ]),
+    ('float4', 'float4', [
+        1.1,
+        -1.1,
+        0,
+        2,
+        1e-4,
+        -1e-20,
+        2e5,
+        math.pi,
+        math.e,
+        math.inf,
+        -math.inf,
+        math.nan
     ])
 ]
 
@@ -236,12 +266,21 @@ class TestCodecs(tb.ConnectedTestCase):
             for sample in sample_data:
                 with self.subTest(sample=sample, typname=typname):
                     rsample = await st.get_value(sample)
-                    self.assertEqual(
-                        rsample, sample,
-                        ("failed to return {} object data as-is; "
-                         "gave {!r}, received {!r}").format(typname, sample,
-                                                            rsample)
-                    )
+                    err_msg = (
+                        "failed to return {} object data as-is; "
+                        "gave {!r}, received {!r}".format(
+                            typname, sample, rsample))
+
+                    if typname.startswith('float'):
+                        if math.isnan(sample):
+                            if not math.isnan(rsample):
+                                self.fail(err_msg)
+                        else:
+                            self.assertTrue(
+                                math.isclose(rsample, sample, rel_tol=1e-6),
+                                err_msg)
+                    else:
+                        self.assertEqual(rsample, sample, err_msg)
 
             at = st.get_attributes()
             self.assertEqual(at[0].type.name, intname)
