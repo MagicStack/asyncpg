@@ -6,6 +6,16 @@ ctypedef object (*decode_func)(ConnectionSettings settings,
                                const char *data,
                                int32_t len)
 
+ctypedef object (*codec_encode_func)(Codec codec,
+                                     ConnectionSettings settings,
+                                     WriteBuffer buf,
+                                     object obj)
+
+ctypedef object (*codec_decode_func)(Codec codec,
+                                     ConnectionSettings settings,
+                                     const char *data,
+                                     int32_t len)
+
 
 cdef enum CodecType:
     CODEC_UNDEFINED = 0
@@ -44,6 +54,41 @@ cdef class Codec:
         tuple           element_type_oids
         dict            element_names
         list            element_codecs
+
+        # Pointers to actual encoder/decoder functions for this codec
+        codec_encode_func encoder
+        codec_decode_func decoder
+
+    cdef init(self, str name, str schema, str kind,
+              CodecType type, CodecFormat format,
+              encode_func c_encoder, decode_func c_decoder,
+              object py_encoder, object py_decoder,
+              Codec element_codec, tuple element_type_oids,
+              dict element_names, list element_codecs)
+
+    cdef encode_scalar(self, ConnectionSettings settings, WriteBuffer buf,
+                       object obj)
+
+    cdef encode_array(self, ConnectionSettings settings, WriteBuffer buf,
+                      object obj)
+
+    cdef encode_composite(self, ConnectionSettings settings, WriteBuffer buf,
+                          object obj)
+
+    cdef encode_in_python(self, ConnectionSettings settings, WriteBuffer buf,
+                          object obj)
+
+    cdef decode_scalar(self, ConnectionSettings settings, const char *data,
+                       int32_t len)
+
+    cdef decode_array(self, ConnectionSettings settings, const char *data,
+                      int32_t len)
+
+    cdef decode_composite(self, ConnectionSettings settings, const char *data,
+                          int32_t len)
+
+    cdef decode_in_python(self, ConnectionSettings settings, const char *data,
+                          int32_t len)
 
     cdef inline encode(self,
                        ConnectionSettings settings,

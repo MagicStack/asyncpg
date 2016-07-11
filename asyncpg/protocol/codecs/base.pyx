@@ -6,90 +6,152 @@ cdef dict EXTRA_CODECS = {}
 @cython.final
 cdef class Codec:
 
-    def __cinit__(self, uint32_t oid, str name, str schema, str kind):
+    def __cinit__(self, uint32_t oid):
         self.oid = oid
+        self.type = CODEC_UNDEFINED
+
+    cdef init(self, str name, str schema, str kind,
+              CodecType type, CodecFormat format,
+              encode_func c_encoder, decode_func c_decoder,
+              object py_encoder, object py_decoder,
+              Codec element_codec, tuple element_type_oids,
+              dict element_names, list element_codecs):
+
         self.name = name
         self.schema = schema
         self.kind = kind
-        self.type = CODEC_UNDEFINED
-        self.c_encoder = self.c_decoder = NULL
-        self.py_encoder = self.py_decoder = None
-        self.element_codec = None
+        self.type = type
+        self.format = format
+        self.type = type
+        self.c_encoder = c_encoder
+        self.c_decoder = c_decoder
+        self.py_encoder = py_encoder
+        self.py_decoder = py_decoder
+        self.element_codec = element_codec
+        self.element_type_oids = element_type_oids
+        self.element_names = element_names
+        self.element_codecs = element_codecs
+
+        if type == CODEC_C:
+            self.encoder = <codec_encode_func>&self.encode_scalar
+            self.decoder = <codec_decode_func>&self.decode_scalar
+        elif type == CODEC_ARRAY:
+            self.encoder = <codec_encode_func>&self.encode_array
+            self.decoder = <codec_decode_func>&self.decode_array
+        elif type == CODEC_COMPOSITE:
+            self.encoder = <codec_encode_func>&self.encode_composite
+            self.decoder = <codec_decode_func>&self.decode_composite
+        elif type == CODEC_PY:
+            self.encoder = <codec_encode_func>&self.encode_in_python
+            self.decoder = <codec_decode_func>&self.decode_in_python
+        else:
+            raise RuntimeError('unexpected codec type: {}'.format(type))
 
     cdef Codec copy(self):
         cdef Codec codec
 
-        codec = Codec(self.oid, self.name, self.schema, self.kind)
-        codec.type = self.type
-        codec.format = self.format
-        codec.c_encoder = self.c_encoder
-        codec.c_decoder = self.c_decoder
-        codec.py_encoder = self.py_encoder
-        codec.py_decoder = self.py_decoder
-        codec.element_codec = self.element_codec
+        codec = Codec(self.oid)
+        codec.init(self.name, self.schema, self.kind,
+                   self.type, self.format,
+                   self.c_encoder, self.c_decoder,
+                   self.py_encoder, self.py_decoder,
+                   self.element_codec,
+                   self.element_type_oids, self.element_names,
+                   self.element_codecs)
 
         return codec
 
-    cdef encode(self,
-                ConnectionSettings settings,
-                WriteBuffer buf,
-                object obj):
+    cdef encode_scalar(self, ConnectionSettings settings, WriteBuffer buf,
+                       object obj):
+        self.c_encoder(settings, buf, obj)
+
+    cdef encode_array(self, ConnectionSettings settings, WriteBuffer buf,
+                      object obj):
+
+        cdef WriteBuffer elem_data
+
+        elem_data = WriteBuffer.new()
+        for item in obj:
+            if item is None:
+                elem_data.write_int32(-1)
+            else:
+                self.element_codec.encode(settings, elem_data, item)
+
+        array_encode_frame(settings, buf, self.element_codec.oid,
+                           elem_data, len(obj))
+
+    cdef encode_composite(self, ConnectionSettings settings, WriteBuffer buf,
+                          object obj):
 
         cdef:
-            encode_func ef
             WriteBuffer elem_data
             int32_t i
 
-        if self.type == CODEC_C:
-            ef = self.c_encoder
-            if ef is NULL:
-                raise NotImplementedError(
-                    'no encoder for type {}'.format(self.oid))
-            ef(settings, buf, obj)
-
-        elif self.type == CODEC_ARRAY:
-            elem_data = WriteBuffer.new()
-            for item in obj:
-                if item is None:
-                    elem_data.write_int32(-1)
-                else:
-                    self.element_codec.encode(settings, elem_data, item)
-            array_encode_frame(settings, buf, self.element_codec.oid,
-                               elem_data, len(obj))
-
-        elif self.type == CODEC_COMPOSITE:
-            elem_data = WriteBuffer.new()
-            i = 0
-            for item in obj:
-                elem_data.write_int32(self.element_type_ids[i])
-                if item is None:
-                    elem_data.write_int32(-1)
-                else:
-                    self.element_codecs[i].encode(settings, elem_data, item)
-            record_encode_frame(settings, buf, elem_data, len(obj))
-
-        elif self.type == CODEC_PY:
-            bb = self.py_encoder(obj)
-            if self.format == PG_FORMAT_BINARY:
-                bytea_encode(settings, buf, bb)
+        elem_data = WriteBuffer.new()
+        i = 0
+        for item in obj:
+            elem_data.write_int32(self.element_type_ids[i])
+            if item is None:
+                elem_data.write_int32(-1)
             else:
-                text_encode(settings, buf, bb)
+                self.element_codecs[i].encode(settings, elem_data, item)
 
+        record_encode_frame(settings, buf, elem_data, len(obj))
+
+    cdef encode_in_python(self, ConnectionSettings settings, WriteBuffer buf,
+                          object obj):
+
+        bb = self.py_encoder(obj)
+        if self.format == PG_FORMAT_BINARY:
+            bytea_encode(settings, buf, bb)
         else:
-            raise NotImplementedError(
-                'no encoder for type {}'.format(self.oid))
+            text_encode(settings, buf, bb)
 
-    cdef decode(self,
-                ConnectionSettings settings,
-                const char *data,
-                int32_t len):
+    cdef encode(self, ConnectionSettings settings, WriteBuffer buf,
+                object obj):
+        return self.encoder(self, settings, buf, obj)
 
+    cdef decode_scalar(self, ConnectionSettings settings, const char *data,
+                       int32_t len):
+        return self.c_decoder(settings, data, len)
+
+    cdef decode_array(self, ConnectionSettings settings, const char *data,
+                      int32_t len):
         cdef:
-            decode_func df
-
-            # For arrays:
             tuple result
             int32_t ndims
+            uint32_t elem_count
+            const char *ptr
+            uint32_t i
+            int32_t elem_len
+            Codec elem_codec
+
+        ndims = hton.unpack_int32(data)
+        elem_count = hton.unpack_int32(&data[12])
+        ptr = &data[20]
+
+        if ndims > 0:
+            elem_codec = self.element_codec
+            result = cpython.PyTuple_New(elem_count)
+            for i in range(elem_count):
+                elem_len = hton.unpack_int32(ptr)
+                ptr += 4
+                if elem_len == -1:
+                    elem = None
+                else:
+                    elem = elem_codec.decode(settings, ptr, elem_len)
+                    ptr += elem_len
+                cpython.Py_INCREF(elem)
+                cpython.PyTuple_SET_ITEM(result, i, elem)
+        else:
+            result = ()
+
+        return result
+
+    cdef decode_composite(self, ConnectionSettings settings, const char *data,
+                          int32_t len):
+        cdef:
+            tuple result
             uint32_t elem_count
             const char *ptr
             uint32_t i
@@ -98,80 +160,50 @@ cdef class Codec:
             uint32_t received_elem_typ
             Codec elem_codec
 
-        if self.type == CODEC_C:
-            df = self.c_decoder
-            if df is NULL:
-                raise NotImplementedError(
-                    'no decoder for type {}'.format(self.oid))
+        elem_count = hton.unpack_int32(data)
+        result = cpython.PyTuple_New(elem_count)
+        ptr = &data[4]
+        for i in range(elem_count):
+            elem_typ = self.element_type_oids[i]
+            received_elem_typ = hton.unpack_int32(ptr)
 
-            return df(settings, data, len)
+            if received_elem_typ != elem_typ:
+                raise RuntimeError(
+                    'unexpected attribute data type: {}, expected {}'
+                        .format(received_elem_typ, elem_typ))
 
-        elif self.type == CODEC_ARRAY:
-            ndims = hton.unpack_int32(data)
-            elem_count = hton.unpack_int32(&data[12])
-            ptr = &data[20]
-            if ndims > 0:
-                elem_codec = self.element_codec
-                result = cpython.PyTuple_New(elem_count)
-                for i in range(elem_count):
-                    elem_len = hton.unpack_int32(ptr)
-                    ptr += 4
-                    if elem_len == -1:
-                        elem = None
-                    else:
-                        elem = elem_codec.decode(settings, ptr, elem_len)
-                        ptr += elem_len
-                    cpython.Py_INCREF(elem)
-                    cpython.PyTuple_SET_ITEM(result, i, elem)
+            ptr += 4
+
+            elem_len = hton.unpack_int32(ptr)
+
+            ptr += 4
+
+            if elem_len == -1:
+                elem = None
             else:
-                result = ()
+                elem_codec = self.element_codecs[i]
+                elem = elem_codec.decode(settings, ptr, elem_len)
+                ptr += elem_len
 
-            return result
+            cpython.Py_INCREF(elem)
+            cpython.PyTuple_SET_ITEM(result, i, elem)
 
-        elif self.type == CODEC_COMPOSITE:
-            elem_count = hton.unpack_int32(data)
-            result = cpython.PyTuple_New(elem_count)
-            ptr = &data[4]
-            for i in range(elem_count):
-                elem_typ = self.element_type_oids[i]
-                received_elem_typ = hton.unpack_int32(ptr)
+        return Record.new(self.element_names, result)
 
-                if received_elem_typ != elem_typ:
-                    raise RuntimeError(
-                        'unexpected attribute data type: {}, expected {}'
-                            .format(received_elem_typ, elem_typ))
-
-                ptr += 4
-
-                elem_len = hton.unpack_int32(ptr)
-
-                ptr += 4
-
-                if elem_len == -1:
-                    elem = None
-                else:
-                    elem_codec = self.element_codecs[i]
-                    elem = elem_codec.decode(settings, ptr, elem_len)
-                    ptr += elem_len
-
-                cpython.Py_INCREF(elem)
-                cpython.PyTuple_SET_ITEM(result, i, elem)
-
-            return Record.new(self.element_names, result)
-
-        elif self.type == CODEC_PY:
-            if self.format == PG_FORMAT_BINARY:
-                bb = bytea_decode(settings, data, len)
-            else:
-                bb = text_decode(settings, data, len)
-
-            return self.py_decoder(bb)
-
+    cdef decode_in_python(self, ConnectionSettings settings, const char *data,
+                          int32_t len):
+        if self.format == PG_FORMAT_BINARY:
+            bb = bytea_decode(settings, data, len)
         else:
-            raise NotImplementedError(
-                'no decoder for type {}'.format(self.oid))
+            bb = text_decode(settings, data, len)
 
-    cdef has_encoder(self):
+        return self.py_decoder(bb)
+
+    cdef inline decode(self, ConnectionSettings settings, const char *data,
+                       int32_t len):
+        return self.decoder(self, settings, data, len)
+
+    cdef inline has_encoder(self):
         cdef Codec elem_codec
 
         if self.c_encoder is not NULL or self.py_encoder is not None:
@@ -222,10 +254,9 @@ cdef class Codec:
                                str schema,
                                Codec element_codec):
         cdef Codec codec
-        codec = Codec(oid, name, schema, 'array')
-        codec.element_codec = element_codec
-        codec.type = CODEC_ARRAY
-        codec.format = PG_FORMAT_BINARY
+        codec = Codec(oid)
+        codec.init(name, schema, 'array', CODEC_ARRAY, PG_FORMAT_BINARY,
+                   NULL, NULL, None, None, element_codec, None, None, None)
         return codec
 
     @staticmethod
@@ -236,12 +267,10 @@ cdef class Codec:
                                    tuple element_type_oids,
                                    dict element_names):
         cdef Codec codec
-        codec = Codec(oid, name, schema, 'composite')
-        codec.element_names = element_names
-        codec.element_type_oids = element_type_oids
-        codec.element_codecs = element_codecs
-        codec.type = CODEC_COMPOSITE
-        codec.format = PG_FORMAT_BINARY
+        codec = Codec(oid)
+        codec.init(name, schema, 'composite', CODEC_COMPOSITE,
+                   PG_FORMAT_BINARY, NULL, NULL, None, None, None,
+                   element_type_oids, element_names, element_codecs)
         return codec
 
     @staticmethod
@@ -253,11 +282,9 @@ cdef class Codec:
                                 object decoder,
                                 CodecFormat format):
         cdef Codec codec
-        codec = Codec(oid, name, schema, kind)
-        codec.type = CODEC_PY
-        codec.format = format
-        codec.py_encoder = encoder
-        codec.py_decoder = decoder
+        codec = Codec(oid)
+        codec.init(name, schema, kind, CODEC_PY, format, NULL, NULL,
+                   encoder, decoder, None, None, None, None)
         return codec
 
 
@@ -415,13 +442,10 @@ cdef register_core_codec(uint32_t oid,
     name = TYPEMAP[oid]
     kind = 'array' if oid in TYPE_IS_ARRAY else 'scalar'
 
-    codec = Codec(oid, name, 'pg_catalog', kind)
+    codec = Codec(oid)
+    codec.init(name, 'pg_catalog', kind, CODEC_C, format, encode,
+               decode, None, None, None, None, None, None)
     cpython.Py_INCREF(codec)  # immortalize
-
-    codec.type = CODEC_C
-    codec.format = format
-    codec.c_encoder = encode
-    codec.c_decoder = decode
     codec_map[oid] = <void*>codec
 
 
@@ -435,13 +459,9 @@ cdef register_extra_codec(str name,
 
     kind = 'scalar'
 
-    codec = Codec(INVALIDOID, name, None, kind)
-    cpython.Py_INCREF(codec)  # immortalize
-
-    codec.type = CODEC_C
-    codec.format = format
-    codec.c_encoder = encode
-    codec.c_decoder = decode
+    codec = Codec(INVALIDOID)
+    codec.init(name, None, kind, CODEC_C, format, encode,
+               decode, None, None, None, None, None, None)
     EXTRA_CODECS[name] = codec
 
 
