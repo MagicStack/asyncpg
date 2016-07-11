@@ -1,5 +1,6 @@
 import contextlib
 import gc
+import pickle
 import sys
 import unittest
 
@@ -158,3 +159,9 @@ class TestRecord(unittest.TestCase):
 
         with self.assertRaisesRegex(TypeError, 'unorderable'):
             r1 < r7
+
+    def test_record_not_pickleable(self):
+        r = Record({'a': 0}, (42,))
+        with self.assertRaisesRegex(TypeError,
+                                    "can't pickle Record objects"):
+            pickle.dumps(r)
