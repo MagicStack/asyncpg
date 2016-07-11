@@ -81,6 +81,11 @@ class TestRecord(unittest.TestCase):
         with self.assertRaisesRegex(KeyError, 'spam'):
             Record({'spam': 123}, (1,))['spam']
 
+    def test_record_immutable(self):
+        r = Record({'a': 0}, (42,))
+        with self.assertRaisesRegex(TypeError, 'does not support item'):
+            r[0] = 1
+
     def test_record_repr(self):
         r = Record({'a': 0}, (42,))
         self.assertTrue(repr(r).startswith('<Record '))
@@ -104,3 +109,47 @@ class TestRecord(unittest.TestCase):
         self.assertEqual(hash(r1), hash(r2))
         self.assertNotEqual(hash(r1), hash(r3))
         self.assertNotEqual(hash(r1), hash(r4))
+
+        d = {}
+        d[r1] = 123
+        self.assertEqual(d[r1], 123)
+        self.assertIn(r2, d)
+        self.assertEqual(d[r2], 123)
+        self.assertNotIn(r3, d)
+        self.assertNotIn(r4, d)
+
+    def test_record_cmp(self):
+        r1_map = {'a': 0, 'b': 1}
+        r1 = Record(r1_map, (42, 43))
+        r2 = Record(r1_map, (42, 43))
+        r3 = Record({'a': 0, 'b': 1}, (42, 43))
+
+        r4 = Record({'a': 0, 'b': 1}, (42, 45))
+        r5 = Record({'a': 0, 'b': 1, 'c': 2}, (42, 46, 57))
+        r6 = Record({'a': 0, 'c': 1}, (42, 43))
+
+        r7 = (42, 43)
+
+        self.assertEqual(r1, r2)
+        self.assertEqual(r1, r3)
+
+        self.assertNotEqual(r1, r4)
+        self.assertNotEqual(r1, r5)
+        self.assertNotEqual(r1, r6)
+        self.assertNotEqual(r1, r7)
+        self.assertNotEqual(r4, r5)
+        self.assertNotEqual(r4, r6)
+        self.assertNotEqual(r6, r5)
+
+        self.assertLess(r1, r4)
+        self.assertGreater(r4, r1)
+
+        self.assertLess(r1, r5)
+        self.assertGreater(r5, r6)
+        self.assertGreater(r5, r4)
+
+        with self.assertRaisesRegex(TypeError, 'unorderable'):
+            r7 < r1
+
+        with self.assertRaisesRegex(TypeError, 'unorderable'):
+            r1 < r7
