@@ -14,6 +14,7 @@
 typedef struct {
     PyObject_VAR_HEAD
     PyObject *mapping;
+    Py_hash_t mapping_hash;
     PyObject *ob_item[1];
 
     /* ob_item contains space for 'ob_size' elements.

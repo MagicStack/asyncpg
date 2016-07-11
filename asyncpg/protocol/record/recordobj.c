@@ -50,6 +50,7 @@ ApgRecord_New(PyObject *mapping, Py_ssize_t size)
 
     Py_INCREF(mapping);
     o->mapping = mapping;
+    o->mapping_hash = -1;
 
     _PyObject_GC_TRACK(o);
     return (PyObject *) o;
@@ -112,6 +113,62 @@ static Py_ssize_t
 record_length(ApgRecordObject *o)
 {
     return Py_SIZE(o);
+}
+
+
+static Py_hash_t
+record_get_mapping_hash(ApgRecordObject *v)
+{
+    PyObject * repr;
+
+    if (v->mapping_hash != -1) {
+        return v->mapping_hash;
+    }
+
+    repr = PyObject_Repr(v->mapping);
+    if (repr == NULL) {
+        return -1;
+    }
+
+    v->mapping_hash = PyObject_Hash(repr);
+    Py_DECREF(repr);
+
+    return v->mapping_hash;
+}
+
+
+static Py_hash_t
+record_hash(ApgRecordObject *v)
+{
+    Py_uhash_t x;  /* Unsigned for defined overflow behavior. */
+    Py_hash_t y;
+    Py_ssize_t len = Py_SIZE(v);
+    PyObject **p;
+    Py_uhash_t mult = _PyHASH_MULTIPLIER;
+
+    x = 0x345678UL;
+    y = record_get_mapping_hash(v);
+    if (y == -1) {
+        return -1;
+    }
+    x = (x ^ y) * mult;
+    mult += (Py_hash_t)(82520UL + len + len + 2);
+
+    p = v->ob_item;
+    while (--len >= 0) {
+        y = PyObject_Hash(*p++);
+        if (y == -1) {
+            return -1;
+        }
+        x = (x ^ y) * mult;
+        /* the cast might truncate len; that doesn't change hash stability */
+        mult += (Py_hash_t)(82520UL + len + len + 2);
+    }
+    x += 97531UL;
+    if (x == (Py_uhash_t)-1) {
+        x = -2;
+    }
+    return x;
 }
 
 
@@ -221,7 +278,7 @@ PyTypeObject ApgRecord_Type = {
     0,                                               /* tp_as_number */
     &record_as_sequence,                             /* tp_as_sequence */
     &record_as_mapping,                              /* tp_as_mapping */
-    0,                                               /* tp_hash */
+    (hashfunc)record_hash,                           /* tp_hash */
     0,                                               /* tp_call */
     0,                                               /* tp_str */
     PyObject_GenericGetAttr,                         /* tp_getattro */
