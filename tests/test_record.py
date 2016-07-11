@@ -68,6 +68,10 @@ class TestRecord(unittest.TestCase):
         self.assertEqual(r['a'], 42)
         self.assertEqual(r['b'], 43)
 
+        with self.assertRaisesRegex(IndexError,
+                                    'record index out of range'):
+            r[1000]
+
         with self.assertRaisesRegex(KeyError, 'spam'):
             r['spam']
 
@@ -80,3 +84,13 @@ class TestRecord(unittest.TestCase):
     def test_record_repr(self):
         r = Record({'a': 0}, (42,))
         self.assertTrue(repr(r).startswith('<Record '))
+
+    def test_record_iter(self):
+        r = Record({'a': 0, 'b': 1}, (42, 43))
+        self.assertEqual(tuple(r), (42, 43))
+
+    def test_record_values(self):
+        r = Record({'a': 0, 'b': 1}, (42, 43))
+        vv = r.values()
+        self.assertEqual(tuple(vv), (42, 43))
+        self.assertTrue(repr(vv).startswith('<RecordIterator '))

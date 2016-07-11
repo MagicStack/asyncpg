@@ -23,10 +23,13 @@ typedef struct {
 } ApgRecordObject;
 
 extern PyTypeObject ApgRecord_Type;
+extern PyTypeObject ApgRecordIter_Type;
 
 #define ApgRecord_CheckExact(o) (Py_TYPE(o) == &ApgRecord_Type)
 #define ApgRecord_SET_ITEM(op, i, v) \
 			(((ApgRecordObject *)(op))->ob_item[i] = v)
+#define ApgRecord_GET_ITEM(op, i) \
+			(((ApgRecordObject *)(op))->ob_item[i])
 
 PyObject * ApgRecord_New(PyObject *, Py_ssize_t);
 
