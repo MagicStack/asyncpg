@@ -111,6 +111,7 @@ cdef class Codec:
             elem_count = hton.unpack_int32(&data[12])
             ptr = &data[20]
             if ndims > 0:
+                elem_codec = self.element_codec
                 result = cpython.PyTuple_New(elem_count)
                 for i in range(elem_count):
                     elem_len = hton.unpack_int32(ptr)
@@ -118,13 +119,13 @@ cdef class Codec:
                     if elem_len == -1:
                         elem = None
                     else:
-                        elem = self.element_codec.decode(
-                            settings, ptr, elem_len)
+                        elem = elem_codec.decode(settings, ptr, elem_len)
                         ptr += elem_len
                     cpython.Py_INCREF(elem)
                     cpython.PyTuple_SET_ITEM(result, i, elem)
             else:
                 result = ()
+
             return result
 
         elif self.type == CODEC_COMPOSITE:

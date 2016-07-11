@@ -239,7 +239,9 @@ cdef class PreparedStatementState:
             int16_t fnum
             int32_t flen
             tuple dec_row
-            int i
+            tuple rows_codecs = self.rows_codecs
+            ConnectionSettings settings = self.settings
+            int32_t i
 
         fnum = hton.unpack_int16(cbuf)
         cbuf += 2
@@ -250,11 +252,11 @@ cdef class PreparedStatementState:
                 'different from what was described ({})'.format(
                     fnum, self.cols_num))
 
-        if self.rows_codecs is None or len(self.rows_codecs) < fnum:
+        if rows_codecs is None or len(rows_codecs) < fnum:
             raise RuntimeError('invalid rows_codecs')
 
         dec_row = cpython.PyTuple_New(fnum)
-        for i from 0 <= i < fnum:
+        for i in range(fnum):
             flen = hton.unpack_int32(cbuf)
             cbuf += 4
 
@@ -263,9 +265,9 @@ cdef class PreparedStatementState:
                 cpython.PyTuple_SET_ITEM(dec_row, i, None)
                 continue
 
-            codec = <Codec>cpython.PyTuple_GET_ITEM(self.rows_codecs, i)
+            codec = <Codec>cpython.PyTuple_GET_ITEM(rows_codecs, i)
 
-            val = codec.decode(self.settings, cbuf, flen)
+            val = codec.decode(settings, cbuf, flen)
             cpython.Py_INCREF(val)
             cpython.PyTuple_SET_ITEM(dec_row, i, val)
             cbuf += flen
