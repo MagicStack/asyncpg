@@ -347,6 +347,18 @@ record_values(PyObject *o, PyObject *args)
 }
 
 
+static PyObject *
+record_keys(PyObject *o, PyObject *args)
+{
+    if (!ApgRecord_CheckExact(o)) {
+        PyErr_BadInternalCall();
+        return NULL;
+    }
+
+    return PyObject_GetIter(((ApgRecordObject*)o)->mapping);
+}
+
+
 static PySequenceMethods record_as_sequence = {
     (lenfunc)record_length,                          /* sq_length */
     0,                                               /* sq_concat */
@@ -368,6 +380,7 @@ static PyMappingMethods record_as_mapping = {
 
 static PyMethodDef record_methods[] = {
     {"values",          (PyCFunction)record_values, METH_NOARGS},
+    {"keys",            (PyCFunction)record_keys, METH_NOARGS},
     {NULL,              NULL}           /* sentinel */
 };
 

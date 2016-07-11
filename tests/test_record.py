@@ -100,6 +100,11 @@ class TestRecord(unittest.TestCase):
         self.assertEqual(tuple(vv), (42, 43))
         self.assertTrue(repr(vv).startswith('<RecordIterator '))
 
+    def test_record_keys(self):
+        r = Record({'a': 0, 'b': 1}, (42, 43))
+        vv = r.keys()
+        self.assertEqual(tuple(vv), ('a', 'b'))
+
     def test_record_hash(self):
         r1 = Record({'a': 0, 'b': 1}, (42, 43))
         r2 = Record({'a': 0, 'b': 1}, (42, 43))
