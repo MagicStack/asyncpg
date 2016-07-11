@@ -134,14 +134,19 @@ class TestPrepare(tb.ConnectedTestCase):
         # At this point our cache should be full.
         self.assertEqual(len(self.con._stmt_cache), cache_max)
 
-        # All statements that did not fit into the cache will be
-        # waiting until nothing references them, and then they
-        # will be closed.
-        self.assertEqual(len(self.con._stmts_to_close), iter_max - cache_max)
+        # Since there are references to the statements (`stmts` list),
+        # no statements are scheduled to be closed.
+        self.assertEqual(len(self.con._stmts_to_close), 0)
 
         # Removing refs to statements and preparing a new statement
         # will cause connection to cleanup any stale statements.
         stmts.clear()
+        gc.collect()
+
+        # Now we have a bunch of statements that have no refs to them
+        # scheduled to be closed.
+        self.assertEqual(len(self.con._stmts_to_close), iter_max - cache_max)
+
         zero = await self.con.prepare(query.format(0))
         # Hence, all stale statements should be closed now.
         self.assertEqual(len(self.con._stmts_to_close), 0)
@@ -158,3 +163,46 @@ class TestPrepare(tb.ConnectedTestCase):
         # will trigger an error.
         with self.assertRaisesRegex(RuntimeError, 'is closed'):
             await zero.get_value()
+
+    async def test_prepare_11_stmt_gc(self):
+        # Test that prepared statements should stay in the cache after
+        # they are GCed.
+
+        # First, we have no cached statements.
+        self.assertEqual(len(self.con._stmt_cache), 0)
+        self.assertEqual(len(self.con._stmts_to_close), 0)
+
+        # The prepared statement that we'll create will be GCed
+        # right await.  However, its state should be still in
+        # in the statements LRU cache.
+        await self.con.prepare('select 1')
+        gc.collect()
+
+        self.assertEqual(len(self.con._stmt_cache), 1)
+        self.assertEqual(len(self.con._stmts_to_close), 0)
+
+    async def test_prepare_12_stmt_gc(self):
+        # Test that prepared statements are closed when there is no space
+        # for them in the LRU cache and there are no references to them.
+
+        # First, we have no cached statements.
+        self.assertEqual(len(self.con._stmt_cache), 0)
+        self.assertEqual(len(self.con._stmts_to_close), 0)
+
+        cache_max = self.con._stmt_cache_max_size
+
+        stmt = await self.con.prepare('select 100000000')
+        self.assertEqual(len(self.con._stmt_cache), 1)
+        self.assertEqual(len(self.con._stmts_to_close), 0)
+
+        for i in range(cache_max):
+            await self.con.prepare('select {}'.format(i))
+
+        self.assertEqual(len(self.con._stmt_cache), cache_max)
+        self.assertEqual(len(self.con._stmts_to_close), 0)
+
+        del stmt
+        gc.collect()
+
+        self.assertEqual(len(self.con._stmt_cache), cache_max)
+        self.assertEqual(len(self.con._stmts_to_close), 1)

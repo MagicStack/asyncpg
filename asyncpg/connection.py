@@ -60,8 +60,9 @@ class Connection:
 
         if len(self._stmt_cache) > self._stmt_cache_max_size - 1:
             old_query, old_state = self._stmt_cache.popitem(last=False)
-            self._stmts_to_close.add(old_state)
-            await self._cleanup_stmts()
+            self._maybe_gc_stmt(old_state)
+            if self._stmts_to_close:
+                await self._cleanup_stmts()
 
         self._stmt_cache[query] = state
 
@@ -157,6 +158,10 @@ class Connection:
 
         self._stmt_cache.clear()
         self._stmts_to_close.clear()
+
+    def _maybe_gc_stmt(self, stmt):
+        if stmt.refs == 0 and stmt.query not in self._stmt_cache:
+            self._stmts_to_close.add(stmt)
 
     async def _cleanup_stmts(self):
         removed = None

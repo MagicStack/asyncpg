@@ -54,6 +54,7 @@ class PreparedStatement:
 
     def __del__(self):
         self._state.detach()
+        self._connection._maybe_gc_stmt(self._state)
 
 
 class PreparedStatementIterator:
