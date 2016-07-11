@@ -151,7 +151,7 @@ cdef class Codec:
     cdef decode_composite(self, ConnectionSettings settings, const char *data,
                           int32_t len):
         cdef:
-            tuple result
+            object result
             uint32_t elem_count
             const char *ptr
             uint32_t i
@@ -161,7 +161,7 @@ cdef class Codec:
             Codec elem_codec
 
         elem_count = hton.unpack_int32(data)
-        result = cpython.PyTuple_New(elem_count)
+        result = record.ApgRecord_New(self.element_names, elem_count)
         ptr = &data[4]
         for i in range(elem_count):
             elem_typ = self.element_type_oids[i]
@@ -186,9 +186,9 @@ cdef class Codec:
                 ptr += elem_len
 
             cpython.Py_INCREF(elem)
-            cpython.PyTuple_SET_ITEM(result, i, elem)
+            record.ApgRecord_SET_ITEM(result, i, elem)
 
-        return Record.new(self.element_names, result)
+        return result
 
     cdef decode_in_python(self, ConnectionSettings settings, const char *data,
                           int32_t len):

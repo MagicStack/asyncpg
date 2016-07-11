@@ -1,55 +1,3 @@
-@cython.no_gc_clear
-@cython.final
-@cython.freelist(_RECORD_FREELIST_SIZE)
-cdef class Record:
-
-    cdef:
-        dict _mapping
-        tuple _values
-
-    @staticmethod
-    cdef inline Record new(dict mapping, tuple values):
-        cdef Record rec
-        rec = Record.__new__(Record)
-        rec._mapping = mapping
-        rec._values = values
-        return rec
-
-    def __len__(self):
-        return len(self._values)
-
-    def __iter__(self):
-        return iter(self._values)
-
-    def __getitem__(self, item):
-        item_cls = type(item)
-        if item_cls is str:
-            return self._values[<int>(self._mapping[item])]
-        elif item_cls is int:
-            return self._values[<int>item]
-
-        if isinstance(item, str):
-            return self._values[self._mapping[item]]
-
-        return self._values[item]
-
-    def __repr__(self):
-        rmap = {i: n for n, i in self._mapping.items()}
-        items = ('{}={!r}'.format(rmap[i], self._values[i])
-                 for i, v in enumerate(self._values))
-        return '<Record {}>'.format(' '.join(items))
-
-    def items(self):
-        for k, idx in self._mapping.items():
-            yield k, self._values[<int>idx]
-
-    def keys(self):
-        return self._mapping.keys()
-
-    def values(self):
-        return iter(self._values)
-
-
 @cython.final
 cdef class PreparedStatementState:
 
@@ -238,7 +186,7 @@ cdef class PreparedStatementState:
             Codec codec
             int16_t fnum
             int32_t flen
-            tuple dec_row
+            object dec_row
             tuple rows_codecs = self.rows_codecs
             ConnectionSettings settings = self.settings
             int32_t i
@@ -255,27 +203,26 @@ cdef class PreparedStatementState:
         if rows_codecs is None or len(rows_codecs) < fnum:
             raise RuntimeError('invalid rows_codecs')
 
-        dec_row = cpython.PyTuple_New(fnum)
+        dec_row = record.ApgRecord_New(self.cols_mapping, fnum)
         for i in range(fnum):
             flen = hton.unpack_int32(cbuf)
             cbuf += 4
 
             if flen == -1:
-                cpython.Py_INCREF(None)
-                cpython.PyTuple_SET_ITEM(dec_row, i, None)
-                continue
+                val = None
+            else:
+                codec = <Codec>cpython.PyTuple_GET_ITEM(rows_codecs, i)
 
-            codec = <Codec>cpython.PyTuple_GET_ITEM(rows_codecs, i)
+                val = codec.decode(settings, cbuf, flen)
+                cbuf += flen
 
-            val = codec.decode(settings, cbuf, flen)
+                if cbuf - <char*>cbuf > buf_len:
+                    raise RuntimeError('buffer overrun')
+
             cpython.Py_INCREF(val)
-            cpython.PyTuple_SET_ITEM(dec_row, i, val)
-            cbuf += flen
+            record.ApgRecord_SET_ITEM(dec_row, i, val)
 
-            if cbuf - <char*>cbuf > buf_len:
-                raise RuntimeError('buffer overrun')
-
-        return Record.new(self.cols_mapping, dec_row)
+        return dec_row
 
 
 cdef _decode_parameters_desc(object desc):

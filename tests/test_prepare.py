@@ -13,7 +13,6 @@ class TestPrepare(tb.ConnectedTestCase):
         rec = await st.get_first_row(1)
         self.assertTrue(rec['test'])
         self.assertEqual(len(rec), 1)
-        self.assertEqual(tuple(rec), (True,))
 
         self.assertEqual(False, await st.get_value(10))
 

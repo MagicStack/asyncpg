@@ -12,6 +12,8 @@ import socket
 
 from libc.stdint cimport int16_t, int32_t, uint16_t, uint32_t, int64_t, uint64_t
 
+from asyncpg.protocol cimport record
+
 from asyncpg.protocol.python cimport (
                      PyMem_Malloc, PyMem_Realloc, PyMem_Calloc, PyMem_Free,
                      PyMemoryView_GET_BUFFER, PyMemoryView_Check,
@@ -293,3 +295,18 @@ cdef class BaseProtocol(CoreProtocol):
 
 class Protocol(BaseProtocol, asyncio.Protocol):
     pass
+
+
+def _create_record(dict mapping, tuple elems):
+    # Exposed only for testing purposes.
+
+    cdef:
+        object rec
+        int32_t i
+
+    rec = record.ApgRecord_New(mapping, len(elems))
+    for i in range(len(elems)):
+        elem = elems[i]
+        cpython.Py_INCREF(elem)
+        record.ApgRecord_SET_ITEM(rec, i, elem)
+    return rec
