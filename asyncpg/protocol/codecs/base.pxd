@@ -52,7 +52,7 @@ cdef class Codec:
 
         # composite types
         tuple           element_type_oids
-        dict            element_names
+        object          element_names
         list            element_codecs
 
         # Pointers to actual encoder/decoder functions for this codec
@@ -64,7 +64,7 @@ cdef class Codec:
               encode_func c_encoder, decode_func c_decoder,
               object py_encoder, object py_decoder,
               Codec element_codec, tuple element_type_oids,
-              dict element_names, list element_codecs)
+              object element_names, list element_codecs)
 
     cdef encode_scalar(self, ConnectionSettings settings, WriteBuffer buf,
                        object obj)
@@ -118,7 +118,7 @@ cdef class Codec:
                                    str schema,
                                    list element_codecs,
                                    tuple element_type_oids,
-                                   dict element_names)
+                                   object element_names)
 
     @staticmethod
     cdef Codec new_python_codec(uint32_t oid,

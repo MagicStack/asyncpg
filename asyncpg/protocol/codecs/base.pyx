@@ -15,7 +15,7 @@ cdef class Codec:
               encode_func c_encoder, decode_func c_decoder,
               object py_encoder, object py_decoder,
               Codec element_codec, tuple element_type_oids,
-              dict element_names, list element_codecs):
+              object element_names, list element_codecs):
 
         self.name = name
         self.schema = schema
@@ -265,7 +265,7 @@ cdef class Codec:
                                    str schema,
                                    list element_codecs,
                                    tuple element_type_oids,
-                                   dict element_names):
+                                   object element_names):
         cdef Codec codec
         codec = Codec(oid)
         codec.init(name, schema, 'composite', CODEC_COMPOSITE,
@@ -339,11 +339,15 @@ cdef class DataCodecConfig:
                                 typoid))
                     comp_elem_codecs.append(elem_codec)
 
+                element_names = collections.OrderedDict()
+                for i, attrname in enumerate(ti['attrnames']):
+                    element_names[attrname] = i
+
                 self._type_codecs_cache[oid] = \
                     Codec.new_composite_codec(
                         oid, name, schema, comp_elem_codecs,
                         comp_type_attrs,
-                        {name: i for i, name in enumerate(ti['attrnames'])})
+                        element_names)
 
             elif ti['kind'] == b'd' and base_type:
                 elem_codec = self.get_codec(base_type)

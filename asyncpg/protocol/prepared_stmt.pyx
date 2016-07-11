@@ -126,7 +126,7 @@ cdef class PreparedStatementState:
 
     cdef _ensure_rows_decoder(self):
         cdef:
-            dict cols_mapping
+            object cols_mapping
             tuple row
             int oid
             Codec codec
@@ -135,7 +135,7 @@ cdef class PreparedStatementState:
         if self.cols_num == 0 or self.cols_mapping is not None:
             return
 
-        cols_mapping = {}
+        cols_mapping = collections.OrderedDict()
         codecs = []
         for i from 0 <= i < self.cols_num:
             row = self.row_desc[i]
