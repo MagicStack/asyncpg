@@ -153,6 +153,11 @@ class TestRecord(unittest.TestCase):
     def test_record_items(self):
         r = Record(R_AB, (42, 43))
 
+        self.assertEqual(dict(r), {'a': 42, 'b': 43})
+        self.assertEqual(
+            list(collections.OrderedDict(r).items()),
+            [('a', 42), ('b', 43)])
+
         with self.checkref(r):
             rk = r.items()
             self.assertEqual(rk.__length_hint__(), 2)
