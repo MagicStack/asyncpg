@@ -350,7 +350,10 @@ record_subscript(ApgRecordObject* o, PyObject* item)
             i = PyNumber_AsSsize_t(mapped, PyExc_IndexError);
             Py_DECREF(mapped);
 
-            if (i < 0 || PyErr_Occurred()) {
+            if (i < 0) {
+                if (PyErr_Occurred()) {
+                    PyErr_Clear();
+                }
                 goto noitem;
             }
 
