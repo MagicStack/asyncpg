@@ -1,10 +1,17 @@
 import contextlib
+import collections
 import gc
 import pickle
 import sys
 import unittest
 
 from asyncpg.protocol.protocol import _create_record as Record
+
+
+R_A = collections.OrderedDict([('a', 0)])
+R_AB = collections.OrderedDict([('a', 0), ('b', 1)])
+R_AC = collections.OrderedDict([('a', 0), ('c', 1)])
+R_ABC = collections.OrderedDict([('a', 0), ('b', 1), ('c', 2)])
 
 
 class TestRecord(unittest.TestCase):
@@ -83,7 +90,7 @@ class TestRecord(unittest.TestCase):
             Record({'spam': 123}, (1,))['spam']
 
     def test_record_immutable(self):
-        r = Record({'a': 0}, (42,))
+        r = Record(R_A, (42,))
         with self.assertRaisesRegex(TypeError, 'does not support item'):
             r[0] = 1
 
@@ -92,19 +99,50 @@ class TestRecord(unittest.TestCase):
         self.assertTrue(repr(r).startswith('<Record '))
 
     def test_record_iter(self):
-        r = Record({'a': 0, 'b': 1}, (42, 43))
-        self.assertEqual(tuple(r), (42, 43))
+        r = Record(R_AB, (42, 43))
+        with self.checkref(r):
+            self.assertEqual(iter(r).__length_hint__(), 2)
+            self.assertEqual(tuple(r), (42, 43))
 
     def test_record_values(self):
-        r = Record({'a': 0, 'b': 1}, (42, 43))
+        r = Record(R_AB, (42, 43))
         vv = r.values()
         self.assertEqual(tuple(vv), (42, 43))
         self.assertTrue(repr(vv).startswith('<RecordIterator '))
 
     def test_record_keys(self):
-        r = Record({'a': 0, 'b': 1}, (42, 43))
+        r = Record(R_AB, (42, 43))
         vv = r.keys()
         self.assertEqual(tuple(vv), ('a', 'b'))
+
+    def test_record_items(self):
+        r = Record(R_AB, (42, 43))
+
+        with self.checkref(r):
+            rk = r.items()
+            self.assertEqual(rk.__length_hint__(), 2)
+            self.assertEqual(next(rk), ('a', 42))
+            self.assertEqual(rk.__length_hint__(), 1)
+            self.assertEqual(next(rk), ('b', 43))
+            self.assertEqual(rk.__length_hint__(), 0)
+
+            with self.assertRaises(StopIteration):
+                next(rk)
+            with self.assertRaises(StopIteration):
+                next(rk)
+
+            self.assertEqual(rk.__length_hint__(), 0)
+
+        self.assertEqual(list(r.items()), [('a', 42), ('b', 43)])
+
+        # Check invalid records just in case
+        r = Record(R_A, (42, 43))
+        self.assertEqual(list(r.items()), [('a', 42)])
+        r = Record(R_AB, (42,))
+        self.assertEqual(list(r.items()), [('a', 42)])
+        r = Record(None, (42, 43))
+        with self.assertRaises(TypeError):
+            list(r.items())
 
     def test_record_hash(self):
         r1 = Record({'a': 0, 'b': 1}, (42, 43))
@@ -125,14 +163,13 @@ class TestRecord(unittest.TestCase):
         self.assertNotIn(r4, d)
 
     def test_record_cmp(self):
-        r1_map = {'a': 0, 'b': 1}
-        r1 = Record(r1_map, (42, 43))
-        r2 = Record(r1_map, (42, 43))
-        r3 = Record({'a': 0, 'b': 1}, (42, 43))
+        r1 = Record(R_AB, (42, 43))
+        r2 = Record(R_AB, (42, 43))
+        r3 = Record(R_AB.copy(), (42, 43))
 
-        r4 = Record({'a': 0, 'b': 1}, (42, 45))
-        r5 = Record({'a': 0, 'b': 1, 'c': 2}, (42, 46, 57))
-        r6 = Record({'a': 0, 'c': 1}, (42, 43))
+        r4 = Record(R_AB.copy(), (42, 45))
+        r5 = Record(R_ABC, (42, 46, 57))
+        r6 = Record(R_AC, (42, 43))
 
         r7 = (42, 43)
 

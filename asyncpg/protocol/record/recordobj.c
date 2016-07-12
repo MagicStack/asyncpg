@@ -9,8 +9,8 @@
 #include "recordobj.h"
 
 
-static PyObject *record_iter(PyObject *o);
-
+static PyObject * record_iter(PyObject *);
+static PyObject * record_new_items_iter(PyObject *);
 
 static ApgRecordObject *free_list[ApgRecord_MAXSAVESIZE];
 static int numfree[ApgRecord_MAXSAVESIZE];
@@ -359,6 +359,18 @@ record_keys(PyObject *o, PyObject *args)
 }
 
 
+static PyObject *
+record_items(PyObject *o, PyObject *args)
+{
+    if (!ApgRecord_CheckExact(o)) {
+        PyErr_BadInternalCall();
+        return NULL;
+    }
+
+    return record_new_items_iter(o);
+}
+
+
 static PySequenceMethods record_as_sequence = {
     (lenfunc)record_length,                          /* sq_length */
     0,                                               /* sq_concat */
@@ -381,6 +393,7 @@ static PyMappingMethods record_as_mapping = {
 static PyMethodDef record_methods[] = {
     {"values",          (PyCFunction)record_values, METH_NOARGS},
     {"keys",            (PyCFunction)record_keys, METH_NOARGS},
+    {"items",           (PyCFunction)record_items, METH_NOARGS},
     {NULL,              NULL}           /* sentinel */
 };
 
@@ -485,8 +498,9 @@ static PyObject *
 record_iter_len(ApgRecordIterObject *it)
 {
     Py_ssize_t len = 0;
-    if (it->it_seq)
-        len = PyTuple_GET_SIZE(it->it_seq) - it->it_index;
+    if (it->it_seq) {
+        len = Py_SIZE(it->it_seq) - it->it_index;
+    }
     return PyLong_FromSsize_t(len);
 }
 
@@ -552,5 +566,172 @@ record_iter(PyObject *seq)
     Py_INCREF(seq);
     it->it_seq = (ApgRecordObject *)seq;
     _PyObject_GC_TRACK(it);
+    return (PyObject *)it;
+}
+
+
+/* Record Items Iterator */
+
+
+typedef struct {
+    PyObject_HEAD
+    Py_ssize_t it_index;
+    PyObject *it_map_iter;
+    ApgRecordObject *it_seq; /* Set to NULL when iterator is exhausted */
+} ApgRecordItemsObject;
+
+
+static void
+record_items_dealloc(ApgRecordItemsObject *it)
+{
+    _PyObject_GC_UNTRACK(it);
+    Py_XDECREF(it->it_map_iter);
+    Py_XDECREF(it->it_seq);
+    PyObject_GC_Del(it);
+}
+
+
+static int
+record_items_traverse(ApgRecordItemsObject *it, visitproc visit, void *arg)
+{
+    Py_VISIT(it->it_map_iter);
+    Py_VISIT(it->it_seq);
+    return 0;
+}
+
+
+static PyObject *
+record_items_next(ApgRecordItemsObject *it)
+{
+    ApgRecordObject *seq;
+    PyObject *key;
+    PyObject *val;
+    PyObject *tup;
+
+    assert(it != NULL);
+    seq = it->it_seq;
+    if (seq == NULL) {
+        return NULL;
+    }
+    assert(ApgRecord_CheckExact(seq));
+    assert(it->it_map_iter != NULL);
+
+    key = PyIter_Next(it->it_map_iter);
+    if (key == NULL) {
+        /* likely it_map_iter had less items than seq has values */
+        goto exhausted;
+    }
+
+    if (it->it_index < Py_SIZE(seq)) {
+        val = ApgRecord_GET_ITEM(seq, it->it_index);
+        ++it->it_index;
+        Py_INCREF(val);
+    }
+    else {
+        /* it_map_iter had more items than seq has values */
+        Py_CLEAR(key);
+        goto exhausted;
+    }
+
+    tup = PyTuple_New(2);
+    if (tup == NULL) {
+        Py_CLEAR(val);
+        Py_CLEAR(key);
+        goto exhausted;
+    }
+
+    PyTuple_SET_ITEM(tup, 0, key);
+    PyTuple_SET_ITEM(tup, 1, val);
+    return tup;
+
+exhausted:
+    Py_CLEAR(it->it_map_iter);
+    Py_CLEAR(it->it_seq);
+    return NULL;
+}
+
+
+static PyObject *
+record_items_len(ApgRecordItemsObject *it)
+{
+    Py_ssize_t len = 0;
+    if (it->it_seq) {
+        len = Py_SIZE(it->it_seq) - it->it_index;
+    }
+    return PyLong_FromSsize_t(len);
+}
+
+
+PyDoc_STRVAR(record_items_len_doc,
+             "Private method returning an estimate of len(list(it())).");
+
+
+static PyMethodDef record_items_methods[] = {
+    {"__length_hint__", (PyCFunction)record_items_len, METH_NOARGS,
+        record_items_len_doc},
+    {NULL,              NULL}           /* sentinel */
+};
+
+
+PyTypeObject ApgRecordItems_Type = {
+    PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    "RecordItemsIterator",                      /* tp_name */
+    sizeof(ApgRecordItemsObject),               /* tp_basicsize */
+    0,                                          /* tp_itemsize */
+    /* methods */
+    (destructor)record_items_dealloc,           /* tp_dealloc */
+    0,                                          /* tp_print */
+    0,                                          /* tp_getattr */
+    0,                                          /* tp_setattr */
+    0,                                          /* tp_reserved */
+    0,                                          /* tp_repr */
+    0,                                          /* tp_as_number */
+    0,                                          /* tp_as_sequence */
+    0,                                          /* tp_as_mapping */
+    0,                                          /* tp_hash */
+    0,                                          /* tp_call */
+    0,                                          /* tp_str */
+    PyObject_GenericGetAttr,                    /* tp_getattro */
+    0,                                          /* tp_setattro */
+    0,                                          /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,    /* tp_flags */
+    0,                                          /* tp_doc */
+    (traverseproc)record_items_traverse,        /* tp_traverse */
+    0,                                          /* tp_clear */
+    0,                                          /* tp_richcompare */
+    0,                                          /* tp_weaklistoffset */
+    PyObject_SelfIter,                          /* tp_iter */
+    (iternextfunc)record_items_next,            /* tp_iternext */
+    record_items_methods,                       /* tp_methods */
+    0,
+};
+
+
+static PyObject *
+record_new_items_iter(PyObject *seq)
+{
+    ApgRecordItemsObject *it;
+    PyObject *map_iter;
+
+    if (!ApgRecord_CheckExact(seq)) {
+        PyErr_BadInternalCall();
+        return NULL;
+    }
+
+    map_iter = PyObject_GetIter(((ApgRecordObject*)seq)->mapping);
+    if (map_iter == NULL) {
+        return NULL;
+    }
+
+    it = PyObject_GC_New(ApgRecordItemsObject, &ApgRecordItems_Type);
+    if (it == NULL)
+        return NULL;
+
+    it->it_map_iter = map_iter;
+    it->it_index = 0;
+    Py_INCREF(seq);
+    it->it_seq = (ApgRecordObject *)seq;
+    _PyObject_GC_TRACK(it);
+
     return (PyObject *)it;
 }

@@ -297,7 +297,7 @@ class Protocol(BaseProtocol, asyncio.Protocol):
     pass
 
 
-def _create_record(dict mapping, tuple elems):
+def _create_record(object mapping, tuple elems):
     # Exposed only for testing purposes.
 
     cdef:
