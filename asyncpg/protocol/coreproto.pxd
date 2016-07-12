@@ -78,6 +78,9 @@ cdef class Result:
     cdef Result new(ExecStatusType status)
 
 
+ctypedef object (*decode_row_method)(object, const char*, int32_t)
+
+
 cdef class CoreProtocol:
     cdef:
         object transport
@@ -114,7 +117,7 @@ cdef class CoreProtocol:
     cdef _parse_server_parameter_description(self)
     cdef _parse_server_ready_for_query(self)
     cdef _parse_server_row_description(self)
-    cdef _parse_server_data_row(self)
+    cdef _parse_server_data_rows(self)
     cdef _parse_server_error_response(self, is_error)
     cdef _fatal_error(self, exc)
     cdef _push_result(self)

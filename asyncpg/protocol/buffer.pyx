@@ -434,16 +434,16 @@ cdef class ReadBuffer:
 
                 self._ensure_first_buf()
 
-    cdef has_message(self):
+    cdef int32_t has_message(self) except -1:
         cdef:
             char* cbuf
 
         if self._current_message_ready:
-            return True
+            return 1
 
         if self._current_message_type == 0:
             if self._length < 1:
-                return False
+                return 0
             self._ensure_first_buf()
             cbuf = self._try_read_bytes(1)
             if cbuf == NULL:
@@ -453,7 +453,7 @@ cdef class ReadBuffer:
 
         if self._current_message_len == 0:
             if self._length < 4:
-                return False
+                return 0
 
             self._ensure_first_buf()
             cbuf = self._try_read_bytes(4)
@@ -465,10 +465,10 @@ cdef class ReadBuffer:
             self._current_message_len_unread = self._current_message_len - 4
 
         if self._length < self._current_message_len_unread:
-            return False
+            return 0
 
         self._current_message_ready = 1
-        return True
+        return 1
 
     cdef inline char* try_consume_message(self, int32_t* len):
         if not self._current_message_ready:

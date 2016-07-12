@@ -52,7 +52,7 @@ cdef class CoreProtocol:
             char mtype
             MessageDispatchLoop res
 
-        while self.buffer.has_message():
+        while self.buffer.has_message() == 1:
             mtype = self.buffer.get_message_type()
             res = DISPATCH_CONTINUE
             try:
@@ -239,13 +239,7 @@ cdef class CoreProtocol:
 
                 elif (self._result is not None and
                         self._result.status == PGRES_TUPLES_OK):
-                    # Read another tuple of a normal query response
-                    self._parse_server_data_row()
-
-                    while self.buffer.has_message() and \
-                            self.buffer.get_message_type() == b'D':
-                        self._parse_server_data_row()
-
+                    self._parse_server_data_rows()
                     return DISPATCH_CONTINUE_NO_DISCARD
 
                 elif (self._result is not None and
@@ -347,27 +341,37 @@ cdef class CoreProtocol:
             self._async_status = PGASYNC_READY
             self._push_result()
 
-    cdef _parse_server_data_row(self):
+    cdef _parse_server_data_rows(self):
         cdef:
-            char* buf
-            int32_t buf_len
+            ReadBuffer buf = self.buffer
+            list rows
+            decode_row_method decoder = <decode_row_method>self._decode_row
+
+            char* cbuf
+            int32_t cbuf_len
             object row
             Memory mem
 
-        # See fe-protocol3.c:getAnotherTuple
-        assert self._result is not None
+        if buf.get_message_type() != b'D' or self._result is None:
+            raise RuntimeError
 
         if self._result.rows is None:
             self._result.rows = []
 
-        buf = self.buffer.try_consume_message(&buf_len)
-        if buf != NULL:
-            row = self._decode_row(buf, buf_len)
-        else:
-            mem = <Memory>(self.buffer.consume_message())
-            row = self._decode_row(mem.buf, mem.length)
+        rows = self._result.rows
 
-        self._result.rows.append(row)
+        while True:
+            cbuf = buf.try_consume_message(&cbuf_len)
+            if cbuf != NULL:
+                row = decoder(self, cbuf, cbuf_len)
+            else:
+                mem = <Memory>(buf.consume_message())
+                row = decoder(self, mem.buf, mem.length)
+
+            cpython.PyList_Append(rows, row)
+
+            if buf.has_message() != 1 or buf.get_message_type() != b'D':
+                return
 
     cdef _parse_server_error_response(self, is_error):
         cdef:
