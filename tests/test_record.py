@@ -120,6 +120,7 @@ class TestRecord(unittest.TestCase):
         class Key:
             def __str__(self):
                 1 / 0
+
             def __repr__(self):
                 1 / 0
 
@@ -144,6 +145,10 @@ class TestRecord(unittest.TestCase):
         r = Record(R_AB, (42, 43))
         vv = r.keys()
         self.assertEqual(tuple(vv), ('a', 'b'))
+
+        # test invalid record
+        with self.assertRaisesRegex(TypeError, 'not iterable'):
+            Record(None, (42, 43)).keys()
 
     def test_record_items(self):
         r = Record(R_AB, (42, 43))
