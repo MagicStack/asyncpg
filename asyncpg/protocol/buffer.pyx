@@ -209,6 +209,7 @@ cdef class ReadBuffer:
 
     def __cinit__(self):
         self._bufs = collections.deque()
+        self._bufs_append = self._bufs.append
         self._bufs_len = 0
         self._buf0 = None
         self._buf0_view = None
@@ -222,13 +223,18 @@ cdef class ReadBuffer:
         self._current_message_ready = 0
 
     cdef feed_data(self, data):
-        cdef int dlen = len(data)
+        cdef:
+            int32_t dlen
 
+        if not cpython.PyBytes_CheckExact(data):
+            raise BufferError('feed_data: bytes object expected')
+
+        dlen = cpython.Py_SIZE(data)
         if dlen == 0:
             # EOF?
             return
 
-        self._bufs.append(data)
+        self._bufs_append(data)
         self._length += dlen
 
         if self._bufs_len == 0:
@@ -508,7 +514,7 @@ cdef class ReadBuffer:
         cdef ReadBuffer buf
 
         buf = ReadBuffer.__new__(ReadBuffer)
-        buf.feed_data(bytes(data))
+        buf.feed_data(data)
 
         buf._current_message_ready = 1
         buf._current_message_len_unread = buf._len0

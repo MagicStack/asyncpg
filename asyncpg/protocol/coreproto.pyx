@@ -296,7 +296,8 @@ cdef class CoreProtocol:
 
     cdef _parse_server_parameter_description(self):
         cdef Result result = Result.new(PGRES_COMMAND_OK)
-        result.parameters_desc = (<Memory>self.buffer.consume_message()).as_bytes()
+        result.parameters_desc = \
+            (<Memory>self.buffer.consume_message()).as_bytes()
         self._result = result
 
         if self._query_class == PGQUERY_DESCRIBE:

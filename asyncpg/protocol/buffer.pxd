@@ -57,6 +57,7 @@ cdef class ReadBuffer:
     cdef:
         # A deque of buffers (bytes objects)
         object _bufs
+        object _bufs_append
 
         # A pointer to the first buffer in `_bufs`
         bytes _buf0
