@@ -60,16 +60,16 @@ class TestRecord(unittest.TestCase):
 
     def test_record_freelist_ok(self):
         for _ in range(10000):
-            Record({'a': 0}, (42,))
-            Record({'a': 0, 'b': 1}, (42, 42,))
+            Record(R_A, (42,))
+            Record(R_AB, (42, 42,))
 
     def test_record_len_getindex(self):
-        r = Record({'a': 0}, (42,))
+        r = Record(R_A, (42,))
         self.assertEqual(len(r), 1)
         self.assertEqual(r[0], 42)
         self.assertEqual(r['a'], 42)
 
-        r = Record({'a': 0, 'b': 1}, (42, 43))
+        r = Record(R_AB, (42, 43))
         self.assertEqual(len(r), 2)
         self.assertEqual(r[0], 42)
         self.assertEqual(r[1], 43)
@@ -105,7 +105,7 @@ class TestRecord(unittest.TestCase):
 
     def test_record_repr(self):
         self.assertEqual(
-            repr(Record({'a': 0}, (42,))),
+            repr(Record(R_A, (42,))),
             '<Record a=42>')
 
         self.assertEqual(
@@ -114,7 +114,7 @@ class TestRecord(unittest.TestCase):
 
         # test invalid records just in case
         with self.assertRaisesRegex(RuntimeError, 'invalid .* mapping'):
-            repr(Record({'a': 0}, (42, 43)))
+            repr(Record(R_A, (42, 43)))
         self.assertEqual(repr(Record(R_AB, (42,))), '<Record a=42>')
 
         class Key:
@@ -127,7 +127,7 @@ class TestRecord(unittest.TestCase):
         with self.assertRaises(ZeroDivisionError):
             repr(Record({Key(): 0}, (42,)))
         with self.assertRaises(ZeroDivisionError):
-            repr(Record({'a': 0}, (Key(),)))
+            repr(Record(R_A, (Key(),)))
 
     def test_record_iter(self):
         r = Record(R_AB, (42, 43))
@@ -185,9 +185,9 @@ class TestRecord(unittest.TestCase):
             list(r.items())
 
     def test_record_hash(self):
-        r1 = Record({'a': 0, 'b': 1}, (42, 43))
-        r2 = Record({'a': 0, 'b': 1}, (42, 43))
-        r3 = Record({'a': 0, 'b': 1}, (42, 45))
+        r1 = Record(R_AB, (42, 43))
+        r2 = Record(R_AB, (42, 43))
+        r3 = Record(R_AB, (42, 45))
         r4 = (42, 43)
 
         self.assertEqual(hash(r1), hash(r2))
@@ -238,7 +238,7 @@ class TestRecord(unittest.TestCase):
             r1 < r7
 
     def test_record_not_pickleable(self):
-        r = Record({'a': 0}, (42,))
+        r = Record(R_A, (42,))
         with self.assertRaisesRegex(TypeError,
                                     "can't pickle Record objects"):
             pickle.dumps(r)
