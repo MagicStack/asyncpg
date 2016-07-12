@@ -80,7 +80,7 @@ class {clsname}({base}):
 
     buf = '# GENERATED FROM postgresql/src/backend/utils/errcodes.txt\n' + \
           '# DO NOT MODIFY, use tools/generate_exceptions.py to update\n\n' + \
-          'from ._base import *\nfrom . import _base\n\n\n'
+          'from ._base import *  # NOQA\nfrom . import _base\n\n\n'
 
     classes = []
     clsnames = set()

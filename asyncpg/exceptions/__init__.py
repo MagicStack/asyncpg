@@ -1,7 +1,7 @@
 # GENERATED FROM postgresql/src/backend/utils/errcodes.txt
 # DO NOT MODIFY, use tools/generate_exceptions.py to update
 
-from ._base import *
+from ._base import *  # NOQA
 from . import _base
 
 

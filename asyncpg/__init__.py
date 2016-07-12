@@ -4,12 +4,12 @@ import os
 import socket
 import urllib.parse
 
-from .exceptions import *
+from .exceptions import *  # NOQA
 from . import connection
 from . import protocol
 
 
-__all__ = ('connect',) + exceptions.__all__
+__all__ = ('connect',) + exceptions.__all__  # NOQA
 
 
 async def connect(dsn=None, *,
