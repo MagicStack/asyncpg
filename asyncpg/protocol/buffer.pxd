@@ -58,10 +58,15 @@ cdef class ReadBuffer:
         # A deque of buffers (bytes objects)
         object _bufs
         object _bufs_append
+        object _bufs_popleft
 
         # A pointer to the first buffer in `_bufs`
         bytes _buf0
-        object _buf0_view
+
+        # A pointer to the previous first buffer
+        # (used to prolong the life of _buf0 when using
+        # methods like _try_read_bytes)
+        bytes _buf0_prev
 
         # Number of buffers in `_bufs`
         int32_t _bufs_len

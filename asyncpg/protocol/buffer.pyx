@@ -210,9 +210,10 @@ cdef class ReadBuffer:
     def __cinit__(self):
         self._bufs = collections.deque()
         self._bufs_append = self._bufs.append
+        self._bufs_popleft = self._bufs.popleft
         self._bufs_len = 0
         self._buf0 = None
-        self._buf0_view = None
+        self._buf0_prev = None
         self._pos0 = 0
         self._len0 = 0
         self._length = 0
@@ -225,23 +226,24 @@ cdef class ReadBuffer:
     cdef feed_data(self, data):
         cdef:
             int32_t dlen
+            bytes data_bytes
 
         if not cpython.PyBytes_CheckExact(data):
             raise BufferError('feed_data: bytes object expected')
+        data_bytes = <bytes>data
 
-        dlen = cpython.Py_SIZE(data)
+        dlen = cpython.Py_SIZE(data_bytes)
         if dlen == 0:
             # EOF?
             return
 
-        self._bufs_append(data)
+        self._bufs_append(data_bytes)
         self._length += dlen
 
         if self._bufs_len == 0:
             # First buffer
             self._len0 = dlen
-            self._buf0 = data
-            self._buf0_view = memoryview(self._buf0)
+            self._buf0 = data_bytes
 
         self._bufs_len += 1
 
@@ -254,13 +256,13 @@ cdef class ReadBuffer:
 
     cdef _switch_to_next_buf(self):
         # The first buffer is fully read, discard it
-        self._bufs.popleft()
+        self._bufs_popleft()
         self._bufs_len -= 1
 
         # Shouldn't fail, since we've checked that `_length >= 1`
         # in _ensure_first_buf()
-        self._buf0 = self._bufs[0]
-        self._buf0_view = memoryview(self._buf0)
+        self._buf0_prev = self._buf0
+        self._buf0 = <bytes>self._bufs[0]
 
         self._pos0 = 0
         self._len0 = len(self._buf0)
@@ -291,7 +293,6 @@ cdef class ReadBuffer:
 
         cdef:
             char * result
-            Py_buffer *pybuf
 
         IF DEBUG:
             if nbytes > self._length:
@@ -302,8 +303,7 @@ cdef class ReadBuffer:
                 return NULL
 
         if self._pos0 + nbytes <= self._len0:
-            pybuf = PyMemoryView_GET_BUFFER(self._buf0_view)
-            result = <char*>pybuf.buf
+            result = cpython.PyBytes_AS_STRING(self._buf0)
             result += self._pos0
             self._pos0 += nbytes
             self._length -= nbytes
@@ -322,7 +322,7 @@ cdef class ReadBuffer:
         self._ensure_first_buf()
         buf = self._try_read_bytes(nbytes)
         if buf != NULL:
-            return Memory.new(buf, self._buf0_view, nbytes)
+            return Memory.new(buf, self._buf0, nbytes)
 
         if nbytes > self._length:
             raise BufferError(
@@ -336,7 +336,7 @@ cdef class ReadBuffer:
         result = bytearray()
         while True:
             if self._pos0 + nbytes > self._len0:
-                result.extend(self._buf0_view[self._pos0:])
+                result.extend(self._buf0[self._pos0:])
                 nread = self._len0 - self._pos0
                 self._pos0 = self._len0
                 self._length -= nread
@@ -344,7 +344,7 @@ cdef class ReadBuffer:
                 self._ensure_first_buf()
 
             else:
-                result.extend(self._buf0_view[self._pos0:self._pos0 + nbytes])
+                result.extend(self._buf0[self._pos0:self._pos0 + nbytes])
                 self._pos0 += nbytes
                 self._length -= nbytes
                 return Memory.new(
@@ -390,12 +390,10 @@ cdef class ReadBuffer:
             bytes result
             char* buf
             char* buf_start
-            Py_buffer *pybuf
 
         self._ensure_first_buf()
 
-        pybuf = PyMemoryView_GET_BUFFER(self._buf0_view)
-        buf_start = <char*>pybuf.buf
+        buf_start = cpython.PyBytes_AS_STRING(self._buf0)
         buf = buf_start + self._pos0
         while buf - buf_start < self._len0:
             if buf[0] == 0:
@@ -413,7 +411,7 @@ cdef class ReadBuffer:
         while True:
             pos = self._buf0.find(b'\x00', self._pos0)
             if pos >= 0:
-                result += self._buf0_view[self._pos0 : pos]
+                result += self._buf0[self._pos0 : pos]
                 nread = pos - self._pos0 + 1
                 self._pos0 = pos + 1
                 self._length -= nread
@@ -425,7 +423,7 @@ cdef class ReadBuffer:
                 return result
 
             else:
-                result += self._buf0_view[self._pos0:]
+                result += self._buf0[self._pos0:]
                 nread = self._len0 - self._pos0
                 self._pos0 = self._len0
                 self._length -= nread
