@@ -304,6 +304,38 @@ record_subscript(ApgRecordObject* o, PyObject* item)
         }
         return record_item(o, i);
     }
+    else if (PySlice_Check(item)) {
+        Py_ssize_t start, stop, step, slicelength, cur, i;
+        PyObject* result;
+        PyObject* it;
+        PyObject **src, **dest;
+
+        if (PySlice_GetIndicesEx(
+                item,
+                Py_SIZE(o),
+                &start, &stop, &step, &slicelength) < 0)
+        {
+            return NULL;
+        }
+
+        if (slicelength <= 0) {
+            return PyTuple_New(0);
+        }
+        else {
+            result = PyTuple_New(slicelength);
+            if (!result) return NULL;
+
+            src = o->ob_item;
+            dest = ((PyTupleObject *)result)->ob_item;
+            for (cur = start, i = 0; i < slicelength; cur += step, i++) {
+                it = src[cur];
+                Py_INCREF(it);
+                dest[i] = it;
+            }
+
+            return result;
+        }
+    }
     else {
         PyObject *mapped;
         mapped = PyObject_GetItem(o->mapping, item);

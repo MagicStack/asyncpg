@@ -89,6 +89,15 @@ class TestRecord(unittest.TestCase):
         with self.assertRaisesRegex(KeyError, 'spam'):
             Record({'spam': 123}, (1,))['spam']
 
+    def test_record_slice(self):
+        r = Record(R_ABC, (1, 2, 3))
+        self.assertEqual(r[:], (1, 2, 3))
+        self.assertEqual(r[:1], (1,))
+        self.assertEqual(r[::-1], (3, 2, 1))
+        self.assertEqual(r[::-2], (3, 1))
+        self.assertEqual(r[1:2], (2,))
+        self.assertEqual(r[2:2], ())
+
     def test_record_immutable(self):
         r = Record(R_A, (42,))
         with self.assertRaisesRegex(TypeError, 'does not support item'):
