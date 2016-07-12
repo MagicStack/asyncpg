@@ -70,7 +70,6 @@ record_dealloc(ApgRecordObject *o)
     o->self_hash = -1;
 
     Py_CLEAR(o->mapping);
-    o->mapping = NULL;
     o->mapping_hash = -1;
 
     Py_TRASHCAN_SAFE_BEGIN(o)
@@ -763,14 +762,14 @@ record_items_next(ApgRecordItemsObject *it)
     }
     else {
         /* it_map_iter had more items than seq has values */
-        Py_CLEAR(key);
+        Py_DECREF(key);
         goto exhausted;
     }
 
     tup = PyTuple_New(2);
     if (tup == NULL) {
-        Py_CLEAR(val);
-        Py_CLEAR(key);
+        Py_DECREF(val);
+        Py_DECREF(key);
         goto exhausted;
     }
 
