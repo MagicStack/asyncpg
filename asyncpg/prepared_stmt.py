@@ -1,5 +1,4 @@
 from . import compat
-from . import introspection
 
 
 class PreparedStatement:
