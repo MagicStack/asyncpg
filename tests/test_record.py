@@ -29,7 +29,7 @@ class TestRecord(unittest.TestCase):
                 self.fail('refcounts differ for {!r}: {:+}'.format(
                     objs[i], after - before))
 
-    def test_record_invalid_args(self):
+    def test_record_zero_length(self):
         with self.assertRaises(SystemError):
             Record({}, ())
 
@@ -95,8 +95,29 @@ class TestRecord(unittest.TestCase):
             r[0] = 1
 
     def test_record_repr(self):
-        r = Record({'a': 0}, (42,))
-        self.assertTrue(repr(r).startswith('<Record '))
+        self.assertEqual(
+            repr(Record({'a': 0}, (42,))),
+            '<Record a=42>')
+
+        self.assertEqual(
+            repr(Record(R_AB, (42, -1))),
+            '<Record a=42 b=-1>')
+
+        # test invalid records just in case
+        with self.assertRaisesRegex(RuntimeError, 'invalid .* mapping'):
+            repr(Record({'a': 0}, (42, 43)))
+        self.assertEqual(repr(Record(R_AB, (42,))), '<Record a=42>')
+
+        class Key:
+            def __str__(self):
+                1 / 0
+            def __repr__(self):
+                1 / 0
+
+        with self.assertRaises(ZeroDivisionError):
+            repr(Record({Key(): 0}, (42,)))
+        with self.assertRaises(ZeroDivisionError):
+            repr(Record({'a': 0}, (Key(),)))
 
     def test_record_iter(self):
         r = Record(R_AB, (42, 43))

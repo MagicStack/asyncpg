@@ -1,7 +1,7 @@
 /* Big parts of this file are copied (with modifications) from
    CPython/Objects/tupleobject.c.
 
-   Portions Copyright (c) PSF.
+   Portions Copyright (c) PSF (and other CPython copyright holders).
    Portions Copyright (c) 2016-present MagicStack Inc.
    License: PSFL v2; see CPython/LICENSE for details.
 */
@@ -340,6 +340,105 @@ noitem:
     return NULL;
 }
 
+
+static PyObject *
+record_repr(ApgRecordObject *v)
+{
+    Py_ssize_t i, n;
+    PyObject *keys_iter;
+    _PyUnicodeWriter writer;
+
+    n = Py_SIZE(v);
+    assert(n > 0);
+
+    keys_iter = PyObject_GetIter(v->mapping);
+    if (keys_iter == NULL) {
+        return NULL;
+    }
+
+    i = Py_ReprEnter((PyObject *)v);
+    if (i != 0) {
+        return i > 0 ? PyUnicode_FromString("<Record ...>") : NULL;
+    }
+
+    _PyUnicodeWriter_Init(&writer);
+    writer.overallocate = 1;
+    writer.min_length = 12; /* <Record a=1> */
+
+    if (_PyUnicodeWriter_WriteASCIIString(&writer, "<Record ", 8) < 0) {
+        goto error;
+    }
+
+    for (i = 0; i < n; ++i) {
+        PyObject *key;
+        PyObject *key_repr;
+        PyObject *val_repr;
+
+        if (i > 0) {
+            if (_PyUnicodeWriter_WriteChar(&writer, ' ') < 0) {
+                goto error;
+            }
+        }
+
+        if (Py_EnterRecursiveCall(" while getting the repr of a record")) {
+            goto error;
+        }
+        val_repr = PyObject_Repr(v->ob_item[i]);
+        Py_LeaveRecursiveCall();
+        if (val_repr == NULL) {
+            goto error;
+        }
+
+        key = PyIter_Next(keys_iter);
+        if (key == NULL) {
+            Py_DECREF(val_repr);
+            PyErr_SetString(PyExc_RuntimeError, "invalid record mapping");
+            goto error;
+        }
+
+        key_repr = PyObject_Str(key);
+        Py_DECREF(key);
+        if (key_repr == NULL) {
+            Py_DECREF(val_repr);
+            goto error;
+        }
+
+        if (_PyUnicodeWriter_WriteStr(&writer, key_repr) < 0) {
+            Py_DECREF(key_repr);
+            Py_DECREF(val_repr);
+            goto error;
+        }
+        Py_DECREF(key_repr);
+
+        if (_PyUnicodeWriter_WriteChar(&writer, '=') < 0) {
+            Py_DECREF(val_repr);
+            goto error;
+        }
+
+        if (_PyUnicodeWriter_WriteStr(&writer, val_repr) < 0) {
+            Py_DECREF(val_repr);
+            goto error;
+        }
+        Py_DECREF(val_repr);
+    }
+
+    if (_PyUnicodeWriter_WriteChar(&writer, '>') < 0) {
+        goto error;
+    }
+
+    Py_DECREF(keys_iter);
+    Py_ReprLeave((PyObject *)v);
+    return _PyUnicodeWriter_Finish(&writer);
+
+error:
+    Py_DECREF(keys_iter);
+    _PyUnicodeWriter_Dealloc(&writer);
+    Py_ReprLeave((PyObject *)v);
+    return NULL;
+}
+
+
+
 static PyObject *
 record_values(PyObject *o, PyObject *args)
 {
@@ -408,7 +507,7 @@ PyTypeObject ApgRecord_Type = {
     0,                                               /* tp_getattr */
     0,                                               /* tp_setattr */
     0,                                               /* tp_reserved */
-    0,                                               /* tp_repr */
+    (reprfunc)record_repr,                           /* tp_repr */
     0,                                               /* tp_as_number */
     &record_as_sequence,                             /* tp_as_sequence */
     &record_as_mapping,                              /* tp_as_mapping */
