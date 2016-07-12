@@ -161,16 +161,11 @@ class Connection:
 
     def _maybe_gc_stmt(self, stmt):
         if stmt.refs == 0 and stmt.query not in self._stmt_cache:
+            stmt.mark_closed()
             self._stmts_to_close.add(stmt)
 
     async def _cleanup_stmts(self):
-        removed = None
-        for stmt in self._stmts_to_close:
-            if stmt.refs == 0:
-                await self._protocol.close_statement(stmt)
-                if removed is None:
-                    removed = set()
-                removed.add(stmt)
-
-        if removed is not None:
-            self._stmts_to_close -= removed
+        to_close = self._stmts_to_close
+        self._stmts_to_close = set()
+        for stmt in to_close:
+            await self._protocol.close_statement(stmt)

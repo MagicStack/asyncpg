@@ -132,6 +132,8 @@ class TestPrepare(tb.ConnectedTestCase):
 
         # At this point our cache should be full.
         self.assertEqual(len(self.con._stmt_cache), cache_max)
+        self.assertTrue(
+            all(not s.closed for s in self.con._stmt_cache.values()))
 
         # Since there are references to the statements (`stmts` list),
         # no statements are scheduled to be closed.
@@ -145,6 +147,9 @@ class TestPrepare(tb.ConnectedTestCase):
         # Now we have a bunch of statements that have no refs to them
         # scheduled to be closed.
         self.assertEqual(len(self.con._stmts_to_close), iter_max - cache_max)
+        self.assertTrue(all(s.closed for s in self.con._stmts_to_close))
+        self.assertTrue(
+            all(not s.closed for s in self.con._stmt_cache.values()))
 
         zero = await self.con.prepare(query.format(0))
         # Hence, all stale statements should be closed now.
@@ -152,6 +157,8 @@ class TestPrepare(tb.ConnectedTestCase):
 
         # The number of cached statements will stay the same though.
         self.assertEqual(len(self.con._stmt_cache), cache_max)
+        self.assertTrue(
+            all(not s.closed for s in self.con._stmt_cache.values()))
 
         # After closing all statements will be closed.
         await self.con.close()
