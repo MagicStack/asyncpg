@@ -69,7 +69,7 @@ record_dealloc(ApgRecordObject *o)
 
     o->self_hash = -1;
 
-    Py_XDECREF(o->mapping);
+    Py_CLEAR(o->mapping);
     o->mapping = NULL;
     o->mapping_hash = -1;
 
@@ -77,8 +77,7 @@ record_dealloc(ApgRecordObject *o)
     if (len > 0) {
         i = len;
         while (--i >= 0) {
-            Py_XDECREF(o->ob_item[i]);
-            o->ob_item[i] = NULL;
+            Py_CLEAR(o->ob_item[i]);
         }
 
         if (len < ApgRecord_MAXSAVESIZE &&
@@ -587,7 +586,7 @@ static void
 record_iter_dealloc(ApgRecordIterObject *it)
 {
     _PyObject_GC_UNTRACK(it);
-    Py_XDECREF(it->it_seq);
+    Py_CLEAR(it->it_seq);
     PyObject_GC_Del(it);
 }
 
@@ -716,8 +715,8 @@ static void
 record_items_dealloc(ApgRecordItemsObject *it)
 {
     _PyObject_GC_UNTRACK(it);
-    Py_XDECREF(it->it_map_iter);
-    Py_XDECREF(it->it_seq);
+    Py_CLEAR(it->it_map_iter);
+    Py_CLEAR(it->it_seq);
     PyObject_GC_Del(it);
 }
 
