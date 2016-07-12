@@ -55,6 +55,7 @@ cdef enum TransactionStatus:
 cdef enum MessageDispatchLoop:
     DISPATCH_CONTINUE = 0
     DISPATCH_STOP = 1
+    DISPATCH_CONTINUE_NO_DISCARD = 2
 
 
 cdef class Result:

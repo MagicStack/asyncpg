@@ -98,6 +98,7 @@ cdef class ReadBuffer:
     cdef inline char* try_consume_message(self, int32_t* len)
     cdef consume_message(self)
     cdef discard_message(self)
+    cdef inline _discard_message(self)
     cdef inline char get_message_type(self)
     cdef inline int32_t get_message_length(self)
 

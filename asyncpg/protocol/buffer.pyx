@@ -478,14 +478,21 @@ cdef class ReadBuffer:
         buf = self._try_read_bytes(self._current_message_len_unread)
         if buf != NULL:
             len[0] = self._current_message_len_unread
+            self._discard_message()
         return buf
 
     cdef consume_message(self):
         if not self._current_message_ready:
             raise BufferError('no message to consume')
-        return self.read(self._current_message_len_unread)
+        mem = self.read(self._current_message_len_unread)
+        self._discard_message()
+        return mem
 
     cdef discard_message(self):
+        if self._current_message_type == 0:
+            # Already discarded
+            return
+
         if not self._current_message_ready:
             raise BufferError('no message to discard')
 
@@ -496,6 +503,9 @@ cdef class ReadBuffer:
                     chr(self._current_message_type),
                     (<Memory>discarded).as_bytes()))
 
+        self._discard_message()
+
+    cdef inline _discard_message(self):
         self._current_message_type = 0
         self._current_message_len = 0
         self._current_message_ready = 0

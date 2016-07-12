@@ -50,16 +50,20 @@ cdef class CoreProtocol:
     cdef inline _read_server_messages(self):
         cdef:
             char mtype
+            MessageDispatchLoop res
 
         while self.buffer.has_message():
             mtype = self.buffer.get_message_type()
+            res = DISPATCH_CONTINUE
             try:
-                if self._dispatch_server_message(mtype) == DISPATCH_STOP:
+                res = self._dispatch_server_message(mtype)
+                if res == DISPATCH_STOP:
                     return
             except Exception as ex:
                 self._fatal_error(ex)
             finally:
-                self.buffer.discard_message()
+                if res != DISPATCH_CONTINUE_NO_DISCARD:
+                    self.buffer.discard_message()
 
     cdef inline MessageDispatchLoop _dispatch_server_message(self, char mtype):
         # Modeled after libpq/fe-protocol3.c:pqParseInput3
@@ -237,6 +241,12 @@ cdef class CoreProtocol:
                         self._result.status == PGRES_TUPLES_OK):
                     # Read another tuple of a normal query response
                     self._parse_server_data_row()
+
+                    while self.buffer.has_message() and \
+                            self.buffer.get_message_type() == b'D':
+                        self._parse_server_data_row()
+
+                    return DISPATCH_CONTINUE_NO_DISCARD
 
                 elif (self._result is not None and
                         self._result.status == PGRES_FATAL_ERROR):
