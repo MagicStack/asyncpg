@@ -389,6 +389,7 @@ record_repr(ApgRecordObject *v)
 
     i = Py_ReprEnter((PyObject *)v);
     if (i != 0) {
+        Py_DECREF(keys_iter);
         return i > 0 ? PyUnicode_FromString("<Record ...>") : NULL;
     }
 
