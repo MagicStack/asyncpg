@@ -456,6 +456,7 @@ record_repr(ApgRecordObject *v)
         Py_DECREF(val_repr);
     }
 
+    writer.overallocate = 0;
     if (_PyUnicodeWriter_WriteChar(&writer, '>') < 0) {
         goto error;
     }
