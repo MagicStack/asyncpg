@@ -13,6 +13,9 @@ class PreparedStatement:
         self._query = query
         state.attach()
 
+    def get_query(self):
+        return self._query
+
     def get_parameters(self):
         self.__check_open()
         return self._state._get_parameters()

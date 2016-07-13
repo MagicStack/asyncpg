@@ -9,6 +9,7 @@ class TestPrepare(tb.ConnectedTestCase):
 
     async def test_prepare_1(self):
         st = await self.con.prepare('SELECT 1 = $1 AS test')
+        self.assertEqual(st.get_query(), 'SELECT 1 = $1 AS test')
 
         rec = await st.fetch_row(1)
         self.assertTrue(rec['test'])
