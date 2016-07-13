@@ -186,20 +186,33 @@ record_hash(ApgRecordObject *v)
 static PyObject *
 record_richcompare(PyObject *v, PyObject *w, int op)
 {
-    ApgRecordObject *vt, *wt;
     Py_ssize_t i;
     Py_ssize_t vlen, wlen;
+    int v_is_tuple = 0;
+    int w_is_tuple = 0;
     int comp;
 
-    if (!ApgRecord_CheckExact(v) || !ApgRecord_CheckExact(w)) {
-        Py_RETURN_NOTIMPLEMENTED;
+    if (!ApgRecord_CheckExact(v)) {
+        if (!PyTuple_Check(v)) {
+            Py_RETURN_NOTIMPLEMENTED;
+        }
+        v_is_tuple = 1;
     }
 
-    vt = (ApgRecordObject *)v;
-    wt = (ApgRecordObject *)w;
+    if (!ApgRecord_CheckExact(w)) {
+        if (!PyTuple_Check(w)) {
+            Py_RETURN_NOTIMPLEMENTED;
+        }
+        w_is_tuple = 1;
+    }
 
-    vlen = Py_SIZE(vt);
-    wlen = Py_SIZE(wt);
+#define V_ITEM(i) \
+    (v_is_tuple ? (PyTuple_GET_ITEM(v, i)) : (ApgRecord_GET_ITEM(v, i)))
+#define W_ITEM(i) \
+    (w_is_tuple ? (PyTuple_GET_ITEM(w, i)) : (ApgRecord_GET_ITEM(w, i)))
+
+    vlen = Py_SIZE(v);
+    wlen = Py_SIZE(w);
 
     if (op == Py_EQ && vlen != wlen) {
         /* Checking if v == w, but len(v) != len(w): return False */
@@ -211,32 +224,12 @@ record_richcompare(PyObject *v, PyObject *w, int op)
         Py_RETURN_TRUE;
     }
 
-    if (vt->mapping != wt->mapping) {
-        /* v and w don't have the same mapping */
-        comp = PyObject_RichCompareBool(vt->mapping, wt->mapping, Py_EQ);
-        if (comp < 0) {
-            return NULL;
-        }
-        if (!comp) {
-            /* Mapping of v is different from mapping of w */
-            if (op == Py_NE) {
-                /* If we're checking if v != w: return True */
-                Py_RETURN_TRUE;
-            }
-            else if (op == Py_EQ) {
-                /* If we're checking if v == w: return False */
-                Py_RETURN_FALSE;
-            }
-        }
-    }
-
     /* Search for the first index where items are different.
      * Note that because tuples are immutable, it's safe to reuse
      * vlen and wlen across the comparison calls.
      */
     for (i = 0; i < vlen && i < wlen; i++) {
-        comp = PyObject_RichCompareBool(vt->ob_item[i],
-                                        wt->ob_item[i], Py_EQ);
+        comp = PyObject_RichCompareBool(V_ITEM(i), W_ITEM(i), Py_EQ);
         if (comp < 0) {
             return NULL;
         }
@@ -274,7 +267,10 @@ record_richcompare(PyObject *v, PyObject *w, int op)
     }
 
     /* Compare the final item again using the proper operator */
-    return PyObject_RichCompare(vt->ob_item[i], wt->ob_item[i], op);
+    return PyObject_RichCompare(V_ITEM(i), W_ITEM(i), op);
+
+#undef V_ITEM
+#undef W_ITEM
 }
 
 

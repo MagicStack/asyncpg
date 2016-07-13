@@ -212,30 +212,37 @@ class TestRecord(unittest.TestCase):
         r6 = Record(R_AC, (42, 43))
 
         r7 = (42, 43)
+        r8 = [42, 43]
 
         self.assertEqual(r1, r2)
         self.assertEqual(r1, r3)
+        self.assertEqual(r1, r6)
+        self.assertEqual(r1, r7)
 
         self.assertNotEqual(r1, r4)
+        self.assertNotEqual(r1, (42,))
         self.assertNotEqual(r1, r5)
-        self.assertNotEqual(r1, r6)
-        self.assertNotEqual(r1, r7)
         self.assertNotEqual(r4, r5)
         self.assertNotEqual(r4, r6)
         self.assertNotEqual(r6, r5)
+        self.assertNotEqual(r1, r8)
+        self.assertNotEqual(r8, r6)
 
         self.assertLess(r1, r4)
         self.assertGreater(r4, r1)
 
         self.assertLess(r1, r5)
+        self.assertLess(r7, r5)
         self.assertGreater(r5, r6)
+        self.assertGreater(r5, r7)
         self.assertGreater(r5, r4)
 
         with self.assertRaisesRegex(TypeError, 'unorderable'):
-            r7 < r1
+            r1 < r8
 
-        with self.assertRaisesRegex(TypeError, 'unorderable'):
-            r1 < r7
+        self.assertEqual(
+            sorted([r1, r2, r3, r4, r5, r6, r7]),
+            [r1, r2, r3, r6, r7, r4, r5])
 
     def test_record_not_pickleable(self):
         r = Record(R_A, (42,))
