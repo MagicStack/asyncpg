@@ -310,7 +310,7 @@ class TestCodecs(tb.ConnectedTestCase):
 
         res = await st.fetchval()
 
-        self.assertEqual(res, [None, 1234, '5678'])
+        self.assertEqual(res, (None, 1234, '5678'))
 
         try:
             st = await self.con.prepare('''

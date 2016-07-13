@@ -10,9 +10,7 @@ cdef inline record_encode_frame(ConnectionSettings settings, WriteBuffer buf,
 cdef anonymous_record_decode(ConnectionSettings settings,
                              const char* data, int32_t len):
     cdef:
-        decode_func df
-
-        list result
+        tuple result
         uint32_t elem_count
         const char *ptr
         uint32_t i
@@ -21,26 +19,28 @@ cdef anonymous_record_decode(ConnectionSettings settings,
         Codec elem_codec
 
     elem_count = hton.unpack_int32(data)
-    result = []
+    result = cpython.PyTuple_New(elem_count)
     ptr = &data[4]
+
     for i in range(elem_count):
         elem_typ = elem_typ = hton.unpack_int32(ptr)
-
         ptr += 4
 
         elem_len = hton.unpack_int32(ptr)
-
         ptr += 4
 
         if elem_len == -1:
-            result.append(None)
+            elem = None
         else:
             elem_codec = settings.get_data_codec(elem_typ)
             if elem_codec is None or not elem_codec.has_decoder():
                 raise RuntimeError('no decoder for type OID {}'.format(
                     elem_typ))
-            result.append(elem_codec.decode(settings, ptr, elem_len))
+            elem = elem_codec.decode(settings, ptr, elem_len)
             ptr += elem_len
+
+        cpython.Py_INCREF(elem)
+        cpython.PyTuple_SET_ITEM(result, i, elem)
 
     return result
 
