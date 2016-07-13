@@ -48,7 +48,7 @@ class Transaction:
     async def __aenter__(self):
         if self._managed:
             raise apg_errors.InterfaceError(
-                'cannot enter context: already in an `async def` block')
+                'cannot enter context: already in an `async with` block')
         self._managed = True
         await self.start()
 
@@ -168,13 +168,13 @@ class Transaction:
     async def commit(self):
         if self._managed:
             raise apg_errors.InterfaceError(
-                'cannot manually commit from within an `async def` block')
+                'cannot manually commit from within an `async with` block')
         await self.__commit()
 
     async def rollback(self):
         if self._managed:
             raise apg_errors.InterfaceError(
-                'cannot manually rollback from within an `async def` block')
+                'cannot manually rollback from within an `async with` block')
         await self.__rollback()
 
     def __repr__(self):

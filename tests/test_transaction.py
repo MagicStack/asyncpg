@@ -11,8 +11,13 @@ class TestTransaction(tb.ConnectedTestCase):
         self.assertIsNone(self.con._top_xact)
 
         with self.assertRaises(ZeroDivisionError):
-            async with tr:
+            async with tr as with_tr:
                 self.assertIs(self.con._top_xact, tr)
+
+                # We don't return the transaction object from __aenter__,
+                # to make it harder for people to use '.rollback()' and
+                # '.commit()' from within an 'async with' block.
+                self.assertIsNone(with_tr)
 
                 await self.con.execute('''
                     CREATE TABLE mytab (a int);
@@ -107,7 +112,7 @@ class TestTransaction(tb.ConnectedTestCase):
 
         tr = self.con.transaction()
         with self.assertRaisesRegex(asyncpg.InterfaceError,
-                                    'cannot manually commit.*async def'):
+                                    'cannot manually commit.*async with'):
             async with tr:
                 await tr.commit()
 
@@ -115,7 +120,7 @@ class TestTransaction(tb.ConnectedTestCase):
 
         tr = self.con.transaction()
         with self.assertRaisesRegex(asyncpg.InterfaceError,
-                                    'cannot manually rollback.*async def'):
+                                    'cannot manually rollback.*async with'):
             async with tr:
                 await tr.rollback()
 
@@ -123,7 +128,7 @@ class TestTransaction(tb.ConnectedTestCase):
 
         tr = self.con.transaction()
         with self.assertRaisesRegex(asyncpg.InterfaceError,
-                                    'cannot enter context'):
+                                    'cannot enter context:.*async with'):
             async with tr:
                 async with tr:
                     pass
