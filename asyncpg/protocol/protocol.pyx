@@ -105,15 +105,21 @@ cdef class BaseProtocol(CoreProtocol):
         self._prepared_stmt = <PreparedStatementState>state
 
         self._last_query = self._prepared_stmt.query
+        waiter = self._create_future()
 
-        self._bind(
-            "",
-            state.name,
-            self._prepared_stmt._encode_bind_msg(args),
-            limit)
+        try:
+            self._bind(
+                "",
+                state.name,
+                self._prepared_stmt._encode_bind_msg(args),
+                limit)
+        except Exception as ex:
+            waiter.set_exception(ex)
+            self._state = STATE_READY
+        else:
+            self._waiter = waiter
 
-        self._waiter = self._create_future()
-        return self._waiter
+        return waiter
 
     def is_closed(self):
         return self._state == STATE_CLOSING or self._state == STATE_CLOSED
