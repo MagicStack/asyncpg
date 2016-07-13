@@ -36,7 +36,7 @@ class Connection:
     async def execute(self, script):
         await self._protocol.query(script)
 
-    async def prepare(self, query):
+    async def _get_statement(self, query):
         try:
             state = self._stmt_cache[query]
         except KeyError:
@@ -44,7 +44,7 @@ class Connection:
         else:
             self._stmt_cache.move_to_end(query, last=True)
             if not state.closed:
-                return prepared_stmt.PreparedStatement(self, query, state)
+                return state
 
         protocol = self._protocol
         state = await protocol.prepare(None, query)
@@ -65,8 +65,32 @@ class Connection:
                 await self._cleanup_stmts()
 
         self._stmt_cache[query] = state
+        return state
 
-        return prepared_stmt.PreparedStatement(self, query, state)
+    async def prepare(self, query):
+        stmt = await self._get_statement(query)
+        return prepared_stmt.PreparedStatement(self, query, stmt)
+
+    async def fetch(self, query, *args):
+        stmt = await self._get_statement(query)
+        data = await self._protocol.execute(stmt, args)
+        if data is None:
+            data = []
+        return data
+
+    async def fetch_value(self, query, *args, column=0):
+        stmt = await self._get_statement(query)
+        data = await self._protocol.execute(stmt, args)
+        if data is None:
+            return None
+        return data[0][column]
+
+    async def fetch_row(self, query, *args):
+        stmt = await self._get_statement(query)
+        data = await self._protocol.execute(stmt, args)
+        if data is None:
+            return None
+        return data[0]
 
     async def set_type_codec(self, typename, *,
                              schema='public', encoder, decoder, binary=False):
