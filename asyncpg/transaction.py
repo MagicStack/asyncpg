@@ -180,10 +180,17 @@ class Transaction:
     def __repr__(self):
         attrs = []
         attrs.append('state:{}'.format(self._state.name.lower()))
+
         attrs.append(self._isolation)
         if self._readonly:
             attrs.append('readonly')
         if self._deferrable:
             attrs.append('deferrable')
-        return '<asyncpg.Transaction {} {:#x}>'.format(
-            ' '.join(attrs), id(self))
+
+        if self.__class__.__module__.startswith('asyncpg.'):
+            mod = 'asyncpg'
+        else:
+            mod = self.__class__.__module__
+
+        return '<{}.{} {} {:#x}>'.format(
+            mod, self.__class__.__name__, ' '.join(attrs), id(self))
