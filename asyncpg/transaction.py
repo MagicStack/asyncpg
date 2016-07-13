@@ -17,7 +17,7 @@ ISOLATION_LEVELS = {'read_committed', 'serializable', 'repeatable_read'}
 class Transaction:
 
     __slots__ = ('_connection', '_isolation', '_readonly', '_deferrable',
-                 '_state', '_nested', '_id')
+                 '_state', '_nested', '_id', '_managed')
 
     def __init__(self, connection, isolation, readonly, deferrable):
         if isolation not in ISOLATION_LEVELS:
@@ -43,18 +43,29 @@ class Transaction:
         self._state = TransactionState.NEW
         self._nested = False
         self._id = None
+        self._managed = False
 
     async def __aenter__(self):
+        if self._managed:
+            raise apg_errors.InterfaceError(
+                'cannot enter context: already in an `async def` block')
+        self._managed = True
         await self.start()
 
     async def __aexit__(self, extype, ex, tb):
-        if extype is not None:
-            await self.rollback()
+        try:
+            if extype is not None:
+                await self.__rollback()
+            else:
+                await self.__commit()
+        finally:
+            self._managed = False
 
     async def start(self):
-        if self._state is not TransactionState.NEW:
-            raise apg_errors.FatalError(
-                'cannot start transaction: inconsistent state')
+        self.__check_state_base('start')
+        if self._state is TransactionState.STARTED:
+            raise apg_errors.InterfaceError(
+                'cannot start; the transaction is already started')
 
         con = self._connection
 
@@ -64,8 +75,8 @@ class Transaction:
             # Nested transaction block
             top_xact = con._top_xact
             if self._isolation != top_xact._isolation:
-                raise apg_errors.FatalError(
-                    'nested transaction has different isolation level: '
+                raise apg_errors.InterfaceError(
+                    'nested transaction has a different isolation level: '
                     'current {!r} != outer {!r}'.format(
                         self._isolation, top_xact._isolation))
             self._nested = True
@@ -94,10 +105,33 @@ class Transaction:
         else:
             self._state = TransactionState.STARTED
 
-    async def commit(self):
+    def __check_state_base(self, opname):
+        if self._state is TransactionState.COMMITTED:
+            raise apg_errors.InterfaceError(
+                'cannot {}; the transaction is already committed'.format(
+                    opname))
+        if self._state is TransactionState.ROLLEDBACK:
+            raise apg_errors.InterfaceError(
+                'cannot {}; the transaction is already rolled back'.format(
+                    opname))
+        if self._state is TransactionState.FAILED:
+            raise apg_errors.InterfaceError(
+                'cannot {}; the transaction is in error state'.format(
+                    opname))
+
+    def __check_state(self, opname):
         if self._state is not TransactionState.STARTED:
-            raise apg_errors.FatalError(
-                'cannot commit transaction: inconsistent state')
+            if self._state is TransactionState.NEW:
+                raise apg_errors.InterfaceError(
+                    'cannot {}; the transaction is not yet started'.format(
+                        opname))
+            self.__check_state_base(opname)
+
+    async def __commit(self):
+        self.__check_state('commit')
+
+        if self._connection._top_xact is self:
+            self._connection._top_xact = None
 
         if self._nested:
             query = 'RELEASE SAVEPOINT {};'.format(self._id)
@@ -112,13 +146,11 @@ class Transaction:
         else:
             self._state = TransactionState.COMMITTED
 
-    async def rollback(self):
+    async def __rollback(self):
+        self.__check_state('rollback')
+
         if self._connection._top_xact is self:
             self._connection._top_xact = None
-
-        if self._state is not TransactionState.STARTED:
-            raise apg_errors.FatalError(
-                'cannot rollback transaction: inconsistent state')
 
         if self._nested:
             query = 'ROLLBACK TO {};'.format(self._id)
@@ -132,3 +164,26 @@ class Transaction:
             raise
         else:
             self._state = TransactionState.ROLLEDBACK
+
+    async def commit(self):
+        if self._managed:
+            raise apg_errors.InterfaceError(
+                'cannot manually commit from within an `async def` block')
+        await self.__commit()
+
+    async def rollback(self):
+        if self._managed:
+            raise apg_errors.InterfaceError(
+                'cannot manually rollback from within an `async def` block')
+        await self.__rollback()
+
+    def __repr__(self):
+        attrs = []
+        attrs.append('state:{}'.format(self._state.name.lower()))
+        attrs.append(self._isolation)
+        if self._readonly:
+            attrs.append('readonly')
+        if self._deferrable:
+            attrs.append('deferrable')
+        return '<asyncpg.Transaction {} {:#x}>'.format(
+            ' '.join(attrs), id(self))
