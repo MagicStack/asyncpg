@@ -3,6 +3,7 @@ import decimal
 import math
 import uuid
 
+import asyncpg
 from asyncpg import _testbase as tb
 
 
@@ -294,6 +295,77 @@ class TestCodecs(tb.ConnectedTestCase):
         stmt = await self.con.prepare('select pg_sleep(0)')
         self.assertIsNone(await stmt.fetchval())
 
+    async def test_arrays(self):
+        """Test encoding/decoding of ararys (particularly multidimensional)."""
+        cases = [
+            (
+                r"SELECT '[1:3][-1:0]={{1,2},{4,5},{6,7}}'::int[]",
+                ((1, 2), (4, 5), (6, 7))
+            ),
+            (
+                r"SELECT '{{{{{{1}}}}}}'::int[]",
+                ((((((1,),),),),),)
+            )
+        ]
+
+        for sql, expected in cases:
+            with self.subTest(sql=sql):
+                res = await self.con.fetchval(sql)
+                self.assertEqual(res, expected)
+
+        with self.assertRaises(asyncpg.ProgramLimitExceededError):
+            await self.con.fetchval("SELECT '{{{{{{{1}}}}}}}'::int[]")
+
+        cases = [
+            (1, 2, 3, 4, 5, 6),
+            ((1, 2), (4, 5), (6, 7)),
+            ((((((1,),),),),),)
+        ]
+
+        st = await self.con.prepare(
+            "SELECT $1::int[]"
+        )
+
+        for case in cases:
+            with self.subTest(case=case):
+                result = await st.fetchval(case)
+                err_msg = (
+                    "failed to return array data as-is; "
+                    "gave {!r}, received {!r}".format(
+                        case, result))
+
+                self.assertEqual(result, case, err_msg)
+
+        with self.assertRaisesRegex(ValueError, 'dimensions'):
+            await self.con.fetchval(
+                "SELECT $1::int[]",
+                [[[[[[[1]]]]]]])
+
+        with self.assertRaisesRegex(ValueError, 'non-homogeneous'):
+            await self.con.fetchval(
+                "SELECT $1::int[]",
+                [1, [1]])
+
+        with self.assertRaisesRegex(ValueError, 'non-homogeneous'):
+            await self.con.fetchval(
+                "SELECT $1::int[]",
+                [[1], 1, [2]])
+
+        with self.assertRaisesRegex(ValueError, 'invalid array element'):
+            await self.con.fetchval(
+                "SELECT $1::int[]",
+                [1, 't', 2])
+
+        with self.assertRaisesRegex(ValueError, 'invalid array element'):
+            await self.con.fetchval(
+                "SELECT $1::int[]",
+                [[1], ['t'], [2]])
+
+        with self.assertRaisesRegex(TypeError, 'list or tuple expected'):
+            await self.con.fetchval(
+                "SELECT $1::int[]",
+                1)
+
     async def test_composites(self):
         """Test encoding/decoding of composite types."""
         await self.con.execute('''
@@ -305,12 +377,12 @@ class TestCodecs(tb.ConnectedTestCase):
         ''')
 
         st = await self.con.prepare('''
-            SELECT ROW(NULL, 1234, '5678')
+            SELECT ROW(NULL, 1234, '5678', ROW(42, '42'))
         ''')
 
         res = await st.fetchval()
 
-        self.assertEqual(res, (None, 1234, '5678'))
+        self.assertEqual(res, (None, 1234, '5678', (42, '42')))
 
         try:
             st = await self.con.prepare('''
