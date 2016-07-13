@@ -23,7 +23,7 @@ class PreparedStatement:
         self.__check_open()
         return PreparedStatementIterator(self, args)
 
-    async def get_list(self, *args):
+    async def fetch(self, *args):
         self.__check_open()
         protocol = self._connection._protocol
         data = await protocol.execute(self._state, args)
@@ -31,7 +31,7 @@ class PreparedStatement:
             data = []
         return data
 
-    async def get_value(self, *args, column=0):
+    async def fetch_value(self, *args, column=0):
         self.__check_open()
         protocol = self._connection._protocol
         data = await protocol.execute(self._state, args)
@@ -39,7 +39,7 @@ class PreparedStatement:
             return None
         return data[0][column]
 
-    async def get_first_row(self, *args):
+    async def fetch_row(self, *args):
         self.__check_open()
         protocol = self._connection._protocol
         data = await protocol.execute(self._state, args)

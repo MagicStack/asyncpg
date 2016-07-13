@@ -55,7 +55,7 @@ class Connection:
                 self._types_stmt = await self.prepare(
                     introspection.INTRO_LOOKUP_TYPES)
 
-            types = await self._types_stmt.get_list(list(ready))
+            types = await self._types_stmt.fetch(list(ready))
             protocol.get_settings().register_data_types(types)
 
         if len(self._stmt_cache) > self._stmt_cache_max_size - 1:
@@ -87,7 +87,7 @@ class Connection:
             self._type_by_name_stmt = await self.prepare(
                 introspection.TYPE_BY_NAME)
 
-        typeinfo = await self._type_by_name_stmt.get_first_row(
+        typeinfo = await self._type_by_name_stmt.fetch_row(
             typename, schema)
         if not typeinfo:
             raise ValueError('unknown type: {}.{}'.format(schema, typename))
@@ -115,7 +115,7 @@ class Connection:
             self._type_by_name_stmt = await self.prepare(
                 introspection.TYPE_BY_NAME)
 
-        typeinfo = await self._type_by_name_stmt.get_first_row(
+        typeinfo = await self._type_by_name_stmt.fetch_row(
             typename, schema)
         if not typeinfo:
             raise ValueError('unknown type: {}.{}'.format(schema, typename))
