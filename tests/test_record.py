@@ -203,6 +203,8 @@ class TestRecord(unittest.TestCase):
         self.assertNotIn(r4, d)
 
     def test_record_cmp(self):
+        AB = collections.namedtuple('AB', ('a', 'b'))
+
         r1 = Record(R_AB, (42, 43))
         r2 = Record(R_AB, (42, 43))
         r3 = Record(R_AB.copy(), (42, 43))
@@ -214,12 +216,17 @@ class TestRecord(unittest.TestCase):
         r7 = (42, 43)
         r8 = [42, 43]
 
+        r9 = AB(42, 43)
+        r10 = AB(42, 44)
+
         self.assertEqual(r1, r2)
         self.assertEqual(r1, r3)
         self.assertEqual(r1, r6)
         self.assertEqual(r1, r7)
+        self.assertEqual(r1, r9)
 
         self.assertNotEqual(r1, r4)
+        self.assertNotEqual(r1, r10)
         self.assertNotEqual(r1, (42,))
         self.assertNotEqual(r1, r5)
         self.assertNotEqual(r4, r5)
@@ -233,6 +240,7 @@ class TestRecord(unittest.TestCase):
 
         self.assertLess(r1, r5)
         self.assertLess(r7, r5)
+        self.assertLess(r1, r10)
         self.assertGreater(r5, r6)
         self.assertGreater(r5, r7)
         self.assertGreater(r5, r4)
