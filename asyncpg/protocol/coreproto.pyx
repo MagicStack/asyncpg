@@ -124,8 +124,15 @@ cdef class CoreProtocol:
                 self._async_status = PGASYNC_READY
                 self._push_result()
 
+            elif mtype == b's':
+                # Command complete
+                if self._result is None:
+                    self._result = Result.new(PGRES_COMMAND_OK)
+                self._async_status = PGASYNC_READY
+                self._push_result()
+
             elif mtype == b'Z':
-                # Backend is ready for new query
+                # 'Z' - Backend is ready for new query
                 self._parse_server_ready_for_query()
 
                 if self._status == CONNECTION_STARTED:
@@ -510,7 +517,8 @@ cdef class CoreProtocol:
         self._query_class = PGQUERY_DESCRIBE
         self._async_status = PGASYNC_BUSY
 
-    cdef _bind(self, str portal_name, str stmt_name, WriteBuffer bind_data):
+    cdef _bind(self, str portal_name, str stmt_name,
+               WriteBuffer bind_data, int32_t limit):
         cdef WriteBuffer buf
 
         self._ensure_ready_state()
@@ -527,7 +535,7 @@ cdef class CoreProtocol:
 
         buf = WriteBuffer.new_message(b'E')
         buf.write_str(portal_name, self._encoding)  # name of the portal
-        buf.write_int32(0)  # number of rows to return; 0 - all
+        buf.write_int32(limit)  # number of rows to return; 0 - all
         buf.end_message()
         self._write(buf)
 

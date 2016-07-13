@@ -73,21 +73,21 @@ class Connection:
 
     async def fetch(self, query, *args):
         stmt = await self._get_statement(query)
-        data = await self._protocol.execute(stmt, args)
+        data = await self._protocol.execute(stmt, args, 0)
         if data is None:
             data = []
         return data
 
     async def fetch_value(self, query, *args, column=0):
         stmt = await self._get_statement(query)
-        data = await self._protocol.execute(stmt, args)
+        data = await self._protocol.execute(stmt, args, 1)
         if data is None:
             return None
         return data[0][column]
 
     async def fetch_row(self, query, *args):
         stmt = await self._get_statement(query)
-        data = await self._protocol.execute(stmt, args)
+        data = await self._protocol.execute(stmt, args, 1)
         if data is None:
             return None
         return data[0]

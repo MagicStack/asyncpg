@@ -214,7 +214,8 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual(len(self.con._stmts_to_close), 1)
 
     async def test_prepare_13_connect(self):
-        v = await self.con.fetch_value('SELECT $1::smallint', 10)
+        v = await self.con.fetch_value(
+            'SELECT $1::smallint AS foo', 10, column='foo')
         self.assertEqual(v, 10)
 
         r = await self.con.fetch_row('SELECT $1::smallint * 2 AS test', 10)

@@ -26,7 +26,7 @@ class PreparedStatement:
     async def fetch(self, *args):
         self.__check_open()
         protocol = self._connection._protocol
-        data = await protocol.execute(self._state, args)
+        data = await protocol.execute(self._state, args, 0)
         if data is None:
             data = []
         return data
@@ -34,7 +34,7 @@ class PreparedStatement:
     async def fetch_value(self, *args, column=0):
         self.__check_open()
         protocol = self._connection._protocol
-        data = await protocol.execute(self._state, args)
+        data = await protocol.execute(self._state, args, 1)
         if data is None:
             return None
         return data[0][column]
@@ -42,7 +42,7 @@ class PreparedStatement:
     async def fetch_row(self, *args):
         self.__check_open()
         protocol = self._connection._protocol
-        data = await protocol.execute(self._state, args)
+        data = await protocol.execute(self._state, args, 1)
         if data is None:
             return None
         return data[0]
@@ -72,7 +72,7 @@ class PreparedStatementIterator:
     async def __anext__(self):
         if self._iter is None:
             protocol = self._stmt._connection._protocol
-            data = await protocol.execute(self._stmt._state, self._args)
+            data = await protocol.execute(self._stmt._state, self._args, 0)
             if data is None:
                 data = ()
             self._iter = iter(data)

@@ -96,7 +96,7 @@ cdef class BaseProtocol(CoreProtocol):
         self._prepare(name, query)
         return self._waiter
 
-    def execute(self, state, args):
+    def execute(self, state, args, limit):
         if type(state) is not PreparedStatementState:
             raise TypeError(
                 'state must be an instance of PreparedStatementState')
@@ -109,7 +109,8 @@ cdef class BaseProtocol(CoreProtocol):
         self._bind(
             "",
             state.name,
-            self._prepared_stmt._encode_bind_msg(args))
+            self._prepared_stmt._encode_bind_msg(args),
+            limit)
 
         self._waiter = self._create_future()
         return self._waiter
