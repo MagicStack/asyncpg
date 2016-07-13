@@ -67,18 +67,9 @@ cdef class Codec:
 
     cdef encode_array(self, ConnectionSettings settings, WriteBuffer buf,
                       object obj):
-
-        cdef WriteBuffer elem_data
-
-        elem_data = WriteBuffer.new()
-        for item in obj:
-            if item is None:
-                elem_data.write_int32(-1)
-            else:
-                self.element_codec.encode(settings, elem_data, item)
-
-        array_encode_frame(settings, buf, self.element_codec.oid,
-                           elem_data, len(obj))
+        array_encode(settings, buf, obj, self.element_codec.oid,
+                     codec_encode_func_ex,
+                     <void*>(<cpython.PyObject>self.element_codec))
 
     cdef encode_composite(self, ConnectionSettings settings, WriteBuffer buf,
                           object obj):
@@ -117,36 +108,8 @@ cdef class Codec:
 
     cdef decode_array(self, ConnectionSettings settings, const char *data,
                       int32_t len):
-        cdef:
-            tuple result
-            int32_t ndims
-            uint32_t elem_count
-            const char *ptr
-            uint32_t i
-            int32_t elem_len
-            Codec elem_codec
-
-        ndims = hton.unpack_int32(data)
-        elem_count = hton.unpack_int32(&data[12])
-        ptr = &data[20]
-
-        if ndims > 0:
-            elem_codec = self.element_codec
-            result = cpython.PyTuple_New(elem_count)
-            for i in range(elem_count):
-                elem_len = hton.unpack_int32(ptr)
-                ptr += 4
-                if elem_len == -1:
-                    elem = None
-                else:
-                    elem = elem_codec.decode(settings, ptr, elem_len)
-                    ptr += elem_len
-                cpython.Py_INCREF(elem)
-                cpython.PyTuple_SET_ITEM(result, i, elem)
-        else:
-            result = ()
-
-        return result
+        return array_decode(settings, data, len, codec_decode_func_ex,
+                            <void*>(<cpython.PyObject>self.element_codec))
 
     cdef decode_composite(self, ConnectionSettings settings, const char *data,
                           int32_t len):
@@ -286,6 +249,18 @@ cdef class Codec:
         codec.init(name, schema, kind, CODEC_PY, format, NULL, NULL,
                    encoder, decoder, None, None, None, None)
         return codec
+
+
+# Encode callback for arrays
+cdef codec_encode_func_ex(ConnectionSettings settings, WriteBuffer buf,
+                          object obj, const void *arg):
+    return (<Codec>arg).encode(settings, buf, obj)
+
+
+# Decode callback for arrays
+cdef codec_decode_func_ex(ConnectionSettings settings, const char* data,
+                          int32_t len, const void *arg):
+    return (<Codec>arg).decode(settings, data, len)
 
 
 cdef class DataCodecConfig:
