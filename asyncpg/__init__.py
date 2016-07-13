@@ -18,6 +18,7 @@ async def connect(dsn=None, *,
                   database=None,
                   loop=None,
                   timeout=60,
+                  statement_cache_size=100,
                   **kwargs):
 
     if loop is None:
@@ -69,7 +70,8 @@ async def connect(dsn=None, *,
         tr.close()
         raise
 
-    return connection.Connection(pr, tr, loop)
+    return connection.Connection(
+        pr, tr, loop, statement_cache_size=statement_cache_size)
 
 
 def _parse_connect_params(*, dsn, host, port, user,

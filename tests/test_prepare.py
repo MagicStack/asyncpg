@@ -235,3 +235,30 @@ class TestPrepare(tb.ConnectedTestCase):
         plan = await stmt.explain(2, analyze=True)
         self.assertEqual(plan[0]['Plan']['Relation Name'], 'pg_type')
         self.assertIn('Actual Total Time', plan[0]['Plan'])
+
+    async def test_prepare_15_stmt_gc_cache_disabled(self):
+        # Test that even if the statements cache is off, we're still
+        # cleaning up GCed statements.
+
+        self.assertEqual(len(self.con._stmt_cache), 0)
+        self.assertEqual(len(self.con._stmts_to_close), 0)
+        # Disable cache
+        self.con._stmt_cache_max_size = 0
+
+        stmt = await self.con.prepare('select 100000000')
+        self.assertEqual(len(self.con._stmt_cache), 0)
+        self.assertEqual(len(self.con._stmts_to_close), 0)
+
+        del stmt
+        gc.collect()
+
+        # After GC, _stmts_to_close should contain stmt's state
+        self.assertEqual(len(self.con._stmt_cache), 0)
+        self.assertEqual(len(self.con._stmts_to_close), 1)
+
+        # Next "prepare" call will trigger a cleanup
+        stmt = await self.con.prepare('select 1')
+        self.assertEqual(len(self.con._stmt_cache), 0)
+        self.assertEqual(len(self.con._stmts_to_close), 0)
+
+        del stmt

@@ -11,7 +11,8 @@ class Connection:
                  '_type_by_name_stmt', '_top_xact', '_uid', '_aborted',
                  '_stmt_cache_max_size', '_stmt_cache', '_stmts_to_close')
 
-    def __init__(self, protocol, transport, loop):
+    def __init__(self, protocol, transport, loop, *,
+                 statement_cache_size):
         self._protocol = protocol
         self._transport = transport
         self._loop = loop
@@ -21,7 +22,7 @@ class Connection:
         self._uid = 0
         self._aborted = False
 
-        self._stmt_cache_max_size = 100
+        self._stmt_cache_max_size = statement_cache_size
         self._stmt_cache = collections.OrderedDict()
         self._stmts_to_close = set()
 
@@ -37,14 +38,17 @@ class Connection:
         await self._protocol.query(script)
 
     async def _get_statement(self, query):
-        try:
-            state = self._stmt_cache[query]
-        except KeyError:
-            pass
-        else:
-            self._stmt_cache.move_to_end(query, last=True)
-            if not state.closed:
-                return state
+        cache = self._stmt_cache_max_size > 0
+
+        if cache:
+            try:
+                state = self._stmt_cache[query]
+            except KeyError:
+                pass
+            else:
+                self._stmt_cache.move_to_end(query, last=True)
+                if not state.closed:
+                    return state
 
         protocol = self._protocol
         state = await protocol.prepare(None, query)
@@ -58,13 +62,17 @@ class Connection:
             types = await self._types_stmt.fetch(list(ready))
             protocol.get_settings().register_data_types(types)
 
-        if len(self._stmt_cache) > self._stmt_cache_max_size - 1:
-            old_query, old_state = self._stmt_cache.popitem(last=False)
-            self._maybe_gc_stmt(old_state)
-            if self._stmts_to_close:
-                await self._cleanup_stmts()
+        if cache:
+            if len(self._stmt_cache) > self._stmt_cache_max_size - 1:
+                old_query, old_state = self._stmt_cache.popitem(last=False)
+                self._maybe_gc_stmt(old_state)
+            self._stmt_cache[query] = state
 
-        self._stmt_cache[query] = state
+        # If we've just created a new statement object, check if there
+        # are any statements for GC.
+        if self._stmts_to_close:
+            await self._cleanup_stmts()
+
         return state
 
     async def prepare(self, query):
