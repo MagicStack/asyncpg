@@ -9,7 +9,8 @@
 import sys
 
 
-__all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError')
+__all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError',
+           'InterfaceError')
 
 
 class PostgresMessageMeta(type):
@@ -103,3 +104,7 @@ class FatalPostgresError(PostgresError):
 
 class UnknownPostgresError(FatalPostgresError):
     """An error with an unknown SQLSTATE code."""
+
+
+class InterfaceError(Exception):
+    """An error caused by improper use of asyncpg API."""

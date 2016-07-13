@@ -5,7 +5,7 @@ from asyncpg import _testbase as tb
 class TestExceptions(tb.ConnectedTestCase):
 
     def test_exceptions_exported(self):
-        for err in ('PostgresError', 'SubstringError'):
+        for err in ('PostgresError', 'SubstringError', 'InterfaceError'):
             self.assertTrue(hasattr(asyncpg, err))
             self.assertIn(err, asyncpg.__all__)
 
