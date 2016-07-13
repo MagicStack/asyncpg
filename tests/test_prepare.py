@@ -223,3 +223,14 @@ class TestPrepare(tb.ConnectedTestCase):
 
         rows = await self.con.fetch('SELECT generate_series(0,$1::int)', 3)
         self.assertEqual([r[0] for r in rows], [0, 1, 2, 3])
+
+    async def test_prepare_14_explain(self):
+        stmt = await self.con.prepare('SELECT typname FROM pg_type')
+        plan = await stmt.explain()
+        self.assertEqual(plan[0]['Plan']['Relation Name'], 'pg_type')
+
+        stmt = await self.con.prepare(
+            'SELECT typname, typlen FROM pg_type WHERE typlen > $1')
+        plan = await stmt.explain(2, analyze=True)
+        self.assertEqual(plan[0]['Plan']['Relation Name'], 'pg_type')
+        self.assertIn('Actual Total Time', plan[0]['Plan'])

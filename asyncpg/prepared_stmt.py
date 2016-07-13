@@ -1,3 +1,5 @@
+import json
+
 from . import compat
 
 
@@ -22,6 +24,37 @@ class PreparedStatement:
     def get_aiter(self, *args):
         self.__check_open()
         return PreparedStatementIterator(self, args)
+
+    async def explain(self, *args, analyze=False):
+        query = 'EXPLAIN (FORMAT JSON, VERBOSE'
+        if analyze:
+            query += ', ANALYZE) '
+        else:
+            query += ') '
+        query += self._state.query
+
+        if analyze:
+            # From PostgreSQL docs:
+            # Important: Keep in mind that the statement is actually
+            # executed when the ANALYZE option is used. Although EXPLAIN
+            # will discard any output that a SELECT would return, other
+            # side effects of the statement will happen as usual. If you
+            # wish to use EXPLAIN ANALYZE on an INSERT, UPDATE, DELETE,
+            # CREATE TABLE AS, or EXECUTE statement without letting the
+            # command affect your data, use this approach:
+            #     BEGIN;
+            #     EXPLAIN ANALYZE ...;
+            #     ROLLBACK;
+            tr = self._connection.transaction()
+            await tr.start()
+            try:
+                data = await self._connection.fetch_value(query, *args)
+            finally:
+                await tr.rollback()
+        else:
+            data = await self._connection.fetch_value(query, *args)
+
+        return json.loads(data)
 
     async def fetch(self, *args):
         self.__check_open()
