@@ -103,6 +103,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         self._start_state(STATE_EXECUTE)
         self._prepared_stmt = <PreparedStatementState>state
+        self._prepared_stmt.cmd_status = None
 
         self._last_query = self._prepared_stmt.query
         waiter = self._create_future()
@@ -110,7 +111,7 @@ cdef class BaseProtocol(CoreProtocol):
         try:
             self._bind(
                 "",
-                state.name,
+                self._prepared_stmt.name,
                 self._prepared_stmt._encode_bind_msg(args),
                 limit)
         except Exception as ex:
@@ -259,6 +260,10 @@ cdef class BaseProtocol(CoreProtocol):
         elif self._state == STATE_EXECUTE:
             stmt = self._prepared_stmt
             self._prepared_stmt = None
+
+            if stmt is not None:
+                # Can be None when close_statement was called (HACK)
+                stmt.cmd_status = result.cmd_status
 
             if result.rows is None:
                 waiter.set_result(None)

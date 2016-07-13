@@ -20,6 +20,8 @@ cdef class PreparedStatementState:
         bint         have_text_cols
         tuple        rows_codecs
 
+        bytes        cmd_status
+
     cdef _encode_bind_msg(self, args)
     cdef _ensure_rows_decoder(self)
     cdef _ensure_args_encoder(self)

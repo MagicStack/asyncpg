@@ -262,3 +262,30 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual(len(self.con._stmts_to_close), 0)
 
         del stmt
+
+    async def test_prepare_16_command_result(self):
+        async def status(query):
+            stmt = await self.con.prepare(query)
+            await stmt.fetch()
+            return stmt.get_statusmsg()
+
+        try:
+            self.assertEqual(
+                await status('CREATE TABLE mytab (a int)'),
+                'CREATE TABLE')
+
+            self.assertEqual(
+                await status('INSERT INTO mytab (a) VALUES (1), (2)'),
+                'INSERT 0 2')
+
+            self.assertEqual(
+                await status('SELECT a FROM mytab'),
+                'SELECT 2')
+
+            self.assertEqual(
+                await status('UPDATE mytab SET a = 3 WHERE a = 1'),
+                'UPDATE 1')
+        finally:
+            self.assertEqual(
+                await status('DROP TABLE mytab'),
+                'DROP TABLE')

@@ -9,6 +9,7 @@ cdef class Result:
         self.rows = None
         self.row_desc = None
         self.parameters_desc = None
+        self.cmd_status = None
 
     @staticmethod
     cdef Result new(ExecStatusType status):

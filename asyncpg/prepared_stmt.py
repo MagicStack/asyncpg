@@ -16,6 +16,9 @@ class PreparedStatement:
     def get_query(self):
         return self._query
 
+    def get_statusmsg(self):
+        return self._state._get_cmd_status()
+
     def get_parameters(self):
         self.__check_open()
         return self._state._get_parameters()
