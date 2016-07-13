@@ -265,7 +265,7 @@ class TestCodecs(tb.ConnectedTestCase):
 
             for sample in sample_data:
                 with self.subTest(sample=sample, typname=typname):
-                    rsample = await st.fetch_value(sample)
+                    rsample = await st.fetchval(sample)
                     err_msg = (
                         "failed to return {} object data as-is; "
                         "gave {!r}, received {!r}".format(
@@ -284,7 +284,7 @@ class TestCodecs(tb.ConnectedTestCase):
 
             with self.subTest(sample=None, typname=typname):
                 # Test that None is handled for all types.
-                rsample = await st.fetch_value(None)
+                rsample = await st.fetchval(None)
                 self.assertIsNone(rsample)
 
             at = st.get_attributes()
@@ -292,7 +292,7 @@ class TestCodecs(tb.ConnectedTestCase):
 
     async def test_void_decode(self):
         stmt = await self.con.prepare('select pg_sleep(0)')
-        self.assertIsNone(await stmt.fetch_value())
+        self.assertIsNone(await stmt.fetchval())
 
     async def test_composites(self):
         """Test encoding/decoding of composite types."""
@@ -308,7 +308,7 @@ class TestCodecs(tb.ConnectedTestCase):
             SELECT ROW(NULL, 1234, '5678')
         ''')
 
-        res = await st.fetch_value()
+        res = await st.fetchval()
 
         self.assertEqual(res, [None, 1234, '5678'])
 
@@ -355,14 +355,14 @@ class TestCodecs(tb.ConnectedTestCase):
             st = await self.con.prepare('''
                 SELECT 3::my_dom2
             ''')
-            res = await st.fetch_value()
+            res = await st.fetchval()
 
             self.assertEqual(res, 3)
 
             st = await self.con.prepare('''
                 SELECT NULL::my_dom2
             ''')
-            res = await st.fetch_value()
+            res = await st.fetchval()
 
             self.assertIsNone(res)
 
@@ -389,7 +389,7 @@ class TestCodecs(tb.ConnectedTestCase):
             st = await self.con.prepare('''
                 SELECT $1::hstore AS result
             ''')
-            res = await st.fetch_row({'ham': 'spam', 'nada': None})
+            res = await st.fetchrow({'ham': 'spam', 'nada': None})
             res = res['result']
 
             self.assertEqual(res, {'ham': 'spam', 'nada': None})
@@ -425,7 +425,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 SELECT $1::hstore AS result
             ''')
 
-            res = await st.fetch_row({'ham': 'spam'})
+            res = await st.fetchrow({'ham': 'spam'})
             res = res['result']
 
             self.assertEqual(res, {'ham': 'spam'})

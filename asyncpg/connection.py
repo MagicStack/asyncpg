@@ -86,14 +86,14 @@ class Connection:
             data = []
         return data
 
-    async def fetch_value(self, query, *args, column=0):
+    async def fetchval(self, query, *args, column=0):
         stmt = await self._get_statement(query)
         data = await self._protocol.execute(stmt, args, 1)
         if data is None:
             return None
         return data[0][column]
 
-    async def fetch_row(self, query, *args):
+    async def fetchrow(self, query, *args):
         stmt = await self._get_statement(query)
         data = await self._protocol.execute(stmt, args, 1)
         if data is None:
@@ -119,7 +119,7 @@ class Connection:
             self._type_by_name_stmt = await self.prepare(
                 introspection.TYPE_BY_NAME)
 
-        typeinfo = await self._type_by_name_stmt.fetch_row(
+        typeinfo = await self._type_by_name_stmt.fetchrow(
             typename, schema)
         if not typeinfo:
             raise ValueError('unknown type: {}.{}'.format(schema, typename))
@@ -147,7 +147,7 @@ class Connection:
             self._type_by_name_stmt = await self.prepare(
                 introspection.TYPE_BY_NAME)
 
-        typeinfo = await self._type_by_name_stmt.fetch_row(
+        typeinfo = await self._type_by_name_stmt.fetchrow(
             typename, schema)
         if not typeinfo:
             raise ValueError('unknown type: {}.{}'.format(schema, typename))

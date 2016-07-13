@@ -51,11 +51,11 @@ class PreparedStatement:
             tr = self._connection.transaction()
             await tr.start()
             try:
-                data = await self._connection.fetch_value(query, *args)
+                data = await self._connection.fetchval(query, *args)
             finally:
                 await tr.rollback()
         else:
-            data = await self._connection.fetch_value(query, *args)
+            data = await self._connection.fetchval(query, *args)
 
         return json.loads(data)
 
@@ -67,7 +67,7 @@ class PreparedStatement:
             data = []
         return data
 
-    async def fetch_value(self, *args, column=0):
+    async def fetchval(self, *args, column=0):
         self.__check_open()
         protocol = self._connection._protocol
         data = await protocol.execute(self._state, args, 1)
@@ -75,7 +75,7 @@ class PreparedStatement:
             return None
         return data[0][column]
 
-    async def fetch_row(self, *args):
+    async def fetchrow(self, *args):
         self.__check_open()
         protocol = self._connection._protocol
         data = await protocol.execute(self._state, args, 1)

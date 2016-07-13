@@ -11,11 +11,11 @@ class TestPrepare(tb.ConnectedTestCase):
         st = await self.con.prepare('SELECT 1 = $1 AS test')
         self.assertEqual(st.get_query(), 'SELECT 1 = $1 AS test')
 
-        rec = await st.fetch_row(1)
+        rec = await st.fetchrow(1)
         self.assertTrue(rec['test'])
         self.assertEqual(len(rec), 1)
 
-        self.assertEqual(False, await st.fetch_value(10))
+        self.assertEqual(False, await st.fetchval(10))
 
     async def test_prepare_2(self):
         with self.assertRaisesRegex(Exception, 'column "a" does not exist'):
@@ -43,7 +43,7 @@ class TestPrepare(tb.ConnectedTestCase):
 
             for val in vals:
                 with self.subTest(type=type, value=val):
-                    res = await st.fetch_value(val)
+                    res = await st.fetchval(val)
                     if val is None:
                         self.assertEqual(res, none_val)
                     else:
@@ -51,14 +51,14 @@ class TestPrepare(tb.ConnectedTestCase):
 
     async def test_prepare_4(self):
         s = await self.con.prepare('SELECT $1::smallint')
-        self.assertEqual(await s.fetch_value(10), 10)
+        self.assertEqual(await s.fetchval(10), 10)
 
         s = await self.con.prepare('SELECT $1::smallint * 2')
-        self.assertEqual(await s.fetch_value(10), 20)
+        self.assertEqual(await s.fetchval(10), 20)
 
     async def test_prepare_5_unknownoid(self):
         s = await self.con.prepare("SELECT 'test'")
-        self.assertEqual(await s.fetch_value(), 'test')
+        self.assertEqual(await s.fetchval(), 'test')
 
     async def test_prepare_6_interrupted_close(self):
         stmt = await self.con.prepare('''SELECT pg_sleep(10)''')
@@ -79,7 +79,7 @@ class TestPrepare(tb.ConnectedTestCase):
 
     async def test_prepare_7_interrupted_terminate(self):
         stmt = await self.con.prepare('''SELECT pg_sleep(10)''')
-        fut = self.loop.create_task(stmt.fetch_value())
+        fut = self.loop.create_task(stmt.fetchval())
 
         await asyncio.sleep(0.2, loop=self.loop)
 
@@ -115,7 +115,7 @@ class TestPrepare(tb.ConnectedTestCase):
 
         stmt = await self.con.prepare(query)
         with self.assertRaisesRegex(asyncpg.RaiseError, msg):
-            await stmt.fetch_value()
+            await stmt.fetchval()
 
     async def test_prepare_10_stmt_lru(self):
         query = 'select {}'
@@ -128,7 +128,7 @@ class TestPrepare(tb.ConnectedTestCase):
         stmts = []
         for i in range(iter_max):
             s = await self.con.prepare(query.format(i))
-            self.assertEqual(await s.fetch_value(), i)
+            self.assertEqual(await s.fetchval(), i)
             stmts.append(s)
 
         # At this point our cache should be full.
@@ -169,7 +169,7 @@ class TestPrepare(tb.ConnectedTestCase):
         # An attempt to perform an operation on a closed statement
         # will trigger an error.
         with self.assertRaisesRegex(RuntimeError, 'is closed'):
-            await zero.fetch_value()
+            await zero.fetchval()
 
     async def test_prepare_11_stmt_gc(self):
         # Test that prepared statements should stay in the cache after
@@ -215,11 +215,11 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual(len(self.con._stmts_to_close), 1)
 
     async def test_prepare_13_connect(self):
-        v = await self.con.fetch_value(
+        v = await self.con.fetchval(
             'SELECT $1::smallint AS foo', 10, column='foo')
         self.assertEqual(v, 10)
 
-        r = await self.con.fetch_row('SELECT $1::smallint * 2 AS test', 10)
+        r = await self.con.fetchrow('SELECT $1::smallint * 2 AS test', 10)
         self.assertEqual(r['test'], 20)
 
         rows = await self.con.fetch('SELECT generate_series(0,$1::int)', 3)
