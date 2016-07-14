@@ -24,6 +24,6 @@ setup(
         Extension("asyncpg.protocol.protocol",
                   ["asyncpg/protocol/record/recordobj.c",
                    "asyncpg/protocol/protocol.c"],
-                  extra_compile_args=['-O3'])
+                  extra_compile_args=['-O2'])
     ]
 )
