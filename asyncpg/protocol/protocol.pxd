@@ -48,6 +48,8 @@ cdef class BaseProtocol(CoreProtocol):
         int _id
         int _N
 
+        object _create_future
+
     cdef inline _create_future(self)
     cdef _gen_id(self, prefix)
     cdef _start_state(self, ProtocolState state)

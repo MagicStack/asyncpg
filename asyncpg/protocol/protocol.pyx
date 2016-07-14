@@ -83,6 +83,11 @@ cdef class BaseProtocol(CoreProtocol):
 
         self._id = 0
 
+        try:
+            self._create_future = loop.create_future
+        except AttributeError:
+            self._create_future = self._create_future_fallback
+
     def get_settings(self):
         return self._settings
 
@@ -180,13 +185,8 @@ cdef class BaseProtocol(CoreProtocol):
             self._waiter.set_exception(exc)
             self._waiter = None
 
-    cdef inline _create_future(self):
-        try:
-            create_future = self._loop.create_future
-        except AttributeError:
-            return asyncio.Future(loop=self._loop)
-        else:
-            return create_future()
+    def _create_future_fallback(self):
+        return asyncio.Future(loop=self._loop)
 
     cdef _gen_id(self, prefix):
         self._id += 1
