@@ -17,3 +17,5 @@ cdef init_numeric_codecs():
                         <encode_func>&numeric_encode,
                         <decode_func>&numeric_decode,
                         PG_FORMAT_TEXT)
+
+init_numeric_codecs()

@@ -63,3 +63,5 @@ cdef init_text_codecs():
                         <encode_func>&text_encode,
                         <decode_func>&text_decode,
                         PG_FORMAT_TEXT)
+
+init_text_codecs()

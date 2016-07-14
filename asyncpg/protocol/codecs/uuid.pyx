@@ -20,3 +20,5 @@ cdef init_uuid_codecs():
                         <encode_func>&uuid_encode,
                         <decode_func>&uuid_decode,
                         PG_FORMAT_BINARY)
+
+init_uuid_codecs()

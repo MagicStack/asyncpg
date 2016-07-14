@@ -9,3 +9,5 @@ cdef init_special_codecs():
                         NULL,
                         <decode_func>&void_decode,
                         PG_FORMAT_BINARY)
+
+init_special_codecs()

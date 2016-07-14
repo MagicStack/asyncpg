@@ -71,3 +71,5 @@ cdef init_int_codecs():
                             <encode_func>&int4_encode,
                             <decode_func>&int4_decode,
                             PG_FORMAT_BINARY)
+
+init_int_codecs()

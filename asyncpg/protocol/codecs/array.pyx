@@ -322,3 +322,5 @@ cdef init_array_codecs():
                         <encode_func>&arraytext_encode,
                         <decode_func>&arraytext_decode,
                         PG_FORMAT_BINARY)
+
+init_array_codecs()

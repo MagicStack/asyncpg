@@ -45,3 +45,5 @@ cdef init_record_codecs():
                         <encode_func>NULL,
                         <decode_func>&anonymous_record_decode,
                         PG_FORMAT_BINARY)
+
+init_record_codecs()

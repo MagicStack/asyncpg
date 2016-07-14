@@ -277,3 +277,5 @@ cdef init_datetime_codecs():
                         <encode_func>&interval_encode,
                         <decode_func>&interval_decode,
                         PG_FORMAT_BINARY)
+
+init_datetime_codecs()

@@ -58,8 +58,6 @@ include "codecs/uuid.pyx"
 include "codecs/array.pyx"
 include "codecs/record.pyx"
 
-include "codecs/init.pyx"
-
 # contrib
 include "codecs/hstore.pyx"
 

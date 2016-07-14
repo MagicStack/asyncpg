@@ -42,3 +42,5 @@ cdef init_bytea_codecs():
                         <encode_func>&bytea_encode,
                         <decode_func>&bytea_decode,
                         PG_FORMAT_BINARY)
+
+init_bytea_codecs()

@@ -58,3 +58,5 @@ cdef init_float_codecs():
                         <encode_func>&float8_encode,
                         <decode_func>&float8_decode,
                         PG_FORMAT_BINARY)
+
+init_float_codecs()

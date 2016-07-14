@@ -31,3 +31,5 @@ cdef init_json_codecs():
                         <encode_func>&jsonb_encode,
                         <decode_func>&jsonb_decode,
                         PG_FORMAT_BINARY)
+
+init_json_codecs()
