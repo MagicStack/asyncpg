@@ -1,7 +1,5 @@
 # cython: language_level=3
 
-DEF DEBUG = 1
-
 cimport cython
 cimport cpython
 
@@ -29,6 +27,7 @@ from asyncpg import exceptions as apg_exc
 from asyncpg.protocol cimport hton
 
 
+include "__debug.pxi"
 include "consts.pxi"
 include "pgtypes.pxi"
 

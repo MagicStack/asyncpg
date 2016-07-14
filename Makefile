@@ -17,12 +17,14 @@ check-env:
 
 
 compile: check-env clean
-	cython asyncpg/protocol/protocol.pyx
+	echo "DEF DEBUG = 0" > asyncpg/protocol/__debug.pxi
+	cython asyncpg/protocol/protocol.pyx; rm asyncpg/protocol/__debug.pxi
 	python setup.py build_ext --inplace
 
 
 debug: check-env clean
-	cython -a asyncpg/protocol/protocol.pyx
+	echo "DEF DEBUG = 1" > asyncpg/protocol/__debug.pxi
+	cython -a asyncpg/protocol/protocol.pyx; rm asyncpg/protocol/__debug.pxi
 	python setup.py build_ext --inplace --debug
 
 

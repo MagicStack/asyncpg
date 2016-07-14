@@ -3,6 +3,7 @@
 
 from libc.stdint cimport int16_t, int32_t, uint16_t, uint32_t, int64_t, uint64_t
 
+include "__debug.pxi"
 include "consts.pxi"
 include "pgtypes.pxi"
 
