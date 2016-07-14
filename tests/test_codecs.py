@@ -296,7 +296,7 @@ class TestCodecs(tb.ConnectedTestCase):
         self.assertIsNone(await stmt.fetchval())
 
     async def test_arrays(self):
-        """Test encoding/decoding of ararys (particularly multidimensional)."""
+        """Test encoding/decoding of arrays (particularly multidimensional)."""
         cases = [
             (
                 r"SELECT '[1:3][-1:0]={{1,2},{4,5},{6,7}}'::int[]",
@@ -319,7 +319,9 @@ class TestCodecs(tb.ConnectedTestCase):
         cases = [
             (1, 2, 3, 4, 5, 6),
             ((1, 2), (4, 5), (6, 7)),
-            ((((((1,),),),),),)
+            (((1,), (2,)), ((4,), (5,)), ((None,), (7,))),
+            ((((((1,),),),),),),
+            ((((((None,),),),),),)
         ]
 
         st = await self.con.prepare(
