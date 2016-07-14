@@ -1,12 +1,28 @@
 import asyncio
 import atexit
+import contextlib
 import functools
 import inspect
+import logging
 import os
 import unittest
 
 
 from asyncpg import cluster as pg_cluster
+
+
+@contextlib.contextmanager
+def silence_asyncio_long_exec_warning():
+    def flt(log_record):
+        msg = log_record.getMessage()
+        return not msg.startswith('Executing ')
+
+    logger = logging.getLogger('asyncio')
+    logger.addFilter(flt)
+    try:
+        yield
+    finally:
+        logger.removeFilter(flt)
 
 
 class TestCaseMeta(type(unittest.TestCase)):

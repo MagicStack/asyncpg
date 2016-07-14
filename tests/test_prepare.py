@@ -126,7 +126,8 @@ class TestPrepare(tb.ConnectedTestCase):
 
         stmt = await self.con.prepare(query)
         with self.assertRaisesRegex(asyncpg.RaiseError, msg):
-            await stmt.fetchval()
+            with tb.silence_asyncio_long_exec_warning():
+                await stmt.fetchval()
 
     async def test_prepare_10_stmt_lru(self):
         query = 'select {}'
