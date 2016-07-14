@@ -5,6 +5,8 @@ cdef class PreparedStatementState:
         readonly bint closed
         readonly int refs
 
+        FastReadBuffer buffer
+
         list         row_desc
         list         parameters_desc
 

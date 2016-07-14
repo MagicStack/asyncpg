@@ -104,3 +104,14 @@ cdef class ReadBuffer:
 
     @staticmethod
     cdef ReadBuffer new_message_parser(object data)
+
+
+cdef class FastReadBuffer:
+    cdef:
+        char* buf
+        size_t len
+
+    cdef inline char* read(self, size_t n) except NULL
+
+    @staticmethod
+    cdef FastReadBuffer new()

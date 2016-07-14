@@ -13,6 +13,7 @@ cdef class PreparedStatementState:
         self.closed = False
         self.refs = 0
         self.cmd_status = None
+        self.buffer = FastReadBuffer.new()
 
     def _get_cmd_status(self):
         if self.cmd_status is not None:
@@ -196,6 +197,9 @@ cdef class PreparedStatementState:
             tuple rows_codecs = self.rows_codecs
             ConnectionSettings settings = self.settings
             int32_t i
+
+        self.buffer.buf = cbuf
+        self.buffer.len = buf_len
 
         fnum = hton.unpack_int16(cbuf)
         cbuf += 2

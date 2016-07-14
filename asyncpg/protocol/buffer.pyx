@@ -528,3 +528,23 @@ cdef class ReadBuffer:
         buf._current_message_len_unread = buf._len0
 
         return buf
+
+
+@cython.no_gc_clear
+@cython.final
+cdef class FastReadBuffer:
+
+    cdef inline char* read(self, size_t n):
+        char *result
+        if self.buf is NULL:
+            raise BufferError('nothing to read')
+        if n > self.len:
+            raise BufferError('buffer overflow')
+        result = self.buf
+        self.buf += n
+        self.len -= n
+        return result
+
+    @staticmethod
+    cdef FastReadBuffer new():
+        return FastReadBuffer.__new__(FastReadBuffer)
