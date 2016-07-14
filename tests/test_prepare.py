@@ -56,6 +56,17 @@ class TestPrepare(tb.ConnectedTestCase):
         s = await self.con.prepare('SELECT $1::smallint * 2')
         self.assertEqual(await s.fetchval(10), 20)
 
+        s = await self.con.prepare('SELECT generate_series(5,10)')
+        self.assertEqual(await s.fetchval(), 5)
+        # Since the "execute" message was sent with a limit=1,
+        # we will receive a PortalSuspended message, instead of
+        # CommandComplete.  Which means there will be no status
+        # message set.
+        self.assertIsNone(s.get_statusmsg())
+        # Repeat the same test for 'fetchrow()'.
+        self.assertEqual(await s.fetchrow(), (5,))
+        self.assertIsNone(s.get_statusmsg())
+
     async def test_prepare_5_unknownoid(self):
         s = await self.con.prepare("SELECT 'test'")
         self.assertEqual(await s.fetchval(), 'test')
