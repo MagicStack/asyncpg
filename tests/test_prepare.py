@@ -226,15 +226,34 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual([r[0] for r in rows], [0, 1, 2, 3])
 
     async def test_prepare_14_explain(self):
+        # Test simple EXPLAIN.
         stmt = await self.con.prepare('SELECT typname FROM pg_type')
         plan = await stmt.explain()
         self.assertEqual(plan[0]['Plan']['Relation Name'], 'pg_type')
 
+        # Test "EXPLAIN ANALYZE".
         stmt = await self.con.prepare(
             'SELECT typname, typlen FROM pg_type WHERE typlen > $1')
         plan = await stmt.explain(2, analyze=True)
         self.assertEqual(plan[0]['Plan']['Relation Name'], 'pg_type')
         self.assertIn('Actual Total Time', plan[0]['Plan'])
+
+        # Test that 'EXPLAIN ANALYZE' is executed in a transaction
+        # that gets rollbacked.
+        tr = self.con.transaction()
+        await tr.start()
+        try:
+            await self.con.execute('CREATE TABLE mytab (a int)')
+            stmt = await self.con.prepare(
+                'INSERT INTO mytab (a) VALUES (1), (2)')
+            plan = await stmt.explain(analyze=True)
+            self.assertEqual(plan[0]['Plan']['Operation'], 'Insert')
+
+            # Check that no data was inserted
+            res = await self.con.fetch('SELECT * FROM mytab')
+            self.assertEqual(res, [])
+        finally:
+            await tr.rollback()
 
     async def test_prepare_15_stmt_gc_cache_disabled(self):
         # Test that even if the statements cache is off, we're still
