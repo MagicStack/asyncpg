@@ -50,10 +50,7 @@ ApgRecord_New(PyObject *mapping, Py_ssize_t size)
 
     Py_INCREF(mapping);
     o->mapping = mapping;
-    o->mapping_hash = -1;
-
     o->self_hash = -1;
-
     _PyObject_GC_TRACK(o);
     return (PyObject *) o;
 }
@@ -70,7 +67,6 @@ record_dealloc(ApgRecordObject *o)
     o->self_hash = -1;
 
     Py_CLEAR(o->mapping);
-    o->mapping_hash = -1;
 
     Py_TRASHCAN_SAFE_BEGIN(o)
     if (len > 0) {
@@ -120,27 +116,6 @@ record_length(ApgRecordObject *o)
 
 
 static Py_hash_t
-record_get_mapping_hash(ApgRecordObject *v)
-{
-    PyObject * repr;
-
-    if (v->mapping_hash != -1) {
-        return v->mapping_hash;
-    }
-
-    repr = PyObject_Repr(v->mapping);
-    if (repr == NULL) {
-        return -1;
-    }
-
-    v->mapping_hash = PyObject_Hash(repr);
-    Py_DECREF(repr);
-
-    return v->mapping_hash;
-}
-
-
-static Py_hash_t
 record_hash(ApgRecordObject *v)
 {
     Py_uhash_t x;  /* Unsigned for defined overflow behavior. */
@@ -157,13 +132,6 @@ record_hash(ApgRecordObject *v)
     mult = _PyHASH_MULTIPLIER;
 
     x = 0x345678UL;
-    y = record_get_mapping_hash(v);
-    if (y == -1) {
-        return -1;
-    }
-    x = (x ^ y) * mult;
-    mult += (Py_hash_t)(82520UL + len + len + 2);
-
     p = v->ob_item;
     while (--len >= 0) {
         y = PyObject_Hash(*p++);
@@ -172,7 +140,7 @@ record_hash(ApgRecordObject *v)
         }
         x = (x ^ y) * mult;
         /* the cast might truncate len; that doesn't change hash stability */
-        mult += (Py_hash_t)(82520UL + len + len + 2);
+        mult += (Py_hash_t)(82520UL + len + len);
     }
     x += 97531UL;
     if (x == (Py_uhash_t)-1) {

@@ -185,14 +185,17 @@ class TestRecord(unittest.TestCase):
             list(r.items())
 
     def test_record_hash(self):
+        AB = collections.namedtuple('AB', ('a', 'b'))
         r1 = Record(R_AB, (42, 43))
         r2 = Record(R_AB, (42, 43))
         r3 = Record(R_AB, (42, 45))
         r4 = (42, 43)
+        r5 = AB(42, 43)
 
         self.assertEqual(hash(r1), hash(r2))
         self.assertNotEqual(hash(r1), hash(r3))
-        self.assertNotEqual(hash(r1), hash(r4))
+        self.assertEqual(hash(r1), hash(r4))
+        self.assertEqual(hash(r1), hash(r5))
 
         d = {}
         d[r1] = 123
@@ -200,7 +203,7 @@ class TestRecord(unittest.TestCase):
         self.assertIn(r2, d)
         self.assertEqual(d[r2], 123)
         self.assertNotIn(r3, d)
-        self.assertNotIn(r4, d)
+        self.assertIn(r4, d)
 
     def test_record_cmp(self):
         AB = collections.namedtuple('AB', ('a', 'b'))
