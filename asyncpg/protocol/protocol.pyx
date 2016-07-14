@@ -115,6 +115,7 @@ cdef class BaseProtocol(CoreProtocol):
                 self._prepared_stmt._encode_bind_msg(args),
                 limit)
         except Exception as ex:
+            self._prepared_stmt = None
             waiter.set_exception(ex)
             self._state = STATE_READY
         else:

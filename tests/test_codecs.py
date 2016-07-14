@@ -295,6 +295,41 @@ class TestCodecs(tb.ConnectedTestCase):
         stmt = await self.con.prepare('select pg_sleep(0)')
         self.assertIsNone(await stmt.fetchval())
 
+    async def test_invalid_input(self):
+        cases = [
+            ('bytea', TypeError, 'a bytes-like object is required', [
+                1,
+                'aaa'
+            ]),
+            ('bool', TypeError, 'a boolean is required', [
+                1,
+            ]),
+            ('int2', TypeError, 'an integer is required', [
+                '2',
+                'aa',
+            ]),
+            ('smallint', ValueError, 'integer too large', [
+                32768,
+                -32768
+            ]),
+            ('int4', TypeError, 'an integer is required', [
+                '2',
+                'aa',
+            ]),
+            ('int8', TypeError, 'an integer is required', [
+                '2',
+                'aa',
+            ])
+        ]
+
+        for typname, errcls, errmsg, data in cases:
+            stmt = await self.con.prepare("SELECT $1::" + typname)
+
+            for sample in data:
+                with self.subTest(sample=sample, typname=typname):
+                    with self.assertRaisesRegex(errcls, errmsg):
+                        await stmt.fetchval(sample)
+
     async def test_arrays(self):
         """Test encoding/decoding of arrays (particularly multidimensional)."""
         cases = [

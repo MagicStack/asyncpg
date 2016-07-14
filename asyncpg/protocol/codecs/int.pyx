@@ -1,6 +1,7 @@
 cdef bool_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     if not cpython.PyBool_Check(obj):
-        raise ValueError('invalid input for BOOLEAN type')
+        raise TypeError('a boolean is required (got type {})'.format(
+            type(obj).__name__))
 
     buf.write_int32(1)
     buf.write_byte(b'\x01' if obj is True else b'\x00')
