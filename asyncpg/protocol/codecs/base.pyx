@@ -38,6 +38,9 @@ cdef class Codec:
         elif type == CODEC_ARRAY:
             self.encoder = <codec_encode_func>&self.encode_array
             self.decoder = <codec_decode_func>&self.decode_array
+        elif type == CODEC_RANGE:
+            self.encoder = <codec_encode_func>&self.encode_range
+            self.decoder = <codec_decode_func>&self.decode_range
         elif type == CODEC_COMPOSITE:
             self.encoder = <codec_encode_func>&self.encode_composite
             self.decoder = <codec_decode_func>&self.decode_composite
@@ -68,6 +71,12 @@ cdef class Codec:
     cdef encode_array(self, ConnectionSettings settings, WriteBuffer buf,
                       object obj):
         array_encode(settings, buf, obj, self.element_codec.oid,
+                     codec_encode_func_ex,
+                     <void*>(<cpython.PyObject>self.element_codec))
+
+    cdef encode_range(self, ConnectionSettings settings, WriteBuffer buf,
+                      object obj):
+        range_encode(settings, buf, obj, self.element_codec.oid,
                      codec_encode_func_ex,
                      <void*>(<cpython.PyObject>self.element_codec))
 
@@ -105,6 +114,10 @@ cdef class Codec:
 
     cdef decode_array(self, ConnectionSettings settings, FastReadBuffer buf):
         return array_decode(settings, buf, codec_decode_func_ex,
+                            <void*>(<cpython.PyObject>self.element_codec))
+
+    cdef decode_range(self, ConnectionSettings settings, FastReadBuffer buf):
+        return range_decode(settings, buf, codec_decode_func_ex,
                             <void*>(<cpython.PyObject>self.element_codec))
 
     cdef decode_composite(self, ConnectionSettings settings,
@@ -161,7 +174,7 @@ cdef class Codec:
         if self.c_encoder is not NULL or self.py_encoder is not None:
             return True
 
-        elif self.type == CODEC_ARRAY:
+        elif self.type == CODEC_ARRAY or self.type == CODEC_RANGE:
             return self.element_codec.has_encoder()
 
         elif self.type == CODEC_COMPOSITE:
@@ -179,7 +192,7 @@ cdef class Codec:
         if self.c_decoder is not NULL or self.py_decoder is not None:
             return True
 
-        elif self.type == CODEC_ARRAY:
+        elif self.type == CODEC_ARRAY or self.type == CODEC_RANGE:
             return self.element_codec.has_decoder()
 
         elif self.type == CODEC_COMPOSITE:
@@ -208,6 +221,17 @@ cdef class Codec:
         cdef Codec codec
         codec = Codec(oid)
         codec.init(name, schema, 'array', CODEC_ARRAY, PG_FORMAT_BINARY,
+                   NULL, NULL, None, None, element_codec, None, None, None)
+        return codec
+
+    @staticmethod
+    cdef Codec new_range_codec(uint32_t oid,
+                               str name,
+                               str schema,
+                               Codec element_codec):
+        cdef Codec codec
+        codec = Codec(oid)
+        codec.init(name, schema, 'range', CODEC_RANGE, PG_FORMAT_BINARY,
                    NULL, NULL, None, None, element_codec, None, None, None)
         return codec
 
@@ -275,6 +299,7 @@ cdef class DataCodecConfig:
             name = ti['name']
             schema = ti['ns']
             array_element_oid = ti['elemtype']
+            range_subtype_oid = ti['range_subtype']
             comp_type_attrs = ti['attrtypoids']
             base_type = ti['basetype']
 
@@ -314,6 +339,7 @@ cdef class DataCodecConfig:
                         element_names)
 
             elif ti['kind'] == b'd' and base_type:
+                # Domain type
                 elem_codec = self.get_codec(base_type)
                 if elem_codec is None:
                     raise RuntimeError(
@@ -321,6 +347,17 @@ cdef class DataCodecConfig:
                             base_type))
 
                 self._type_codecs_cache[oid] = elem_codec
+
+            elif ti['kind'] == b'r' and range_subtype_oid:
+                # Range type
+                elem_codec = self.get_codec(range_subtype_oid)
+                if elem_codec is None:
+                    raise RuntimeError(
+                        'no codec for range element type {}'.format(
+                            range_subtype_oid))
+                self._type_codecs_cache[oid] = \
+                    Codec.new_range_codec(oid, name, schema, elem_codec)
+
             else:
                 raise NotImplementedError(
                     'unhandled data type {!r}'.format(ti))

@@ -55,6 +55,7 @@ include "codecs/uuid.pyx"
 
 # nonscalar
 include "codecs/array.pyx"
+include "codecs/range.pyx"
 include "codecs/record.pyx"
 
 # contrib

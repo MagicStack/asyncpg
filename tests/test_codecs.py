@@ -485,6 +485,44 @@ class TestCodecs(tb.ConnectedTestCase):
             await self.con.execute('DROP DOMAIN my_dom2')
             await self.con.execute('DROP DOMAIN my_dom')
 
+    async def test_range_types(self):
+        """Test encoding/decoding of range types."""
+        cases = [
+            ('int4range', [
+                [(1, 9), asyncpg.Range(1, 10)],
+                [asyncpg.Range(0, 9, lower_inc=False, upper_inc=True),
+                 asyncpg.Range(1, 10)],
+                [(), asyncpg.Range(empty=True)],
+                [asyncpg.Range(empty=True), asyncpg.Range(empty=True)],
+                [(None, 2), asyncpg.Range(None, 3)],
+                [asyncpg.Range(None, 2, upper_inc=True),
+                 asyncpg.Range(None, 3)],
+                [(2,), asyncpg.Range(2, None)],
+                [(2, None), asyncpg.Range(2, None)],
+                [asyncpg.Range(2, None), asyncpg.Range(2, None)],
+                [(None, None), asyncpg.Range(None, None)],
+                [asyncpg.Range(None, None), asyncpg.Range(None, None)]
+            ])
+        ]
+
+        for (typname, sample_data) in cases:
+            st = await self.con.prepare(
+                "SELECT $1::" + typname
+            )
+
+            for sample, expected in sample_data:
+                with self.subTest(sample=sample, typname=typname):
+                    result = await st.fetchval(sample)
+                    self.assertEqual(result, expected)
+
+        with self.assertRaisesRegex(
+                TypeError, 'list, tuple or Range object expected'):
+            await self.con.fetch("SELECT $1::int4range", 'aa')
+
+        with self.assertRaisesRegex(
+                ValueError, 'expected 0, 1 or 2 elements'):
+            await self.con.fetch("SELECT $1::int4range", (0, 2, 3))
+
     async def test_extra_codec_alias(self):
         """Test encoding/decoding of a builtin non-pg_catalog codec."""
         await self.con.execute('''

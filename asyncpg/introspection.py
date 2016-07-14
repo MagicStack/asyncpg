@@ -1,7 +1,7 @@
 INTRO_LOOKUP_TYPES = '''\
 WITH RECURSIVE typeinfo_tree(
-    oid, ns, name, kind, basetype, elemtype, elem_has_bin_input,
-    elem_has_bin_output, attrtypoids, attrnames, depth)
+    oid, ns, name, kind, basetype, elemtype, range_subtype,
+    elem_has_bin_input, elem_has_bin_output, attrtypoids, attrnames, depth)
 AS (
     WITH composite_attrs
     AS (
@@ -50,6 +50,7 @@ AS (
                ELSE NULL
             END)                            AS basetype,
             t.typelem                       AS elemtype,
+            range_t.rngsubtype              AS range_subtype,
             elem_t.typreceive::oid != 0     AS elem_has_bin_input,
             elem_t.typsend::oid != 0        AS elem_has_bin_output,
             (CASE WHEN t.typtype = 'c' THEN
@@ -75,12 +76,15 @@ AS (
                 t.typelem != 0 AND
                 t.typelem = elem_t.oid
             )
+            LEFT JOIN pg_range range_t ON (
+                t.oid = range_t.rngtypid
+            )
     )
 
     SELECT
         ti.oid, ti.ns, ti.name, ti.kind, ti.basetype, ti.elemtype,
-        ti.elem_has_bin_input, ti.elem_has_bin_output, ti.attrtypoids,
-        ti.attrnames, 0
+        ti.range_subtype, ti.elem_has_bin_input, ti.elem_has_bin_output,
+        ti.attrtypoids, ti.attrnames, 0
     FROM
         typeinfo AS ti
     WHERE
@@ -90,8 +94,8 @@ AS (
 
     SELECT
         ti.oid, ti.ns, ti.name, ti.kind, ti.basetype, ti.elemtype,
-        ti.elem_has_bin_input, ti.elem_has_bin_output, ti.attrtypoids,
-        ti.attrnames, tt.depth + 1
+        ti.range_subtype, ti.elem_has_bin_input, ti.elem_has_bin_output,
+        ti.attrtypoids, ti.attrnames, tt.depth + 1
     FROM
         typeinfo ti,
         typeinfo_tree tt

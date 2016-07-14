@@ -21,6 +21,7 @@ cdef enum CodecType:
     CODEC_PY        = 2
     CODEC_ARRAY     = 3
     CODEC_COMPOSITE = 4
+    CODEC_RANGE     = 5
 
 
 cdef enum CodecFormat:
@@ -70,6 +71,9 @@ cdef class Codec:
     cdef encode_array(self, ConnectionSettings settings, WriteBuffer buf,
                       object obj)
 
+    cdef encode_range(self, ConnectionSettings settings, WriteBuffer buf,
+                      object obj)
+
     cdef encode_composite(self, ConnectionSettings settings, WriteBuffer buf,
                           object obj)
 
@@ -79,6 +83,8 @@ cdef class Codec:
     cdef decode_scalar(self, ConnectionSettings settings, FastReadBuffer buf)
 
     cdef decode_array(self, ConnectionSettings settings, FastReadBuffer buf)
+
+    cdef decode_range(self, ConnectionSettings settings, FastReadBuffer buf)
 
     cdef decode_composite(self, ConnectionSettings settings,
                           FastReadBuffer buf)
@@ -103,6 +109,12 @@ cdef class Codec:
 
     @staticmethod
     cdef Codec new_array_codec(uint32_t oid,
+                               str name,
+                               str schema,
+                               Codec element_codec)
+
+    @staticmethod
+    cdef Codec new_range_codec(uint32_t oid,
                                str name,
                                str schema,
                                Codec element_codec)
