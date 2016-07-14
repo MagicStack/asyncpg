@@ -108,10 +108,14 @@ cdef class ReadBuffer:
 
 cdef class FastReadBuffer:
     cdef:
-        char* buf
+        const char* buf
         size_t len
 
-    cdef inline char* read(self, size_t n) except NULL
+    cdef inline const char* read(self, size_t n) except NULL
+    cdef inline const char* read_all(self)
+    cdef inline FastReadBuffer slice_from(self, FastReadBuffer source,
+                                          size_t len)
+    cdef _raise_ins_err(self, size_t n, size_t len)
 
     @staticmethod
     cdef FastReadBuffer new()

@@ -73,7 +73,6 @@ cdef class Codec:
 
     cdef encode_composite(self, ConnectionSettings settings, WriteBuffer buf,
                           object obj):
-
         cdef:
             WriteBuffer elem_data
             int32_t i
@@ -91,7 +90,6 @@ cdef class Codec:
 
     cdef encode_in_python(self, ConnectionSettings settings, WriteBuffer buf,
                           object obj):
-
         bb = self.py_encoder(obj)
         if self.format == PG_FORMAT_BINARY:
             bytea_encode(settings, buf, bb)
@@ -102,69 +100,60 @@ cdef class Codec:
                 object obj):
         return self.encoder(self, settings, buf, obj)
 
-    cdef decode_scalar(self, ConnectionSettings settings, const char *data,
-                       int32_t len):
-        return self.c_decoder(settings, data, len)
+    cdef decode_scalar(self, ConnectionSettings settings, FastReadBuffer buf):
+        return self.c_decoder(settings, buf)
 
-    cdef decode_array(self, ConnectionSettings settings, const char *data,
-                      int32_t len):
-        return array_decode(settings, data, len, codec_decode_func_ex,
+    cdef decode_array(self, ConnectionSettings settings, FastReadBuffer buf):
+        return array_decode(settings, buf, codec_decode_func_ex,
                             <void*>(<cpython.PyObject>self.element_codec))
 
-    cdef decode_composite(self, ConnectionSettings settings, const char *data,
-                          int32_t len):
+    cdef decode_composite(self, ConnectionSettings settings,
+                          FastReadBuffer buf):
         cdef:
             object result
             uint32_t elem_count
-            const char *ptr
             uint32_t i
             int32_t elem_len
             uint32_t elem_typ
             uint32_t received_elem_typ
             Codec elem_codec
+            FastReadBuffer elem_buf = FastReadBuffer.new()
 
-        elem_count = hton.unpack_int32(data)
+        elem_count = hton.unpack_int32(buf.read(4))
         result = record.ApgRecord_New(self.element_names, elem_count)
-        ptr = &data[4]
         for i in range(elem_count):
             elem_typ = self.element_type_oids[i]
-            received_elem_typ = hton.unpack_int32(ptr)
+            received_elem_typ = hton.unpack_int32(buf.read(4))
 
             if received_elem_typ != elem_typ:
                 raise RuntimeError(
                     'unexpected attribute data type: {}, expected {}'
                         .format(received_elem_typ, elem_typ))
 
-            ptr += 4
-
-            elem_len = hton.unpack_int32(ptr)
-
-            ptr += 4
-
+            elem_len = hton.unpack_int32(buf.read(4))
             if elem_len == -1:
                 elem = None
             else:
                 elem_codec = self.element_codecs[i]
-                elem = elem_codec.decode(settings, ptr, elem_len)
-                ptr += elem_len
+                elem = elem_codec.decode(settings,
+                                         elem_buf.slice_from(buf, elem_len))
 
             cpython.Py_INCREF(elem)
             record.ApgRecord_SET_ITEM(result, i, elem)
 
         return result
 
-    cdef decode_in_python(self, ConnectionSettings settings, const char *data,
-                          int32_t len):
+    cdef decode_in_python(self, ConnectionSettings settings,
+                          FastReadBuffer buf):
         if self.format == PG_FORMAT_BINARY:
-            bb = bytea_decode(settings, data, len)
+            bb = bytea_decode(settings, buf)
         else:
-            bb = text_decode(settings, data, len)
+            bb = text_decode(settings, buf)
 
         return self.py_decoder(bb)
 
-    cdef inline decode(self, ConnectionSettings settings, const char *data,
-                       int32_t len):
-        return self.decoder(self, settings, data, len)
+    cdef inline decode(self, ConnectionSettings settings, FastReadBuffer buf):
+        return self.decoder(self, settings, buf)
 
     cdef inline has_encoder(self):
         cdef Codec elem_codec
@@ -258,9 +247,9 @@ cdef codec_encode_func_ex(ConnectionSettings settings, WriteBuffer buf,
 
 
 # Decode callback for arrays
-cdef codec_decode_func_ex(ConnectionSettings settings, const char* data,
-                          int32_t len, const void *arg):
-    return (<Codec>arg).decode(settings, data, len)
+cdef codec_decode_func_ex(ConnectionSettings settings, FastReadBuffer buf,
+                          const void *arg):
+    return (<Codec>arg).decode(settings, buf)
 
 
 cdef class DataCodecConfig:

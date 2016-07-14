@@ -1,5 +1,6 @@
 from libc cimport math
 
+
 cdef union _floatconv:
     uint32_t i
     float f
@@ -19,10 +20,9 @@ cdef float4_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     buf.write_int32(v.i)
 
 
-cdef float4_decode(ConnectionSettings settings, const char* data, int32_t len):
+cdef float4_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef _floatconv v
-    v.i = hton.unpack_int32(data)
-
+    v.i = hton.unpack_int32(buf.read(4))
     return cpython.PyFloat_FromDouble(v.f)
 
 
@@ -41,10 +41,9 @@ cdef float8_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     buf.write_int64(v.i)
 
 
-cdef float8_decode(ConnectionSettings settings, const char* data, int32_t len):
+cdef float8_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef _doubleconv v
-    v.i = hton.unpack_int64(data)
-
+    v.i = hton.unpack_int64(buf.read(8))
     return cpython.PyFloat_FromDouble(v.f)
 
 

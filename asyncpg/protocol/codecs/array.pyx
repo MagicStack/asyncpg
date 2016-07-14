@@ -8,8 +8,7 @@ ctypedef object (*encode_func_ex)(ConnectionSettings settings,
 
 
 ctypedef object (*decode_func_ex)(ConnectionSettings settings,
-                                  const char *data,
-                                  int32_t len,
+                                  FastReadBuffer buf,
                                   const void *arg)
 
 
@@ -112,18 +111,17 @@ cdef inline array_encode(ConnectionSettings settings, WriteBuffer buf,
     buf.write_buffer(elem_data)
 
 
-cdef inline array_decode(ConnectionSettings settings, const char *data,
-                         int32_t len, decode_func_ex decoder,
-                         const void *decoder_arg):
+cdef inline array_decode(ConnectionSettings settings, FastReadBuffer buf,
+                         decode_func_ex decoder, const void *decoder_arg):
     cdef:
-        int32_t ndims = hton.unpack_int32(data)
-        int32_t flags = hton.unpack_int32(&data[4])
-        uint32_t elem_oid = hton.unpack_int32(&data[8])
-        const char *ptr = &data[12]
+        int32_t ndims = hton.unpack_int32(buf.read(4))
+        int32_t flags = hton.unpack_int32(buf.read(4))
+        uint32_t elem_oid = hton.unpack_int32(buf.read(4))
         tuple result
         uint32_t i
         int32_t elem_len
         int64_t elem_count = 1
+        FastReadBuffer elem_buf = FastReadBuffer.new()
         int32_t dims[ARRAY_MAXDIM]
 
     if ndims == 0:
@@ -136,43 +134,44 @@ cdef inline array_decode(ConnectionSettings settings, const char *data,
             format(ARRAY_MAXDIM))
 
     for i in range(ndims):
-        dims[i] = hton.unpack_int32(ptr)
+        dims[i] = hton.unpack_int32(buf.read(4))
         elem_count *= dims[i]
         # Ignore the lower bound information
-        ptr += 8
+        buf.read(4)
 
     if ndims == 1:
         # Fast path for flat arrays
         result = cpython.PyTuple_New(elem_count)
 
         for i in range(elem_count):
-            elem_len = hton.unpack_int32(ptr)
-            ptr += 4
+            elem_len = hton.unpack_int32(buf.read(4))
             if elem_len == -1:
                 elem = None
             else:
-                elem = decoder(settings, ptr, elem_len, decoder_arg)
-                ptr += elem_len
+                elem_buf.slice_from(buf, elem_len)
+                elem = decoder(settings, elem_buf, decoder_arg)
 
             cpython.Py_INCREF(elem)
             cpython.PyTuple_SET_ITEM(result, i, elem)
 
     else:
-        result = _nested_array_decode(settings, ptr, len - (ptr - data),
-                                      decoder, decoder_arg, ndims, dims)
+        result = _nested_array_decode(settings, buf,
+                                      decoder, decoder_arg, ndims, dims,
+                                      elem_buf)
 
     return result
 
 
-cdef inline _nested_array_decode(ConnectionSettings settings, const char *data,
-                                 int32_t len, decode_func_ex decoder,
+cdef inline _nested_array_decode(ConnectionSettings settings,
+                                 FastReadBuffer buf,
+                                 decode_func_ex decoder,
                                  const void *decoder_arg,
-                                 int32_t ndims, int32_t *dims):
+                                 int32_t ndims, int32_t *dims,
+                                 FastReadBuffer elem_buf):
 
     cdef:
         int32_t elem_len
         int32_t d1, d2, d3, d4, d5, d6
-        const char *ptr = data
         tuple result
         object elem
         tuple stride1, stride2, stride3, stride4, stride5
@@ -190,13 +189,13 @@ cdef inline _nested_array_decode(ConnectionSettings settings, const char *data,
 
         for d2 in range(dims[1]):
             if ndims == 2:
-                elem_len = hton.unpack_int32(ptr)
-                ptr += 4
+                elem_len = hton.unpack_int32(buf.read(4))
                 if elem_len == -1:
                     elem = None
                 else:
-                    elem = decoder(settings, ptr, elem_len, decoder_arg)
-                    ptr += elem_len
+                    elem = decoder(settings,
+                                   elem_buf.slice_from(buf, elem_len),
+                                   decoder_arg)
 
                 cpython.Py_INCREF(elem)
                 cpython.PyTuple_SET_ITEM(stride1, d2, elem)
@@ -208,13 +207,13 @@ cdef inline _nested_array_decode(ConnectionSettings settings, const char *data,
 
                 for d3 in range(dims[2]):
                     if ndims == 3:
-                        elem_len = hton.unpack_int32(ptr)
-                        ptr += 4
+                        elem_len = hton.unpack_int32(buf.read(4))
                         if elem_len == -1:
                             elem = None
                         else:
-                            elem = decoder(settings, ptr, elem_len, decoder_arg)
-                            ptr += elem_len
+                            elem = decoder(settings,
+                                           elem_buf.slice_from(buf, elem_len),
+                                           decoder_arg)
 
                         cpython.Py_INCREF(elem)
                         cpython.PyTuple_SET_ITEM(stride2, d3, elem)
@@ -226,13 +225,13 @@ cdef inline _nested_array_decode(ConnectionSettings settings, const char *data,
 
                         for d4 in range(dims[3]):
                             if ndims == 4:
-                                elem_len = hton.unpack_int32(ptr)
-                                ptr += 4
+                                elem_len = hton.unpack_int32(buf.read(4))
                                 if elem_len == -1:
                                     elem = None
                                 else:
-                                    elem = decoder(settings, ptr, elem_len, decoder_arg)
-                                    ptr += elem_len
+                                    elem = decoder(settings,
+                                                   elem_buf.slice_from(buf, elem_len),
+                                                   decoder_arg)
 
                                 cpython.Py_INCREF(elem)
                                 cpython.PyTuple_SET_ITEM(stride3, d4, elem)
@@ -244,13 +243,13 @@ cdef inline _nested_array_decode(ConnectionSettings settings, const char *data,
 
                                 for d5 in range(dims[4]):
                                     if ndims == 5:
-                                        elem_len = hton.unpack_int32(ptr)
-                                        ptr += 4
+                                        elem_len = hton.unpack_int32(buf.read(4))
                                         if elem_len == -1:
                                             elem = None
                                         else:
-                                            elem = decoder(settings, ptr, elem_len, decoder_arg)
-                                            ptr += elem_len
+                                            elem = decoder(settings,
+                                                           elem_buf.slice_from(buf, elem_len),
+                                                           decoder_arg)
 
                                         cpython.Py_INCREF(elem)
                                         cpython.PyTuple_SET_ITEM(stride4, d5, elem)
@@ -261,13 +260,13 @@ cdef inline _nested_array_decode(ConnectionSettings settings, const char *data,
                                         cpython.PyTuple_SET_ITEM(stride4, d5, stride5)
 
                                         for d6 in range(dims[5]):
-                                            elem_len = hton.unpack_int32(ptr)
-                                            ptr += 4
+                                            elem_len = hton.unpack_int32(buf.read(4))
                                             if elem_len == -1:
                                                 elem = None
                                             else:
-                                                elem = decoder(settings, ptr, elem_len, decoder_arg)
-                                                ptr += elem_len
+                                                elem = decoder(settings,
+                                                               elem_buf.slice_from(buf, elem_len),
+                                                               decoder_arg)
 
                                             cpython.Py_INCREF(elem)
                                             cpython.PyTuple_SET_ITEM(stride5, d6, elem)
@@ -280,9 +279,9 @@ cdef int4_encode_ex(ConnectionSettings settings, WriteBuffer buf, object obj,
     return int4_encode(settings, buf, obj)
 
 
-cdef int4_decode_ex(ConnectionSettings settings, const char* data,
-                    int32_t len, const void *arg):
-    return int4_decode(settings, data, len)
+cdef int4_decode_ex(ConnectionSettings settings, FastReadBuffer buf,
+                    const void *arg):
+    return int4_decode(settings, buf)
 
 
 cdef arrayoid_encode(ConnectionSettings settings, WriteBuffer buf, items):
@@ -290,10 +289,8 @@ cdef arrayoid_encode(ConnectionSettings settings, WriteBuffer buf, items):
                  <encode_func_ex>&int4_encode_ex, NULL)
 
 
-cdef arrayoid_decode(ConnectionSettings settings, const char* data,
-                     int32_t len):
-    return array_decode(settings, data, len, <decode_func_ex>&int4_decode_ex,
-                        NULL)
+cdef arrayoid_decode(ConnectionSettings settings, FastReadBuffer buf):
+    return array_decode(settings, buf, <decode_func_ex>&int4_decode_ex, NULL)
 
 
 cdef text_encode_ex(ConnectionSettings settings, WriteBuffer buf, object obj,
@@ -301,9 +298,9 @@ cdef text_encode_ex(ConnectionSettings settings, WriteBuffer buf, object obj,
     return text_encode(settings, buf, obj)
 
 
-cdef text_decode_ex(ConnectionSettings settings, const char* data,
-                    int32_t len, const void *arg):
-    return text_decode(settings, data, len)
+cdef text_decode_ex(ConnectionSettings settings, FastReadBuffer buf,
+                    const void *arg):
+    return text_decode(settings, buf)
 
 
 cdef arraytext_encode(ConnectionSettings settings, WriteBuffer buf, items):
@@ -311,10 +308,8 @@ cdef arraytext_encode(ConnectionSettings settings, WriteBuffer buf, items):
                  <encode_func_ex>&text_encode_ex,NULL)
 
 
-cdef arraytext_decode(ConnectionSettings settings, const char* data,
-                      int32_t len):
-    return array_decode(settings, data, len, <decode_func_ex>&text_decode_ex,
-                        NULL)
+cdef arraytext_decode(ConnectionSettings settings, FastReadBuffer buf):
+    return array_decode(settings, buf, <decode_func_ex>&text_decode_ex, NULL)
 
 
 cdef init_array_codecs():

@@ -33,8 +33,9 @@ cdef inline decode_pg_string(ConnectionSettings settings, const char* data,
         return settings.get_text_codec().decode(bytes)
 
 
-cdef text_decode(ConnectionSettings settings, const char* data, int32_t len):
-    return decode_pg_string(settings, data, len)
+cdef text_decode(ConnectionSettings settings, FastReadBuffer buf):
+    cdef size_t buf_len = buf.len
+    return decode_pg_string(settings, buf.read_all(), buf_len)
 
 
 cdef init_text_codecs():

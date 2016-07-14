@@ -197,12 +197,13 @@ cdef class PreparedStatementState:
             tuple rows_codecs = self.rows_codecs
             ConnectionSettings settings = self.settings
             int32_t i
+            FastReadBuffer rbuf = self.buffer
+            size_t bl
 
-        self.buffer.buf = cbuf
-        self.buffer.len = buf_len
+        rbuf.buf = cbuf
+        rbuf.len = buf_len
 
-        fnum = hton.unpack_int16(cbuf)
-        cbuf += 2
+        fnum = hton.unpack_int16(rbuf.read(2))
 
         if fnum != self.cols_num:
             raise RuntimeError(
@@ -215,22 +216,33 @@ cdef class PreparedStatementState:
 
         dec_row = record.ApgRecord_New(self.cols_mapping, fnum)
         for i in range(fnum):
-            flen = hton.unpack_int32(cbuf)
-            cbuf += 4
+            flen = hton.unpack_int32(rbuf.read(4))
 
             if flen == -1:
                 val = None
             else:
+                # Clamp buffer size to that of the reported field length
+                # to make sure that codecs can rely on read_all() working
+                # properly.
+                bl = rbuf.len
+                if flen > bl:
+                    # Check for overflow
+                    rbuf._raise_ins_err(flen, bl)
+                rbuf.len = flen
                 codec = <Codec>cpython.PyTuple_GET_ITEM(rows_codecs, i)
-
-                val = codec.decode(settings, cbuf, flen)
-                cbuf += flen
-
-                if cbuf - <char*>cbuf > buf_len:
-                    raise RuntimeError('buffer overrun')
+                val = codec.decode(settings, rbuf)
+                if rbuf.len != 0:
+                    raise BufferError(
+                        'unexpected trailing {} bytes in buffer'.format(
+                            rbuf.len))
+                rbuf.len = bl - flen
 
             cpython.Py_INCREF(val)
             record.ApgRecord_SET_ITEM(dec_row, i, val)
+
+        if rbuf.len != 0:
+            raise BufferError('unexpected trailing {} bytes in buffer'.format(
+                rbuf.len))
 
         return dec_row
 

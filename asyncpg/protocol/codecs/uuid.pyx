@@ -1,5 +1,6 @@
 import uuid
 
+
 _UUID = uuid.UUID
 
 
@@ -10,8 +11,8 @@ cdef uuid_encode(ConnectionSettings settings, WriteBuffer wbuf, obj):
     bytea_encode(settings, wbuf, obj.bytes)
 
 
-cdef uuid_decode(ConnectionSettings settings, const char* data, int32_t len):
-    return _UUID(bytes=cpython.PyBytes_FromStringAndSize(data, len))
+cdef uuid_decode(ConnectionSettings settings, FastReadBuffer buf):
+    return _UUID(bytes=bytea_decode(settings, buf))
 
 
 cdef init_uuid_codecs():

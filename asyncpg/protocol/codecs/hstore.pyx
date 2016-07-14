@@ -29,40 +29,33 @@ cdef hstore_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     buf.write_buffer(item_buf)
 
 
-cdef hstore_decode(ConnectionSettings settings,
-                   const char* data, int32_t len):
+cdef hstore_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
         dict result
         uint32_t elem_count
-        const char *ptr
-        uint32_t i
         int32_t elem_len
+        uint32_t i
         str k
         str v
 
     result = {}
 
-    elem_count = hton.unpack_int32(data)
+    elem_count = hton.unpack_int32(buf.read(4))
     if elem_count == 0:
         return result
 
-    ptr = &data[4]
     for i in range(elem_count):
-        elem_len = hton.unpack_int32(ptr)
+        elem_len = hton.unpack_int32(buf.read(4))
         if elem_len < 0:
             raise ValueError('null value not allowed in hstore key')
 
-        ptr += 4
-        k = decode_pg_string(settings, ptr, elem_len)
+        k = decode_pg_string(settings, buf.read(elem_len), elem_len)
 
-        ptr += elem_len
-        elem_len = hton.unpack_int32(ptr)
-        ptr += 4
+        elem_len = hton.unpack_int32(buf.read(4))
         if elem_len < 0:
             v = None
         else:
-            v = decode_pg_string(settings, ptr, elem_len)
-            ptr += elem_len
+            v = decode_pg_string(settings, buf.read(elem_len), elem_len)
 
         result[k] = v
 

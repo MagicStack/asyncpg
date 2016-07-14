@@ -7,8 +7,8 @@ cdef bool_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     buf.write_byte(b'\x01' if obj is True else b'\x00')
 
 
-cdef bool_decode(ConnectionSettings settings, const char* data, int32_t len):
-    return data[0] is b'\x01'
+cdef bool_decode(ConnectionSettings settings, FastReadBuffer buf):
+    return buf.read(1)[0] is b'\x01'
 
 
 cdef int2_encode(ConnectionSettings settings, WriteBuffer buf, obj):
@@ -21,8 +21,8 @@ cdef int2_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     buf.write_int16(val)
 
 
-cdef int2_decode(ConnectionSettings settings, const char* data, int32_t len):
-    return cpython.PyLong_FromLong(hton.unpack_int16(data))
+cdef int2_decode(ConnectionSettings settings, FastReadBuffer buf):
+    return cpython.PyLong_FromLong(hton.unpack_int16(buf.read(2)))
 
 
 cdef int4_encode(ConnectionSettings settings, WriteBuffer buf, obj):
@@ -32,8 +32,8 @@ cdef int4_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     buf.write_int32(val)
 
 
-cdef int4_decode(ConnectionSettings settings, const char* data, int32_t len):
-    return cpython.PyLong_FromLong(hton.unpack_int32(data))
+cdef int4_decode(ConnectionSettings settings, FastReadBuffer buf):
+    return cpython.PyLong_FromLong(hton.unpack_int32(buf.read(4)))
 
 
 cdef int8_encode(ConnectionSettings settings, WriteBuffer buf, obj):
@@ -42,8 +42,8 @@ cdef int8_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     buf.write_int64(val)
 
 
-cdef int8_decode(ConnectionSettings settings, const char* data, int32_t len):
-    return cpython.PyLong_FromLongLong(hton.unpack_int64(data))
+cdef int8_decode(ConnectionSettings settings, FastReadBuffer buf):
+    return cpython.PyLong_FromLongLong(hton.unpack_int64(buf.read(8)))
 
 
 cdef init_int_codecs():

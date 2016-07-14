@@ -27,8 +27,9 @@ cdef bytea_encode(ConnectionSettings settings, WriteBuffer wbuf, obj):
             cpython.PyBuffer_Release(&pybuf)
 
 
-cdef bytea_decode(ConnectionSettings settings, const char* data, int32_t len):
-    return cpython.PyBytes_FromStringAndSize(data, len)
+cdef bytea_decode(ConnectionSettings settings, FastReadBuffer buf):
+    cdef size_t buf_len = buf.len
+    return cpython.PyBytes_FromStringAndSize(buf.read_all(), buf_len)
 
 
 cdef init_bytea_codecs():

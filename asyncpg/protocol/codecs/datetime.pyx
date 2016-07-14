@@ -63,11 +63,11 @@ cdef inline _encode_time(WriteBuffer buf, int64_t seconds,
         buf.write_int64(ts)
 
 
-cdef inline int32_t _decode_time(const char *data, int64_t *seconds,
+cdef inline int32_t _decode_time(FastReadBuffer buf, int64_t *seconds,
                                  uint32_t *microseconds):
     # XXX: add support for double timestamps
     # int64 timestamps,
-    cdef int64_t ts = hton.unpack_int64(data)
+    cdef int64_t ts = hton.unpack_int64(buf.read(8))
 
     if ts == pg_time64_infinity:
         return 1
@@ -96,8 +96,8 @@ cdef date_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     buf.write_int32(pg_ordinal)
 
 
-cdef date_decode(ConnectionSettings settings, const char* data, int32_t len):
-    cdef int32_t pg_ordinal = hton.unpack_int32(data)
+cdef date_decode(ConnectionSettings settings, FastReadBuffer buf):
+    cdef int32_t pg_ordinal = hton.unpack_int32(buf.read(4))
 
     if pg_ordinal == pg_date_infinity:
         return infinity_date
@@ -118,12 +118,11 @@ cdef timestamp_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     _encode_time(buf, seconds, microseconds)
 
 
-cdef timestamp_decode(ConnectionSettings settings, const char* data,
-                      int32_t len):
+cdef timestamp_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
         int64_t seconds
         uint32_t microseconds
-        int32_t inf = _decode_time(data, &seconds, &microseconds)
+        int32_t inf = _decode_time(buf, &seconds, &microseconds)
 
     if inf > 0:
         # positive infinity
@@ -155,12 +154,11 @@ cdef timestamptz_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     _encode_time(buf, seconds, microseconds)
 
 
-cdef timestamptz_decode(ConnectionSettings settings, const char* data,
-                        int32_t len):
+cdef timestamptz_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
         int64_t seconds
         uint32_t microseconds
-        int32_t inf = _decode_time(data, &seconds, &microseconds)
+        int32_t inf = _decode_time(buf, &seconds, &microseconds)
 
     if inf > 0:
         # positive infinity
@@ -184,13 +182,12 @@ cdef time_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     _encode_time(buf, seconds, microseconds)
 
 
-cdef time_decode(ConnectionSettings settings, const char* data,
-                 int32_t len):
+cdef time_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
         int64_t seconds
         uint32_t microseconds
 
-    _decode_time(data, &seconds, &microseconds)
+    _decode_time(buf, &seconds, &microseconds)
 
     cdef:
         int32_t minutes = <int32_t>(seconds / 60)
@@ -217,10 +214,9 @@ cdef timetz_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     buf.write_int32(offset_sec)
 
 
-cdef timetz_decode(ConnectionSettings settings, const char* data,
-                   int32_t len):
-    time = time_decode(settings, data, len)
-    cdef int32_t offset = <int32_t>(hton.unpack_int32(&data[8]) / 60)
+cdef timetz_decode(ConnectionSettings settings, FastReadBuffer buf):
+    time = time_decode(settings, buf)
+    cdef int32_t offset = <int32_t>(hton.unpack_int32(buf.read(4)) / 60)
     return time.replace(tzinfo=datetime.timezone(timedelta(minutes=offset)))
 
 
@@ -236,15 +232,16 @@ cdef interval_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     buf.write_int32(0) # Months
 
 
-cdef interval_decode(ConnectionSettings settings, const char* data,
-                     int32_t len):
+cdef interval_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
-        int32_t days = hton.unpack_int32(&data[8])
-        int32_t months = hton.unpack_int32(&data[12])
+        int32_t days
+        int32_t months
         int64_t seconds
         uint32_t microseconds
 
-    _decode_time(data, &seconds, &microseconds)
+    _decode_time(buf, &seconds, &microseconds)
+    days = hton.unpack_int32(buf.read(4))
+    months = hton.unpack_int32(buf.read(4))
 
     return datetime.timedelta(days=days + months * 30, seconds=seconds,
                               microseconds=microseconds)

@@ -1,4 +1,4 @@
-cdef void_decode(ConnectionSettings settings, const char* data, int32_t len):
+cdef void_decode(ConnectionSettings settings, FastReadBuffer buf):
     # Do nothing; void will be passed as NULL so this function
     # will never be called.
     pass

@@ -3,8 +3,7 @@ ctypedef object (*encode_func)(ConnectionSettings settings,
                                object obj)
 
 ctypedef object (*decode_func)(ConnectionSettings settings,
-                               const char *data,
-                               int32_t len)
+                               FastReadBuffer buf)
 
 ctypedef object (*codec_encode_func)(Codec codec,
                                      ConnectionSettings settings,
@@ -13,8 +12,7 @@ ctypedef object (*codec_encode_func)(Codec codec,
 
 ctypedef object (*codec_decode_func)(Codec codec,
                                      ConnectionSettings settings,
-                                     const char *data,
-                                     int32_t len)
+                                     FastReadBuffer buf)
 
 
 cdef enum CodecType:
@@ -78,17 +76,15 @@ cdef class Codec:
     cdef encode_in_python(self, ConnectionSettings settings, WriteBuffer buf,
                           object obj)
 
-    cdef decode_scalar(self, ConnectionSettings settings, const char *data,
-                       int32_t len)
+    cdef decode_scalar(self, ConnectionSettings settings, FastReadBuffer buf)
 
-    cdef decode_array(self, ConnectionSettings settings, const char *data,
-                      int32_t len)
+    cdef decode_array(self, ConnectionSettings settings, FastReadBuffer buf)
 
-    cdef decode_composite(self, ConnectionSettings settings, const char *data,
-                          int32_t len)
+    cdef decode_composite(self, ConnectionSettings settings,
+                          FastReadBuffer buf)
 
-    cdef decode_in_python(self, ConnectionSettings settings, const char *data,
-                          int32_t len)
+    cdef decode_in_python(self, ConnectionSettings settings,
+                          FastReadBuffer buf)
 
     cdef inline encode(self,
                        ConnectionSettings settings,
@@ -97,8 +93,7 @@ cdef class Codec:
 
     cdef inline decode(self,
                        ConnectionSettings settings,
-                       const char *data,
-                       int32_t len)
+                       FastReadBuffer buf)
 
     cdef has_encoder(self)
     cdef has_decoder(self)

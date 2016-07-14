@@ -7,37 +7,32 @@ cdef inline record_encode_frame(ConnectionSettings settings, WriteBuffer buf,
     buf.write_buffer(elem_data)
 
 
-cdef anonymous_record_decode(ConnectionSettings settings,
-                             const char* data, int32_t len):
+cdef anonymous_record_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
         tuple result
         uint32_t elem_count
-        const char *ptr
-        uint32_t i
         int32_t elem_len
         uint32_t elem_typ
+        uint32_t i
         Codec elem_codec
+        FastReadBuffer elem_buf = FastReadBuffer.new()
 
-    elem_count = hton.unpack_int32(data)
+    elem_count = hton.unpack_int32(buf.read(4))
     result = cpython.PyTuple_New(elem_count)
-    ptr = &data[4]
 
     for i in range(elem_count):
-        elem_typ = elem_typ = hton.unpack_int32(ptr)
-        ptr += 4
-
-        elem_len = hton.unpack_int32(ptr)
-        ptr += 4
+        elem_typ = hton.unpack_int32(buf.read(4))
+        elem_len = hton.unpack_int32(buf.read(4))
 
         if elem_len == -1:
             elem = None
         else:
             elem_codec = settings.get_data_codec(elem_typ)
             if elem_codec is None or not elem_codec.has_decoder():
-                raise RuntimeError('no decoder for type OID {}'.format(
-                    elem_typ))
-            elem = elem_codec.decode(settings, ptr, elem_len)
-            ptr += elem_len
+                raise RuntimeError(
+                    'no decoder for type OID {}'.format(elem_typ))
+            elem = elem_codec.decode(settings,
+                                     elem_buf.slice_from(buf, elem_len))
 
         cpython.Py_INCREF(elem)
         cpython.PyTuple_SET_ITEM(result, i, elem)

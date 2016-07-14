@@ -13,11 +13,13 @@ cdef jsonb_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     buf.write_cstr(str, size)
 
 
-cdef jsonb_decode(ConnectionSettings settings, const char* data, int32_t len):
-    if data[0] != 1:
-        raise ValueError('unexpected JSONB format: {}'.format(int(data[0])))
+cdef jsonb_decode(ConnectionSettings settings, FastReadBuffer buf):
+    cdef uint8_t format = <uint8_t>buf.read(1)[0]
 
-    return text_decode(settings, &data[1], len - 1)
+    if format != 1:
+        raise ValueError('unexpected JSONB format: {}'.format(format))
+
+    return text_decode(settings, buf)
 
 
 cdef init_json_codecs():

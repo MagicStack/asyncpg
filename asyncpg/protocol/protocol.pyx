@@ -10,7 +10,8 @@ import codecs
 import collections
 import socket
 
-from libc.stdint cimport int16_t, int32_t, uint16_t, uint32_t, int64_t, uint64_t
+from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, \
+                         int32_t, uint32_t, int64_t, uint64_t
 
 from asyncpg.protocol cimport record
 
@@ -36,19 +37,31 @@ include "settings.pyx"
 include "buffer.pyx"
 
 include "codecs/base.pyx"
-include "codecs/text.pyx"
+
+# String types.  Need to go first, as other codecs may rely on
+# text decoding/encoding.
 include "codecs/bytea.pyx"
-include "codecs/json.pyx"
+include "codecs/text.pyx"
+
+# Various pseudotypes
+include "codecs/special.pyx"
+
+# Builtin types, in lexicographical order.
 include "codecs/datetime.pyx"
 include "codecs/float.pyx"
 include "codecs/int.pyx"
+include "codecs/json.pyx"
 include "codecs/numeric.pyx"
 include "codecs/uuid.pyx"
+
+# nonscalar
 include "codecs/array.pyx"
 include "codecs/record.pyx"
-include "codecs/hstore.pyx"
+
 include "codecs/init.pyx"
-include "codecs/special.pyx"
+
+# contrib
+include "codecs/hstore.pyx"
 
 include "coreproto.pyx"
 include "prepared_stmt.pyx"

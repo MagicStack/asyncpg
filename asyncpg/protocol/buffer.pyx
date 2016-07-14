@@ -471,13 +471,16 @@ cdef class ReadBuffer:
         return 1
 
     cdef inline char* try_consume_message(self, int32_t* len):
+        cdef int32_t buf_len
+
         if not self._current_message_ready:
             return NULL
 
         self._ensure_first_buf()
-        buf = self._try_read_bytes(self._current_message_len_unread)
+        buf_len = self._current_message_len_unread
+        buf = self._try_read_bytes(buf_len)
         if buf != NULL:
-            len[0] = self._current_message_len_unread
+            len[0] = buf_len
             self._discard_message()
         return buf
 
@@ -532,18 +535,38 @@ cdef class ReadBuffer:
 
 @cython.no_gc_clear
 @cython.final
+@cython.freelist(_BUFFER_FREELIST_SIZE)
 cdef class FastReadBuffer:
 
-    cdef inline char* read(self, size_t n):
-        char *result
-        if self.buf is NULL:
-            raise BufferError('nothing to read')
+    cdef inline const char* read(self, size_t n) except NULL:
+        cdef const char *result
+
         if n > self.len:
-            raise BufferError('buffer overflow')
+            self._raise_ins_err(n, self.len)
+
         result = self.buf
         self.buf += n
         self.len -= n
+
         return result
+
+    cdef inline const char* read_all(self):
+        cdef const char *result
+        result = self.buf
+        self.buf += self.len
+        self.len = 0
+        return result
+
+    cdef inline FastReadBuffer slice_from(self, FastReadBuffer source,
+                                          size_t len):
+        self.buf = source.read(len)
+        self.len = len
+        return self
+
+    cdef _raise_ins_err(self, size_t n, size_t len):
+        raise BufferError(
+            'insufficient data in buffer: requested {}, remaining {}'.
+                format(n, self.len))
 
     @staticmethod
     cdef FastReadBuffer new():
