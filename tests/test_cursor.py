@@ -73,6 +73,16 @@ class TestIterableCursor(tb.ConnectedTestCase):
                     async for _ in st.cursor(prefetch=prefetch):  # NOQA
                         pass
 
+    async def test_cursor_iterable_06(self):
+        recs = []
+
+        async with self.con.transaction():
+            async for rec in self.con.cursor(
+                    'SELECT generate_series(0, $1::int)', 10):
+                recs.append(rec)
+
+        self.assertEqual(recs, [(i,) for i in range(11)])
+
 
 class TestCursor(tb.ConnectedTestCase):
 
@@ -126,3 +136,9 @@ class TestCursor(tb.ConnectedTestCase):
             with self.assertRaisesRegex(asyncpg.InterfaceError,
                                         'prefetch argument can only'):
                 await st.cursor(prefetch=10)
+
+    async def test_cursor_04(self):
+        async with self.con.transaction():
+            st = await self.con.cursor('SELECT generate_series(0, 100)')
+            await st.forward(42)
+            self.assertEqual(await st.fetchrow(), (42,))

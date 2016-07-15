@@ -1,5 +1,6 @@
 import collections
 
+from . import cursor
 from . import introspection
 from . import prepared_stmt
 from . import transaction
@@ -78,6 +79,9 @@ class Connection:
             await self._cleanup_stmts()
 
         return state
+
+    def cursor(self, query, *args, prefetch=None):
+        return cursor.CursorFactory(self, query, None, args, prefetch)
 
     async def prepare(self, query):
         stmt = await self._get_statement(query)

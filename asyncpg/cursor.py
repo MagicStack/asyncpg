@@ -6,26 +6,31 @@ from . import exceptions
 
 class CursorFactory:
 
-    __slots__ = ('_state', '_connection', '_args', '_prefetch')
+    __slots__ = ('_state', '_connection', '_args', '_prefetch',
+                 '_query')
 
-    def __init__(self, connection, state, args, prefetch):
+    def __init__(self, connection, query, state, args, prefetch):
         self._connection = connection
-        self._state = state
         self._args = args
         self._prefetch = prefetch
-        state.attach()
+        self._query = query
+        self._state = state
+        if state is not None:
+            state.attach()
 
     @compat.aiter_compat
     def __aiter__(self):
         prefetch = 100 if self._prefetch is None else self._prefetch
-        return CursorIterator(self._connection, self._state,
+        return CursorIterator(self._connection,
+                              self._query, self._state,
                               self._args, prefetch)
 
     def __await__(self):
         if self._prefetch is not None:
             raise exceptions.InterfaceError(
                 'prefetch argument can only be specified for iterable cursor')
-        cursor = Cursor(self._connection, self._state, self._args)
+        cursor = Cursor(self._connection, self._query,
+                        self._state, self._args)
         return cursor._init().__await__()
 
     def __del__(self):
@@ -37,17 +42,23 @@ class CursorFactory:
 class BaseCursor:
 
     __slots__ = ('_state', '_connection', '_args', '_portal_name',
-                 '_exhausted')
+                 '_exhausted', '_query')
 
-    def __init__(self, connection, state, args):
+    def __init__(self, connection, query, state, args):
         self._args = args
         self._connection = connection
         self._state = state
-        state.attach()
+        if state is not None:
+            state.attach()
         self._portal_name = None
         self._exhausted = False
+        self._query = query
 
     def _check_ready(self):
+        if self._state is None:
+            raise exceptions.InterfaceError(
+                'cursor: no associated prepared statement')
+
         if self._state.closed:
             raise exceptions.InterfaceError(
                 'cursor: the prepared statement is closed')
@@ -124,8 +135,8 @@ class CursorIterator(BaseCursor):
 
     __slots__ = ('_buffer', '_prefetch')
 
-    def __init__(self, connection, state, args, prefetch):
-        super().__init__(connection, state, args)
+    def __init__(self, connection, query, state, args, prefetch):
+        super().__init__(connection, query, state, args)
 
         if prefetch <= 0:
             raise exceptions.InterfaceError(
@@ -139,6 +150,10 @@ class CursorIterator(BaseCursor):
         return self
 
     async def __anext__(self):
+        if self._state is None:
+            self._state = await self._connection._get_statement(self._query)
+            self._state.attach()
+
         if not self._portal_name:
             buffer = await self._bind_exec(self._prefetch)
             self._buffer.extend(buffer)
@@ -158,6 +173,9 @@ class Cursor(BaseCursor):
     __slots__ = ()
 
     async def _init(self):
+        if self._state is None:
+            self._state = await self._connection._get_statement(self._query)
+            self._state.attach()
         self._check_ready()
         await self._bind()
         return self

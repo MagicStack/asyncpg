@@ -34,7 +34,7 @@ class PreparedStatement:
     def cursor(self, *args, prefetch=None):
         self.__check_open()
         return cursor.CursorFactory(
-            self._connection, self._state, args, prefetch)
+            self._connection, self._query, self._state, args, prefetch)
 
     async def explain(self, *args, analyze=False):
         query = 'EXPLAIN (FORMAT JSON, VERBOSE'
