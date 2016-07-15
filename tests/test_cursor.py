@@ -10,15 +10,16 @@ class TestCursor(tb.ConnectedTestCase):
         st = await self.con.prepare('SELECT generate_series(0, 20)')
         expected = await st.fetch()
 
-        for prefetch in range(25):
-            async with self.con.transaction():
-                result = []
-                async for rec in st.cursor(prefetch=prefetch):
-                    result.append(rec)
+        for prefetch in range(1, 25):
+            with self.subTest(prefetch=prefetch):
+                async with self.con.transaction():
+                    result = []
+                    async for rec in st.cursor(prefetch=prefetch):
+                        result.append(rec)
 
-            self.assertEqual(
-                result, expected,
-                'result != expected for prefetch={}'.format(prefetch))
+                self.assertEqual(
+                    result, expected,
+                    'result != expected for prefetch={}'.format(prefetch))
 
     async def test_cursor_02(self):
         # Test that it's not possible to create a cursor without hold
@@ -62,3 +63,12 @@ class TestCursor(tb.ConnectedTestCase):
                                     'statement is closed'):
             async for _ in st.cursor():  # NOQA
                 pass
+
+    async def test_cursor_05(self):
+        st = await self.con.prepare('SELECT generate_series(0, 20)')
+        for prefetch in range(-1, 1):
+            with self.subTest(prefetch=prefetch):
+                with self.assertRaisesRegex(asyncpg.InterfaceError,
+                                            'must be greater than zero'):
+                    async for _ in st.cursor(prefetch=prefetch):  # NOQA
+                        pass

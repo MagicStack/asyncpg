@@ -11,10 +11,14 @@ class Cursor:
 
     def __init__(self, connection, state, args, prefetch):
         self._connection = connection
-        self._args = args
-
         self._state = state
         state.attach()
+
+        if prefetch <= 0:
+            raise exceptions.InterfaceError(
+                'prefetch argument must be greater than zero')
+
+        self._args = args
 
         self._portal_name = None
         self._pos = 0
