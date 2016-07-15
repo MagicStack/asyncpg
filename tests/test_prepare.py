@@ -340,3 +340,38 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual(await self.con.fetch(''), [])
         self.assertIsNone(await self.con.fetchval(''))
         self.assertIsNone(await self.con.fetchrow(''))
+
+    async def test_prepare_19_concurrent_calls(self):
+        st = self.loop.create_task(self.con.prepare('SELECT 1'))
+        await asyncio.sleep(0, loop=self.loop)
+
+        with self.assertRaisesRegex(asyncpg.InterfaceError,
+                                    'another operation'):
+            await self.con.execute('SELECT 2')
+
+        st = await st
+        self.assertEqual(await st.fetchval(), 1)
+
+    async def test_prepare_20_concurrent_calls(self):
+        for methname, val in [('fetch', [(1,)]),
+                              ('fetchval', 1),
+                              ('fetchrow', (1,))]:
+
+            meth = getattr(self.con, methname)
+
+            vf = self.loop.create_task(meth('SELECT 1'))
+            await asyncio.sleep(0, loop=self.loop)
+
+            with self.assertRaisesRegex(asyncpg.InterfaceError,
+                                        'another operation'):
+                await meth('SELECT 2')
+
+            self.assertEqual(await vf, val)
+
+    async def test_prepare_21_errors(self):
+        stmt = await self.con.prepare('SELECT 10 / $1::int')
+
+        with self.assertRaises(asyncpg.DivisionByZeroError):
+            await stmt.fetchval(0)
+
+        self.assertEqual(await stmt.fetchval(5), 2)
