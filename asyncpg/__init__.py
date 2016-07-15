@@ -29,19 +29,21 @@ async def connect(dsn=None, *,
         database=database, opts=opts)
 
     last_ex = None
+    addr = None
     for h in host:
         connected = _create_future(loop)
         unix = h.startswith('/')
 
         if unix:
             # UNIX socket name
-            sname = os.path.join(h, '.s.PGSQL.{}'.format(port))
+            addr = os.path.join(h, '.s.PGSQL.{}'.format(port))
             conn = loop.create_unix_connection(
-                lambda: protocol.Protocol(sname, connected, opts, loop),
-                sname)
+                lambda: protocol.Protocol(addr, connected, opts, loop),
+                addr)
         else:
+            addr = (h, port)
             conn = loop.create_connection(
-                lambda: protocol.Protocol((h, port), connected, opts, loop),
+                lambda: protocol.Protocol(addr, connected, opts, loop),
                 h, port)
 
         try:
@@ -59,8 +61,11 @@ async def connect(dsn=None, *,
         tr.close()
         raise
 
-    return connection.Connection(
-        pr, tr, loop, statement_cache_size=statement_cache_size)
+    con = connection.Connection(
+        pr, tr, loop, addr, opts,
+        statement_cache_size=statement_cache_size)
+    pr.set_connection(con)
+    return con
 
 
 def _parse_connect_params(*, dsn, host, port, user,

@@ -52,8 +52,8 @@ cdef class CoreProtocol:
         # Dict with all connection arguments
         dict con_args
 
-        int32_t backend_pid
-        int32_t backend_secret
+        readonly int32_t backend_pid
+        readonly int32_t backend_secret
 
         ## Result
         ResultType result_type

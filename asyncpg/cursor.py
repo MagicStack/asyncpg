@@ -206,8 +206,9 @@ class Cursor(BaseCursor):
         if n <= 0:
             raise exceptions.InterfaceError('n must be greater than zero')
 
-        status = await self._connection._protocol.query(
-            'MOVE FORWARD {:d} {}'.format(n, self._portal_name))
+        protocol = self._connection._protocol
+        status = await protocol.query('MOVE FORWARD {:d} {}'.format(
+            n, self._portal_name))
 
         advanced = int(status.split()[1])
         if advanced < n:

@@ -1,4 +1,7 @@
+import asyncio
 import collections
+import socket
+import struct
 
 from . import cursor
 from . import introspection
@@ -10,9 +13,10 @@ class Connection:
 
     __slots__ = ('_protocol', '_transport', '_loop', '_types_stmt',
                  '_type_by_name_stmt', '_top_xact', '_uid', '_aborted',
-                 '_stmt_cache_max_size', '_stmt_cache', '_stmts_to_close')
+                 '_stmt_cache_max_size', '_stmt_cache', '_stmts_to_close',
+                 '_addr', '_opts')
 
-    def __init__(self, protocol, transport, loop, *,
+    def __init__(self, protocol, transport, loop, addr, opts, *,
                  statement_cache_size):
         self._protocol = protocol
         self._transport = transport
@@ -22,6 +26,9 @@ class Connection:
         self._top_xact = None
         self._uid = 0
         self._aborted = False
+
+        self._addr = addr
+        self._opts = opts
 
         self._stmt_cache_max_size = statement_cache_size
         self._stmt_cache = collections.OrderedDict()
@@ -89,19 +96,22 @@ class Connection:
 
     async def fetch(self, query, *args):
         stmt = await self._get_statement(query)
-        data = await self._protocol.bind_execute(stmt, args, '', 0, False)
+        protocol = self._protocol
+        data = await protocol.bind_execute(stmt, args, '', 0, False)
         return data
 
     async def fetchval(self, query, *args, column=0):
         stmt = await self._get_statement(query)
-        data = await self._protocol.bind_execute(stmt, args, '', 1, False)
+        protocol = self._protocol
+        data = await protocol.bind_execute(stmt, args, '', 1, False)
         if not data:
             return None
         return data[0][column]
 
     async def fetchrow(self, query, *args):
         stmt = await self._get_statement(query)
-        data = await self._protocol.bind_execute(stmt, args, '', 1, False)
+        protocol = self._protocol
+        data = await protocol.bind_execute(stmt, args, '', 1, False)
         if not data:
             return None
         return data[0]
@@ -175,7 +185,8 @@ class Connection:
             return
         self._close_stmts()
         self._aborted = True
-        await self._protocol.close()
+        protocol = self._protocol
+        await protocol.close()
 
     def terminate(self):
         self._close_stmts()
@@ -204,8 +215,31 @@ class Connection:
     async def _cleanup_stmts(self):
         to_close = self._stmts_to_close
         self._stmts_to_close = set()
+        protocol = self._protocol
         for stmt in to_close:
-            await self._protocol.close_statement(stmt)
+            await protocol.close_statement(stmt)
 
     def _request_portal_name(self):
         return self._get_unique_id()
+
+    def _cancel_current_command(self):
+        async def cancel():
+            if isinstance(self._addr, str):
+                r, w = await asyncio.open_unix_connection(
+                    self._addr, loop=self._loop)
+            else:
+                r, w = await asyncio.open_connection(
+                    *self._addr, loop=self._loop)
+
+                sock = w.transport.get_extra_info('socket')
+                sock.setsockopt(socket.IPPROTO_TCP,
+                                socket.TCP_NODELAY, 1)
+
+            # Pack CancelRequest message
+            msg = struct.pack('!llll', 16, 80877102,
+                              self._protocol.backend_pid,
+                              self._protocol.backend_secret)
+            w.write(msg)
+            w.close()
+
+        self._loop.create_task(cancel())

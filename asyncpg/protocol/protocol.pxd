@@ -20,9 +20,12 @@ cdef class BaseProtocol(CoreProtocol):
         object loop
         object address
         ConnectionSettings settings
+        object cancel_waiter
         object waiter
         bint return_extra
         object create_future
+        object completed_callback
+        object connection
 
         str last_query
 
@@ -31,6 +34,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         PreparedStatementState statement
 
+    cdef _ensure_clear_state(self)
     cdef _new_waiter(self)
 
     cdef _on_result__connect(self, object waiter)

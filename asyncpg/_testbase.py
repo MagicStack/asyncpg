@@ -5,6 +5,7 @@ import functools
 import inspect
 import logging
 import os
+import time
 import unittest
 
 
@@ -73,6 +74,16 @@ class TestCase(unittest.TestCase, metaclass=TestCaseMeta):
     def tearDown(self):
         self.loop.close()
         asyncio.set_event_loop(None)
+
+    @contextlib.contextmanager
+    def assertRunLess(self, delta):
+        st = time.monotonic()
+        try:
+            yield
+        finally:
+            if time.monotonic() - st > delta:
+                raise AssertionError(
+                    'running block took longer than {}'.format(delta))
 
 
 _default_cluster = None
