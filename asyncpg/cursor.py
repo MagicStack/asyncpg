@@ -164,6 +164,7 @@ class Cursor(BaseCursor):
         return self
 
     async def fetch(self, n):
+        self._check_ready()
         if n <= 0:
             raise exceptions.InterfaceError('n must be greater than zero')
         if self._exhausted:
@@ -174,6 +175,7 @@ class Cursor(BaseCursor):
         return recs
 
     async def fetchrow(self):
+        self._check_ready()
         if self._exhausted:
             return None
         recs = await self._exec(1)
@@ -183,15 +185,14 @@ class Cursor(BaseCursor):
         return recs[0]
 
     async def forward(self, n):
+        self._check_ready()
         if n <= 0:
             raise exceptions.InterfaceError('n must be greater than zero')
 
-        st = await self._connection.prepare(
+        status = await self._connection._protocol.query(
             'MOVE FORWARD {:d} {}'.format(n, self._portal_name))
-        await st.fetch()
 
-        moved = st.get_statusmsg()
-        advanced = int(moved.split()[1])
+        advanced = int(status.split()[1])
         if advanced < n:
             self._exhausted = True
 

@@ -79,8 +79,7 @@ class TestCursor(tb.ConnectedTestCase):
     async def test_cursor_01(self):
         st = await self.con.prepare('SELECT generate_series(0, 20)')
         with self.assertRaisesRegex(asyncpg.NoActiveSQLTransactionError,
-                            'cursor cannot be created.*transaction'):
-
+                                    'cursor cannot be created.*transaction'):
             await st.cursor()
 
     async def test_cursor_02(self):
