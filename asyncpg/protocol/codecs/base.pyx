@@ -303,21 +303,31 @@ cdef class DataCodecConfig:
             comp_type_attrs = ti['attrtypoids']
             base_type = ti['basetype']
 
-            if name.startswith('_') and array_element_oid:
-                name = '{}[]'.format(name[1:])
-
             if array_element_oid:
-                # Array type
+                # Array type (note, there is no separate 'kind' for arrays)
+
+                # Canonicalize type name to "elemtype[]"
+                if name.startswith('_'):
+                    name = name[1:]
+                name = '{}[]'.format(name)
+
                 elem_codec = self.get_codec(array_element_oid)
                 if elem_codec is None:
                     raise RuntimeError(
                         'no codec for array element type {}'.format(
                             array_element_oid))
+
                 self._type_codecs_cache[oid] = \
                     Codec.new_array_codec(oid, name, schema, elem_codec)
 
-            elif comp_type_attrs:
-                # Composite element
+            elif ti['kind'] == b'c':
+                if not comp_type_attrs:
+                    raise RuntimeError(
+                        'type record missing field types for '
+                        'composite {}'.format(oid))
+
+                # Composite type
+
                 comp_elem_codecs = []
 
                 for typoid in comp_type_attrs:
@@ -338,29 +348,57 @@ cdef class DataCodecConfig:
                         comp_type_attrs,
                         element_names)
 
-            elif ti['kind'] == b'd' and base_type:
+            elif ti['kind'] == b'd':
                 # Domain type
+
+                if not base_type:
+                    raise RuntimeError(
+                        'type record missing base type for domain {}'.format(
+                            oid))
+
                 elem_codec = self.get_codec(base_type)
                 if elem_codec is None:
                     raise RuntimeError(
-                        'no codec for array element type {}'.format(
-                            base_type))
+                        'no codec for domain base type {}'.format(base_type))
 
                 self._type_codecs_cache[oid] = elem_codec
 
-            elif ti['kind'] == b'r' and range_subtype_oid:
+            elif ti['kind'] == b'r':
                 # Range type
+
+                if not range_subtype_oid:
+                    raise RuntimeError(
+                        'type record missing base type for range {}'.format(
+                            oid))
+
                 elem_codec = self.get_codec(range_subtype_oid)
                 if elem_codec is None:
                     raise RuntimeError(
                         'no codec for range element type {}'.format(
                             range_subtype_oid))
+
                 self._type_codecs_cache[oid] = \
                     Codec.new_range_codec(oid, name, schema, elem_codec)
 
             else:
-                raise NotImplementedError(
-                    'unhandled data type {!r}'.format(ti))
+                if oid <= MAXBUILTINOID:
+                    # This is a non-BKI type, for which ayncpg has no
+                    # defined codec.  This should only happen for newly
+                    # added builtin types, for which this version of
+                    # asyncpg is lacking support.
+                    #
+                    raise NotImplementedError(
+                        'unhandled standard data type {} (OID {})'.format(
+                            name, oid))
+                else:
+                    # This is a non-BKI type, and as such, has no
+                    # stable OID, so no possibility of a builtin codec.
+                    # In this case, fallback to text format.  Applications
+                    # can avoid this by specifying a codec for this type
+                    # using Connection.set_type_codec().
+                    #
+                    self.set_builtin_type_codec(oid, name, schema, 'scalar',
+                                                UNKNOWNOID)
 
     def add_python_codec(self, typeoid, typename, typeschema, typekind,
                          encoder, decoder, binary):
@@ -375,20 +413,24 @@ cdef class DataCodecConfig:
                                    encoder, decoder, format)
 
     def set_builtin_type_codec(self, typeoid, typename, typeschema, typekind,
-                        alias_to):
+                               alias_to):
         cdef:
             Codec codec
-            Codec extra_codec
+            Codec target_codec
 
         if self.get_codec(typeoid) is not None:
             raise ValueError('cannot override codec for type {}'.format(
                 typeoid))
 
-        extra_codec = get_extra_codec(alias_to)
-        if extra_codec is None:
+        if isinstance(alias_to, int):
+            target_codec = self.get_codec(alias_to)
+        else:
+            target_codec = get_extra_codec(alias_to)
+
+        if target_codec is None:
             raise ValueError('unknown alias target: {}'.format(alias_to))
 
-        codec = extra_codec.copy()
+        codec = target_codec.copy()
         codec.oid = typeoid
         codec.name = typename
         codec.schema = typeschema

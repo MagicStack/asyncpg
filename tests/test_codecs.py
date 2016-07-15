@@ -295,6 +295,26 @@ class TestCodecs(tb.ConnectedTestCase):
         stmt = await self.con.prepare('select pg_sleep(0)')
         self.assertIsNone(await stmt.fetchval())
 
+    async def test_unhandled_type_fallback(self):
+        await self.con.execute('''
+            CREATE EXTENSION IF NOT EXISTS isn
+        ''')
+
+        try:
+            input_val = '1436-4522'
+
+            res = await self.con.fetchrow('''
+                SELECT $1::issn AS issn, 42 AS int
+            ''', input_val)
+
+            self.assertEqual(res['issn'], input_val)
+            self.assertEqual(res['int'], 42)
+
+        finally:
+            await self.con.execute('''
+                DROP EXTENSION isn
+            ''')
+
     async def test_invalid_input(self):
         cases = [
             ('bytea', TypeError, 'a bytes-like object is required', [
