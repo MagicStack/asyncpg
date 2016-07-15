@@ -180,7 +180,7 @@ class TestPrepare(tb.ConnectedTestCase):
 
         # An attempt to perform an operation on a closed statement
         # will trigger an error.
-        with self.assertRaisesRegex(RuntimeError, 'is closed'):
+        with self.assertRaisesRegex(asyncpg.InterfaceError, 'is closed'):
             await zero.fetchval()
 
     async def test_prepare_11_stmt_gc(self):
@@ -320,3 +320,12 @@ class TestPrepare(tb.ConnectedTestCase):
             self.assertEqual(
                 await status('DROP TABLE mytab'),
                 'DROP TABLE')
+
+    async def test_prepare_17_stmt_closed_lru(self):
+        st = await self.con.prepare('SELECT 1')
+        st._state.mark_closed()
+        with self.assertRaisesRegex(asyncpg.InterfaceError, 'is closed'):
+            await st.fetch()
+
+        st = await self.con.prepare('SELECT 1')
+        self.assertEqual(await st.fetchval(), 1)

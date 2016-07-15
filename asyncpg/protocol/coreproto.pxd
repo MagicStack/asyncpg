@@ -16,6 +16,7 @@ cdef enum ProtocolState:
     PROTOCOL_BIND_EXECUTE = 12
     PROTOCOL_CLOSE_STMT_PORTAL = 13
     PROTOCOL_SIMPLE_QUERY = 14
+    PROTOCOL_EXECUTE = 15
 
 
 cdef enum ResultType:
@@ -60,9 +61,12 @@ cdef class CoreProtocol:
         bytes result_row_desc
         bytes result_status_msg
 
+        # True - completed, False - suspended
+        bint result_execute_completed
+
     cdef _process__auth(self, char mtype)
     cdef _process__prepare(self, char mtype)
-    cdef _process__bind_exec(self, char mtype)
+    cdef _process__bind_execute(self, char mtype)
     cdef _process__close_stmt_portal(self, char mtype)
     cdef _process__simple_query(self, char mtype)
 
@@ -87,8 +91,9 @@ cdef class CoreProtocol:
 
     cdef _connect(self)
     cdef _prepare(self, str stmt_name, str query)
-    cdef _bind_and_execute(self, str portal_name, str stmt_name,
-                           WriteBuffer bind_data, int32_t limit)
+    cdef _bind_execute(self, str portal_name, str stmt_name,
+                       WriteBuffer bind_data, int32_t limit)
+    cdef _execute(self, str portal_name, int32_t limit)
     cdef _close(self, str name, bint is_portal)
     cdef _simple_query(self, str query)
 

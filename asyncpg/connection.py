@@ -81,21 +81,21 @@ class Connection:
 
     async def fetch(self, query, *args):
         stmt = await self._get_statement(query)
-        data = await self._protocol.execute(stmt, args, 0)
+        data = await self._protocol.bind_execute(stmt, args, '', 0)
         if data is None:
             data = []
         return data
 
     async def fetchval(self, query, *args, column=0):
         stmt = await self._get_statement(query)
-        data = await self._protocol.execute(stmt, args, 1)
+        data = await self._protocol.bind_execute(stmt, args, '', 1)
         if data is None:
             return None
         return data[0][column]
 
     async def fetchrow(self, query, *args):
         stmt = await self._get_statement(query)
-        data = await self._protocol.execute(stmt, args, 1)
+        data = await self._protocol.bind_execute(stmt, args, '', 1)
         if data is None:
             return None
         return data[0]
@@ -200,3 +200,6 @@ class Connection:
         self._stmts_to_close = set()
         for stmt in to_close:
             await self._protocol.close_statement(stmt)
+
+    def _request_portal_name(self):
+        return self._get_unique_id()

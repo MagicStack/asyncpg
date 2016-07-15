@@ -36,7 +36,10 @@ cdef class CoreProtocol:
                     self._process__prepare(mtype)
 
                 elif state == PROTOCOL_BIND_EXECUTE:
-                    self._process__bind_exec(mtype)
+                    self._process__bind_execute(mtype)
+
+                elif state == PROTOCOL_EXECUTE:
+                    self._process__bind_execute(mtype)
 
                 elif state == PROTOCOL_CLOSE_STMT_PORTAL:
                     self._process__close_stmt_portal(mtype)
@@ -126,7 +129,7 @@ cdef class CoreProtocol:
             self._parse_msg_ready_for_query()
             self._push_result()
 
-    cdef _process__bind_exec(self, char mtype):
+    cdef _process__bind_execute(self, char mtype):
         if mtype == b'D':
             # DataRow
             self._parse_data_msgs()
@@ -137,11 +140,16 @@ cdef class CoreProtocol:
 
         elif mtype == b'C':
             # CommandComplete
+            self.result_execute_completed = True
             self._parse_msg_command_complete()
 
         elif mtype == b'E':
             # ErrorResponse
             self._parse_msg_error_response(True)
+
+        elif mtype == b'2':
+            # BindComplete
+            self.buffer.consume_message()
 
         elif mtype == b'Z':
             # ReadyForQuery
@@ -152,6 +160,10 @@ cdef class CoreProtocol:
         if mtype == b'E':
             # ErrorResponse
             self._parse_msg_error_response(True)
+
+        elif mtype == b'3':
+            # CloseComplete
+            self.buffer.consume_message()
 
         elif mtype == b'Z':
             # ReadyForQuery
@@ -296,6 +308,7 @@ cdef class CoreProtocol:
         self.result_param_desc = None
         self.result_row_desc = None
         self.result_status_msg = None
+        self.result_execute_completed = False
 
     cdef _set_state(self, ProtocolState new_state):
         if new_state == PROTOCOL_IDLE:
@@ -392,8 +405,8 @@ cdef class CoreProtocol:
 
         self.transport.write(memoryview(packet))
 
-    cdef _bind_and_execute(self, str portal_name, str stmt_name,
-                           WriteBuffer bind_data, int32_t limit):
+    cdef _bind_execute(self, str portal_name, str stmt_name,
+                       WriteBuffer bind_data, int32_t limit):
 
         cdef WriteBuffer buf
 
@@ -418,6 +431,21 @@ cdef class CoreProtocol:
         buf.end_message()
         self._write(buf)
 
+        self._write_sync_message()
+
+    cdef _execute(self, str portal_name, int32_t limit):
+        cdef WriteBuffer buf
+
+        self._ensure_connected()
+        self._set_state(PROTOCOL_EXECUTE)
+
+        self.result = []
+
+        buf = WriteBuffer.new_message(b'E')
+        buf.write_str(portal_name, self.encoding)  # name of the portal
+        buf.write_int32(limit)  # number of rows to return; 0 - all
+        buf.end_message()
+        self._write(buf)
         self._write_sync_message()
 
     cdef _close(self, str name, bint is_portal):

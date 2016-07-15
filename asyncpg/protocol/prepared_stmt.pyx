@@ -14,6 +14,7 @@ cdef class PreparedStatementState:
         self.refs = 0
         self.cmd_status = None
         self.buffer = FastReadBuffer.new()
+        self.last_exec_completed = False
 
     def _get_cmd_status(self):
         if self.cmd_status is not None:

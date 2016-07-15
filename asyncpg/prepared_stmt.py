@@ -1,6 +1,7 @@
 import json
 
-from . import compat
+from . import cursor
+from . import exceptions
 
 
 class PreparedStatement:
@@ -27,9 +28,9 @@ class PreparedStatement:
         self.__check_open()
         return self._state._get_attributes()
 
-    def get_aiter(self, *args):
+    def cursor(self, *args, prefetch=100):
         self.__check_open()
-        return PreparedStatementIterator(self, args)
+        return cursor.Cursor(self._connection, self._state, args, prefetch)
 
     async def explain(self, *args, analyze=False):
         query = 'EXPLAIN (FORMAT JSON, VERBOSE'
@@ -65,7 +66,7 @@ class PreparedStatement:
     async def fetch(self, *args):
         self.__check_open()
         protocol = self._connection._protocol
-        data = await protocol.execute(self._state, args, 0)
+        data = await protocol.bind_execute(self._state, args, '', 0)
         if data is None:
             data = []
         return data
@@ -73,7 +74,7 @@ class PreparedStatement:
     async def fetchval(self, *args, column=0):
         self.__check_open()
         protocol = self._connection._protocol
-        data = await protocol.execute(self._state, args, 1)
+        data = await protocol.bind_execute(self._state, args, '', 1)
         if data is None:
             return None
         return data[0][column]
@@ -81,42 +82,15 @@ class PreparedStatement:
     async def fetchrow(self, *args):
         self.__check_open()
         protocol = self._connection._protocol
-        data = await protocol.execute(self._state, args, 1)
+        data = await protocol.bind_execute(self._state, args, '', 1)
         if data is None:
             return None
         return data[0]
 
     def __check_open(self):
         if self._state.closed:
-            raise RuntimeError('prepared statement is closed')
+            raise exceptions.InterfaceError('prepared statement is closed')
 
     def __del__(self):
         self._state.detach()
         self._connection._maybe_gc_stmt(self._state)
-
-
-class PreparedStatementIterator:
-
-    __slots__ = ('_stmt', '_args', '_iter')
-
-    def __init__(self, stmt, args):
-        self._stmt = stmt
-        self._args = args
-        self._iter = None
-
-    @compat.aiter_compat
-    def __aiter__(self):
-        return self
-
-    async def __anext__(self):
-        if self._iter is None:
-            protocol = self._stmt._connection._protocol
-            data = await protocol.execute(self._stmt._state, self._args, 0)
-            if data is None:
-                data = ()
-            self._iter = iter(data)
-
-        try:
-            return next(self._iter)
-        except StopIteration:
-            raise StopAsyncIteration() from None

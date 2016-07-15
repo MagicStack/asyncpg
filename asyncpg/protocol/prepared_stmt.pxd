@@ -4,6 +4,7 @@ cdef class PreparedStatementState:
         readonly str query
         readonly bint closed
         readonly int refs
+        readonly bint last_exec_completed
 
         FastReadBuffer buffer
 

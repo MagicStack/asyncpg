@@ -108,16 +108,33 @@ cdef class BaseProtocol(CoreProtocol):
 
         return self.waiter
 
-    def execute(self, PreparedStatementState state, args, limit):
+    def bind_execute(self, PreparedStatementState state, args,
+                     str portal_name, int limit):
         self.last_query = state.query
         self.statement = state
 
         self._new_waiter()
         try:
-            self._bind_and_execute(
-                "",
+            self._bind_execute(
+                portal_name,
                 self.statement.name,
                 self.statement._encode_bind_msg(args),
+                limit)
+        except:
+            self.waiter = None
+            raise
+
+        return self.waiter
+
+    def execute(self, PreparedStatementState state,
+                str portal_name, int limit):
+        self.last_query = state.query
+        self.statement = state
+
+        self._new_waiter()
+        try:
+            self._execute(
+                portal_name,
                 limit)
         except:
             self.waiter = None
@@ -209,6 +226,7 @@ cdef class BaseProtocol(CoreProtocol):
         waiter.set_result(self.statement)
 
     cdef _on_result__bind_and_exec(self, object waiter):
+        self.statement.last_exec_completed = self.result_execute_completed
         self.statement.cmd_status = self.result_status_msg
         waiter.set_result(self.result)
 
@@ -257,6 +275,9 @@ cdef class BaseProtocol(CoreProtocol):
                 self._on_result__prepare(waiter)
 
             elif self.state == PROTOCOL_BIND_EXECUTE:
+                self._on_result__bind_and_exec(waiter)
+
+            elif self.state == PROTOCOL_EXECUTE:
                 self._on_result__bind_and_exec(waiter)
 
             elif self.state == PROTOCOL_CLOSE_STMT_PORTAL:
