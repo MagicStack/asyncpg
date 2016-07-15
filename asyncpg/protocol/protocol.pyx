@@ -93,102 +93,94 @@ cdef class BaseProtocol(CoreProtocol):
         return self.settings
 
     def prepare(self, stmt_name, query):
-        self.last_query = query
-
-        if stmt_name is None:
-            self.uid_counter += 1
-            stmt_name = 'stmt_{}'.format(self.uid_counter)
-
-        self._new_waiter()
+        waiter = self._new_waiter()
         try:
+            if stmt_name is None:
+                self.uid_counter += 1
+                stmt_name = 'stmt_{}'.format(self.uid_counter)
             self._prepare(stmt_name, query)
-            self.statement = PreparedStatementState(stmt_name, query, self)
-        except:
+        except Exception as exc:
+            waiter.set_exception(exc)
             self.waiter = None
-            raise
-
-        return self.waiter
+        else:
+            self.last_query = query
+            self.statement = PreparedStatementState(stmt_name, query, self)
+        return waiter
 
     def bind_execute(self, PreparedStatementState state, args,
                      str portal_name, int limit, return_extra):
-        self.last_query = state.query
-        self.statement = state
-        self.return_extra = return_extra
-
-        self._new_waiter()
+        waiter = self._new_waiter()
         try:
             self._bind_execute(
                 portal_name,
-                self.statement.name,
-                self.statement._encode_bind_msg(args),
+                state.name,
+                state._encode_bind_msg(args),
                 limit)
-        except:
+        except Exception as exc:
+            waiter.set_exception(exc)
             self.waiter = None
-            raise
+        else:
+            self.last_query = state.query
+            self.statement = state
+            self.return_extra = return_extra
+        return waiter
 
-        return self.waiter
-
-    def bind(self, PreparedStatementState state, args,
-             str portal_name):
-        self.last_query = state.query
-        self.statement = state
-
-        self._new_waiter()
+    def bind(self, PreparedStatementState state, args, str portal_name):
+        waiter = self._new_waiter()
         try:
             self._bind(
                 portal_name,
-                self.statement.name,
-                self.statement._encode_bind_msg(args))
-        except:
+                state.name,
+                state._encode_bind_msg(args))
+        except Exception as exc:
+            waiter.set_exception(exc)
             self.waiter = None
-            raise
-
-        return self.waiter
+        else:
+            self.last_query = state.query
+            self.statement = state
+        return waiter
 
     def execute(self, PreparedStatementState state,
                 str portal_name, int limit, return_extra):
-        self.last_query = state.query
-        self.statement = state
-        self.return_extra = return_extra
-
-        self._new_waiter()
+        waiter = self._new_waiter()
         try:
             self._execute(
                 portal_name,
                 limit)
-        except:
+        except Exception as exc:
+            waiter.set_exception(exc)
             self.waiter = None
-            raise
-
-        return self.waiter
+        else:
+            self.last_query = state.query
+            self.statement = state
+            self.return_extra = return_extra
+        return waiter
 
     def query(self, query):
-        self.last_query = query
-
-        self._new_waiter()
+        waiter = self._new_waiter()
         try:
             self._simple_query(query)
-        except:
+        except Exception as exc:
+            waiter.set_exception(exc)
             self.waiter = None
-            raise
-
-        return self.waiter
+        else:
+            self.last_query = query
+        return waiter
 
     def close_statement(self, PreparedStatementState state):
-        if state.refs != 0:
-            raise RuntimeError(
-                'cannot close prepared statement; refs == {} != 0'.format(
-                    state.refs))
-
-        self._new_waiter()
+        waiter = self._new_waiter()
         try:
-            state.closed = True
+            if state.refs != 0:
+                raise RuntimeError(
+                    'cannot close prepared statement; refs == {} != 0'.format(
+                        state.refs))
             self._close(state.name, False)
-        except:
+        except Exception as exc:
+            waiter.set_exception(exc)
             self.waiter = None
-            raise
-
-        return self.waiter
+        else:
+            state.closed = True
+        return waiter
 
     def is_closed(self):
         return self.closing
@@ -198,13 +190,16 @@ cdef class BaseProtocol(CoreProtocol):
         self.transport.abort()
 
     def close(self):
-        if self.closing:
-            return
-
-        self.closing = True
         self._handle_waiter_on_connection_lost(None)
+        assert self.waiter is None
+
         self.waiter = self.create_future()
-        self.transport.abort()
+        if self.closing:
+            self.waiter.set_result(None)
+        else:
+            self.closing = True
+            self.transport.abort()
+
         return self.waiter
 
     def _create_future_fallback(self):
@@ -224,11 +219,14 @@ cdef class BaseProtocol(CoreProtocol):
         self.settings.add_setting(name, val)
 
     cdef _new_waiter(self):
-        IF DEBUG:
-            if self.waiter is not None:
-                raise RuntimeError('waiter is not None in _new_waiter')
-
+        if self.closing:
+            raise apg_exc.InterfaceError(
+                'cannot perform operation: connection is closed')
+        if self.waiter is not None:
+            raise apg_exc.InterfaceError(
+                'cannot perform operation: another operation is in progress')
         self.waiter = self.create_future()
+        return self.waiter
 
     cdef _on_result__connect(self, object waiter):
         waiter.set_result(True)
