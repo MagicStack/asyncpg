@@ -1,4 +1,4 @@
-cdef void* codec_map[MAXBUILTINOID]
+cdef void* codec_map[MAXSUPPORTEDOID + 1]
 cdef dict TYPE_CODECS_CACHE = {}
 cdef dict EXTRA_CODECS = {}
 
@@ -417,7 +417,7 @@ cdef class DataCodecConfig:
 
 cdef inline Codec get_core_codec(uint32_t oid):
     cdef void *ptr
-    if oid >= MAXBUILTINOID:
+    if oid > MAXSUPPORTEDOID:
         return None
     ptr = codec_map[oid]
     if ptr is NULL:
@@ -434,10 +434,10 @@ cdef register_core_codec(uint32_t oid,
                          decode_func decode,
                          CodecFormat format):
 
-    if oid >= MAXBUILTINOID:
+    if oid > MAXSUPPORTEDOID:
         raise RuntimeError(
             'cannot register core codec for OID {}: it is greater '
-            'than MAXBUILTINOID'.format(oid))
+            'than MAXSUPPORTEDOID ({})'.format(oid, MAXSUPPORTEDOID))
 
     cdef:
         Codec codec
@@ -445,7 +445,7 @@ cdef register_core_codec(uint32_t oid,
         str kind
 
     name = TYPEMAP[oid]
-    kind = 'array' if oid in TYPE_IS_ARRAY else 'scalar'
+    kind = 'array' if oid in ARRAY_TYPES else 'scalar'
 
     codec = Codec(oid)
     codec.init(name, 'pg_catalog', kind, CODEC_C, format, encode,
