@@ -67,9 +67,8 @@ class BaseCursor:
         protocol = con._protocol
 
         self._portal_name = con._request_portal_name()
-        buffer = await protocol.bind_execute(self._state, self._args,
-                                             self._portal_name, n)
-        self._exhausted = self._state.last_exec_completed
+        buffer, _, self._exhausted = await protocol.bind_execute(
+            self._state, self._args, self._portal_name, n, True)
         return buffer
 
     async def _bind(self):
@@ -95,8 +94,8 @@ class BaseCursor:
                 'cursor does not have an open portal')
 
         protocol = self._connection._protocol
-        buffer = await protocol.execute(self._state, self._portal_name, n)
-        self._exhausted = self._state.last_exec_completed
+        buffer, _, self._exhausted = await protocol.execute(
+            self._state, self._portal_name, n, True)
         return buffer
 
     def __repr__(self):

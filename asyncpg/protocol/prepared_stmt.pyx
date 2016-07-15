@@ -12,15 +12,7 @@ cdef class PreparedStatementState:
         self.cols_mapping = None
         self.closed = False
         self.refs = 0
-        self.cmd_status = None
         self.buffer = FastReadBuffer.new()
-        self.last_exec_completed = False
-
-    def _get_cmd_status(self):
-        if self.cmd_status is not None:
-            status = self.cmd_status
-            return status.decode(self.settings._encoding)
-        return None
 
     def _get_parameters(self):
         cdef Codec codec

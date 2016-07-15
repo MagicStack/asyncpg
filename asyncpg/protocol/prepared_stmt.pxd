@@ -4,7 +4,6 @@ cdef class PreparedStatementState:
         readonly str query
         readonly bint closed
         readonly int refs
-        readonly bint last_exec_completed
 
         FastReadBuffer buffer
 
@@ -22,8 +21,6 @@ cdef class PreparedStatementState:
         object       cols_mapping
         bint         have_text_cols
         tuple        rows_codecs
-
-        bytes        cmd_status
 
     cdef _encode_bind_msg(self, args)
     cdef _ensure_rows_decoder(self)

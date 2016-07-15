@@ -14,23 +14,6 @@ include "coreproto.pxd"
 include "prepared_stmt.pxd"
 
 
-# cdef enum ProtocolState:
-#     STATE_NOT_CONNECTED = 0
-#     STATE_READY = 10
-
-#     STATE_PREPARE_BIND = 20
-#     STATE_PREPARE_DESCRIBE = 21
-
-#     STATE_EXECUTE = 30
-
-#     STATE_QUERY = 40
-
-#     STATE_CLOSE_STMT = 50
-
-#     STATE_CLOSING = 100
-#     STATE_CLOSED = 101
-
-
 cdef class BaseProtocol(CoreProtocol):
 
     cdef:
@@ -38,6 +21,7 @@ cdef class BaseProtocol(CoreProtocol):
         object address
         ConnectionSettings settings
         object waiter
+        bint return_extra
         object create_future
 
         str last_query

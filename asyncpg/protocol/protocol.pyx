@@ -78,6 +78,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         self.uid_counter = 0
         self.statement = None
+        self.return_extra = False
 
         self.last_query = None
 
@@ -109,9 +110,10 @@ cdef class BaseProtocol(CoreProtocol):
         return self.waiter
 
     def bind_execute(self, PreparedStatementState state, args,
-                     str portal_name, int limit):
+                     str portal_name, int limit, return_extra):
         self.last_query = state.query
         self.statement = state
+        self.return_extra = return_extra
 
         self._new_waiter()
         try:
@@ -144,9 +146,10 @@ cdef class BaseProtocol(CoreProtocol):
         return self.waiter
 
     def execute(self, PreparedStatementState state,
-                str portal_name, int limit):
+                str portal_name, int limit, return_extra):
         self.last_query = state.query
         self.statement = state
+        self.return_extra = return_extra
 
         self._new_waiter()
         try:
@@ -243,9 +246,13 @@ cdef class BaseProtocol(CoreProtocol):
         waiter.set_result(self.statement)
 
     cdef _on_result__bind_and_exec(self, object waiter):
-        self.statement.last_exec_completed = self.result_execute_completed
-        self.statement.cmd_status = self.result_status_msg
-        waiter.set_result(self.result)
+        if self.return_extra:
+            waiter.set_result((
+                self.result,
+                self.result_status_msg,
+                self.result_execute_completed))
+        else:
+            waiter.set_result(self.result)
 
     cdef _on_result__bind(self, object waiter):
         waiter.set_result(self.result)
@@ -323,6 +330,7 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             self.statement = None
             self.last_query = None
+            self.return_extra = False
 
     cdef _on_connection_lost(self, exc):
         if self.closing:

@@ -6,19 +6,22 @@ from . import exceptions
 
 class PreparedStatement:
 
-    __slots__ = ('_connection', '_state', '_query')
+    __slots__ = ('_connection', '_state', '_query', '_last_status')
 
     def __init__(self, connection, query, state):
         self._connection = connection
         self._state = state
         self._query = query
         state.attach()
+        self._last_status = None
 
     def get_query(self):
         return self._query
 
     def get_statusmsg(self):
-        return self._state._get_cmd_status()
+        if self._last_status is None:
+            return self._last_status
+        return self._last_status.decode()
 
     def get_parameters(self):
         self.__check_open()
@@ -67,13 +70,17 @@ class PreparedStatement:
     async def fetch(self, *args):
         self.__check_open()
         protocol = self._connection._protocol
-        data = await protocol.bind_execute(self._state, args, '', 0)
+        data, status, _ = await protocol.bind_execute(
+            self._state, args, '', 0, True)
+        self._last_status = status
         return data
 
     async def fetchval(self, *args, column=0):
         self.__check_open()
         protocol = self._connection._protocol
-        data = await protocol.bind_execute(self._state, args, '', 1)
+        data, status, _ = await protocol.bind_execute(
+            self._state, args, '', 1, True)
+        self._last_status = status
         if not data:
             return None
         return data[0][column]
@@ -81,7 +88,9 @@ class PreparedStatement:
     async def fetchrow(self, *args):
         self.__check_open()
         protocol = self._connection._protocol
-        data = await protocol.bind_execute(self._state, args, '', 1)
+        data, status, _ = await protocol.bind_execute(
+            self._state, args, '', 1, True)
+        self._last_status = status
         if not data:
             return None
         return data[0]
