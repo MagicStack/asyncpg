@@ -203,7 +203,7 @@ cdef class BaseProtocol(CoreProtocol):
         return self.waiter
 
     def _create_future_fallback(self):
-        return asyncio.Future(loop=self._loop)
+        return asyncio.Future(loop=self.loop)
 
     cdef _handle_waiter_on_connection_lost(self, cause):
         if self.waiter is not None and not self.waiter.done():
