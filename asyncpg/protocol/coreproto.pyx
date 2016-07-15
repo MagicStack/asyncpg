@@ -212,6 +212,10 @@ cdef class CoreProtocol:
             self._parse_msg_ready_for_query()
             self._push_result()
 
+        elif mtype == b'C':
+            # CommandComplete
+            self._parse_msg_command_complete()
+
         else:
             # We don't really care about COPY IN etc
             self.buffer.consume_message()
@@ -222,10 +226,10 @@ cdef class CoreProtocol:
             int32_t cbuf_len
 
         cbuf = self.buffer.try_consume_message(&cbuf_len)
-        if cbuf != NULL:
-            msg = cpython.PyBytes_FromStringAndSize(cbuf, cbuf_len)
+        if cbuf != NULL and cbuf_len > 0:
+            msg = cpython.PyBytes_FromStringAndSize(cbuf, cbuf_len - 1)
         else:
-            msg = self.buffer.consume_message().as_bytes()
+            msg = self.buffer.read_cstr()
         self.result_status_msg = msg
 
     cdef _parse_data_msgs(self):

@@ -7,14 +7,14 @@ from asyncpg import _testbase as tb
 class TestExecuteScript(tb.ConnectedTestCase):
 
     async def test_execute_script_1(self):
-        r = await self.con.execute('''
+        status = await self.con.execute('''
             SELECT 1;
 
             SELECT true FROM pg_type WHERE false = true;
 
-            SELECT 2;
+            SELECT generate_series(0, 9);
         ''')
-        self.assertIsNone(r)
+        self.assertEqual(status, 'SELECT 10')
 
     async def test_execute_script_check_transactionality(self):
         with self.assertRaises(asyncpg.PostgresError):

@@ -34,8 +34,12 @@ class Connection:
 
         return transaction.Transaction(self, isolation, readonly, deferrable)
 
-    async def execute(self, script):
-        await self._protocol.query(script)
+    async def execute(self, script: str) -> str:
+        """Execute an SQL command (or commands).
+
+        :return str: Status of the last SQL command.
+        """
+        return await self._protocol.query(script)
 
     async def _get_statement(self, query):
         cache = self._stmt_cache_max_size > 0

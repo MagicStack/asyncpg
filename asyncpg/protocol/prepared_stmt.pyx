@@ -18,7 +18,7 @@ cdef class PreparedStatementState:
 
     def _get_cmd_status(self):
         if self.cmd_status is not None:
-            status = self.cmd_status[:-1]  # To cut last \00 char
+            status = self.cmd_status
             return status.decode(self.settings._encoding)
         return None
 

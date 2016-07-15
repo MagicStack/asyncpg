@@ -254,7 +254,7 @@ cdef class BaseProtocol(CoreProtocol):
         waiter.set_result(self.result)
 
     cdef _on_result__simple_query(self, object waiter):
-        waiter.set_result(self.result)
+        waiter.set_result(self.result_status_msg.decode(self.encoding))
 
     cdef _decode_row(self, const char* buf, int32_t buf_len):
         IF DEBUG:
