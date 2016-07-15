@@ -329,3 +329,8 @@ class TestPrepare(tb.ConnectedTestCase):
 
         st = await self.con.prepare('SELECT 1')
         self.assertEqual(await st.fetchval(), 1)
+
+    async def test_prepare_18_empty_result(self):
+        # test EmptyQueryResponse protocol message
+        st = await self.con.prepare('')
+        self.assertEqual(await st.fetch(), [])

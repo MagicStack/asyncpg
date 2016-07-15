@@ -129,6 +129,10 @@ cdef class CoreProtocol:
             self._parse_msg_ready_for_query()
             self._push_result()
 
+        elif mtype == b'n':
+            # NoData
+            self.buffer.consume_message()
+
     cdef _process__bind_execute(self, char mtype):
         if mtype == b'D':
             # DataRow
@@ -155,6 +159,10 @@ cdef class CoreProtocol:
             # ReadyForQuery
             self._parse_msg_ready_for_query()
             self._push_result()
+
+        elif mtype == b'I':
+            # EmptyQueryResponse
+            self.buffer.consume_message()
 
     cdef _process__close_stmt_portal(self, char mtype):
         if mtype == b'E':
