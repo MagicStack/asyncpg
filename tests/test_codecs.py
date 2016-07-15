@@ -1,6 +1,8 @@
 import datetime
 import decimal
+import ipaddress
 import math
+import random
 import uuid
 
 import asyncpg
@@ -251,7 +253,66 @@ type_samples = [
         math.inf,
         -math.inf,
         math.nan
-    ])
+    ]),
+    ('cidr', 'cidr', [
+        ipaddress.IPv4Network('255.255.255.255/32'),
+        ipaddress.IPv4Network('127.0.0.0/8'),
+        ipaddress.IPv4Network('127.1.0.0/16'),
+        ipaddress.IPv4Network('127.1.0.0/18'),
+        ipaddress.IPv4Network('10.0.0.0/32'),
+        ipaddress.IPv4Network('0.0.0.0/0'),
+        ipaddress.IPv6Network('ffff' + ':ffff' * 7 + '/128'),
+        ipaddress.IPv6Network('::1/128'),
+        ipaddress.IPv6Network('::/0'),
+    ]),
+    ('inet', 'inet', [
+        ipaddress.IPv4Address('255.255.255.255'),
+        ipaddress.IPv4Address('127.0.0.1'),
+        ipaddress.IPv4Address('0.0.0.0'),
+        ipaddress.IPv6Address('ffff' + ':ffff' * 7),
+        ipaddress.IPv6Address('::1'),
+        ipaddress.IPv6Address('::'),
+    ]),
+    ('macaddr', 'macaddr', [
+        '00:00:00:00:00:00',
+        'ff:ff:ff:ff:ff:ff'
+    ]),
+    ('txid_snapshot', 'txid_snapshot', [
+        (100, 1000, (100, 200, 300, 400))
+    ]),
+    ('varbit', 'varbit', [
+        asyncpg.BitString('0000 0001'),
+        asyncpg.BitString('00010001'),
+        asyncpg.BitString(''),
+        asyncpg.BitString(),
+        asyncpg.BitString.frombytes(b'\x00', bitlength=3),
+        asyncpg.BitString('0000 0000 1'),
+    ]),
+    ('path', 'path', [
+        asyncpg.Path(asyncpg.Point(0.0, 0.0), asyncpg.Point(1.0, 1.0)),
+        asyncpg.Path(asyncpg.Point(0.0, 0.0), asyncpg.Point(1.0, 1.0),
+                     is_closed=True),
+    ]),
+    ('point', 'point', [
+        asyncpg.Point(0.0, 0.0),
+        asyncpg.Point(1.0, 2.0),
+    ]),
+    ('box', 'box', [
+        asyncpg.Box((1.0, 2.0), (0.0, 0.0)),
+    ]),
+    ('line', 'line', [
+        asyncpg.Line(1, 2, 3),
+    ]),
+    ('lseg', 'lseg', [
+        asyncpg.LineSegment((1, 2), (2, 2)),
+    ]),
+    ('polygon', 'polygon', [
+        asyncpg.Polygon(asyncpg.Point(0.0, 0.0), asyncpg.Point(1.0, 0.0),
+                        asyncpg.Point(1.0, 1.0), asyncpg.Point(0.0, 1.0)),
+    ]),
+    ('circle', 'circle', [
+        asyncpg.Circle((0.0, 0.0), 100),
+    ]),
 ]
 
 
@@ -291,9 +352,33 @@ class TestCodecs(tb.ConnectedTestCase):
             at = st.get_attributes()
             self.assertEqual(at[0].type.name, intname)
 
-    async def test_void_decode(self):
+    async def test_all_builtin_types_handled(self):
+        from asyncpg.protocol.protocol import TYPEMAP
+
+        for oid, typename in TYPEMAP.items():
+            codec = self.con.get_settings().get_data_codec(oid)
+            self.assertIsNotNone(
+                codec,
+                'core type {} ({}) is unhandled'.format(typename, oid))
+
+    async def test_void(self):
         stmt = await self.con.prepare('select pg_sleep(0)')
         self.assertIsNone(await stmt.fetchval())
+
+        await self.con.fetchval('select now($1::void)', None)
+
+    def test_bitstring(self):
+        bitlen = random.randint(0, 1000)
+        bs = ''.join(random.choice(('1', '0', ' ')) for _ in range(bitlen))
+        bits = asyncpg.BitString(bs)
+        sanitized_bs = bs.replace(' ', '')
+        self.assertEqual(sanitized_bs,
+                         bits.as_string().replace(' ', ''))
+
+        expected_bytelen = len(sanitized_bs) // 8 + \
+                                (1 if len(sanitized_bs) % 8 else 0)
+
+        self.assertEqual(len(bits.bytes), expected_bytelen)
 
     async def test_unhandled_type_fallback(self):
         await self.con.execute('''

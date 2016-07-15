@@ -45,6 +45,8 @@ cdef class WriteBuffer:
     cdef write_int16(self, int16_t i)
     cdef write_int32(self, int32_t i)
     cdef write_int64(self, int64_t i)
+    cdef write_float(self, float f)
+    cdef write_double(self, double d)
 
     @staticmethod
     cdef WriteBuffer new_message(char type)

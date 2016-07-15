@@ -388,7 +388,7 @@ cdef class DataCodecConfig:
                     # asyncpg is lacking support.
                     #
                     raise NotImplementedError(
-                        'unhandled standard data type {} (OID {})'.format(
+                        'unhandled standard data type {!r} (OID {})'.format(
                             name, oid))
                 else:
                     # This is a non-BKI type, and as such, has no

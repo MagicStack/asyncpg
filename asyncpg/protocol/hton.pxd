@@ -34,3 +34,37 @@ cdef inline int64_t unpack_int64(const char* buf):
     cdef uint32_t hl = unpack_int32(&buf[4])
 
     return (hh << 32) | hl
+
+
+cdef union _floatconv:
+    uint32_t i
+    float f
+
+
+cdef inline int32_t pack_float(char* buf, float f):
+    cdef _floatconv v
+    v.f = f
+    pack_int32(buf, v.i)
+
+
+cdef inline float unpack_float(const char* buf):
+    cdef _floatconv v
+    v.i = unpack_int32(buf)
+    return v.f
+
+
+cdef union _doubleconv:
+    uint64_t i
+    double f
+
+
+cdef inline int64_t pack_double(char* buf, double f):
+    cdef _doubleconv v
+    v.f = f
+    pack_int64(buf, v.i)
+
+
+cdef inline double unpack_double(const char* buf):
+    cdef _doubleconv v
+    v.i = unpack_int64(buf)
+    return v.f

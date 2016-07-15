@@ -42,16 +42,22 @@ include "codecs/base.pyx"
 include "codecs/bytea.pyx"
 include "codecs/text.pyx"
 
-# Various pseudotypes
-include "codecs/special.pyx"
-
 # Builtin types, in lexicographical order.
+include "codecs/bits.pyx"
 include "codecs/datetime.pyx"
 include "codecs/float.pyx"
+include "codecs/geometry.pyx"
 include "codecs/int.pyx"
 include "codecs/json.pyx"
+include "codecs/money.pyx"
+include "codecs/network.pyx"
 include "codecs/numeric.pyx"
+include "codecs/tsearch.pyx"
+include "codecs/txid.pyx"
 include "codecs/uuid.pyx"
+
+# Various pseudotypes and system types
+include "codecs/misc.pyx"
 
 # nonscalar
 include "codecs/array.pyx"

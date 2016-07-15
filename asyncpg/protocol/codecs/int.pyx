@@ -58,18 +58,15 @@ cdef init_int_codecs():
                         <decode_func>&int2_decode,
                         PG_FORMAT_BINARY)
 
+    register_core_codec(INT4OID,
+                        <encode_func>&int4_encode,
+                        <decode_func>&int4_decode,
+                        PG_FORMAT_BINARY)
+
     register_core_codec(INT8OID,
                         <encode_func>&int8_encode,
                         <decode_func>&int8_decode,
                         PG_FORMAT_BINARY)
-    int4oids = [
-        INT4OID, OIDOID, TIDOID, XIDOID, CIDOID
-    ]
 
-    for int4oid in int4oids:
-        register_core_codec(int4oid,
-                            <encode_func>&int4_encode,
-                            <decode_func>&int4_decode,
-                            PG_FORMAT_BINARY)
 
 init_int_codecs()

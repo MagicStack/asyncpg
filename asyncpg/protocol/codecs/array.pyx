@@ -123,6 +123,7 @@ cdef inline array_decode(ConnectionSettings settings, FastReadBuffer buf,
         int64_t elem_count = 1
         FastReadBuffer elem_buf = FastReadBuffer.new()
         int32_t dims[ARRAY_MAXDIM]
+        Codec elem_codec
 
     if ndims == 0:
         result = ()
@@ -132,6 +133,17 @@ cdef inline array_decode(ConnectionSettings settings, FastReadBuffer buf,
         raise RuntimeError(
             'number of array dimensions exceed the maximum expected ({})'.
             format(ARRAY_MAXDIM))
+
+    if decoder == NULL:
+        # No decoder is known beforehand, look it up
+
+        elem_codec = settings.get_data_codec(elem_oid)
+        if elem_codec is None or not elem_codec.has_decoder():
+            raise RuntimeError(
+                'no decoder for type OID {}'.format(elem_oid))
+
+        decoder = codec_decode_func_ex
+        decoder_arg = <void*>(<cpython.PyObject>elem_codec)
 
     for i in range(ndims):
         dims[i] = hton.unpack_int32(buf.read(4))
@@ -305,14 +317,26 @@ cdef text_decode_ex(ConnectionSettings settings, FastReadBuffer buf,
 
 cdef arraytext_encode(ConnectionSettings settings, WriteBuffer buf, items):
     array_encode(settings, buf, items, TEXTOID,
-                 <encode_func_ex>&text_encode_ex,NULL)
+                 <encode_func_ex>&text_encode_ex, NULL)
 
 
 cdef arraytext_decode(ConnectionSettings settings, FastReadBuffer buf):
     return array_decode(settings, buf, <decode_func_ex>&text_decode_ex, NULL)
 
 
+cdef anyarray_decode(ConnectionSettings settings, FastReadBuffer buf):
+    return array_decode(settings, buf, NULL, NULL)
+
+
 cdef init_array_codecs():
+    register_core_codec(ANYARRAYOID,
+                        NULL,
+                        <decode_func>&anyarray_decode,
+                        PG_FORMAT_BINARY)
+
+    # oid[] and text[] are registered as core codecs
+    # to make type introspection query work
+    #
     register_core_codec(_OIDOID,
                         <encode_func>&arrayoid_encode,
                         <decode_func>&arrayoid_decode,

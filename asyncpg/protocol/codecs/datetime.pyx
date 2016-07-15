@@ -278,4 +278,22 @@ cdef init_datetime_codecs():
                         <decode_func>&interval_decode,
                         PG_FORMAT_BINARY)
 
+    # For obsolete abstime/reltime/tinterval, we do not bother to
+    # interpret the value, and simply return and pass it as text.
+    #
+    register_core_codec(ABSTIMEOID,
+                        <encode_func>&text_encode,
+                        <decode_func>&text_decode,
+                        PG_FORMAT_TEXT)
+
+    register_core_codec(RELTIMEOID,
+                        <encode_func>&text_encode,
+                        <decode_func>&text_decode,
+                        PG_FORMAT_TEXT)
+
+    register_core_codec(TINTERVALOID,
+                        <encode_func>&text_encode,
+                        <decode_func>&text_decode,
+                        PG_FORMAT_TEXT)
+
 init_datetime_codecs()

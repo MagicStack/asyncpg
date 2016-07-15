@@ -188,6 +188,20 @@ cdef class WriteBuffer:
         hton.pack_int64(&self._buf[self._length], i)
         self._length += 8
 
+    cdef write_float(self, float f):
+        self._check_readonly()
+        self._ensure_alloced(4)
+
+        hton.pack_float(&self._buf[self._length], f)
+        self._length += 4
+
+    cdef write_double(self, double d):
+        self._check_readonly()
+        self._ensure_alloced(8)
+
+        hton.pack_double(&self._buf[self._length], d)
+        self._length += 8
+
     @staticmethod
     cdef WriteBuffer new_message(char type):
         cdef WriteBuffer buf

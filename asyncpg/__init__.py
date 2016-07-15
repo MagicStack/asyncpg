@@ -6,7 +6,7 @@ import urllib.parse
 from .exceptions import *  # NOQA
 from . import connection
 from . import protocol
-from .types import Range  # NOQA
+from .types import *  # NOQA
 
 
 __all__ = ('connect',) + exceptions.__all__  # NOQA

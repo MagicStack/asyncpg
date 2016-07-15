@@ -43,14 +43,8 @@ cdef init_text_codecs():
         NAMEOID,
         BPCHAROID,
         VARCHAROID,
-        CSTRINGOID,
         TEXTOID,
-        REGTYPEOID,
-        REGPROCOID,
-        REGPROCEDUREOID,
-        REGOPEROID,
-        REGOPERATOROID,
-        REGCLASSOID,
+        XMLOID
     ]
 
     for oid in textoids:
@@ -59,9 +53,5 @@ cdef init_text_codecs():
                             <decode_func>&text_decode,
                             PG_FORMAT_BINARY)
 
-    register_core_codec(UNKNOWNOID,
-                        <encode_func>&text_encode,
-                        <decode_func>&text_decode,
-                        PG_FORMAT_TEXT)
 
 init_text_codecs()

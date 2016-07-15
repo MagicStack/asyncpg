@@ -130,3 +130,13 @@ cdef range_decode(ConnectionSettings settings, FastReadBuffer buf,
                            lower_inc=(flags & RANGE_LB_INC) != 0,
                            upper_inc=(flags & RANGE_UB_INC) != 0,
                            empty=(flags & RANGE_EMPTY) != 0)
+
+
+cdef init_range_codecs():
+    register_core_codec(ANYRANGEOID,
+                        NULL,
+                        <decode_func>&text_decode,
+                        PG_FORMAT_TEXT)
+
+
+init_range_codecs()
