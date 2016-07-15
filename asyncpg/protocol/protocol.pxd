@@ -54,6 +54,7 @@ cdef class BaseProtocol(CoreProtocol):
     cdef _on_result__bind_and_exec(self, object waiter)
     cdef _on_result__close_stmt_or_portal(self, object waiter)
     cdef _on_result__simple_query(self, object waiter)
+    cdef _on_result__bind(self, object waiter)
 
     cdef _handle_waiter_on_connection_lost(self, cause)
 

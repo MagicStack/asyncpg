@@ -334,3 +334,9 @@ class TestPrepare(tb.ConnectedTestCase):
         # test EmptyQueryResponse protocol message
         st = await self.con.prepare('')
         self.assertEqual(await st.fetch(), [])
+        self.assertIsNone(await st.fetchval())
+        self.assertIsNone(await st.fetchrow())
+
+        self.assertEqual(await self.con.fetch(''), [])
+        self.assertIsNone(await self.con.fetchval(''))
+        self.assertIsNone(await self.con.fetchrow(''))

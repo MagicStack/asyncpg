@@ -28,9 +28,10 @@ class PreparedStatement:
         self.__check_open()
         return self._state._get_attributes()
 
-    def cursor(self, *args, prefetch=100):
+    def cursor(self, *args, prefetch=None):
         self.__check_open()
-        return cursor.Cursor(self._connection, self._state, args, prefetch)
+        return cursor.CursorFactory(
+            self._connection, self._state, args, prefetch)
 
     async def explain(self, *args, analyze=False):
         query = 'EXPLAIN (FORMAT JSON, VERBOSE'
@@ -67,15 +68,13 @@ class PreparedStatement:
         self.__check_open()
         protocol = self._connection._protocol
         data = await protocol.bind_execute(self._state, args, '', 0)
-        if data is None:
-            data = []
         return data
 
     async def fetchval(self, *args, column=0):
         self.__check_open()
         protocol = self._connection._protocol
         data = await protocol.bind_execute(self._state, args, '', 1)
-        if data is None:
+        if not data:
             return None
         return data[0][column]
 
@@ -83,7 +82,7 @@ class PreparedStatement:
         self.__check_open()
         protocol = self._connection._protocol
         data = await protocol.bind_execute(self._state, args, '', 1)
-        if data is None:
+        if not data:
             return None
         return data[0]
 

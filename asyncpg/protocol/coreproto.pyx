@@ -41,6 +41,9 @@ cdef class CoreProtocol:
                 elif state == PROTOCOL_EXECUTE:
                     self._process__bind_execute(mtype)
 
+                elif state == PROTOCOL_BIND:
+                    self._process__bind(mtype)
+
                 elif state == PROTOCOL_CLOSE_STMT_PORTAL:
                     self._process__close_stmt_portal(mtype)
 
@@ -163,6 +166,20 @@ cdef class CoreProtocol:
         elif mtype == b'I':
             # EmptyQueryResponse
             self.buffer.consume_message()
+
+    cdef _process__bind(self, char mtype):
+        if mtype == b'E':
+            # ErrorResponse
+            self._parse_msg_error_response(True)
+
+        elif mtype == b'2':
+            # BindComplete
+            self.buffer.consume_message()
+
+        elif mtype == b'Z':
+            # ReadyForQuery
+            self._parse_msg_ready_for_query()
+            self._push_result()
 
     cdef _process__close_stmt_portal(self, char mtype):
         if mtype == b'E':
@@ -351,6 +368,21 @@ cdef class CoreProtocol:
         if self.con_status != CONNECTION_OK:
             raise RuntimeError('not connected')
 
+    cdef WriteBuffer _build_bind_message(self, str portal_name,
+                                         str stmt_name,
+                                         WriteBuffer bind_data):
+        cdef WriteBuffer buf
+
+        buf = WriteBuffer.new_message(b'B')
+        buf.write_str(portal_name, self.encoding)
+        buf.write_str(stmt_name, self.encoding)
+
+        # Arguments
+        buf.write_buffer(bind_data)
+
+        buf.end_message()
+        return buf
+
     # API for subclasses
 
     cdef _connect(self):
@@ -423,14 +455,7 @@ cdef class CoreProtocol:
 
         self.result = []
 
-        buf = WriteBuffer.new_message(b'B')
-        buf.write_str(portal_name, self.encoding)
-        buf.write_str(stmt_name, self.encoding)
-
-        # Arguments
-        buf.write_buffer(bind_data)
-
-        buf.end_message()
+        buf = self._build_bind_message(portal_name, stmt_name, bind_data)
         self._write(buf)
 
         buf = WriteBuffer.new_message(b'E')
@@ -453,6 +478,18 @@ cdef class CoreProtocol:
         buf.write_str(portal_name, self.encoding)  # name of the portal
         buf.write_int32(limit)  # number of rows to return; 0 - all
         buf.end_message()
+        self._write(buf)
+        self._write_sync_message()
+
+    cdef _bind(self, str portal_name, str stmt_name,
+               WriteBuffer bind_data):
+
+        cdef WriteBuffer buf
+
+        self._ensure_connected()
+        self._set_state(PROTOCOL_BIND)
+
+        buf = self._build_bind_message(portal_name, stmt_name, bind_data)
         self._write(buf)
         self._write_sync_message()
 
