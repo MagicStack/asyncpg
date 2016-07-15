@@ -1,355 +1,197 @@
-cdef bytes SYNC_MESSAGE = bytes(WriteBuffer.new_message(b'S').end_message())
-
-
-@cython.no_gc_clear
-@cython.freelist(_BUFFER_FREELIST_SIZE)
-cdef class Result:
-    def __cinit__(self):
-        self.err_fields = self.err_query = None
-        self.rows = None
-        self.row_desc = None
-        self.parameters_desc = None
-        self.cmd_status = None
-
-    @staticmethod
-    cdef Result new(ExecStatusType status):
-        cdef Result res
-        # TODO: see fe_exec.c:PQmakeEmptyPGresult
-        res = Result.__new__(Result)
-        res.status = status
-        return res
-
-
 cdef class CoreProtocol:
 
-    def __init__(self, user, password, database):
+    def __init__(self, con_args):
         self.buffer = ReadBuffer()
+        self.con_args = con_args
         self.transport = None
+        self.con_status = CONNECTION_BAD
+        self.state = PROTOCOL_IDLE
+        self.xact_status = PQTRANS_IDLE
+        self.encoding = 'utf-8'
 
-        self._user = user
-        self._password = password
-        self._database = database
+        self._skip_discard = False
 
-        self._encoding = 'utf-8'
-        self._backend_pid = 0
-        self._backend_secret = 0
+        self._reset_result()
 
-        self._result = None
-
-        self._status = CONNECTION_BAD
-        self._async_status = PGASYNC_IDLE
-        self._xact_status = PQTRANS_IDLE
-
-        self._after_sync = None
-
-    cdef inline _write(self, WriteBuffer buf):
+    cdef _write(self, buf):
         self.transport.write(memoryview(buf))
 
     cdef inline _write_sync_message(self):
         self.transport.write(SYNC_MESSAGE)
 
-    cdef inline _read_server_messages(self):
+    cdef _read_server_messages(self):
         cdef:
             char mtype
-            MessageDispatchLoop res
+            ProtocolState state
 
         while self.buffer.has_message() == 1:
             mtype = self.buffer.get_message_type()
-            res = DISPATCH_CONTINUE
+            state = self.state
+
             try:
-                res = self._dispatch_server_message(mtype)
-                if res == DISPATCH_STOP:
-                    return
+                if state == PROTOCOL_AUTH:
+                    self._process__auth(mtype)
+
+                elif state == PROTOCOL_PREPARE:
+                    self._process__prepare(mtype)
+
+                elif state == PROTOCOL_BIND_EXECUTE:
+                    self._process__bind_exec(mtype)
+
+                elif state == PROTOCOL_CLOSE_STMT_PORTAL:
+                    self._process__close_stmt_portal(mtype)
+
+                elif state == PROTOCOL_SIMPLE_QUERY:
+                    self._process__simple_query(mtype)
+
+                elif state == PROTOCOL_ERROR_CONSUME:
+                    # Error in protocol (on asyncpg side);
+                    # discard all messages until sync message
+
+                    if mtype == b'Z':
+                        # Sync point, self to push the result
+                        if self.result_type != RESULT_FAILED:
+                            self.result_type = RESULT_FAILED
+                            self.result = RuntimeError(
+                                'unknown error in protocol implementation')
+
+                        self._push_result()
+
+                    else:
+                        self.buffer.consume_message()
+
+                else:
+                    raise RuntimeError(
+                        'protocol is in an unknown state {}'.format(state))
+
+                if mtype == b'S':
+                    # ParameterStatus
+                    self._parse_msg_parameter_status()
+
             except Exception as ex:
-                self._fatal_error(ex)
+                self.result_type = RESULT_FAILED
+                self.result = ex
+
+                if mtype == b'Z':
+                    self._push_result()
+                else:
+                    self.state = PROTOCOL_ERROR_CONSUME
+
             finally:
-                if res != DISPATCH_CONTINUE_NO_DISCARD:
+                if self._skip_discard:
+                    self._skip_discard = False
+                else:
                     self.buffer.discard_message()
 
-    cdef inline MessageDispatchLoop _dispatch_server_message(self, char mtype):
-        # Modeled after libpq/fe-protocol3.c:pqParseInput3
+    cdef _process__auth(self, char mtype):
+        if mtype == b'R':
+            # AuthenticationOk
+            self._parse_msg_authentication()
 
-        if mtype == b'A':
-            # Notify message; ignore it for now.
-            self.buffer.consume_message()
+        elif mtype == b'K':
+            # BackendKeyData
+            self._parse_msg_backend_key_data()
 
-        elif mtype == b'N':
-            # Notice; ignore it
-            self.buffer.consume_message()
-
-        elif self._async_status != PGASYNC_BUSY:
-            # If not IDLE state, just wait ...
-            if self._async_status != PGASYNC_IDLE:
-                return DISPATCH_STOP
-
-            if mtype == b'E':
-                # Notice; ignore it
-                # self.buffer.consume_message()
-                pass
-
-            elif mtype == b'S':
-                self._parse_server_parameter_status()
-
-            elif mtype == b'Z':
-                # TODO
-                self.buffer.consume_message()
-
-            else:
-                print("!!! message type {} arrived from server "
-                      "while idle".format(chr(mtype)))
-                # Discard the message
-                self.buffer.consume_message()
-        else:
-            # In BUSY state, we can process everything.
-
-            if mtype == b'C':
-
-                if self._query_class == PGQUERY_SIMPLE:
-                    # Ignore data for simple query
-                    self.buffer.consume_message()
-                    return DISPATCH_CONTINUE
-
-                # Command complete
-                if self._result is None:
-                    self._result = Result.new(PGRES_COMMAND_OK)
-                self._result.cmd_status = self.buffer.read_cstr()
-
-                self._async_status = PGASYNC_READY
-                self._push_result()
-
-            elif mtype == b'E':
-                # Error return
-                if self._status == CONNECTION_STARTED:
-                    self._status = CONNECTION_BAD
-                self._parse_server_error_response(True)
-                self._async_status = PGASYNC_READY
-                self._push_result()
-
-            elif mtype == b's':
-                # Command complete
-                if self._result is None:
-                    self._result = Result.new(PGRES_COMMAND_OK)
-                self._async_status = PGASYNC_READY
-                self._push_result()
-
-            elif mtype == b'Z':
-                # 'Z' - Backend is ready for new query
-                self._parse_server_ready_for_query()
-
-                if self._status == CONNECTION_STARTED:
-                    self._status = CONNECTION_OK
-                    self._result = Result.new(PGRES_COMMAND_OK)
-                    self._async_status = PGASYNC_READY
-                    self._push_result()
-
-                elif self._query_class == PGQUERY_SIMPLE:
-                    # Ignore data for simple query
-                    if self._result is None:
-                        self._result = Result.new(PGRES_COMMAND_OK)
-                    self._async_status = PGASYNC_READY
-                    self._push_result()
-
-                elif self._after_sync is not None:
-                    self._async_status = PGASYNC_BUSY
-                    self._write(self._after_sync)
-                    self._after_sync = None
-
-            elif mtype == b'I':
-                # Empty query
-                if self._result is None:
-                    self._result = Result.new(PGRES_EMPTY_QUERY)
-                self._async_status = PGASYNC_READY
-                self._push_result()
-
-            elif mtype == b'1':
-                # Parse Complete
-                pass
-
-            elif mtype == b'2':
-                # Bind Complete
-                pass
-
-            elif mtype == b'3':
-                # Close Complete
-                if self._query_class == PGQUERY_CLOSE:
-                    self._async_status = PGASYNC_READY
-                    if self._result is None:
-                        self._result = Result.new(PGRES_COMMAND_OK)
-                    self._push_result()
-
-            elif mtype == b'S':
-                # Parameter Status
-                self._parse_server_parameter_status()
-
-            elif mtype == b'K':
-                # secret key data from the backend
-
-                # This is expected only during backend startup, but it's
-                # just as easy to handle it as part of the main loop.
-                # Save the data and continue processing.
-                self._parse_server_backend_key_data()
-
-            elif mtype == b'T':
-                # Row Description
-
-                if self._query_class == PGQUERY_SIMPLE:
-                    # Ignore data for simple query
-                    self.buffer.consume_message()
-
-                elif (self._result is not None and
-                        self._result.status == PGRES_FATAL_ERROR):
-                    # We've already choked for some reason.  Just discard
-                    # the data till we get to the end of the query.
-                    self.buffer.consume_message()
-
-                elif (self._result is None or
-                        self._query_class == PGQUERY_DESCRIBE):
-                    # First 'T' in a query sequence
-                    self._parse_server_row_description()
-
-                else:
-                    # A new 'T' message is treated as the start of
-                    # another PGresult.  (It is not clear that this is
-                    # really possible with the current backend.) We stop
-                    # parsing until the application accepts the current
-                    # result.
-                    self._async_status = PGASYNC_READY
-                    self._push_result()
-                    return DISPATCH_STOP
-
-            elif mtype == b'n':
-                # No Data
-
-                # NoData indicates that we will not be seeing a
-                # RowDescription message because the statement or portal
-                # inquired about doesn't return rows.
-                #
-                # If we're doing a Describe, we have to pass something
-                # back to the client, so set up a COMMAND_OK result,
-                # instead of TUPLES_OK.  Otherwise we can just ignore
-                # this message.
-                if self._query_class == PGQUERY_DESCRIBE:
-                    if self._result is None:
-                        self._result = Result.new(PGRES_COMMAND_OK)
-                    self._async_status = PGASYNC_READY
-                    self._push_result()
-
-            elif mtype == b't':
-                # Parameter Description
-                self._parse_server_parameter_description()
-
-            elif mtype == b'D':
-                # Data Row
-
-                if self._query_class == PGQUERY_SIMPLE:
-                    # Ignore data for simple query
-                    self.buffer.consume_message()
-
-                elif (self._result is not None and
-                        self._result.status == PGRES_TUPLES_OK):
-                    self._parse_server_data_rows()
-                    return DISPATCH_CONTINUE_NO_DISCARD
-
-                elif (self._result is not None and
-                        self._result.status == PGRES_FATAL_ERROR):
-                    # We've already choked for some reason.  Just discard
-                    # tuples till we get to the end of the query.
-                    self.buffer.consume_message()
-
-                else:
-                    # TODO
-                    print("!!! server sent data (\"D\" message) without "
-                          "prior row description (\"T\" message)")
-                    self.buffer.consume_message()
-
-            elif mtype == b'G':
-                # Start Copy In
-                raise NotImplementedError
-            elif mtype == b'H':
-                # Start Copy Out
-                raise NotImplementedError
-            elif mtype == b'W':
-                # Start Copy Both
-                raise NotImplementedError
-            elif mtype == b'd':
-                # Copy Data
-                raise NotImplementedError
-            elif mtype == b'c':
-                # Copy Done
-                raise NotImplementedError
-
-            elif mtype == b'R':
-                self._parse_server_authentication()
-
-            else:
-                raise RuntimeError(
-                    'unsupported message type {!r}'.format(chr(mtype)))
-
-        return DISPATCH_CONTINUE
-
-    cdef _parse_server_authentication(self):
-        cdef int status
-        status = self.buffer.read_int32()
-        if status != 0:
-            # 0 == AuthenticationOk
-            raise RuntimeError(
-                'unsupported status {} for Authentication (R) '
-                'message'.format(status))
-        self.buffer.consume_message()
-
-    cdef _parse_server_parameter_status(self):
-        key = self.buffer.read_cstr().decode()
-        val = self.buffer.read_cstr().decode()
-        self._set_server_parameter(key, val)
-
-    cdef _parse_server_backend_key_data(self):
-        self._backend_pid = self.buffer.read_int32()
-        self._backend_secret = self.buffer.read_int32()
-
-    cdef _parse_server_parameter_description(self):
-        cdef Result result = Result.new(PGRES_COMMAND_OK)
-        result.parameters_desc = \
-            (<Memory>self.buffer.consume_message()).as_bytes()
-        self._result = result
-
-        if self._query_class == PGQUERY_DESCRIBE:
-            self._async_status = PGASYNC_READY
-            self._push_result()
-            self._async_status = PGASYNC_BUSY
-
-    cdef _parse_server_ready_for_query(self):
-        cdef char status = self.buffer.read_byte()
-
-        if status == b'I':
-            self._xact_status = PQTRANS_IDLE
-        elif status == b'T':
-            self._xact_status = PQTRANS_INTRANS
-        elif status == b'E':
-            self._xact_status = PQTRANS_INERROR
-        else:
-            self._xact_status = PQTRANS_UNKNOWN
-
-    cdef _parse_server_row_description(self):
-        cdef Result result
-
-        # TODO: look at fe-protocol3.c:getRowDescriptions
-
-        if self._query_class == PGQUERY_DESCRIBE:
-            if self._result:
-                result = self._result
-            else:
-                result = Result.new(PGRES_COMMAND_OK)
-        else:
-            result = Result.new(PGRES_TUPLES_OK)
-
-        result.row_desc = (<Memory>self.buffer.consume_message()).as_bytes()
-        self._result = result
-
-        if self._query_class == PGQUERY_DESCRIBE:
-            self._async_status = PGASYNC_READY
+        elif mtype == b'E':
+            # ErrorResponse
+            self.con_status = CONNECTION_BAD
+            self._parse_msg_error_response(True)
             self._push_result()
 
-    cdef _parse_server_data_rows(self):
+        elif mtype == b'Z':
+            # ReadyForQuery
+            self._parse_msg_ready_for_query()
+            self.con_status = CONNECTION_OK
+            self._push_result()
+
+    cdef _process__prepare(self, char mtype):
+        if mtype == b't':
+            # Parameters description
+            self.result_param_desc = self.buffer.consume_message().as_bytes()
+
+        elif mtype == b'1':
+            # ParseComplete
+            self.buffer.consume_message()
+
+        elif mtype == b'T':
+            # Row description
+            self.result_row_desc = self.buffer.consume_message().as_bytes()
+
+        elif mtype == b'E':
+            # ErrorResponse
+            self._parse_msg_error_response(True)
+
+        elif mtype == b'Z':
+            # ReadyForQuery
+            self._parse_msg_ready_for_query()
+            self._push_result()
+
+    cdef _process__bind_exec(self, char mtype):
+        if mtype == b'D':
+            # DataRow
+            self._parse_data_msgs()
+
+        elif mtype == b's':
+            # PortalSuspended
+            self.buffer.consume_message()
+
+        elif mtype == b'C':
+            # CommandComplete
+            self._parse_msg_command_complete()
+
+        elif mtype == b'E':
+            # ErrorResponse
+            self._parse_msg_error_response(True)
+
+        elif mtype == b'Z':
+            # ReadyForQuery
+            self._parse_msg_ready_for_query()
+            self._push_result()
+
+    cdef _process__close_stmt_portal(self, char mtype):
+        if mtype == b'E':
+            # ErrorResponse
+            self._parse_msg_error_response(True)
+
+        elif mtype == b'Z':
+            # ReadyForQuery
+            self._parse_msg_ready_for_query()
+            self._push_result()
+
+    cdef _process__simple_query(self, char mtype):
+        if mtype in {b'D', b'I', b'N', b'T'}:
+            # 'D' - DataRow
+            # 'I' - EmptyQueryResponse
+            # 'N' - NoticeResponse
+            # 'T' - RowDescription
+            self.buffer.consume_message()
+
+        elif mtype == b'E':
+            # ErrorResponse
+            self._parse_msg_error_response(True)
+
+        elif mtype == b'Z':
+            # ReadyForQuery
+            self._parse_msg_ready_for_query()
+            self._push_result()
+
+        else:
+            # We don't really care about COPY IN etc
+            self.buffer.consume_message()
+
+    cdef _parse_msg_command_complete(self):
+        cdef:
+            char* cbuf
+            int32_t cbuf_len
+
+        cbuf = self.buffer.try_consume_message(&cbuf_len)
+        if cbuf != NULL:
+            msg = cpython.PyBytes_FromStringAndSize(cbuf, cbuf_len)
+        else:
+            msg = self.buffer.consume_message().as_bytes()
+        self.result_status_msg = msg
+
+    cdef _parse_data_msgs(self):
         cdef:
             ReadBuffer buf = self.buffer
             list rows
@@ -360,33 +202,73 @@ cdef class CoreProtocol:
             object row
             Memory mem
 
-        if buf.get_message_type() != b'D' or self._result is None:
-            raise RuntimeError
+        IF DEBUG:
+            if buf.get_message_type() != b'D':
+                raise RuntimeError(
+                    '_parse_data_msgs: first message is not "D"')
 
-        if self._result.rows is None:
-            self._result.rows = []
+            if type(self.result) is not list:
+                raise RuntimeError(
+                    '_parse_data_msgs: result is not a list, but {!r}'.
+                    format(self.result))
 
-        rows = self._result.rows
-
+        rows = self.result
         while True:
             cbuf = buf.try_consume_message(&cbuf_len)
             if cbuf != NULL:
                 row = decoder(self, cbuf, cbuf_len)
             else:
-                mem = <Memory>(buf.consume_message())
+                mem = buf.consume_message()
                 row = decoder(self, mem.buf, mem.length)
 
             cpython.PyList_Append(rows, row)
 
-            if buf.has_message() != 1 or buf.get_message_type() != b'D':
+            if not buf.has_message() or buf.get_message_type() != b'D':
+                self._skip_discard = True
                 return
 
-    cdef _parse_server_error_response(self, is_error):
+    cdef _parse_msg_backend_key_data(self):
+        self.backend_pid = self.buffer.read_int32()
+        self.backend_secret = self.buffer.read_int32()
+
+    cdef _parse_msg_parameter_status(self):
+        name = self.buffer.read_cstr()
+        name = name.decode(self.encoding)
+
+        val = self.buffer.read_cstr()
+        val = val.decode(self.encoding)
+
+        self._set_server_parameter(name, val)
+
+    cdef _parse_msg_authentication(self):
+        cdef int status
+        status = self.buffer.read_int32()
+        if status != 0:
+            # 0 == AuthenticationOk
+            raise RuntimeError(
+                'unsupported status {} for Authentication (R) '
+                'message'.format(status))
+
+        self.buffer.consume_message()
+        self.result_type = RESULT_OK
+
+    cdef _parse_msg_ready_for_query(self):
+        cdef char status = self.buffer.read_byte()
+
+        if status == b'I':
+            self.xact_status = PQTRANS_IDLE
+        elif status == b'T':
+            self.xact_status = PQTRANS_INTRANS
+        elif status == b'E':
+            self.xact_status = PQTRANS_INERROR
+        else:
+            self.xact_status = PQTRANS_UNKNOWN
+
+    cdef _parse_msg_error_response(self, is_error):
         cdef:
             char code
             bytes message
             dict parsed = {}
-            Result res
 
         while True:
             code = self.buffer.read_byte()
@@ -398,53 +280,68 @@ cdef class CoreProtocol:
             parsed[chr(code)] = message.decode()
 
         if is_error:
-            res = Result.new(PGRES_FATAL_ERROR)
-            res.err_fields = parsed
-            self._result = res
-        # else:
-        # TODO: process notices
-
-    cdef _fatal_error(self, exc):
-        try:
-            if self.transport is not None:
-                self.transport.close()
-            self._state = CONNECTION_BAD
-        finally:
-            self._on_fatal_error(exc)
+            self.result_type = RESULT_FAILED
+            self.result = parsed
 
     cdef _push_result(self):
-        cdef Result result
-        if self._async_status != PGASYNC_READY:
-            raise RuntimeError('result is not ready')
-        if self._result is None:
-            raise RuntimeError('no result to push')
+        try:
+            self._on_result()
+        finally:
+            self._set_state(PROTOCOL_IDLE)
+            self._reset_result()
 
-        result = self._result
-        self._result = None
-        self._async_status = PGASYNC_IDLE
-        self._on_result(result)
+    cdef _reset_result(self):
+        self.result_type = RESULT_OK
+        self.result = None
+        self.result_param_desc = None
+        self.result_row_desc = None
+        self.result_status_msg = None
 
-    cdef _sync(self):
-        if self._async_status != PGASYNC_IDLE:
-            raise RuntimeError('cannot sync; status is non-idle')
-        self._async_status = PGASYNC_BUSY
-        self._write_sync_message()
+    cdef _set_state(self, ProtocolState new_state):
+        if new_state == PROTOCOL_IDLE:
+            if self.state == PROTOCOL_FAILED:
+                raise RuntimeError(
+                    'cannot switch to "idle" state; '
+                    'protocol is in the "failed" state')
+            elif self.state == PROTOCOL_IDLE:
+                raise RuntimeError(
+                    'protocol is already in the "idle" state')
+            else:
+                self.state = new_state
 
-    cdef _ensure_ready_state(self):
-        if self._async_status != PGASYNC_IDLE:
-            raise RuntimeError('another command is already in progress')
+        elif new_state == PROTOCOL_FAILED:
+            self.state = PROTOCOL_FAILED
 
-        if self._status != CONNECTION_OK:
-            raise RuntimeError('no connection to the server')
+        else:
+            if self.state == PROTOCOL_IDLE:
+                self.state = new_state
 
-    # Cython API for subclasses:
+            elif self.state == PROTOCOL_FAILED:
+                raise RuntimeError(
+                    'cannot switch to state {}; '
+                    'protocol is in the "failed" state'.format(new_state))
+            else:
+                raise RuntimeError(
+                    'cannot switch to state {}; '
+                    'another operation ({}) is in progress'.format(
+                        new_state, self.state))
+
+    cdef _ensure_connected(self):
+        if self.con_status != CONNECTION_OK:
+            raise RuntimeError('not connected')
+
+    # API for subclasses
 
     cdef _connect(self):
-        if self._status != CONNECTION_BAD:
+        cdef:
+            WriteBuffer buf
+            WriteBuffer outbuf
+
+        if self.con_status != CONNECTION_BAD:
             raise RuntimeError('already connected')
 
-        self._status = CONNECTION_STARTED
-        self._async_status = PGASYNC_BUSY
+        self._set_state(PROTOCOL_AUTH)
+        self.con_status = CONNECTION_STARTED
 
         # Assemble a startup message
         buf = WriteBuffer()
@@ -454,19 +351,11 @@ cdef class CoreProtocol:
         buf.write_int16(0)
 
         buf.write_bytestring(b'client_encoding')
-        buf.write_bytestring("'{}'".format(self._encoding).encode('ascii'))
+        buf.write_bytestring("'{}'".format(self.encoding).encode('ascii'))
 
-        if self._user:
-            buf.write_bytestring(b'user')
-            buf.write_str(self._user, self._encoding)
-
-        if self._password:
-            buf.write_bytestring(b'password')
-            buf.write_str(self._password, self._encoding)
-
-        if self._database:
-            buf.write_bytestring(b'database')
-            buf.write_str(self._database, self._encoding)
+        for param in self.con_args:
+            buf.write_str(param, self.encoding)
+            buf.write_str(self.con_args[param], self.encoding)
 
         buf.write_bytestring(b'')
 
@@ -476,38 +365,26 @@ cdef class CoreProtocol:
         outbuf.write_buffer(buf)
         self._write(outbuf)
 
-    cdef _query(self, str query):
-        cdef WriteBuffer buf
-
-        self._ensure_ready_state()
-
-        buf = WriteBuffer.new_message(b'Q')
-        buf.write_str(query, self._encoding)
-        buf.end_message()
-
-        self._query_class = PGQUERY_SIMPLE
-        self._async_status = PGASYNC_BUSY
-        self._write(buf)
-
     cdef _prepare(self, str stmt_name, str query):
         cdef:
             WriteBuffer packet
             WriteBuffer buf
 
-        self._ensure_ready_state()
+        self._ensure_connected()
+        self._set_state(PROTOCOL_PREPARE)
 
         packet = WriteBuffer.new()
 
         buf = WriteBuffer.new_message(b'P')
-        buf.write_str(stmt_name, self._encoding)
-        buf.write_str(query, self._encoding)
+        buf.write_str(stmt_name, self.encoding)
+        buf.write_str(query, self.encoding)
         buf.write_int16(0)
         buf.end_message()
         packet.write_buffer(buf)
 
         buf = WriteBuffer.new_message(b'D')
         buf.write_byte(b'S')
-        buf.write_str(stmt_name, self._encoding)
+        buf.write_str(stmt_name, self.encoding)
         buf.end_message()
         packet.write_buffer(buf)
 
@@ -515,18 +392,19 @@ cdef class CoreProtocol:
 
         self.transport.write(memoryview(packet))
 
-        self._query_class = PGQUERY_DESCRIBE
-        self._async_status = PGASYNC_BUSY
+    cdef _bind_and_execute(self, str portal_name, str stmt_name,
+                           WriteBuffer bind_data, int32_t limit):
 
-    cdef _bind(self, str portal_name, str stmt_name,
-               WriteBuffer bind_data, int32_t limit):
         cdef WriteBuffer buf
 
-        self._ensure_ready_state()
+        self._ensure_connected()
+        self._set_state(PROTOCOL_BIND_EXECUTE)
+
+        self.result = []
 
         buf = WriteBuffer.new_message(b'B')
-        buf.write_str(portal_name, self._encoding)
-        buf.write_str(stmt_name, self._encoding)
+        buf.write_str(portal_name, self.encoding)
+        buf.write_str(stmt_name, self.encoding)
 
         # Arguments
         buf.write_buffer(bind_data)
@@ -535,21 +413,18 @@ cdef class CoreProtocol:
         self._write(buf)
 
         buf = WriteBuffer.new_message(b'E')
-        buf.write_str(portal_name, self._encoding)  # name of the portal
+        buf.write_str(portal_name, self.encoding)  # name of the portal
         buf.write_int32(limit)  # number of rows to return; 0 - all
         buf.end_message()
         self._write(buf)
 
         self._write_sync_message()
 
-        self._result = Result.new(PGRES_TUPLES_OK)
-        self._query_class = PGQUERY_EXTENDED
-        self._async_status = PGASYNC_BUSY
-
     cdef _close(self, str name, bint is_portal):
         cdef WriteBuffer buf
 
-        self._ensure_ready_state()
+        self._ensure_connected()
+        self._set_state(PROTOCOL_CLOSE_STMT_PORTAL)
 
         buf = WriteBuffer.new_message(b'C')
 
@@ -558,29 +433,32 @@ cdef class CoreProtocol:
         else:
             buf.write_byte(b'S')
 
-        buf.write_str(name, self._encoding)
+        buf.write_str(name, self.encoding)
         buf.end_message()
         self._write(buf)
 
         self._write_sync_message()
 
-        self._query_class = PGQUERY_CLOSE
-        self._async_status = PGASYNC_BUSY
+    cdef _simple_query(self, str query):
+        cdef WriteBuffer buf
+        self._ensure_connected()
+        self._set_state(PROTOCOL_SIMPLE_QUERY)
+        buf = WriteBuffer.new_message(b'Q')
+        buf.write_str(query, self.encoding)
+        buf.end_message()
+        self._write(buf)
 
-    cdef _on_result(self, Result result):
+    cdef _decode_row(self, const char* buf, int32_t buf_len):
         pass
 
-    cdef _on_fatal_error(self, exc):
+    cdef _set_server_parameter(self, name, val):
+        pass
+
+    cdef _on_result(self):
         pass
 
     cdef _on_connection_lost(self, exc):
         pass
-
-    cdef _set_server_parameter(self, key, val):
-        pass
-
-    cdef _decode_row(self, const char* buf, int32_t buf_len):
-        return NotImplemented
 
     # asyncio callbacks:
 
@@ -591,11 +469,23 @@ cdef class CoreProtocol:
     def connection_made(self, transport):
         self.transport = transport
 
+        sock = transport.get_extra_info('socket')
+        if sock is not None and sock.family != socket.AF_UNIX:
+            sock.setsockopt(socket.IPPROTO_TCP,
+                            socket.TCP_NODELAY, 1)
+
         try:
             self._connect()
         except Exception as ex:
-            self._fatal_error(ex)
+            transport.abort()
+            self.con_status = CONNECTION_BAD
+            self._set_state(PROTOCOL_FAILED)
+            self._on_error(ex)
 
     def connection_lost(self, exc):
-        self._status = CONNECTION_BAD
+        self.con_status = CONNECTION_BAD
+        self._set_state(PROTOCOL_FAILED)
         self._on_connection_lost(exc)
+
+
+cdef bytes SYNC_MESSAGE = bytes(WriteBuffer.new_message(b'S').end_message())

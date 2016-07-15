@@ -66,254 +66,235 @@ include "prepared_stmt.pyx"
 
 
 cdef class BaseProtocol(CoreProtocol):
+    def __init__(self, addr, connected_fut, con_args, loop):
+        CoreProtocol.__init__(self, con_args)
 
-    def __init__(self, address, connect_waiter, user, password, database, loop):
-        CoreProtocol.__init__(self, user, password, database)
-        self._loop = loop
-        self._address = address
-        self._hash = (self._address, self._database)
-        self._settings = ConnectionSettings(self._hash)
-        self._last_query = None
-        self._connect_waiter = connect_waiter
-        self._waiter = None
-        self._state = STATE_NOT_CONNECTED
-        self._N = 0
+        self.loop = loop
+        self.waiter = connected_fut
 
-        self._prepared_stmt = None
+        self.address = addr
+        self.settings = ConnectionSettings(
+            (self.address, con_args.get('database')))
 
-        self._id = 0
+        self.uid_counter = 0
+        self.statement = None
+
+        self.last_query = None
+
+        self.closing = False
 
         try:
-            self._create_future = loop.create_future
+            self.create_future = loop.create_future
         except AttributeError:
-            self._create_future = self._create_future_fallback
+            self.create_future = self._create_future_fallback
 
     def get_settings(self):
-        return self._settings
+        return self.settings
+
+    def prepare(self, stmt_name, query):
+        self.last_query = query
+
+        if stmt_name is None:
+            self.uid_counter += 1
+            stmt_name = 'stmt_{}'.format(self.uid_counter)
+
+        self._new_waiter()
+        try:
+            self._prepare(stmt_name, query)
+            self.statement = PreparedStatementState(stmt_name, query, self)
+        except:
+            self.waiter = None
+            raise
+
+        return self.waiter
+
+    def execute(self, PreparedStatementState state, args, limit):
+        self.last_query = state.query
+        self.statement = state
+
+        self._new_waiter()
+        try:
+            self._bind_and_execute(
+                "",
+                self.statement.name,
+                self.statement._encode_bind_msg(args),
+                limit)
+        except:
+            self.waiter = None
+            raise
+
+        return self.waiter
 
     def query(self, query):
-        self._start_state(STATE_QUERY)
-        self._waiter = self._create_future()
-        self._last_query = query
-        self._query(query)
-        return self._waiter
+        self.last_query = query
 
-    def prepare(self, name, query):
-        self._N = 0
-        self._start_state(STATE_PREPARE_DESCRIBE)
-        if name is None:
-            name = self._gen_id('prepared_statement')
-        if self._prepared_stmt is not None:
-            raise RuntimeError('another prepared statement is set')
-
-        self._prepared_stmt = PreparedStatementState(name, query, self)
-
-        self._waiter = self._create_future()
-        self._prepare(name, query)
-        return self._waiter
-
-    def execute(self, state, args, limit):
-        if type(state) is not PreparedStatementState:
-            raise TypeError(
-                'state must be an instance of PreparedStatementState')
-
-        self._start_state(STATE_EXECUTE)
-        self._prepared_stmt = <PreparedStatementState>state
-        self._prepared_stmt.cmd_status = None
-
-        self._last_query = self._prepared_stmt.query
-        waiter = self._create_future()
-
+        self._new_waiter()
         try:
-            self._bind(
-                "",
-                self._prepared_stmt.name,
-                self._prepared_stmt._encode_bind_msg(args),
-                limit)
-        except Exception as ex:
-            self._prepared_stmt = None
-            waiter.set_exception(ex)
-            self._state = STATE_READY
-        else:
-            self._waiter = waiter
+            self._simple_query(query)
+        except:
+            self.waiter = None
+            raise
 
-        return waiter
+        return self.waiter
 
-    def is_closed(self):
-        return self._state == STATE_CLOSING or self._state == STATE_CLOSED
-
-    def close_statement(self, state):
-        cdef PreparedStatementState s
-
-        if type(state) is not PreparedStatementState:
-            raise TypeError(
-                'state must be an instance of PreparedStatementState')
-
-        s = <PreparedStatementState>state
-
-        if s.refs != 0:
+    def close_statement(self, PreparedStatementState state):
+        if state.refs != 0:
             raise RuntimeError(
                 'cannot close prepared statement; refs == {} != 0'.format(
-                    s.refs))
+                    state.refs))
 
-        self._start_state(STATE_EXECUTE)
+        self._new_waiter()
+        try:
+            state.closed = True
+            self._close(state.name, False)
+        except:
+            self.waiter = None
+            raise
 
-        self._close(s.name, False)
-        s.closed = True
+        return self.waiter
 
-        self._waiter = self._create_future()
-        return self._waiter
+    def is_closed(self):
+        return self.closing
+
+    def abort(self):
+        self._handle_waiter_on_connection_lost(None)
+        self.transport.abort()
 
     def close(self):
-        if self._state != STATE_READY:
-            # Some operation is in progress; throw an error in any
-            # awaiting waiter.
-            self._handle_waiter_on_connection_lost(None)
-            self._state = STATE_READY
+        if self.closing:
+            return
 
-        self._start_state(STATE_CLOSING)
-        self._waiter = self._create_future()
-        return self._waiter
+        self.closing = True
+        self._handle_waiter_on_connection_lost(None)
+        self.waiter = self.create_future()
+        self.transport.abort()
+        return self.waiter
+
+    def _create_future_fallback(self):
+        return asyncio.Future(loop=self._loop)
 
     cdef _handle_waiter_on_connection_lost(self, cause):
-        if self._waiter is not None and not self._waiter.done():
+        if self.waiter is not None and not self.waiter.done():
             exc = apg_exc.ConnectionDoesNotExistError(
                 'connection was closed in the middle of '
                 'operation')
             if cause is not None:
                 exc.__cause__ = cause
-            self._waiter.set_exception(exc)
-            self._waiter = None
+            self.waiter.set_exception(exc)
+        self.waiter = None
 
-    def _create_future_fallback(self):
-        return asyncio.Future(loop=self._loop)
+    cdef _set_server_parameter(self, name, val):
+        self.settings.add_setting(name, val)
 
-    cdef _gen_id(self, prefix):
-        self._id += 1
-        return '_{}_{}'.format(self._id, prefix)
+    cdef _new_waiter(self):
+        IF DEBUG:
+            if self.waiter is not None:
+                raise RuntimeError('waiter is not None in _new_waiter')
 
-    cdef _start_state(self, ProtocolState state):
-        if self._state != STATE_READY:
-            raise RuntimeError(
-                'cannot set state {}; "ready" state expected'.format(state))
-        if self._waiter is not None:
-            raise RuntimeError('waiter is set in "ready" state')
-        self._state = state
+        self.waiter = self.create_future()
 
-    cdef _set_server_parameter(self, key, val):
-        self._settings.add_setting(key, val)
+    cdef _on_result__connect(self, object waiter):
+        waiter.set_result(True)
+
+    cdef _on_result__prepare(self, object waiter):
+        IF DEBUG:
+            if self.statement is None:
+                raise RuntimeError(
+                    '_on_result__prepare: statement is None')
+
+        if self.result_param_desc is not None:
+            self.statement._set_args_desc(self.result_param_desc)
+        if self.result_row_desc is not None:
+            self.statement._set_row_desc(self.result_row_desc)
+        waiter.set_result(self.statement)
+
+    cdef _on_result__bind_and_exec(self, object waiter):
+        self.statement.cmd_status = self.result_status_msg
+        waiter.set_result(self.result)
+
+    cdef _on_result__close_stmt_or_portal(self, object waiter):
+        waiter.set_result(self.result)
+
+    cdef _on_result__simple_query(self, object waiter):
+        waiter.set_result(self.result)
 
     cdef _decode_row(self, const char* buf, int32_t buf_len):
-        return self._prepared_stmt._decode_row(buf, buf_len)
-
-    cdef _on_result(self, Result result):
-        cdef:
-            ProtocolState old_state = self._state
-            PreparedStatementState stmt
-            object waiter
-
-        waiter = self._waiter
-
-        if self._state == STATE_CLOSING or self._state == STATE_CLOSED:
-            # The connection is lost; if any waiter is awaiting,
-            # throw an error in it
-            self._handle_waiter_on_connection_lost(None)
-            return
-
-        if self._state == STATE_NOT_CONNECTED:
-            if self._connect_waiter is None:
+        IF DEBUG:
+            if self.statement is None:
                 raise RuntimeError(
-                    'received connection result without connect_waiter set')
-            waiter = self._connect_waiter
-            self._connect_waiter = None
+                    '_decode_row: statement is None')
 
-        if waiter is None:
-            raise RuntimeError(
-                'received result without a Future wating for it')
+        return self.statement._decode_row(buf, buf_len)
+
+    cdef _dispatch_result(self):
+        waiter = self.waiter
+        self.waiter = None
+
+        IF DEBUG:
+            if waiter is None:
+                raise RuntimeError('_on_result: waiter is None')
 
         if waiter.cancelled():
-            # discard the result
-            self._state = STATE_READY
-            self._waiter = None
             return
 
-        if result.status == PGRES_FATAL_ERROR:
-            self._prepared_stmt = None
-            exc = apg_exc_base.PostgresMessage.new(result.err_fields,
-                                                   query=self._last_query)
+        if waiter.done():
+            raise RuntimeError('_on_result: waiter is done')
+
+        if self.result_type == RESULT_FAILED:
+            if isinstance(self.result, dict):
+                exc = apg_exc_base.PostgresMessage.new(
+                    self.result, query=self.last_query)
+            else:
+                exc = self.result
             waiter.set_exception(exc)
-            self._state = STATE_READY
-            self._waiter = None
             return
 
-        if self._state == STATE_QUERY:
-            waiter.set_result(1)
-            self._state = STATE_READY
+        try:
+            if self.state == PROTOCOL_AUTH:
+                self._on_result__connect(waiter)
 
-        elif self._state == STATE_PREPARE_DESCRIBE:
-            self._N += 1
-            stmt = self._prepared_stmt
+            elif self.state == PROTOCOL_PREPARE:
+                self._on_result__prepare(waiter)
 
-            if result.parameters_desc is not None:
-                stmt._set_args_desc(result.parameters_desc)
+            elif self.state == PROTOCOL_BIND_EXECUTE:
+                self._on_result__bind_and_exec(waiter)
 
-            if result.row_desc is not None:
-                stmt._set_row_desc(result.row_desc)
+            elif self.state == PROTOCOL_CLOSE_STMT_PORTAL:
+                self._on_result__close_stmt_or_portal(waiter)
 
-            if (self._N == 2):
-                self._prepared_stmt = None
-                self._state = STATE_READY
-                waiter.set_result(stmt)
+            elif self.state == PROTOCOL_SIMPLE_QUERY:
+                self._on_result__simple_query(waiter)
 
             else:
-                # We keep the same state.
-                return
+                raise RuntimeError(
+                    'got result for unknown protocol state {}'.
+                    format(self.state))
 
-        elif self._state == STATE_EXECUTE:
-            stmt = self._prepared_stmt
-            self._prepared_stmt = None
+        except Exception as exc:
+            waiter.set_exception(exc)
 
-            if stmt is not None:
-                # Can be None when close_statement was called (HACK)
-                stmt.cmd_status = result.cmd_status
-
-            if result.rows is None:
-                waiter.set_result(None)
-            else:
-                waiter.set_result(result.rows)
-
-            self._state = STATE_READY
-
-        elif self._state == STATE_NOT_CONNECTED:
-            self._state = STATE_READY
-            waiter.set_result(None)
-
-        else:
-            raise RuntimeError(
-                'unknown state {} in on_result'.format(self._state))
-
-        if self._state == old_state:
-            raise RuntimeError('state was not updated in on_result')
-
-        if self._state == STATE_READY:
-            self._waiter = None
+    cdef _on_result(self):
+        try:
+            self._dispatch_result()
+        finally:
+            self.statement = None
+            self.last_query = None
 
     cdef _on_connection_lost(self, exc):
-        cdef ProtocolState last_state = self._state
-        self._state = STATE_CLOSED
-
-        if last_state is STATE_CLOSING:
+        if self.closing:
             # The connection was lost because
             # Protocol.close() was called
-            if exc is None:
-                self._waiter.set_result(None)
-            else:
-                self._waiter.set_exception(exc)
-
+            if self.waiter is not None and not self.waiter.done():
+                if exc is None:
+                    self.waiter.set_result(None)
+                else:
+                    self.waiter.set_exception(exc)
+            self.waiter = None
         else:
             # The connection was lost because it was
             # terminated or due to another error;
             # Throw an error in any awaiting waiter.
+            self.closing = True
             self._handle_waiter_on_connection_lost(exc)
 
 

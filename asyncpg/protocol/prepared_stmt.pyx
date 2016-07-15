@@ -5,7 +5,7 @@ cdef class PreparedStatementState:
         self.name = name
         self.query = query
         self.protocol = protocol
-        self.settings = protocol._settings
+        self.settings = protocol.settings
         self.row_desc = self.parameters_desc = None
         self.args_codecs = self.rows_codecs = None
         self.args_num = self.cols_num = 0
@@ -17,7 +17,8 @@ cdef class PreparedStatementState:
 
     def _get_cmd_status(self):
         if self.cmd_status is not None:
-            return self.cmd_status.decode(self.settings._encoding)
+            status = self.cmd_status[:-1]  # To cut last \00 char
+            return status.decode(self.settings._encoding)
         return None
 
     def _get_parameters(self):

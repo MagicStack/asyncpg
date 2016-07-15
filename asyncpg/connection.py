@@ -169,13 +169,12 @@ class Connection:
             return
         self._close_stmts()
         self._aborted = True
-        self._transport.abort()
         await self._protocol.close()
 
     def terminate(self):
         self._close_stmts()
         self._aborted = True
-        self._transport.abort()
+        self._protocol.abort()
 
     def _get_unique_id(self):
         self._uid += 1

@@ -1,7 +1,6 @@
 import asyncio
 import getpass
 import os
-import socket
 import urllib.parse
 
 from .exceptions import *  # NOQA
@@ -20,18 +19,14 @@ async def connect(dsn=None, *,
                   loop=None,
                   timeout=60,
                   statement_cache_size=100,
-                  **kwargs):
+                  **opts):
 
     if loop is None:
         loop = asyncio.get_event_loop()
 
-    host, port, user, password, database, kwargs = _parse_connect_params(
+    host, port, opts = _parse_connect_params(
         dsn=dsn, host=host, port=port, user=user, password=password,
-        database=database, kwargs=kwargs)
-
-    if kwargs:
-        raise RuntimeError(
-            'arbitrary connection arguments are not yet supported')
+        database=database, opts=opts)
 
     last_ex = None
     for h in host:
@@ -42,13 +37,11 @@ async def connect(dsn=None, *,
             # UNIX socket name
             sname = os.path.join(h, '.s.PGSQL.{}'.format(port))
             conn = loop.create_unix_connection(
-                lambda: protocol.Protocol(sname, connected, user,
-                                          password, database, loop),
+                lambda: protocol.Protocol(sname, connected, opts, loop),
                 sname)
         else:
             conn = loop.create_connection(
-                lambda: protocol.Protocol((h, port), connected, user,
-                                          password, database, loop),
+                lambda: protocol.Protocol((h, port), connected, opts, loop),
                 h, port)
 
         try:
@@ -56,11 +49,6 @@ async def connect(dsn=None, *,
         except (OSError, asyncio.TimeoutError) as ex:
             last_ex = ex
         else:
-            if not unix:
-                sock = tr.get_extra_info('socket')
-                if hasattr(socket, 'TCP_NODELAY'):
-                    sock.setsockopt(socket.IPPROTO_TCP,
-                                    socket.TCP_NODELAY, 1)
             break
     else:
         raise last_ex
@@ -76,7 +64,7 @@ async def connect(dsn=None, *,
 
 
 def _parse_connect_params(*, dsn, host, port, user,
-                          password, database, kwargs):
+                          password, database, opts):
 
     if dsn:
         parsed = urllib.parse.urlparse(dsn)
@@ -140,7 +128,7 @@ def _parse_connect_params(*, dsn, host, port, user,
                     password = val
 
             if query:
-                kwargs = {**query, **kwargs}
+                opts = {**query, **opts}
 
     # On env-var -> connection parameter conversion read here:
     # https://www.postgresql.org/docs/current/static/libpq-envars.html
@@ -176,7 +164,24 @@ def _parse_connect_params(*, dsn, host, port, user,
     if database is None:
         database = os.getenv('PGDATABASE')
 
-    return host, port, user, password, database, kwargs
+    if user is not None:
+        opts['user'] = user
+    if password is not None:
+        opts['password'] = password
+    if database is not None:
+        opts['database'] = database
+
+    for param in opts:
+        if not isinstance(param, str):
+            raise ValueError(
+                'invalid connection parameter {!r} (str expected)'
+                .format(param))
+        if not isinstance(opts[param], str):
+            raise ValueError(
+                'invalid connection parameter {!r}: {!r} (str expected)'
+                .format(param, opts[param]))
+
+    return host, port, opts
 
 
 def _create_future(loop):

@@ -7,7 +7,7 @@ from asyncpg import _testbase as tb
 
 class TestPrepare(tb.ConnectedTestCase):
 
-    async def test_prepare_1(self):
+    async def test_prepare_01(self):
         st = await self.con.prepare('SELECT 1 = $1 AS test')
         self.assertEqual(st.get_query(), 'SELECT 1 = $1 AS test')
 
@@ -17,11 +17,11 @@ class TestPrepare(tb.ConnectedTestCase):
 
         self.assertEqual(False, await st.fetchval(10))
 
-    async def test_prepare_2(self):
+    async def test_prepare_02(self):
         with self.assertRaisesRegex(Exception, 'column "a" does not exist'):
             await self.con.prepare('SELECT a')
 
-    async def test_prepare_3(self):
+    async def test_prepare_03(self):
         cases = [
             ('text', ("'NULL'", 'NULL'), [
                 'aaa',
@@ -49,7 +49,7 @@ class TestPrepare(tb.ConnectedTestCase):
                     else:
                         self.assertEqual(res, val)
 
-    async def test_prepare_4(self):
+    async def test_prepare_04(self):
         s = await self.con.prepare('SELECT $1::smallint')
         self.assertEqual(await s.fetchval(10), 10)
 
@@ -67,11 +67,11 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual(await s.fetchrow(), (5,))
         self.assertIsNone(s.get_statusmsg())
 
-    async def test_prepare_5_unknownoid(self):
+    async def test_prepare_05_unknownoid(self):
         s = await self.con.prepare("SELECT 'test'")
         self.assertEqual(await s.fetchval(), 'test')
 
-    async def test_prepare_6_interrupted_close(self):
+    async def test_prepare_06_interrupted_close(self):
         stmt = await self.con.prepare('''SELECT pg_sleep(10)''')
         fut = self.loop.create_task(stmt.fetch())
 
@@ -88,7 +88,7 @@ class TestPrepare(tb.ConnectedTestCase):
         # Test that it's OK to call close again
         await self.con.close()
 
-    async def test_prepare_7_interrupted_terminate(self):
+    async def test_prepare_07_interrupted_terminate(self):
         stmt = await self.con.prepare('''SELECT pg_sleep(10)''')
         fut = self.loop.create_task(stmt.fetchval())
 
@@ -105,7 +105,7 @@ class TestPrepare(tb.ConnectedTestCase):
         # Test that it's OK to call terminate again
         self.con.terminate()
 
-    async def test_prepare_8_big_result(self):
+    async def test_prepare_08_big_result(self):
         stmt = await self.con.prepare('select generate_series(0,10000)')
         result = await stmt.fetch()
 
@@ -114,7 +114,7 @@ class TestPrepare(tb.ConnectedTestCase):
             [r[0] for r in result],
             list(range(10001)))
 
-    async def test_prepare_9_raise_error(self):
+    async def test_prepare_09_raise_error(self):
         # Stress test ReadBuffer.read_cstr()
         msg = '0' * 1024 * 100
         query = """

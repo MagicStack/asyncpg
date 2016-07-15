@@ -25,7 +25,10 @@ class TestConnectParams(unittest.TestCase):
                 'PGHOST': 'host',
                 'PGPORT': '123'
             },
-            'result': (['host'], 123, 'user', 'passw', 'testdb', {})
+            'result': (['host'], 123, {
+                'user': 'user',
+                'password': 'passw',
+                'database': 'testdb'})
         },
 
         {
@@ -43,7 +46,10 @@ class TestConnectParams(unittest.TestCase):
             'password': 'passw2',
             'database': 'db2',
 
-            'result': (['host2'], 456, 'user2', 'passw2', 'db2', {})
+            'result': (['host2'], 456, {
+                'user': 'user2',
+                'password': 'passw2',
+                'database': 'db2'})
         },
 
         {
@@ -63,7 +69,10 @@ class TestConnectParams(unittest.TestCase):
             'password': 'passw2',
             'database': 'db2',
 
-            'result': (['host2'], 456, 'user2', 'passw2', 'db2', {})
+            'result': (['host2'], 456, {
+                'user': 'user2',
+                'password': 'passw2',
+                'database': 'db2'})
         },
 
         {
@@ -77,12 +86,18 @@ class TestConnectParams(unittest.TestCase):
 
             'dsn': 'postgres://user3:123123@localhost:5555/abcdef',
 
-            'result': (['localhost'], 5555, 'user3', '123123', 'abcdef', {})
+            'result': (['localhost'], 5555, {
+                'user': 'user3',
+                'password': '123123',
+                'database': 'abcdef'})
         },
 
         {
             'dsn': 'postgres://user3:123123@localhost:5555/abcdef',
-            'result': (['localhost'], 5555, 'user3', '123123', 'abcdef', {})
+            'result': (['localhost'], 5555, {
+                'user': 'user3',
+                'password': '123123',
+                'database': 'abcdef'})
         },
 
         {
@@ -94,12 +109,18 @@ class TestConnectParams(unittest.TestCase):
             'user': 'me',
             'password': 'ask',
             'database': 'db',
-            'result': (['127.0.0.1'], 888, 'me', 'ask', 'db', {'param': '123'})
+            'result': (['127.0.0.1'], 888, {
+                'param': '123',
+                'user': 'me',
+                'password': 'ask',
+                'database': 'db'})
         },
 
         {
             'dsn': 'postgresql:///dbname?host=/unix_sock/test&user=spam',
-            'result': (['/unix_sock/test'], 5432, 'spam', None, 'dbname', {})
+            'result': (['/unix_sock/test'], 5432, {
+                'user': 'spam',
+                'database': 'dbname'})
         },
 
         {
@@ -139,7 +160,7 @@ class TestConnectParams(unittest.TestCase):
         test_env.update(env)
 
         dsn = testcase.get('dsn')
-        kwargs = testcase.get('kwargs', {})
+        opts = testcase.get('opts', {})
         user = testcase.get('user')
         port = testcase.get('port')
         host = testcase.get('host')
@@ -158,7 +179,7 @@ class TestConnectParams(unittest.TestCase):
                 'has to be specified, got both')
 
         with contextlib.ExitStack() as es:
-            es.enter_context(self.subTest(dsn=dsn, kwargs=kwargs, env=env))
+            es.enter_context(self.subTest(dsn=dsn, opts=opts, env=env))
             es.enter_context(self.environ(**test_env))
 
             if expected_error:
@@ -166,7 +187,7 @@ class TestConnectParams(unittest.TestCase):
 
             result = asyncpg._parse_connect_params(
                 dsn=dsn, host=host, port=port, user=user, password=password,
-                database=database, kwargs=kwargs)
+                database=database, opts=opts)
 
         if expected is not None:
             self.assertEqual(expected, result)
@@ -205,7 +226,7 @@ class TestConnectParams(unittest.TestCase):
                     'PGUSER': '__test__'
                 },
                 'host': 'abc',
-                'result': (['abc'], 5432, '__test__', None, None, {})
+                'result': (['abc'], 5432, {'user': '__test__'})
             })
 
         with self.assertRaises(AssertionError):
@@ -214,7 +235,7 @@ class TestConnectParams(unittest.TestCase):
                     'PGUSER': '__test__'
                 },
                 'host': 'abc',
-                'result': (['abc'], 5432, 'wrong_user', None, None, {})
+                'result': (['abc'], 5432, {'user': 'wrong_user'})
             })
 
     def test_connect_params(self):

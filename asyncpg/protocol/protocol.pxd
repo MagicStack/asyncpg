@@ -14,44 +14,47 @@ include "coreproto.pxd"
 include "prepared_stmt.pxd"
 
 
-cdef enum ProtocolState:
-    STATE_NOT_CONNECTED = 0
-    STATE_READY = 10
+# cdef enum ProtocolState:
+#     STATE_NOT_CONNECTED = 0
+#     STATE_READY = 10
 
-    STATE_PREPARE_BIND = 20
-    STATE_PREPARE_DESCRIBE = 21
+#     STATE_PREPARE_BIND = 20
+#     STATE_PREPARE_DESCRIBE = 21
 
-    STATE_EXECUTE = 30
+#     STATE_EXECUTE = 30
 
-    STATE_QUERY = 40
+#     STATE_QUERY = 40
 
-    STATE_CLOSE_STMT = 50
+#     STATE_CLOSE_STMT = 50
 
-    STATE_CLOSING = 100
-    STATE_CLOSED = 101
+#     STATE_CLOSING = 100
+#     STATE_CLOSED = 101
 
 
 cdef class BaseProtocol(CoreProtocol):
 
     cdef:
-        object _loop
-        object _address
-        tuple  _hash
-        ConnectionSettings _settings
-        str _last_query
-        object _connect_waiter
-        object _waiter
+        object loop
+        object address
+        ConnectionSettings settings
+        object waiter
+        object create_future
 
-        ProtocolState _state
+        str last_query
 
-        PreparedStatementState _prepared_stmt
+        int uid_counter
+        bint closing
 
-        int _id
-        int _N
+        PreparedStatementState statement
 
-        object _create_future
+    cdef _new_waiter(self)
 
-    cdef inline _create_future(self)
-    cdef _gen_id(self, prefix)
-    cdef _start_state(self, ProtocolState state)
+    cdef _on_result__connect(self, object waiter)
+    cdef _on_result__prepare(self, object waiter)
+    cdef _on_result__bind_and_exec(self, object waiter)
+    cdef _on_result__close_stmt_or_portal(self, object waiter)
+    cdef _on_result__simple_query(self, object waiter)
+
     cdef _handle_waiter_on_connection_lost(self, cause)
+
+    cdef _dispatch_result(self)
