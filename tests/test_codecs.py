@@ -375,8 +375,8 @@ class TestCodecs(tb.ConnectedTestCase):
         self.assertEqual(sanitized_bs,
                          bits.as_string().replace(' ', ''))
 
-        expected_bytelen = len(sanitized_bs) // 8 + \
-                                (1 if len(sanitized_bs) % 8 else 0)
+        expected_bytelen = \
+            len(sanitized_bs) // 8 + (1 if len(sanitized_bs) % 8 else 0)
 
         self.assertEqual(len(bits.bytes), expected_bytelen)
 
