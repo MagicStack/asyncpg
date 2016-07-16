@@ -4,6 +4,7 @@ import os
 import unittest
 
 from asyncpg import _testbase as tb
+from asyncpg.connection import _parse_connect_params
 
 
 class TestConnect(tb.ConnectedTestCase):
@@ -185,7 +186,7 @@ class TestConnectParams(unittest.TestCase):
             if expected_error:
                 es.enter_context(self.assertRaisesRegex(*expected_error))
 
-            result = asyncpg._parse_connect_params(
+            result = _parse_connect_params(
                 dsn=dsn, host=host, port=port, user=user, password=password,
                 database=database, opts=opts)
 
