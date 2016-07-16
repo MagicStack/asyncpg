@@ -34,6 +34,8 @@ cdef class BaseProtocol(CoreProtocol):
         int uid_counter
         bint closing
 
+        readonly uint64_t queries_count
+
         PreparedStatementState statement
 
     cdef _ensure_clear_state(self)

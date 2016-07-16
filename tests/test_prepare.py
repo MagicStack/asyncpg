@@ -8,14 +8,18 @@ from asyncpg import _testbase as tb
 class TestPrepare(tb.ConnectedTestCase):
 
     async def test_prepare_01(self):
+        self.assertEqual(self.con._protocol.queries_count, 0)
         st = await self.con.prepare('SELECT 1 = $1 AS test')
+        self.assertEqual(self.con._protocol.queries_count, 0)
         self.assertEqual(st.get_query(), 'SELECT 1 = $1 AS test')
 
         rec = await st.fetchrow(1)
+        self.assertEqual(self.con._protocol.queries_count, 1)
         self.assertTrue(rec['test'])
         self.assertEqual(len(rec), 1)
 
         self.assertEqual(False, await st.fetchval(10))
+        self.assertEqual(self.con._protocol.queries_count, 2)
 
     async def test_prepare_02(self):
         with self.assertRaisesRegex(Exception, 'column "a" does not exist'):

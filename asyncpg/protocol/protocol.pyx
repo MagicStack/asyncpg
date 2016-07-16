@@ -95,6 +95,8 @@ cdef class BaseProtocol(CoreProtocol):
         self.timeout_callback = self._on_timeout
         self.completed_callback = self._on_waiter_completed
 
+        self.queries_count = 0
+
         try:
             self.create_future = loop.create_future
         except AttributeError:
@@ -140,6 +142,7 @@ cdef class BaseProtocol(CoreProtocol):
         self.last_query = state.query
         self.statement = state
         self.return_extra = return_extra
+        self.queries_count += 1
 
         return await self._new_waiter(timeout)
 
@@ -177,6 +180,7 @@ cdef class BaseProtocol(CoreProtocol):
         self.last_query = state.query
         self.statement = state
         self.return_extra = return_extra
+        self.queries_count += 1
 
         return await self._new_waiter(timeout)
 
@@ -188,6 +192,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         self._simple_query(query)
         self.last_query = query
+        self.queries_count += 1
 
         return await self._new_waiter(timeout)
 
