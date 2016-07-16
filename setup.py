@@ -18,7 +18,7 @@ setuptools.setup(
     version='0.0.1',
     description='An asyncio PosgtreSQL driver',
     classifiers=[
-        'License :: OSI Approved :: MIT License',
+        'License :: OSI Approved :: Apache Software License',
         'Intended Audience :: Developers',
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3.5',
@@ -30,7 +30,7 @@ setuptools.setup(
     platforms=['POSIX'],
     author='MagicStack Inc',
     author_email='hello@magic.io',
-    license='MIT',
+    license='Apache License, Version 2.0',
     packages=['asyncpg'],
     provides=['asyncpg'],
     include_package_data=True,
