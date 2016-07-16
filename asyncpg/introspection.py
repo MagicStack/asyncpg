@@ -1,3 +1,10 @@
+# Copyright (C) 2016-present the ayncpg authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of asyncpg and is released under
+# the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
+
+
 INTRO_LOOKUP_TYPES = '''\
 WITH RECURSIVE typeinfo_tree(
     oid, ns, name, kind, basetype, elemtype, range_subtype,
