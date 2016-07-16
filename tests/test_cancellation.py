@@ -45,7 +45,7 @@ class TestCancellation(tb.ConnectedTestCase):
         for test in {test0, test1, test2, test3, test4, test5,
                      test6, test7, test8}:
 
-            with self.subTest(testfunc=test), self.assertRunLess(1):
+            with self.subTest(testfunc=test), self.assertRunUnder(1):
                 st = await self.con.prepare('SELECT pg_sleep(20)')
                 task = self.loop.create_task(st.fetch())
                 await asyncio.sleep(0.05, loop=self.loop)

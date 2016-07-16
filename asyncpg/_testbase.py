@@ -76,7 +76,7 @@ class TestCase(unittest.TestCase, metaclass=TestCaseMeta):
         asyncio.set_event_loop(None)
 
     @contextlib.contextmanager
-    def assertRunLess(self, delta):
+    def assertRunUnder(self, delta):
         st = time.monotonic()
         try:
             yield
@@ -119,10 +119,14 @@ class ClusterTestCase(TestCase):
 
 class ConnectedTestCase(ClusterTestCase):
 
+    def getExtraConnectOptions(self):
+        return {}
+
     def setUp(self):
         super().setUp()
+        opts = self.getExtraConnectOptions()
         self.con = self.loop.run_until_complete(
-            self.cluster.connect(database='postgres', loop=self.loop))
+            self.cluster.connect(database='postgres', loop=self.loop, **opts))
 
     def tearDown(self):
         try:

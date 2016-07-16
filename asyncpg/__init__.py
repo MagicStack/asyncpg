@@ -19,6 +19,7 @@ async def connect(dsn=None, *,
                   loop=None,
                   timeout=60,
                   statement_cache_size=100,
+                  command_timeout=None,
                   **opts):
 
     if loop is None:
@@ -63,7 +64,8 @@ async def connect(dsn=None, *,
 
     con = connection.Connection(
         pr, tr, loop, addr, opts,
-        statement_cache_size=statement_cache_size)
+        statement_cache_size=statement_cache_size,
+        command_timeout=command_timeout)
     pr.set_connection(con)
     return con
 

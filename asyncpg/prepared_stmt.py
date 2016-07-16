@@ -31,10 +31,11 @@ class PreparedStatement:
         self.__check_open()
         return self._state._get_attributes()
 
-    def cursor(self, *args, prefetch=None):
+    def cursor(self, *args, prefetch=None, timeout=None):
         self.__check_open()
-        return cursor.CursorFactory(
-            self._connection, self._query, self._state, args, prefetch)
+        return cursor.CursorFactory(self._connection, self._query,
+                                    self._state, args, prefetch,
+                                    timeout)
 
     async def explain(self, *args, analyze=False):
         query = 'EXPLAIN (FORMAT JSON, VERBOSE'
@@ -67,29 +68,29 @@ class PreparedStatement:
 
         return json.loads(data)
 
-    async def fetch(self, *args):
+    async def fetch(self, *args, timeout=None):
         self.__check_open()
         protocol = self._connection._protocol
         data, status, _ = await protocol.bind_execute(
-            self._state, args, '', 0, True)
+            self._state, args, '', 0, True, timeout)
         self._last_status = status
         return data
 
-    async def fetchval(self, *args, column=0):
+    async def fetchval(self, *args, column=0, timeout=None):
         self.__check_open()
         protocol = self._connection._protocol
         data, status, _ = await protocol.bind_execute(
-            self._state, args, '', 1, True)
+            self._state, args, '', 1, True, timeout)
         self._last_status = status
         if not data:
             return None
         return data[0][column]
 
-    async def fetchrow(self, *args):
+    async def fetchrow(self, *args, timeout=None):
         self.__check_open()
         protocol = self._connection._protocol
         data, status, _ = await protocol.bind_execute(
-            self._state, args, '', 1, True)
+            self._state, args, '', 1, True, timeout)
         self._last_status = status
         if not data:
             return None

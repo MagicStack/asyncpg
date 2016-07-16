@@ -91,6 +91,8 @@ cdef class BaseProtocol(CoreProtocol):
 
         self.closing = False
 
+        self.timeout_handle = None
+        self.timeout_callback = self._on_timeout
         self.completed_callback = self._on_waiter_completed
 
         try:
@@ -104,7 +106,7 @@ cdef class BaseProtocol(CoreProtocol):
     def get_settings(self):
         return self.settings
 
-    async def prepare(self, stmt_name, query):
+    async def prepare(self, stmt_name, query, timeout):
         if self.cancel_waiter:
             await self.cancel_waiter
 
@@ -118,10 +120,12 @@ cdef class BaseProtocol(CoreProtocol):
         self.last_query = query
         self.statement = PreparedStatementState(stmt_name, query, self)
 
-        return await self._new_waiter()
+        return await self._new_waiter(timeout)
 
     async def bind_execute(self, PreparedStatementState state, args,
-                           str portal_name, int limit, return_extra):
+                           str portal_name, int limit, return_extra,
+                           timeout):
+
         if self.cancel_waiter:
             await self.cancel_waiter
 
@@ -137,9 +141,11 @@ cdef class BaseProtocol(CoreProtocol):
         self.statement = state
         self.return_extra = return_extra
 
-        return await self._new_waiter()
+        return await self._new_waiter(timeout)
 
-    async def bind(self, PreparedStatementState state, args, str portal_name):
+    async def bind(self, PreparedStatementState state, args,
+                   str portal_name, timeout):
+
         if self.cancel_waiter:
             await self.cancel_waiter
 
@@ -153,10 +159,11 @@ cdef class BaseProtocol(CoreProtocol):
         self.last_query = state.query
         self.statement = state
 
-        return await self._new_waiter()
+        return await self._new_waiter(timeout)
 
     async def execute(self, PreparedStatementState state,
-                      str portal_name, int limit, return_extra):
+                      str portal_name, int limit, return_extra,
+                      timeout):
 
         if self.cancel_waiter:
             await self.cancel_waiter
@@ -171,9 +178,9 @@ cdef class BaseProtocol(CoreProtocol):
         self.statement = state
         self.return_extra = return_extra
 
-        return await self._new_waiter()
+        return await self._new_waiter(timeout)
 
-    async def query(self, query):
+    async def query(self, query, timeout):
         if self.cancel_waiter:
             await self.cancel_waiter
 
@@ -182,9 +189,9 @@ cdef class BaseProtocol(CoreProtocol):
         self._simple_query(query)
         self.last_query = query
 
-        return await self._new_waiter()
+        return await self._new_waiter(timeout)
 
-    async def close_statement(self, PreparedStatementState state):
+    async def close_statement(self, PreparedStatementState state, timeout):
         if self.cancel_waiter:
             await self.cancel_waiter
 
@@ -197,7 +204,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         self._close(state.name, False)
         state.closed = True
-        return await self._new_waiter()
+        return await self._new_waiter(timeout)
 
     def is_closed(self):
         return self.closing
@@ -221,10 +228,20 @@ cdef class BaseProtocol(CoreProtocol):
         self.transport.abort()
         return await self.waiter
 
+    def _on_timeout(self, fut):
+        if self.waiter is not fut or fut.done():
+            return
+        self.cancel_waiter = self.create_future()
+        self.connection._cancel_current_command()
+        self.waiter.set_exception(asyncio.TimeoutError())
+
     def _on_waiter_completed(self, fut):
         if fut is not self.waiter:
             return
         if fut.cancelled():
+            if self.timeout_handle:
+                self.timeout_handle.cancel()
+                self.timeout_handle = None
             self.cancel_waiter = self.create_future()
             self.connection._cancel_current_command()
 
@@ -251,12 +268,17 @@ cdef class BaseProtocol(CoreProtocol):
         if self.closing:
             raise apg_exc.InterfaceError(
                 'cannot perform operation: connection is closed')
-        if self.waiter is not None:
+        if self.waiter is not None or self.timeout_handle is not None:
             raise apg_exc.InterfaceError(
                 'cannot perform operation: another operation is in progress')
 
-    cdef _new_waiter(self):
+    cdef _new_waiter(self, timeout):
         self.waiter = self.create_future()
+        if timeout is not False:
+            timeout = timeout or self.connection._command_timeout
+            if timeout is not None and timeout > 0:
+                self.timeout_handle = self.connection._loop.call_later(
+                    timeout, self.timeout_callback, self.waiter)
         self.waiter.add_done_callback(self.completed_callback)
         return self.waiter
 
@@ -355,6 +377,10 @@ cdef class BaseProtocol(CoreProtocol):
             waiter.set_exception(exc)
 
     cdef _on_result(self):
+        if self.timeout_handle is not None:
+            self.timeout_handle.cancel()
+            self.timeout_handle = None
+
         if self.cancel_waiter is not None:
             if self.waiter is None or not self.waiter.cancelled():
                 self.cancel_waiter.set_result(

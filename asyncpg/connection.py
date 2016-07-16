@@ -14,10 +14,10 @@ class Connection:
     __slots__ = ('_protocol', '_transport', '_loop', '_types_stmt',
                  '_type_by_name_stmt', '_top_xact', '_uid', '_aborted',
                  '_stmt_cache_max_size', '_stmt_cache', '_stmts_to_close',
-                 '_addr', '_opts')
+                 '_addr', '_opts', '_command_timeout')
 
     def __init__(self, protocol, transport, loop, addr, opts, *,
-                 statement_cache_size):
+                 statement_cache_size, command_timeout):
         self._protocol = protocol
         self._transport = transport
         self._loop = loop
@@ -34,6 +34,8 @@ class Connection:
         self._stmt_cache = collections.OrderedDict()
         self._stmts_to_close = set()
 
+        self._command_timeout = command_timeout
+
     def get_settings(self):
         return self._protocol.get_settings()
 
@@ -42,14 +44,14 @@ class Connection:
 
         return transaction.Transaction(self, isolation, readonly, deferrable)
 
-    async def execute(self, script: str) -> str:
+    async def execute(self, script: str, *, timeout: float=None) -> str:
         """Execute an SQL command (or commands).
 
         :return str: Status of the last SQL command.
         """
-        return await self._protocol.query(script)
+        return await self._protocol.query(script, timeout)
 
-    async def _get_statement(self, query):
+    async def _get_statement(self, query, timeout):
         cache = self._stmt_cache_max_size > 0
 
         if cache:
@@ -63,7 +65,7 @@ class Connection:
                     return state
 
         protocol = self._protocol
-        state = await protocol.prepare(None, query)
+        state = await protocol.prepare(None, query, timeout)
 
         ready = state._init_types()
         if ready is not True:
@@ -87,31 +89,31 @@ class Connection:
 
         return state
 
-    def cursor(self, query, *args, prefetch=None):
-        return cursor.CursorFactory(self, query, None, args, prefetch)
+    def cursor(self, query, *args, prefetch=None, timeout=None):
+        return cursor.CursorFactory(self, query, None, args, prefetch, timeout)
 
-    async def prepare(self, query):
-        stmt = await self._get_statement(query)
+    async def prepare(self, query, *, timeout=None):
+        stmt = await self._get_statement(query, timeout)
         return prepared_stmt.PreparedStatement(self, query, stmt)
 
-    async def fetch(self, query, *args):
-        stmt = await self._get_statement(query)
+    async def fetch(self, query, *args, timeout=None):
+        stmt = await self._get_statement(query, timeout)
         protocol = self._protocol
-        data = await protocol.bind_execute(stmt, args, '', 0, False)
+        data = await protocol.bind_execute(stmt, args, '', 0, False, timeout)
         return data
 
-    async def fetchval(self, query, *args, column=0):
-        stmt = await self._get_statement(query)
+    async def fetchval(self, query, *args, column=0, timeout=None):
+        stmt = await self._get_statement(query, timeout)
         protocol = self._protocol
-        data = await protocol.bind_execute(stmt, args, '', 1, False)
+        data = await protocol.bind_execute(stmt, args, '', 1, False, timeout)
         if not data:
             return None
         return data[0][column]
 
-    async def fetchrow(self, query, *args):
-        stmt = await self._get_statement(query)
+    async def fetchrow(self, query, *args, timeout=None):
+        stmt = await self._get_statement(query, timeout)
         protocol = self._protocol
-        data = await protocol.bind_execute(stmt, args, '', 1, False)
+        data = await protocol.bind_execute(stmt, args, '', 1, False, timeout)
         if not data:
             return None
         return data[0]
@@ -217,7 +219,7 @@ class Connection:
         self._stmts_to_close = set()
         protocol = self._protocol
         for stmt in to_close:
-            await protocol.close_statement(stmt)
+            await protocol.close_statement(stmt, False)
 
     def _request_portal_name(self):
         return self._get_unique_id()

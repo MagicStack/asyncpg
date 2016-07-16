@@ -24,6 +24,8 @@ cdef class BaseProtocol(CoreProtocol):
         object waiter
         bint return_extra
         object create_future
+        object timeout_handle
+        object timeout_callback
         object completed_callback
         object connection
 
@@ -35,7 +37,7 @@ cdef class BaseProtocol(CoreProtocol):
         PreparedStatementState statement
 
     cdef _ensure_clear_state(self)
-    cdef _new_waiter(self)
+    cdef _new_waiter(self, timeout)
 
     cdef _on_result__connect(self, object waiter)
     cdef _on_result__prepare(self, object waiter)

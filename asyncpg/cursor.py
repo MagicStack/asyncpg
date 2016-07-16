@@ -7,13 +7,14 @@ from . import exceptions
 class CursorFactory:
 
     __slots__ = ('_state', '_connection', '_args', '_prefetch',
-                 '_query')
+                 '_query', '_timeout')
 
-    def __init__(self, connection, query, state, args, prefetch):
+    def __init__(self, connection, query, state, args, prefetch, timeout):
         self._connection = connection
         self._args = args
         self._prefetch = prefetch
         self._query = query
+        self._timeout = timeout
         self._state = state
         if state is not None:
             state.attach()
@@ -23,7 +24,8 @@ class CursorFactory:
         prefetch = 100 if self._prefetch is None else self._prefetch
         return CursorIterator(self._connection,
                               self._query, self._state,
-                              self._args, prefetch)
+                              self._args, prefetch,
+                              self._timeout)
 
     def __await__(self):
         if self._prefetch is not None:
@@ -31,7 +33,7 @@ class CursorFactory:
                 'prefetch argument can only be specified for iterable cursor')
         cursor = Cursor(self._connection, self._query,
                         self._state, self._args)
-        return cursor._init().__await__()
+        return cursor._init(self._timeout).__await__()
 
     def __del__(self):
         if self._state is not None:
@@ -67,7 +69,7 @@ class BaseCursor:
             raise exceptions.NoActiveSQLTransactionError(
                 'cursor cannot be created outside of a transaction')
 
-    async def _bind_exec(self, n):
+    async def _bind_exec(self, n, timeout):
         self._check_ready()
 
         if self._portal_name:
@@ -79,10 +81,10 @@ class BaseCursor:
 
         self._portal_name = con._request_portal_name()
         buffer, _, self._exhausted = await protocol.bind_execute(
-            self._state, self._args, self._portal_name, n, True)
+            self._state, self._args, self._portal_name, n, True, timeout)
         return buffer
 
-    async def _bind(self):
+    async def _bind(self, timeout):
         self._check_ready()
 
         if self._portal_name:
@@ -94,10 +96,11 @@ class BaseCursor:
 
         self._portal_name = con._request_portal_name()
         buffer = await protocol.bind(self._state, self._args,
-                                     self._portal_name)
+                                     self._portal_name,
+                                     timeout)
         return buffer
 
-    async def _exec(self, n):
+    async def _exec(self, n, timeout):
         self._check_ready()
 
         if not self._portal_name:
@@ -106,7 +109,7 @@ class BaseCursor:
 
         protocol = self._connection._protocol
         buffer, _, self._exhausted = await protocol.execute(
-            self._state, self._portal_name, n, True)
+            self._state, self._portal_name, n, True, timeout)
         return buffer
 
     def __repr__(self):
@@ -133,9 +136,9 @@ class BaseCursor:
 
 class CursorIterator(BaseCursor):
 
-    __slots__ = ('_buffer', '_prefetch')
+    __slots__ = ('_buffer', '_prefetch', '_timeout')
 
-    def __init__(self, connection, query, state, args, prefetch):
+    def __init__(self, connection, query, state, args, prefetch, timeout):
         super().__init__(connection, query, state, args)
 
         if prefetch <= 0:
@@ -144,6 +147,7 @@ class CursorIterator(BaseCursor):
 
         self._buffer = collections.deque()
         self._prefetch = prefetch
+        self._timeout = timeout
 
     @compat.aiter_compat
     def __aiter__(self):
@@ -151,15 +155,16 @@ class CursorIterator(BaseCursor):
 
     async def __anext__(self):
         if self._state is None:
-            self._state = await self._connection._get_statement(self._query)
+            self._state = await self._connection._get_statement(
+                self._query, self._timeout)
             self._state.attach()
 
         if not self._portal_name:
-            buffer = await self._bind_exec(self._prefetch)
+            buffer = await self._bind_exec(self._prefetch, self._timeout)
             self._buffer.extend(buffer)
 
         if not self._buffer and not self._exhausted:
-            buffer = await self._exec(self._prefetch)
+            buffer = await self._exec(self._prefetch, self._timeout)
             self._buffer.extend(buffer)
 
         if self._buffer:
@@ -172,43 +177,44 @@ class Cursor(BaseCursor):
 
     __slots__ = ()
 
-    async def _init(self):
+    async def _init(self, timeout):
         if self._state is None:
-            self._state = await self._connection._get_statement(self._query)
+            self._state = await self._connection._get_statement(
+                self._query, timeout)
             self._state.attach()
         self._check_ready()
-        await self._bind()
+        await self._bind(timeout)
         return self
 
-    async def fetch(self, n):
+    async def fetch(self, n, *, timeout=None):
         self._check_ready()
         if n <= 0:
             raise exceptions.InterfaceError('n must be greater than zero')
         if self._exhausted:
             return []
-        recs = await self._exec(n)
+        recs = await self._exec(n, timeout)
         if len(recs) < n:
             self._exhausted = True
         return recs
 
-    async def fetchrow(self):
+    async def fetchrow(self, *, timeout=None):
         self._check_ready()
         if self._exhausted:
             return None
-        recs = await self._exec(1)
+        recs = await self._exec(1, timeout)
         if len(recs) < 1:
             self._exhausted = True
             return None
         return recs[0]
 
-    async def forward(self, n):
+    async def forward(self, n, *, timeout=None):
         self._check_ready()
         if n <= 0:
             raise exceptions.InterfaceError('n must be greater than zero')
 
         protocol = self._connection._protocol
         status = await protocol.query('MOVE FORWARD {:d} {}'.format(
-            n, self._portal_name))
+            n, self._portal_name), timeout)
 
         advanced = int(status.split()[1])
         if advanced < n:
