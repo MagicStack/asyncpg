@@ -21,7 +21,7 @@ class CursorFactory:
 
     @compat.aiter_compat
     def __aiter__(self):
-        prefetch = 100 if self._prefetch is None else self._prefetch
+        prefetch = 50 if self._prefetch is None else self._prefetch
         return CursorIterator(self._connection,
                               self._query, self._state,
                               self._args, prefetch,
