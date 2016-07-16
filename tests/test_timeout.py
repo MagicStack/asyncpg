@@ -1,4 +1,5 @@
 import asyncio
+import asyncpg
 
 from asyncpg import _testbase as tb
 
@@ -31,6 +32,66 @@ class TestTimeout(tb.ConnectedTestCase):
         with self.assertRaises(asyncio.CancelledError), \
                 self.assertRunUnder(0.1):
             await task
+        self.assertEqual(await self.con.fetch('select 1'), [(1,)])
+
+    async def test_timeout_04(self):
+        st = await self.con.prepare('select pg_sleep(10)', timeout=0.1)
+        with self.assertRaises(asyncio.TimeoutError), \
+                self.assertRunUnder(0.2):
+            async with self.con.transaction():
+                async for _ in st.cursor(timeout=0.1):  # NOQA
+                    pass
+        self.assertEqual(await self.con.fetch('select 1'), [(1,)])
+
+        st = await self.con.prepare('select pg_sleep(10)', timeout=0.1)
+        async with self.con.transaction():
+            cur = await st.cursor()
+            with self.assertRaises(asyncio.TimeoutError), \
+                    self.assertRunUnder(0.2):
+                await cur.fetch(1, timeout=0.1)
+        self.assertEqual(await self.con.fetch('select 1'), [(1,)])
+
+    async def test_timeout_05(self):
+        with self.assertRaises(asyncio.TimeoutError):
+            await self.con.prepare('select pg_sleep(10)', timeout=1e-10)
+        self.assertEqual(await self.con.fetch('select 1'), [(1,)])
+
+    async def test_timeout_06(self):
+        async with self.con.transaction():
+            with self.assertRaises(asyncio.TimeoutError), \
+                    self.assertRunUnder(0.2):
+                async for _ in self.con.cursor(   # NOQA
+                        'select pg_sleep(10)', timeout=0.1):
+                    pass
+        self.assertEqual(await self.con.fetch('select 1'), [(1,)])
+
+        async with self.con.transaction():
+            cur = await self.con.cursor('select pg_sleep(10)')
+            with self.assertRaises(asyncio.TimeoutError), \
+                    self.assertRunUnder(0.2):
+                await cur.fetch(1, timeout=0.1)
+
+        async with self.con.transaction():
+            cur = await self.con.cursor('select pg_sleep(10)')
+            with self.assertRaises(asyncio.TimeoutError), \
+                    self.assertRunUnder(0.2):
+                await cur.forward(1, timeout=1e-10)
+
+        async with self.con.transaction():
+            cur = await self.con.cursor('select pg_sleep(10)')
+            with self.assertRaises(asyncio.TimeoutError), \
+                    self.assertRunUnder(0.2):
+                await cur.fetchrow(timeout=0.1)
+
+        async with self.con.transaction():
+            cur = await self.con.cursor('select pg_sleep(10)')
+            with self.assertRaises(asyncio.TimeoutError), \
+                    self.assertRunUnder(0.2):
+                await cur.fetchrow(timeout=0.1)
+
+            with self.assertRaises(asyncpg.InFailedSQLTransactionError):
+                await cur.fetch(1)
+
         self.assertEqual(await self.con.fetch('select 1'), [(1,)])
 
 
