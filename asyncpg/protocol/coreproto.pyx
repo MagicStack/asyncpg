@@ -36,6 +36,11 @@ cdef class CoreProtocol:
             state = self.state
 
             try:
+                if mtype == b'S':
+                    # ParameterStatus
+                    self._parse_msg_parameter_status()
+                    continue
+
                 if state == PROTOCOL_AUTH:
                     self._process__auth(mtype)
 
@@ -76,10 +81,6 @@ cdef class CoreProtocol:
                 else:
                     raise RuntimeError(
                         'protocol is in an unknown state {}'.format(state))
-
-                if mtype == b'S':
-                    # ParameterStatus
-                    self._parse_msg_parameter_status()
 
             except Exception as ex:
                 self.result_type = RESULT_FAILED

@@ -206,6 +206,15 @@ class Connection:
         self._aborted = True
         self._protocol.abort()
 
+    async def reset(self):
+        await self.execute('''
+            SET SESSION AUTHORIZATION DEFAULT;
+            RESET ALL;
+            CLOSE ALL;
+            UNLISTEN *;
+            SELECT pg_advisory_unlock_all();
+        ''')
+
     def _get_unique_id(self):
         self._uid += 1
         return 'id{}'.format(self._uid)
@@ -295,7 +304,9 @@ async def connect(dsn=None, *,
 
         if unix:
             # UNIX socket name
-            addr = os.path.join(h, '.s.PGSQL.{}'.format(port))
+            addr = h
+            if '.s.PGSQL.' not in addr:
+                addr = os.path.join(addr, '.s.PGSQL.{}'.format(port))
             conn = loop.create_unix_connection(
                 lambda: protocol.Protocol(addr, connected, opts, loop),
                 addr)

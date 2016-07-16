@@ -78,7 +78,7 @@ class Cluster:
                     process.returncode, stderr))
 
     async def connect(self, loop=None, **kwargs):
-        conn_addr = self._get_connection_addr()
+        conn_addr = self.get_connection_addr()
         return await asyncpg.connect(
             host=conn_addr[0], port=conn_addr[1], loop=loop, **kwargs)
 
@@ -155,7 +155,7 @@ class Cluster:
         else:
             raise ClusterError('cannot destroy {} cluster'.format(status))
 
-    def _get_connection_addr(self):
+    def get_connection_addr(self):
         status = self.get_status()
         if status != 'running':
             raise ClusterError('cluster is not running')
