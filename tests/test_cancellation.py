@@ -90,7 +90,7 @@ class TestCancellation(tb.ConnectedTestCase):
 
     async def test_cancellation_04(self):
         await self.con.fetchval('SELECT pg_sleep(0)')
-        self.con._cancel_current_command()
-        self.assertEqual(
-            await self.con.fetchval('SELECT 42'),
-            42)
+        waiter = asyncio.Future(loop=self.loop)
+        self.con._cancel_current_command(waiter)
+        await waiter
+        self.assertEqual(await self.con.fetchval('SELECT 42'), 42)

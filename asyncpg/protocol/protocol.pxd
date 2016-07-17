@@ -27,6 +27,7 @@ cdef class BaseProtocol(CoreProtocol):
         object loop
         object address
         ConnectionSettings settings
+        object cancel_sent_waiter
         object cancel_waiter
         object waiter
         bint return_extra

@@ -85,6 +85,7 @@ cdef class BaseProtocol(CoreProtocol):
         self.loop = loop
         self.waiter = connected_fut
         self.cancel_waiter = None
+        self.cancel_sent_waiter = None
 
         self.address = addr
         self.settings = ConnectionSettings(
@@ -116,8 +117,11 @@ cdef class BaseProtocol(CoreProtocol):
         return self.settings
 
     async def prepare(self, stmt_name, query, timeout):
-        if self.cancel_waiter:
+        if self.cancel_waiter is not None:
             await self.cancel_waiter
+        if self.cancel_sent_waiter is not None:
+            await self.cancel_sent_waiter
+            self.cancel_sent_waiter = None
 
         self._ensure_clear_state()
 
@@ -135,8 +139,11 @@ cdef class BaseProtocol(CoreProtocol):
                            str portal_name, int limit, return_extra,
                            timeout):
 
-        if self.cancel_waiter:
+        if self.cancel_waiter is not None:
             await self.cancel_waiter
+        if self.cancel_sent_waiter is not None:
+            await self.cancel_sent_waiter
+            self.cancel_sent_waiter = None
 
         self._ensure_clear_state()
 
@@ -156,8 +163,11 @@ cdef class BaseProtocol(CoreProtocol):
     async def bind(self, PreparedStatementState state, args,
                    str portal_name, timeout):
 
-        if self.cancel_waiter:
+        if self.cancel_waiter is not None:
             await self.cancel_waiter
+        if self.cancel_sent_waiter is not None:
+            await self.cancel_sent_waiter
+            self.cancel_sent_waiter = None
 
         self._ensure_clear_state()
 
@@ -175,8 +185,11 @@ cdef class BaseProtocol(CoreProtocol):
                       str portal_name, int limit, return_extra,
                       timeout):
 
-        if self.cancel_waiter:
+        if self.cancel_waiter is not None:
             await self.cancel_waiter
+        if self.cancel_sent_waiter is not None:
+            await self.cancel_sent_waiter
+            self.cancel_sent_waiter = None
 
         self._ensure_clear_state()
 
@@ -192,8 +205,11 @@ cdef class BaseProtocol(CoreProtocol):
         return await self._new_waiter(timeout)
 
     async def query(self, query, timeout):
-        if self.cancel_waiter:
+        if self.cancel_waiter is not None:
             await self.cancel_waiter
+        if self.cancel_sent_waiter is not None:
+            await self.cancel_sent_waiter
+            self.cancel_sent_waiter = None
 
         self._ensure_clear_state()
 
@@ -204,8 +220,11 @@ cdef class BaseProtocol(CoreProtocol):
         return await self._new_waiter(timeout)
 
     async def close_statement(self, PreparedStatementState state, timeout):
-        if self.cancel_waiter:
+        if self.cancel_waiter is not None:
             await self.cancel_waiter
+        if self.cancel_sent_waiter is not None:
+            await self.cancel_sent_waiter
+            self.cancel_sent_waiter = None
 
         self._ensure_clear_state()
 
@@ -226,8 +245,11 @@ cdef class BaseProtocol(CoreProtocol):
         self.transport.abort()
 
     async def close(self):
-        if self.cancel_waiter:
+        if self.cancel_waiter is not None:
             await self.cancel_waiter
+        if self.cancel_sent_waiter is not None:
+            await self.cancel_sent_waiter
+            self.cancel_sent_waiter = None
 
         self._handle_waiter_on_connection_lost(None)
         assert self.waiter is None
@@ -240,22 +262,27 @@ cdef class BaseProtocol(CoreProtocol):
         self.transport.abort()
         return await self.waiter
 
-    def _on_timeout(self, fut):
-        if self.waiter is not fut or fut.done():
-            return
+    def _request_cancel(self):
         self.cancel_waiter = self.create_future()
-        self.connection._cancel_current_command()
+        self.cancel_sent_waiter = self.create_future()
+        self.connection._cancel_current_command(self.cancel_sent_waiter)
+
+    def _on_timeout(self, fut):
+        if self.waiter is not fut or fut.done() or \
+                self.cancel_waiter is not None or \
+                self.timeout_handle is None:
+            return
+        self._request_cancel()
         self.waiter.set_exception(asyncio.TimeoutError())
 
     def _on_waiter_completed(self, fut):
-        if fut is not self.waiter:
+        if fut is not self.waiter or self.cancel_waiter is not None:
             return
         if fut.cancelled():
             if self.timeout_handle:
                 self.timeout_handle.cancel()
                 self.timeout_handle = None
-            self.cancel_waiter = self.create_future()
-            self.connection._cancel_current_command()
+            self._request_cancel()
 
     def _create_future_fallback(self):
         return asyncio.Future(loop=self.loop)

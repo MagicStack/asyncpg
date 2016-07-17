@@ -235,25 +235,35 @@ class Connection:
     def _request_portal_name(self):
         return self._get_unique_id()
 
-    def _cancel_current_command(self):
+    def _cancel_current_command(self, waiter):
         async def cancel():
-            if isinstance(self._addr, str):
-                r, w = await asyncio.open_unix_connection(
-                    self._addr, loop=self._loop)
-            else:
-                r, w = await asyncio.open_connection(
-                    *self._addr, loop=self._loop)
+            try:
+                # Open new connection to the server
+                if isinstance(self._addr, str):
+                    r, w = await asyncio.open_unix_connection(
+                        self._addr, loop=self._loop)
+                else:
+                    r, w = await asyncio.open_connection(
+                        *self._addr, loop=self._loop)
 
-                sock = w.transport.get_extra_info('socket')
-                sock.setsockopt(socket.IPPROTO_TCP,
-                                socket.TCP_NODELAY, 1)
+                    sock = w.transport.get_extra_info('socket')
+                    sock.setsockopt(socket.IPPROTO_TCP,
+                                    socket.TCP_NODELAY, 1)
 
-            # Pack CancelRequest message
-            msg = struct.pack('!llll', 16, 80877102,
-                              self._protocol.backend_pid,
-                              self._protocol.backend_secret)
-            w.write(msg)
-            w.close()
+                # Pack CancelRequest message
+                msg = struct.pack('!llll', 16, 80877102,
+                                  self._protocol.backend_pid,
+                                  self._protocol.backend_secret)
+            except Exception as ex:
+                waiter.set_exception(ex)
+                return
+
+            try:
+                w.write(msg)
+                await r.read()
+            finally:
+                waiter.set_result(None)
+                w.close()
 
         self._loop.create_task(cancel())
 

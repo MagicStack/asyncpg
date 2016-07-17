@@ -59,9 +59,13 @@ class TestTimeout(tb.ConnectedTestCase):
         self.assertEqual(await self.con.fetch('select 1'), [(1,)])
 
     async def test_timeout_05(self):
-        with self.assertRaises(asyncio.TimeoutError):
-            await self.con.prepare('select pg_sleep(10)', timeout=1e-10)
-        self.assertEqual(await self.con.fetch('select 1'), [(1,)])
+        # Stress-test timeouts - try to trigger a race condition
+        # between a cancellation request to Postgres and next
+        # query (SELECT 1)
+        for _ in range(500):
+            with self.assertRaises(asyncio.TimeoutError):
+                await self.con.fetch('SELECT pg_sleep(1)', timeout=1e-10)
+            self.assertEqual(await self.con.fetch('SELECT 1'), [(1,)])
 
     async def test_timeout_06(self):
         async with self.con.transaction():
