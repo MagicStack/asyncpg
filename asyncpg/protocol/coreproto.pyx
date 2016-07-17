@@ -98,8 +98,12 @@ cdef class CoreProtocol:
 
     cdef _process__auth(self, char mtype):
         if mtype == b'R':
-            # AuthenticationOk
+            # Authentication...
             self._parse_msg_authentication()
+            if self.result_type != RESULT_OK:
+                self.con_status = CONNECTION_BAD
+                self._push_result()
+                self.transport.close()
 
         elif mtype == b'K':
             # BackendKeyData
@@ -292,13 +296,15 @@ cdef class CoreProtocol:
         cdef int status
         status = self.buffer.read_int32()
         if status != 0:
-            # 0 == AuthenticationOk
-            raise RuntimeError(
+            self.result_type = RESULT_FAILED
+            self.result = apg_exc.InterfaceError(
                 'unsupported status {} for Authentication (R) '
                 'message'.format(status))
-
+        else:
+            # 0 == AuthenticationOk
+            self.result_type = RESULT_OK
         self.buffer.consume_message()
-        self.result_type = RESULT_OK
+
 
     cdef _parse_msg_ready_for_query(self):
         cdef char status = self.buffer.read_byte()
