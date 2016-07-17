@@ -240,6 +240,9 @@ cdef class BaseProtocol(CoreProtocol):
     def is_closed(self):
         return self.closing
 
+    def is_connected(self):
+        return not self.closing and self.con_status == CONNECTION_OK
+
     def abort(self):
         if self.closing:
             return

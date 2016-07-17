@@ -191,7 +191,7 @@ class Connection:
             oid, typename, schema, 'scalar', codec_name)
 
     def is_closed(self):
-        return self._protocol.is_closed() or self._aborted
+        return not self._protocol.is_connected() or self._aborted
 
     async def close(self):
         if self.is_closed():
