@@ -57,7 +57,7 @@ class TestPool(tb.ClusterTestCase):
 
         con = await pool.acquire(timeout=1)
         with self.assertRaises(asyncio.TimeoutError):
-            await pool.acquire(timeout=1)
+            await pool.acquire(timeout=0.03)
 
         pool.terminate()
         del con
