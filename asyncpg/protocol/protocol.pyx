@@ -241,7 +241,11 @@ cdef class BaseProtocol(CoreProtocol):
         return self.closing
 
     def abort(self):
+        if self.closing:
+            return
+        self.closing = True
         self._handle_waiter_on_connection_lost(None)
+        self._terminate()
         self.transport.abort()
 
     async def close(self):
@@ -257,6 +261,7 @@ cdef class BaseProtocol(CoreProtocol):
         if self.closing:
             return
 
+        self._terminate()
         self.waiter = self.create_future()
         self.closing = True
         self.transport.abort()

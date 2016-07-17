@@ -112,6 +112,7 @@ cdef class CoreProtocol:
     cdef _execute(self, str portal_name, int32_t limit)
     cdef _close(self, str name, bint is_portal)
     cdef _simple_query(self, str query)
+    cdef _terminate(self)
 
     cdef _decode_row(self, const char* buf, int32_t buf_len)
 

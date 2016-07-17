@@ -538,6 +538,13 @@ cdef class CoreProtocol:
         buf.end_message()
         self._write(buf)
 
+    cdef _terminate(self):
+        cdef WriteBuffer buf
+        self._ensure_connected()
+        buf = WriteBuffer.new_message(b'X')
+        buf.end_message()
+        self._write(buf)
+
     cdef _decode_row(self, const char* buf, int32_t buf_len):
         pass
 
