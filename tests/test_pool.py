@@ -61,3 +61,19 @@ class TestPool(tb.ClusterTestCase):
 
         pool.terminate()
         del con
+
+    async def test_pool_04(self):
+        addr = self.cluster.get_connection_addr()
+        pool = await asyncpg.create_pool(host=addr[0], port=addr[1],
+                                         database='postgres',
+                                         loop=self.loop, min_size=1,
+                                         max_size=1)
+
+        con = await pool.acquire(timeout=0.1)
+        con.terminate()
+        await pool.release(con)
+
+        con = await pool.acquire(timeout=0.1)
+        self.assertEqual(await con.fetchval('SELECT 1'), 1)
+
+        await pool.close()

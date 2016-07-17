@@ -120,7 +120,10 @@ class Pool:
 
     async def release(self, connection):
         self._check_init()
-        if connection._protocol.queries_count >= self._max_queries:
+        if connection.is_closed():
+            self._con_count -= 1
+            self._connections.remove(connection)
+        elif connection._protocol.queries_count >= self._max_queries:
             self._con_count -= 1
             self._connections.remove(connection)
             await connection.close()
