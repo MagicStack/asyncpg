@@ -260,7 +260,9 @@ class Connection:
 
             try:
                 w.write(msg)
-                await r.read()
+                await r.read()  # Wait until EOF
+            except Exception as ex:
+                waiter.set_exception(ex)
             finally:
                 waiter.set_result(None)
                 w.close()
