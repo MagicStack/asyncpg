@@ -37,6 +37,15 @@ This enables asyncpg to have easy-to-use support for:
     * straightforward support for custom data types
 
 
+Installation
+------------
+
+asyncpg requires Python 3.5 and is available on PyPI.
+Use pip to install it::
+
+    $ pip install asyncpg
+
+
 Basic Usage
 -----------
 
