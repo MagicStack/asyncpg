@@ -1,0 +1,5 @@
+recursive-include docs *.py *.rst
+recursive-include examples *.py
+recursive-include tests *.py *.pem
+recursive-include asyncpg *.pyx *.pxd *.pxi *.py *.c *.h
+include LICENSE README.rst Makefile performance.png
