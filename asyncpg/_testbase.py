@@ -96,7 +96,7 @@ class TestCase(unittest.TestCase, metaclass=TestCaseMeta):
 _default_cluster = None
 
 
-def _start_cluster():
+def _start_cluster(server_settings={}):
     global _default_cluster
 
     if _default_cluster is None:
@@ -107,7 +107,8 @@ def _start_cluster():
         else:
             _default_cluster = pg_cluster.TempCluster()
             _default_cluster.init()
-            _default_cluster.start(port=12345)
+            _default_cluster.trust_local_connections()
+            _default_cluster.start(port=12345, server_settings=server_settings)
             atexit.register(_shutdown_cluster, _default_cluster)
 
     return _default_cluster
@@ -121,7 +122,9 @@ def _shutdown_cluster(cluster):
 class ClusterTestCase(TestCase):
     def setUp(self):
         super().setUp()
-        self.cluster = _start_cluster()
+        self.cluster = _start_cluster({
+            'log_connections': 'on'
+        })
 
 
 class ConnectedTestCase(ClusterTestCase):

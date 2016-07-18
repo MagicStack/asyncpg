@@ -5,21 +5,124 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-import asyncpg
 import contextlib
+import ipaddress
 import os
 import unittest
 
+import asyncpg
 from asyncpg import _testbase as tb
 from asyncpg.connection import _parse_connect_params
 
 
 class TestConnect(tb.ConnectedTestCase):
-
     async def test_connect_1(self):
         with self.assertRaisesRegex(
                 Exception, 'role "__does_not_exist__" does not exist'):
             await asyncpg.connect(user="__does_not_exist__", loop=self.loop)
+
+
+class TestAuthentication(tb.ConnectedTestCase):
+    def setUp(self):
+        super().setUp()
+
+        methods = [
+            ('trust', None),
+            ('reject', None),
+            ('md5', 'correctpassword'),
+            ('password', 'correctpassword'),
+        ]
+
+        self.cluster.reset_hba()
+
+        create_script = []
+        for method, password in methods:
+            create_script.append(
+                'CREATE ROLE {}_user WITH LOGIN{};'.format(
+                    method,
+                    ' PASSWORD {!r}'.format(password) if password else ''
+                )
+            )
+            self.cluster.add_hba_entry(
+                type='local', address=ipaddress.ip_network('127.0.0.0/24'),
+                database='postgres', user='{}_user'.format(method),
+                auth_method=method)
+
+            self.cluster.add_hba_entry(
+                type='host', address=ipaddress.ip_network('127.0.0.0/24'),
+                database='postgres', user='{}_user'.format(method),
+                auth_method=method)
+
+        # Put hba changes into effect
+        self.cluster.reload()
+
+        create_script = '\n'.join(create_script)
+        self.loop.run_until_complete(self.con.execute(create_script))
+
+    def tearDown(self):
+        # Reset cluster's pg_hba.conf since we've meddled with it
+        self.cluster.trust_local_connections()
+
+        methods = [
+            'trust',
+            'reject',
+            'md5',
+            'password',
+        ]
+
+        drop_script = []
+        for method in methods:
+            drop_script.append('DROP ROLE {}_user;'.format(method))
+
+        drop_script = '\n'.join(drop_script)
+        self.loop.run_until_complete(self.con.execute(drop_script))
+
+        super().tearDown()
+
+    async def test_auth_bad_user(self):
+        with self.assertRaises(
+                asyncpg.InvalidAuthorizationSpecificationError):
+            await self.cluster.connect(user='__nonexistent__',
+                                       database='postgres',
+                                       loop=self.loop)
+
+    async def test_auth_trust(self):
+        await self.cluster.connect(
+            user='trust_user', database='postgres', loop=self.loop)
+
+    async def test_auth_reject(self):
+        with self.assertRaisesRegex(
+                asyncpg.InvalidAuthorizationSpecificationError,
+                'pg_hba.conf rejects connection'):
+            await self.cluster.connect(
+                user='reject_user', database='postgres', loop=self.loop)
+
+    async def test_auth_password_cleartext(self):
+        await self.cluster.connect(
+            user='password_user', database='postgres',
+            password='correctpassword', loop=self.loop)
+
+        with self.assertRaisesRegex(
+                asyncpg.InvalidPasswordError,
+                'password authentication failed for user "password_user"'):
+            await self.cluster.connect(
+                user='password_user', database='postgres',
+                password='wrongpassword', loop=self.loop)
+
+    async def test_auth_password_md5(self):
+        await self.cluster.connect(
+            user='md5_user', database='postgres', password='correctpassword',
+            loop=self.loop)
+
+        with self.assertRaisesRegex(
+                asyncpg.InvalidPasswordError,
+                'password authentication failed for user "md5_user"'):
+            await self.cluster.connect(
+                user='md5_user', database='postgres', password='wrongpassword',
+                loop=self.loop)
+
+    async def test_auth_unsupported(self):
+        pass
 
 
 class TestConnectParams(unittest.TestCase):

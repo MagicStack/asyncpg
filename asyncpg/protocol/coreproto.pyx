@@ -5,10 +5,16 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+from hashlib import md5 as hashlib_md5  # for MD5 authentication
+
+
 cdef class CoreProtocol:
 
     def __init__(self, con_args):
         self.buffer = ReadBuffer()
+        self.user = con_args.get('user')
+        self.password = con_args.pop('password', None)
+        self.auth_msg = None
         self.con_args = con_args
         self.transport = None
         self.con_status = CONNECTION_BAD
@@ -105,6 +111,11 @@ cdef class CoreProtocol:
                 self.con_status = CONNECTION_BAD
                 self._push_result()
                 self.transport.close()
+
+            elif self.auth_msg is not None:
+                # Server wants us to send auth data, so do that.
+                self._write(self.auth_msg)
+                self.auth_msg = None
 
         elif mtype == b'K':
             # BackendKeyData
@@ -294,18 +305,69 @@ cdef class CoreProtocol:
         self._set_server_parameter(name, val)
 
     cdef _parse_msg_authentication(self):
-        cdef int status
+        cdef:
+            int32_t status
+            bytes md5_salt
+
         status = self.buffer.read_int32()
-        if status != 0:
+
+        if status == AUTH_SUCCESSFUL:
+            # AuthenticationOk
+            self.result_type = RESULT_OK
+
+        elif status == AUTH_REQUIRED_PASSWORD:
+            # AuthenticationCleartextPassword
+            self.result_type = RESULT_OK
+            self.auth_msg = self._auth_password_message_cleartext()
+
+        elif status == AUTH_REQUIRED_PASSWORDMD5:
+            # AuthenticationMD5Password
+            # Note: MD5 salt is passed as a four-byte sequence
+            md5_salt = cpython.PyBytes_FromStringAndSize(
+                self.buffer.read_bytes(4), 4)
+            self.auth_msg = self._auth_password_message_md5(md5_salt)
+
+        elif status in (AUTH_REQUIRED_KERBEROS, AUTH_REQUIRED_SCMCRED,
+                        AUTH_REQUIRED_GSS, AUTH_REQUIRED_GSS_CONTINUE,
+                        AUTH_REQUIRED_SSPI):
             self.result_type = RESULT_FAILED
             self.result = apg_exc.InterfaceError(
-                'unsupported status {} for Authentication (R) '
-                'message'.format(status))
+                'unsupported authentication method requested by the '
+                'server: {!r}'.format(AUTH_METHOD_NAME[status]))
+
         else:
-            # 0 == AuthenticationOk
-            self.result_type = RESULT_OK
+            self.result_type = RESULT_FAILED
+            self.result = apg_exc.InterfaceError(
+                'unsupported authentication method requested by the '
+                'server: {}'.format(status))
+
         self.buffer.consume_message()
 
+    cdef _auth_password_message_cleartext(self):
+        cdef:
+            WriteBuffer msg
+
+        msg = WriteBuffer.new_message(b'p')
+        msg.write_bytestring(self.password.encode('ascii'))
+        msg.end_message()
+
+        return msg
+
+    cdef _auth_password_message_md5(self, bytes salt):
+        cdef:
+            WriteBuffer msg
+
+        msg = WriteBuffer.new_message(b'p')
+
+        # 'md5' + md5(md5(password + username) + salt))
+        userpass = ((self.password or '') + (self.user or '')).encode('ascii')
+        hash = hashlib_md5(hashlib_md5(userpass).hexdigest().\
+                encode('ascii') + salt).hexdigest().encode('ascii')
+
+        msg.write_bytestring(b'md5' + hash)
+        msg.end_message()
+
+        return msg
 
     cdef _parse_msg_ready_for_query(self):
         cdef char status = self.buffer.read_byte()

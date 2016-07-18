@@ -27,6 +27,26 @@ cdef enum ProtocolState:
     PROTOCOL_BIND = 16
 
 
+cdef enum AuthenticationMessage:
+    AUTH_SUCCESSFUL = 0
+    AUTH_REQUIRED_KERBEROS = 2
+    AUTH_REQUIRED_PASSWORD = 3
+    AUTH_REQUIRED_PASSWORDMD5 = 5
+    AUTH_REQUIRED_SCMCRED = 6
+    AUTH_REQUIRED_GSS = 7
+    AUTH_REQUIRED_GSS_CONTINUE = 8
+    AUTH_REQUIRED_SSPI = 9
+
+
+AUTH_METHOD_NAME = {
+    AUTH_REQUIRED_KERBEROS: 'kerberosv5',
+    AUTH_REQUIRED_PASSWORD: 'password',
+    AUTH_REQUIRED_PASSWORDMD5: 'md5',
+    AUTH_REQUIRED_GSS: 'gss',
+    AUTH_REQUIRED_SSPI: 'sspi',
+}
+
+
 cdef enum ResultType:
     RESULT_OK = 1
     RESULT_FAILED = 2
@@ -86,6 +106,9 @@ cdef class CoreProtocol:
     cdef _parse_data_msgs(self)
     cdef _parse_msg_error_response(self, is_error)
     cdef _parse_msg_command_complete(self)
+
+    cdef _auth_password_message_cleartext(self)
+    cdef _auth_password_message_md5(self, bytes salt)
 
     cdef _write(self, buf)
     cdef inline _write_sync_message(self)

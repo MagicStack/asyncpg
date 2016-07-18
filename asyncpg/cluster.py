@@ -131,6 +131,23 @@ class Cluster:
 
         self._test_connection(timeout=wait)
 
+    def reload(self):
+        """Reload server configuration."""
+        status = self.get_status()
+        if status != 'running':
+            raise ClusterError('cannot reload: cluster is not running')
+
+        process = subprocess.run(
+            [self._pg_ctl, 'reload', '-D', self._data_dir],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        stderr = process.stderr
+
+        if process.returncode != 0:
+            raise ClusterError(
+                'pg_ctl stop exited with status {:d}: {}'.format(
+                    process.returncode, stderr.decode()))
+
     def stop(self, wait=60):
         process = subprocess.run(
             [self._pg_ctl, 'stop', '-D', self._data_dir, '-t', str(wait),
@@ -164,6 +181,68 @@ class Cluster:
             self._connection_addr = self._connection_addr_from_pidfile()
 
         return self._connection_addr['host'], self._connection_addr['port']
+
+    def reset_hba(self):
+        """Remove all records from pg_hba.conf."""
+        status = self.get_status()
+        if status == 'not-initialized':
+            raise ClusterError(
+                'cannot modify HBA records: cluster is not initialized')
+
+        pg_hba = os.path.join(self._data_dir, 'pg_hba.conf')
+
+        try:
+            with open(pg_hba, 'w'):
+                pass
+        except IOError as e:
+            raise ClusterError(
+                'cannot modify HBA records: {}'.format(e)) from e
+
+    def add_hba_entry(self, *, type='host', database, user, address=None,
+                      auth_method, auth_options=None):
+        """Add a record to pg_hba.conf."""
+        status = self.get_status()
+        if status == 'not-initialized':
+            raise ClusterError(
+                'cannot modify HBA records: cluster is not initialized')
+
+        if type not in {'local', 'host', 'hostssl', 'hostnossl'}:
+            raise ValueError('invalid HBA record type: {!r}'.format(type))
+
+        pg_hba = os.path.join(self._data_dir, 'pg_hba.conf')
+
+        record = '{} {} {}'.format(type, database, user)
+
+        if type != 'local':
+            if address is None:
+                raise ValueError(
+                    '{!r} entry requires a valid address'.format(type))
+            else:
+                record += ' {}'.format(address)
+
+        record += ' {}'.format(auth_method)
+
+        if auth_options is not None:
+            record += ' ' + ' '.join(
+                '{}={}'.format(k, v) for k, v in auth_options)
+
+        try:
+            with open(pg_hba, 'a') as f:
+                print(record, file=f)
+        except IOError as e:
+            raise ClusterError(
+                'cannot modify HBA records: {}'.format(e)) from e
+
+    def trust_local_connections(self):
+        self.reset_hba()
+        self.add_hba_entry(type='local', database='all',
+                           user='all', auth_method='trust')
+        self.add_hba_entry(type='host', address='127.0.0.1/32',
+                           database='all', user='all',
+                           auth_method='trust')
+        status = self.get_status()
+        if status == 'running':
+            self.reload()
 
     def _init_env(self):
         self._pg_config = self._find_pg_config(self._pg_config_path)

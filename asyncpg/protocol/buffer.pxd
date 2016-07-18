@@ -100,6 +100,7 @@ cdef class ReadBuffer:
     cdef inline read_byte(self)
     cdef inline char* _try_read_bytes(self, int nbytes)
     cdef inline read(self, int nbytes)
+    cdef inline read_bytes(self, ssize_t n)
     cdef inline read_int32(self)
     cdef inline read_int16(self)
     cdef inline read_cstr(self)
