@@ -1,6 +1,55 @@
-Development
+asyncpg -- A fast PostgreSQL Database Client Library for Python/asyncio
+=======================================================================
+
+**asyncpg** is a database interface library designed specifically for
+PostgreSQL and Python/asyncio.  asyncpg is an efficient, clean implementation
+of PostgreSQL server binary protocol for use with Python's ``asyncio``
+framework.
+
+
+Performance
 -----------
 
-1. Activate a Python 3.5 venv with the latest Cython installed;
+In our testing asyncpg is, on average, **2x** faster than psycopg2
+(and its asyncio variant -- aiopg).
 
-2. run ``$ make`` to build asyncpg.
+
+Features
+--------
+
+asyncpg implements PostgreSQL server protocol natively and exposes its
+features directly, as opposed to hiding them behind a generic facade
+like DB-API.
+
+This enables asyncpg to have easy-to-use support for:
+
+    * **prepared statements**
+    * **scrollable cursors**
+    * **partial iteration** on query results
+    * automatic encoding and decoding of composite types, arrays,
+      and any combination of those
+    * straightforward support for custom data types
+
+
+Basic Usage
+-----------
+
+.. code-block:: python
+
+    import asyncio
+    import asyncpg
+
+    async def run():
+        conn = await asyncpg.connect(user='user', password='password',
+                                     database='database', host='127.0.0.1')
+        values = await conn.fetch('''SELECT * FROM mytable''')
+        await conn.close()
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(run())
+
+
+License
+-------
+
+asyncpg is developed and distributed under the Apache 2.0 license.
