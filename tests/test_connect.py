@@ -87,8 +87,9 @@ class TestAuthentication(tb.ConnectedTestCase):
                                        loop=self.loop)
 
     async def test_auth_trust(self):
-        await self.cluster.connect(
+        conn = await self.cluster.connect(
             user='trust_user', database='postgres', loop=self.loop)
+        await conn.close()
 
     async def test_auth_reject(self):
         with self.assertRaisesRegex(
@@ -98,9 +99,10 @@ class TestAuthentication(tb.ConnectedTestCase):
                 user='reject_user', database='postgres', loop=self.loop)
 
     async def test_auth_password_cleartext(self):
-        await self.cluster.connect(
+        conn = await self.cluster.connect(
             user='password_user', database='postgres',
             password='correctpassword', loop=self.loop)
+        await conn.close()
 
         with self.assertRaisesRegex(
                 asyncpg.InvalidPasswordError,
@@ -110,9 +112,10 @@ class TestAuthentication(tb.ConnectedTestCase):
                 password='wrongpassword', loop=self.loop)
 
     async def test_auth_password_md5(self):
-        await self.cluster.connect(
+        conn = await self.cluster.connect(
             user='md5_user', database='postgres', password='correctpassword',
             loop=self.loop)
+        await conn.close()
 
         with self.assertRaisesRegex(
                 asyncpg.InvalidPasswordError,
