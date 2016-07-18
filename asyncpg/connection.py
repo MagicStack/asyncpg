@@ -104,16 +104,40 @@ class Connection:
         return cursor.CursorFactory(self, query, None, args, prefetch, timeout)
 
     async def prepare(self, query, *, timeout=None):
+        """Create a *prepared statement* for the specified query.
+
+        :param str query: Text of the query to create a prepared statement for.
+        :param int timeout: Optional timeout value in seconds.
+
+        :return: A :class:`PreparedStatement` instance.
+        """
         stmt = await self._get_statement(query, timeout)
         return prepared_stmt.PreparedStatement(self, query, stmt)
 
     async def fetch(self, query, *args, timeout=None):
+        """Run a query and return the results as a list of :class:`Record`.
+
+        :param str query: Query text
+        :param args: Query arguments
+        :param int timeout: Optional timeout value in seconds.
+
+        :return: A list of :class:`Record` instances.
+        """
         stmt = await self._get_statement(query, timeout)
         protocol = self._protocol
         data = await protocol.bind_execute(stmt, args, '', 0, False, timeout)
         return data
 
     async def fetchval(self, query, *args, column=0, timeout=None):
+        """Run a query and return the value of the specified column of the first row.
+
+        :param str query: Query text
+        :param args: Query arguments
+        :param int timeout: Optional column index (defaults to 0).
+        :param int timeout: Optional timeout value in seconds.
+
+        :return: The value of the specified column of the first record.
+        """
         stmt = await self._get_statement(query, timeout)
         protocol = self._protocol
         data = await protocol.bind_execute(stmt, args, '', 1, False, timeout)
@@ -122,6 +146,14 @@ class Connection:
         return data[0][column]
 
     async def fetchrow(self, query, *args, timeout=None):
+        """Run a query and return the first row.
+
+        :param str query: Query text
+        :param args: Query arguments
+        :param int timeout: Optional timeout value in seconds.
+
+        :return: The first row as a :class:`Record` instance.
+        """
         stmt = await self._get_statement(query, timeout)
         protocol = self._protocol
         data = await protocol.bind_execute(stmt, args, '', 1, False, timeout)
@@ -191,9 +223,15 @@ class Connection:
             oid, typename, schema, 'scalar', codec_name)
 
     def is_closed(self):
+        """Return ``True`` if the connection is closed, ``False`` otherwise.
+
+        :return bool: ``True`` if the connection is closed, ``False``
+                      otherwise.
+        """
         return not self._protocol.is_connected() or self._aborted
 
     async def close(self):
+        """Close the connection gracefully."""
         if self.is_closed():
             return
         self._close_stmts()
@@ -202,6 +240,7 @@ class Connection:
         await protocol.close()
 
     def terminate(self):
+        """Terminate the connection without waiting for pending data."""
         self._close_stmts()
         self._aborted = True
         self._protocol.abort()

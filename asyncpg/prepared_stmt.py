@@ -23,9 +23,11 @@ class PreparedStatement:
         self._last_status = None
 
     def get_query(self):
+        """Return the text of the query for this prepared statement."""
         return self._query
 
     def get_statusmsg(self):
+        """Return the status of the executed command."""
         if self._last_status is None:
             return self._last_status
         return self._last_status.decode()
@@ -76,6 +78,14 @@ class PreparedStatement:
         return json.loads(data)
 
     async def fetch(self, *args, timeout=None):
+        """Execute the statement and return the results as a list of :class:`Record`.
+
+        :param str query: Query text
+        :param args: Query arguments
+        :param int timeout: Optional timeout value in seconds.
+
+        :return: A list of :class:`Record` instances.
+        """
         self.__check_open()
         protocol = self._connection._protocol
         data, status, _ = await protocol.bind_execute(
@@ -84,6 +94,15 @@ class PreparedStatement:
         return data
 
     async def fetchval(self, *args, column=0, timeout=None):
+        r"""Execute the statement and return the value of the specified \
+        column of the first row.
+
+        :param args: Query arguments
+        :param int timeout: Optional column index (defaults to 0).
+        :param int timeout: Optional timeout value in seconds.
+
+        :return: The value of the specified column of the first record.
+        """
         self.__check_open()
         protocol = self._connection._protocol
         data, status, _ = await protocol.bind_execute(
@@ -94,6 +113,14 @@ class PreparedStatement:
         return data[0][column]
 
     async def fetchrow(self, *args, timeout=None):
+        """Execute the statement and return the first row.
+
+        :param str query: Query text
+        :param args: Query arguments
+        :param int timeout: Optional timeout value in seconds.
+
+        :return: The first row as a :class:`Record` instance.
+        """
         self.__check_open()
         protocol = self._connection._protocol
         data, status, _ = await protocol.bind_execute(
