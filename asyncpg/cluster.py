@@ -6,10 +6,13 @@
 
 
 import asyncio
+import errno
 import os
 import os.path
+import random
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -35,6 +38,31 @@ if sys.platform == 'linux':
 else:
     def ensure_dead_with_parent():
         pass
+
+
+def find_available_port(port_range=(49152, 65535), max_tries=1000):
+    low, high = port_range
+
+    port = low
+    try_no = 0
+
+    while try_no < max_tries:
+        try_no += 1
+        port = random.randint(low, high)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.bind(('127.0.0.1', port))
+        except socket.error as e:
+            if e.errno == errno.EADDRINUSE:
+                continue
+        finally:
+            sock.close()
+
+        break
+    else:
+        port = None
+
+    return port
 
 
 class Cluster:
@@ -116,7 +144,12 @@ class Cluster:
                 'cluster in {!r} has not been initialized'.format(
                     self._data_dir))
 
+        port = opts.pop('port', None)
+        if port == 'dynamic':
+            port = find_available_port()
+
         extra_args = ['--{}={}'.format(k, v) for k, v in opts.items()]
+        extra_args.append('--port={}'.format(port))
 
         for k, v in server_settings.items():
             extra_args.extend(['-c', '{}={}'.format(k, v)])

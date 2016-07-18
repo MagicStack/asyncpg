@@ -108,7 +108,8 @@ def _start_cluster(server_settings={}):
             _default_cluster = pg_cluster.TempCluster()
             _default_cluster.init()
             _default_cluster.trust_local_connections()
-            _default_cluster.start(port=12345, server_settings=server_settings)
+            _default_cluster.start(port='dynamic',
+                                   server_settings=server_settings)
             atexit.register(_shutdown_cluster, _default_cluster)
 
     return _default_cluster
