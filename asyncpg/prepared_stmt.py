@@ -12,6 +12,7 @@ from . import exceptions
 
 
 class PreparedStatement:
+    """A representation of a prepared statement."""
 
     __slots__ = ('_connection', '_state', '_query', '_last_status')
 
@@ -22,11 +23,11 @@ class PreparedStatement:
         state.attach()
         self._last_status = None
 
-    def get_query(self):
+    def get_query(self) -> str:
         """Return the text of the query for this prepared statement."""
         return self._query
 
-    def get_statusmsg(self):
+    def get_statusmsg(self) -> str:
         """Return the status of the executed command."""
         if self._last_status is None:
             return self._last_status
@@ -40,13 +41,33 @@ class PreparedStatement:
         self.__check_open()
         return self._state._get_attributes()
 
-    def cursor(self, *args, prefetch=None, timeout=None):
+    def cursor(self, *args, prefetch=50,
+               timeout=None) -> cursor.CursorInterface:
+        """Return a *cursor interface* for the prepared statement.
+
+        :param args: Query arguments.
+        :param int prefetch: The number of rows the *cursor iterator*
+                             will prefetch (defaults to ``50``.)
+        :param float timeout: Optional timeout in seconds.
+
+        :return: A :class:`~cursor.CursorInterface` object.
+        """
         self.__check_open()
         return cursor.CursorInterface(self._connection, self._query,
                                       self._state, args, prefetch,
                                       timeout)
 
     async def explain(self, *args, analyze=False):
+        """Return the execution plan of the statement.
+
+        :param args: Query arguments.
+        :param analyze: If ``True``, the statement will be executed and
+                        the run time statitics added to the return value.
+
+        :return: An object representing the execution plan.  This value
+                 is actually a deserialized JSON output of the SQL
+                 ``EXPLAIN`` command.
+        """
         query = 'EXPLAIN (FORMAT JSON, VERBOSE'
         if analyze:
             query += ', ANALYZE) '
@@ -78,7 +99,8 @@ class PreparedStatement:
         return json.loads(data)
 
     async def fetch(self, *args, timeout=None):
-        """Execute the statement and return the results as a list of :class:`Record`.
+        r"""Execute the statement and return the results as a list \
+            of :class:`Record` objects.
 
         :param str query: Query text
         :param args: Query arguments
@@ -94,12 +116,15 @@ class PreparedStatement:
         return data
 
     async def fetchval(self, *args, column=0, timeout=None):
-        r"""Execute the statement and return the value of the specified \
-        column of the first row.
+        """Execute the statement and return a value in the first row.
 
-        :param args: Query arguments
-        :param int timeout: Optional column index (defaults to 0).
+        :param args: Query arguments.
+        :param int column: Numeric index within the record of the value to
+                           return (defaults to 0).
         :param int timeout: Optional timeout value in seconds.
+                            If not specified, defaults to the value of
+                            ``command_timeout`` argument to the ``Connection``
+                            instance constructor.
 
         :return: The value of the specified column of the first record.
         """

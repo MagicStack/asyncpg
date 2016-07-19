@@ -18,9 +18,12 @@ with open(os.path.abspath('../setup.py'), 'rt') as f:
 
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.doctest',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.githubpages',
     'sphinxcontrib.asyncio',
-    'alabaster',
 ]
+
 templates_path = ['_templates']
 source_suffix = '.rst'
 master_doc = 'index'
@@ -32,16 +35,16 @@ language = None
 exclude_patterns = ['_build']
 pygments_style = 'sphinx'
 todo_include_todos = False
-
+suppress_warnings = ['image.nonlocal_uri']
 
 # -- Options for HTML output ----------------------------------------------
 
-html_theme = 'alabaster'
-html_theme_options = {
-    'description': 'asyncpg is a fast PostgreSQL client library for the '
-                   'Python asyncio framework',
-    'show_powered_by': False,
-}
+html_theme = 'sphinx_rtd_theme'
+# html_theme_options = {
+#     'description': 'asyncpg is a fast PostgreSQL client library for the '
+#                    'Python asyncio framework',
+#     'show_powered_by': False,
+# }
 html_theme_path = [alabaster.get_path()]
 html_title = 'asyncpg Documentation'
 html_short_title = 'asyncpg'

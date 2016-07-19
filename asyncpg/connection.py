@@ -21,6 +21,10 @@ from . import transaction
 
 
 class Connection:
+    """A representation of a database session.
+
+    Connections are created by calling :func:`~asyncpg.connect`.
+    """
 
     __slots__ = ('_protocol', '_transport', '_loop', '_types_stmt',
                  '_type_by_name_stmt', '_top_xact', '_uid', '_aborted',
@@ -52,7 +56,23 @@ class Connection:
 
     def transaction(self, *, isolation='read_committed', readonly=False,
                     deferrable=False):
+        """Create a :class:`~transaction.Transaction` object.
 
+        Refer to `PostgreSQL documentation`_ on the meaning of transaction
+        parameters.
+
+        :param isolation: Transaction isolation mode, can be one of:
+                          `'serializable'`, `'repeatable_read'`,
+                          `'read_committed'`.
+
+        :param readonly: Specifies whether or not this transaction is
+                         read-only.
+
+        :param deferrable: Specifies whether or not this transaction is
+                           deferrable.
+
+        .. _`PostgreSQL documentation`: https://www.postgresql.org/docs/current/static/sql-set-transaction.html
+        """
         return transaction.Transaction(self, isolation, readonly, deferrable)
 
     async def execute(self, script: str, *, timeout: float=None) -> str:
@@ -110,19 +130,19 @@ class Connection:
         :param str query: Text of the query to create a prepared statement for.
         :param int timeout: Optional timeout value in seconds.
 
-        :return: A :class:`PreparedStatement` instance.
+        :return: A :class:`~prepared_stmt.PreparedStatement` instance.
         """
         stmt = await self._get_statement(query, timeout)
         return prepared_stmt.PreparedStatement(self, query, stmt)
 
-    async def fetch(self, query, *args, timeout=None):
+    async def fetch(self, query, *args, timeout=None) -> list:
         """Run a query and return the results as a list of :class:`Record`.
 
-        :param str query: Query text
-        :param args: Query arguments
+        :param str query: Query text.
+        :param args: Query arguments.
         :param int timeout: Optional timeout value in seconds.
 
-        :return: A list of :class:`Record` instances.
+        :return list: A list of :class:`Record` instances.
         """
         stmt = await self._get_statement(query, timeout)
         protocol = self._protocol
@@ -130,12 +150,16 @@ class Connection:
         return data
 
     async def fetchval(self, query, *args, column=0, timeout=None):
-        """Run a query and return the value of the specified column of the first row.
+        """Run a query and return a value in the first row.
 
-        :param str query: Query text
-        :param args: Query arguments
-        :param int timeout: Optional column index (defaults to 0).
+        :param str query: Query text.
+        :param args: Query arguments.
+        :param int column: Numeric index within the record of the value to
+                           return (defaults to 0).
         :param int timeout: Optional timeout value in seconds.
+                            If not specified, defaults to the value of
+                            ``command_timeout`` argument to the ``Connection``
+                            instance constructor.
 
         :return: The value of the specified column of the first record.
         """

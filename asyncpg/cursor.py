@@ -12,6 +12,11 @@ from . import exceptions
 
 
 class CursorInterface:
+    """A cursor interface for the results of a query.
+
+    A cursor interface can be used to initiate efficient traversal of the
+    results of a large query.
+    """
 
     __slots__ = ('_state', '_connection', '_args', '_prefetch',
                  '_query', '_timeout')
@@ -181,6 +186,7 @@ class CursorIterator(BaseCursor):
 
 
 class Cursor(BaseCursor):
+    """An open *portal* into the results of a query."""
 
     __slots__ = ()
 
@@ -194,6 +200,12 @@ class Cursor(BaseCursor):
         return self
 
     async def fetch(self, n, *, timeout=None):
+        r"""Return the next *n* rows as a list of :class:`Record` objects.
+
+        :param float timeout: Optional timeout value in seconds.
+
+        :return: A list of :class:`Record` instances.
+        """
         self._check_ready()
         if n <= 0:
             raise exceptions.InterfaceError('n must be greater than zero')
@@ -205,6 +217,12 @@ class Cursor(BaseCursor):
         return recs
 
     async def fetchrow(self, *, timeout=None):
+        r"""Return the next row.
+
+        :param float timeout: Optional timeout value in seconds.
+
+        :return: A :class:`Record` instance.
+        """
         self._check_ready()
         if self._exhausted:
             return None
@@ -214,7 +232,13 @@ class Cursor(BaseCursor):
             return None
         return recs[0]
 
-    async def forward(self, n, *, timeout=None):
+    async def forward(self, n, *, timeout=None) -> int:
+        r"""Skip over the next *n* rows.
+
+        :param float timeout: Optional timeout value in seconds.
+
+        :return: A number of rows actually skipped over (<= *n*).
+        """
         self._check_ready()
         if n <= 0:
             raise exceptions.InterfaceError('n must be greater than zero')

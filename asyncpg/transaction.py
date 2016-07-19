@@ -22,6 +22,11 @@ ISOLATION_LEVELS = {'read_committed', 'serializable', 'repeatable_read'}
 
 
 class Transaction:
+    """Represents a transaction or savepoint block.
+
+    Transactions are created by calling
+    :meth:`Connection.transaction`.
+    """
 
     __slots__ = ('_connection', '_isolation', '_readonly', '_deferrable',
                  '_state', '_nested', '_id', '_managed')
@@ -69,6 +74,7 @@ class Transaction:
             self._managed = False
 
     async def start(self):
+        """Enter the transaction or savepoint block."""
         self.__check_state_base('start')
         if self._state is TransactionState.STARTED:
             raise apg_errors.InterfaceError(
@@ -173,12 +179,14 @@ class Transaction:
             self._state = TransactionState.ROLLEDBACK
 
     async def commit(self):
+        """Exit the transaction or savepoint block and commit changes."""
         if self._managed:
             raise apg_errors.InterfaceError(
                 'cannot manually commit from within an `async with` block')
         await self.__commit()
 
     async def rollback(self):
+        """Exit the transaction or savepoint block and rollback changes."""
         if self._managed:
             raise apg_errors.InterfaceError(
                 'cannot manually rollback from within an `async with` block')
