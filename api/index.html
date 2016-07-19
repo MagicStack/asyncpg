@@ -1,0 +1,390 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>API Reference &mdash; asyncpg Documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.5.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="asyncpg Documentation" href="../index.html" />
+    <link rel="prev" title="asyncpg" href="../index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-asyncpg">
+<span id="api-reference"></span><span id="asyncpg-api-reference"></span><h1>API Reference<a class="headerlink" href="#module-asyncpg" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="connection">
+<span id="asyncpg-api-connection"></span><h2>Connection<a class="headerlink" href="#connection" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="asyncpg.connect">
+<em class="property">coroutine </em><code class="descclassname">asyncpg.</code><code class="descname">connect</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>host=None</em>, <em>port=None</em>, <em>user=None</em>, <em>password=None</em>, <em>database=None</em>, <em>loop=None</em>, <em>timeout=60</em>, <em>statement_cache_size=100</em>, <em>command_timeout=None</em>, <em>**opts</em><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.connect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Establish a connection to a <span class="xref std std-term">PostgreSQL</span> server and return a new
+<code class="xref py py-class docutils literal"><span class="pre">Connection</span></code> object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>dsn</strong> &#8211; Connection arguments specified using as a single string in the
+following format:
+<code class="docutils literal"><span class="pre">postgres://user:pass&#64;host:port/database?option=value</span></code></li>
+<li><strong>host</strong> &#8211; database host address or a path to the directory containing
+database server UNIX socket (defaults to the default UNIX
+socket, or the value of the <code class="docutils literal"><span class="pre">PGHOST</span></code> environment variable,
+if set).</li>
+<li><strong>port</strong> &#8211; connection port number (defaults to 5432, or the value of
+the <code class="docutils literal"><span class="pre">PGPORT</span></code> environment variable, if set)</li>
+<li><strong>user</strong> &#8211; the name of the database role used for authentication
+(defaults to the name of the effective user of the process
+making the connection, or the value of <code class="docutils literal"><span class="pre">PGUSER</span></code> environment
+variable, if set)</li>
+<li><strong>password</strong> &#8211; password used for authentication</li>
+<li><strong>loop</strong> &#8211; An asyncio event loop instance.  If <code class="docutils literal"><span class="pre">None</span></code>, the default
+event loop will be used.</li>
+<li><strong>timeout</strong> (<em>float</em>) &#8211; connection timeout (in seconds, defaults to 60
+seconds).</li>
+<li><strong>statement_timeout</strong> (<em>float</em>) &#8211; the default timeout for operations on
+this connection (the default is no timeout).</li>
+<li><strong>statement_cache_size</strong> (<em>int</em>) &#8211; the size of prepared statement LRU cache
+(defaults to 100).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><code class="xref py py-class docutils literal"><span class="pre">Connection</span></code> instance.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="asyncpg.connection.Connection">
+<em class="property">class </em><code class="descclassname">asyncpg.connection.</code><code class="descname">Connection</code><span class="sig-paren">(</span><em>protocol</em>, <em>transport</em>, <em>loop</em>, <em>addr</em>, <em>opts</em>, <em>*</em>, <em>statement_cache_size</em>, <em>command_timeout</em><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.connection.Connection" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="asyncpg.connection.Connection.close">
+<em class="property">coroutine </em><code class="descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.connection.Connection.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close the connection gracefully.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.execute">
+<em class="property">coroutine </em><code class="descname">execute</code><span class="sig-paren">(</span><em>script: str</em>, <em>*</em>, <em>timeout: float = None</em><span class="sig-paren">)</span> &rarr; str<a class="headerlink" href="#asyncpg.connection.Connection.execute" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute an SQL command (or commands).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return str:</th><td class="field-body">Status of the last SQL command.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.fetch">
+<em class="property">coroutine </em><code class="descname">fetch</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.connection.Connection.fetch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a query and return the results as a list of <code class="xref py py-class docutils literal"><span class="pre">Record</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>query</strong> (<em>str</em>) &#8211; Query text</li>
+<li><strong>args</strong> &#8211; Query arguments</li>
+<li><strong>timeout</strong> (<em>int</em>) &#8211; Optional timeout value in seconds.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A list of <code class="xref py py-class docutils literal"><span class="pre">Record</span></code> instances.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.fetchrow">
+<em class="property">coroutine </em><code class="descname">fetchrow</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.connection.Connection.fetchrow" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a query and return the first row.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>query</strong> (<em>str</em>) &#8211; Query text</li>
+<li><strong>args</strong> &#8211; Query arguments</li>
+<li><strong>timeout</strong> (<em>int</em>) &#8211; Optional timeout value in seconds.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The first row as a <code class="xref py py-class docutils literal"><span class="pre">Record</span></code> instance.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.fetchval">
+<em class="property">coroutine </em><code class="descname">fetchval</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>*</em>, <em>column=0</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.connection.Connection.fetchval" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a query and return the value of the specified column of the first row.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>query</strong> (<em>str</em>) &#8211; Query text</li>
+<li><strong>args</strong> &#8211; Query arguments</li>
+<li><strong>timeout</strong> (<em>int</em>) &#8211; Optional column index (defaults to 0).</li>
+<li><strong>timeout</strong> &#8211; Optional timeout value in seconds.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The value of the specified column of the first record.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.is_closed">
+<code class="descname">is_closed</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.connection.Connection.is_closed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return <code class="docutils literal"><span class="pre">True</span></code> if the connection is closed, <code class="docutils literal"><span class="pre">False</span></code> otherwise.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return bool:</th><td class="field-body"><code class="docutils literal"><span class="pre">True</span></code> if the connection is closed, <code class="docutils literal"><span class="pre">False</span></code>
+otherwise.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.prepare">
+<em class="property">coroutine </em><code class="descname">prepare</code><span class="sig-paren">(</span><em>query</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.connection.Connection.prepare" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a <em>prepared statement</em> for the specified query.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>query</strong> (<em>str</em>) &#8211; Text of the query to create a prepared statement for.</li>
+<li><strong>timeout</strong> (<em>int</em>) &#8211; Optional timeout value in seconds.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A <code class="xref py py-class docutils literal"><span class="pre">PreparedStatement</span></code> instance.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.set_builtin_type_codec">
+<em class="property">coroutine </em><code class="descname">set_builtin_type_codec</code><span class="sig-paren">(</span><em>typename</em>, <em>*</em>, <em>schema='public'</em>, <em>codec_name</em><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.connection.Connection.set_builtin_type_codec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a builtin codec for the specified data type.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>typename</strong> &#8211; Name of the data type the codec is for.</li>
+<li><strong>schema</strong> &#8211; Schema name of the data type the codec is for
+(defaults to &#8216;public&#8217;)</li>
+<li><strong>codec_name</strong> &#8211; The name of the builtin codec.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.set_type_codec">
+<em class="property">coroutine </em><code class="descname">set_type_codec</code><span class="sig-paren">(</span><em>typename</em>, <em>*</em>, <em>schema='public'</em>, <em>encoder</em>, <em>decoder</em>, <em>binary=False</em><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.connection.Connection.set_type_codec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set an encoder/decoder pair for the specified data type.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>typename</strong> &#8211; Name of the data type the codec is for.</li>
+<li><strong>schema</strong> &#8211; Schema name of the data type the codec is for
+(defaults to &#8216;public&#8217;)</li>
+<li><strong>encoder</strong> &#8211; Callable accepting a single argument and returning
+a string or a bytes object (if <cite>binary</cite> is True).</li>
+<li><strong>decoder</strong> &#8211; Callable accepting a single string or bytes argument
+and returning a decoded object.</li>
+<li><strong>binary</strong> &#8211; Specifies whether the codec is able to handle binary
+data.  If <code class="docutils literal"><span class="pre">False</span></code> (the default), the data is
+expected to be encoded/decoded in text.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.terminate">
+<code class="descname">terminate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.connection.Connection.terminate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Terminate the connection without waiting for pending data.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="asyncpg.prepared_stmt.PreparedStatement">
+<em class="property">class </em><code class="descclassname">asyncpg.prepared_stmt.</code><code class="descname">PreparedStatement</code><span class="sig-paren">(</span><em>connection</em>, <em>query</em>, <em>state</em><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="asyncpg.prepared_stmt.PreparedStatement.fetch">
+<em class="property">coroutine </em><code class="descname">fetch</code><span class="sig-paren">(</span><em>*args</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute the statement and return the results as a list of <code class="xref py py-class docutils literal"><span class="pre">Record</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>query</strong> (<em>str</em>) &#8211; Query text</li>
+<li><strong>args</strong> &#8211; Query arguments</li>
+<li><strong>timeout</strong> (<em>int</em>) &#8211; Optional timeout value in seconds.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A list of <code class="xref py py-class docutils literal"><span class="pre">Record</span></code> instances.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.prepared_stmt.PreparedStatement.fetchrow">
+<em class="property">coroutine </em><code class="descname">fetchrow</code><span class="sig-paren">(</span><em>*args</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetchrow" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute the statement and return the first row.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>query</strong> (<em>str</em>) &#8211; Query text</li>
+<li><strong>args</strong> &#8211; Query arguments</li>
+<li><strong>timeout</strong> (<em>int</em>) &#8211; Optional timeout value in seconds.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The first row as a <code class="xref py py-class docutils literal"><span class="pre">Record</span></code> instance.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.prepared_stmt.PreparedStatement.fetchval">
+<em class="property">coroutine </em><code class="descname">fetchval</code><span class="sig-paren">(</span><em>*args</em>, <em>*</em>, <em>column=0</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetchval" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute the statemnt and return the value of the specified column of the first row.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>args</strong> &#8211; Query arguments</li>
+<li><strong>timeout</strong> (<em>int</em>) &#8211; Optional column index (defaults to 0).</li>
+<li><strong>timeout</strong> &#8211; Optional timeout value in seconds.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The value of the specified column of the first record.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.prepared_stmt.PreparedStatement.get_query">
+<code class="descname">get_query</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.get_query" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the text of the query for this prepared statement.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.prepared_stmt.PreparedStatement.get_statusmsg">
+<code class="descname">get_statusmsg</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.get_statusmsg" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the status of the executed command.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">asyncpg</a></h1>
+
+
+
+<p class="blurb">asyncpg is a fast PostgreSQL client library for the Python asyncio framework</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016-present, the ayncpg authors and contributors.
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
