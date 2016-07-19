@@ -35,12 +35,12 @@ like DB-API.
 
 This enables asyncpg to have easy-to-use support for:
 
-    * **prepared statements**
-    * **scrollable cursors**
-    * **partial iteration** on query results
-    * automatic encoding and decoding of composite types, arrays,
-      and any combination of those
-    * straightforward support for custom data types
+* **prepared statements**
+* **scrollable cursors**
+* **partial iteration** on query results
+* automatic encoding and decoding of composite types, arrays,
+  and any combination of those
+* straightforward support for custom data types
 
 
 Installation
