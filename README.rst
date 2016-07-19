@@ -1,6 +1,12 @@
 asyncpg -- A fast PostgreSQL Database Client Library for Python/asyncio
 =======================================================================
 
+.. image:: https://travis-ci.org/MagicStack/asyncpg.svg?branch=master
+    :target: https://travis-ci.org/MagicStack/asyncpg
+
+.. image:: https://img.shields.io/pypi/v/asyncpg.svg
+    :target: https://pypi.python.org/pypi/asyncpg
+
 **asyncpg** is a database interface library designed specifically for
 PostgreSQL and Python/asyncio.  asyncpg is an efficient, clean implementation
 of PostgreSQL server binary protocol for use with Python's ``asyncio``
