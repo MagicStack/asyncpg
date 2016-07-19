@@ -4,9 +4,6 @@
 .. image:: https://img.shields.io/pypi/status/asyncpg.svg?maxAge=2592000?style=plastic
     :target: https://pypi.python.org/pypi/asyncpg
 
-.. image:: https://img.shields.io/github/stars/magicstack/asyncpg.svg?style=social&label=GitHub
-    :target: https://github.com/MagicStack/asyncpg
-
 
 asyncpg
 =======
