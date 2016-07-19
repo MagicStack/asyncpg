@@ -13,6 +13,13 @@ of PostgreSQL server binary protocol for use with Python's ``asyncio``
 framework.
 
 
+Documentation
+-------------
+
+The project documentation can be found
+`here <https://magicstack.github.io/asyncpg/>`_.
+
+
 Performance
 -----------
 
