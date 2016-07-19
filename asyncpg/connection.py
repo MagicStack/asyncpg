@@ -120,7 +120,7 @@ class Connection:
 
         return state
 
-    def cursor(self, query, *args, prefetch=50, timeout=None):
+    def cursor(self, query, *args, prefetch=None, timeout=None):
         return cursor.CursorInterface(self, query, None, args,
                                       prefetch, timeout)
 

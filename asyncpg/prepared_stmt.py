@@ -41,7 +41,7 @@ class PreparedStatement:
         self.__check_open()
         return self._state._get_attributes()
 
-    def cursor(self, *args, prefetch=50,
+    def cursor(self, *args, prefetch=None,
                timeout=None) -> cursor.CursorInterface:
         """Return a *cursor interface* for the prepared statement.
 
