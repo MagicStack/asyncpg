@@ -11,7 +11,7 @@ from . import compat
 from . import exceptions
 
 
-class CursorFactory:
+class CursorInterface:
 
     __slots__ = ('_state', '_connection', '_args', '_prefetch',
                  '_query', '_timeout')
