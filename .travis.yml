@@ -1,0 +1,20 @@
+language: python
+
+os:
+    - linux
+
+services:
+    - postgresql
+
+addons:
+    postgresql: "9.4"
+
+python:
+    - 3.5
+
+install:
+    - "pip install cython"
+
+script:
+    - make && make test
+    - make debug && make test
