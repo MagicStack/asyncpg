@@ -151,6 +151,9 @@ class Cluster:
         extra_args = ['--{}={}'.format(k, v) for k, v in opts.items()]
         extra_args.append('--port={}'.format(port))
 
+        if 'unix_socket_directories' not in server_settings:
+            server_settings['unix_socket_directories'] = '/tmp'
+
         for k, v in server_settings.items():
             extra_args.extend(['-c', '{}={}'.format(k, v)])
 
