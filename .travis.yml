@@ -14,6 +14,7 @@ python:
 
 install:
     - "pip install cython"
+    - "pip install uvloop"
 
 script:
     - make && make test
