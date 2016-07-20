@@ -30,7 +30,8 @@ debug: check-env clean
 	echo "DEF DEBUG = 1" > asyncpg/protocol/__debug.pxi
 	cython -a -X linetrace=True asyncpg/protocol/protocol.pyx; rm asyncpg/protocol/__debug.pxi
 	@echo "$$CYTHON_BUILD_PATCH_SCRIPT" | $(PYTHON)
-	$(PYTHON) setup.py build_ext --inplace --debug
+	CFLAGS="${CFLAGS} -DCYTHON_TRACE=1 -DCYTHON_TRACE_NOGIL=1" \
+		$(PYTHON) setup.py build_ext --inplace --debug
 
 
 test:

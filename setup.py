@@ -39,6 +39,6 @@ setuptools.setup(
             "asyncpg.protocol.protocol",
             ["asyncpg/protocol/record/recordobj.c",
              "asyncpg/protocol/protocol.c"],
-            extra_compile_args=['-O2', '-DCYTHON_TRACE=1', '-D CYTHON_TRACE_NOGIL=1'])
+            extra_compile_args=['-O2'])
     ]
 )
