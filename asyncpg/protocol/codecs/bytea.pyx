@@ -5,11 +5,6 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-import decimal
-
-_Dec = decimal.Decimal
-
-
 cdef bytea_encode(ConnectionSettings settings, WriteBuffer wbuf, obj):
     cdef:
         Py_buffer pybuf

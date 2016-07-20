@@ -29,7 +29,6 @@ cdef class Codec:
         self.kind = kind
         self.type = type
         self.format = format
-        self.type = type
         self.c_encoder = c_encoder
         self.c_decoder = c_decoder
         self.py_encoder = py_encoder
@@ -92,15 +91,17 @@ cdef class Codec:
         cdef:
             WriteBuffer elem_data
             int32_t i
+            list elem_codecs = self.element_codecs
 
         elem_data = WriteBuffer.new()
         i = 0
         for item in obj:
-            elem_data.write_int32(self.element_type_ids[i])
+            elem_data.write_int32(self.element_type_oids[i])
             if item is None:
                 elem_data.write_int32(-1)
             else:
-                self.element_codecs[i].encode(settings, elem_data, item)
+                (<Codec>elem_codecs[i]).encode(settings, elem_data, item)
+            i += 1
 
         record_encode_frame(settings, buf, elem_data, len(obj))
 

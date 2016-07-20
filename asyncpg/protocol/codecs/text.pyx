@@ -6,13 +6,16 @@
 
 
 cdef inline as_pg_string_and_size(
-        ConnectionSettings settings, obj, char **str, ssize_t *size):
+        ConnectionSettings settings, obj, char **cstr, ssize_t *size):
+
+    if not cpython.PyUnicode_Check(obj):
+        obj = str(obj)
 
     if settings.is_encoding_utf8():
-        str[0] = PyUnicode_AsUTF8AndSize(obj, size)
+        cstr[0] = PyUnicode_AsUTF8AndSize(obj, size)
     else:
         encoded = settings.get_text_codec().encode(obj)
-        cpython.PyBytes_AsStringAndSize(encoded, str, size)
+        cpython.PyBytes_AsStringAndSize(encoded, cstr, size)
 
     if size[0] > 0x7fffffff:
         raise ValueError('string too long')

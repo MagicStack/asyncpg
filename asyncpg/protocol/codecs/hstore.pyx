@@ -22,6 +22,8 @@ cdef hstore_encode(ConnectionSettings settings, WriteBuffer buf, obj):
         items = obj
 
     for k, v in items:
+        if k is None:
+            raise ValueError('null value not allowed in hstore key')
         as_pg_string_and_size(settings, k, &str, &size)
         item_buf.write_int32(<int32_t>size)
         item_buf.write_cstr(str, size)

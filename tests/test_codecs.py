@@ -10,6 +10,7 @@ import decimal
 import ipaddress
 import math
 import random
+import struct
 import uuid
 
 import asyncpg
@@ -31,6 +32,9 @@ negative_infinity_date = datetime.date(datetime.MINYEAR, 1, 1)
 
 
 type_samples = [
+    ('bool', 'bool', (
+        True, False,
+    )),
     ('smallint', 'int2', (
         -2 ** 15 + 1, 2 ** 15 - 1,
         -1, 0, 1,
@@ -132,7 +136,8 @@ type_samples = [
         bytes(range(255, -1, -1)),
         b'\x00\x00',
         b'foo',
-        b'f' * 1024 * 1024
+        b'f' * 1024 * 1024,
+        dict(input=bytearray(b'\x02\x01'), output=b'\x02\x01'),
     )),
     ('text', 'text', (
         '',
@@ -156,6 +161,7 @@ type_samples = [
         datetime.date(2000, 1, 1),
         datetime.date(500, 1, 1),
         datetime.date(1, 1, 1),
+        infinity_date,
     ]),
     ('time', 'time', [
         datetime.time(12, 15, 20),
@@ -191,7 +197,9 @@ type_samples = [
     ]),
     ('uuid', 'uuid', [
         uuid.UUID('38a4ff5a-3a56-11e6-a6c2-c8f73323c6d4'),
-        uuid.UUID('00000000-0000-0000-0000-000000000000')
+        uuid.UUID('00000000-0000-0000-0000-000000000000'),
+        {'input': '00000000-0000-0000-0000-000000000000',
+         'output': uuid.UUID('00000000-0000-0000-0000-000000000000')}
     ]),
     ('uuid[]', 'uuid[]', [
         (uuid.UUID('38a4ff5a-3a56-11e6-a6c2-c8f73323c6d4'),
@@ -294,11 +302,21 @@ type_samples = [
         asyncpg.BitString(),
         asyncpg.BitString.frombytes(b'\x00', bitlength=3),
         asyncpg.BitString('0000 0000 1'),
+        dict(input=b'\x01', output=asyncpg.BitString('0000 0001')),
+        dict(input=bytearray(b'\x02'), output=asyncpg.BitString('0000 0010')),
     ]),
     ('path', 'path', [
         asyncpg.Path(asyncpg.Point(0.0, 0.0), asyncpg.Point(1.0, 1.0)),
         asyncpg.Path(asyncpg.Point(0.0, 0.0), asyncpg.Point(1.0, 1.0),
                      is_closed=True),
+        dict(input=((0.0, 0.0), (1.0, 1.0)),
+             output=asyncpg.Path(asyncpg.Point(0.0, 0.0),
+                                 asyncpg.Point(1.0, 1.0),
+                                 is_closed=True)),
+        dict(input=[(0.0, 0.0), (1.0, 1.0)],
+             output=asyncpg.Path(asyncpg.Point(0.0, 0.0),
+                                 asyncpg.Point(1.0, 1.0),
+                                 is_closed=False)),
     ]),
     ('point', 'point', [
         asyncpg.Point(0.0, 0.0),
@@ -334,22 +352,28 @@ class TestCodecs(tb.ConnectedTestCase):
 
             for sample in sample_data:
                 with self.subTest(sample=sample, typname=typname):
-                    rsample = await st.fetchval(sample)
+                    if isinstance(sample, dict):
+                        inputval = sample['input']
+                        outputval = sample['output']
+                    else:
+                        inputval = outputval = sample
+
+                    result = await st.fetchval(inputval)
                     err_msg = (
-                        "failed to return {} object data as-is; "
-                        "gave {!r}, received {!r}".format(
-                            typname, sample, rsample))
+                        "unexpected result for {} when passing {!r}: "
+                        "received {!r}, expected {!r}".format(
+                            typname, inputval, result, outputval))
 
                     if typname.startswith('float'):
-                        if math.isnan(sample):
-                            if not math.isnan(rsample):
+                        if math.isnan(outputval):
+                            if not math.isnan(result):
                                 self.fail(err_msg)
                         else:
                             self.assertTrue(
-                                math.isclose(rsample, sample, rel_tol=1e-6),
+                                math.isclose(result, outputval, rel_tol=1e-6),
                                 err_msg)
                     else:
-                        self.assertEqual(rsample, sample, err_msg)
+                        self.assertEqual(result, outputval, err_msg)
 
             with self.subTest(sample=None, typname=typname):
                 # Test that None is handled for all types.
@@ -369,10 +393,9 @@ class TestCodecs(tb.ConnectedTestCase):
                 'core type {} ({}) is unhandled'.format(typename, oid))
 
     async def test_void(self):
-        stmt = await self.con.prepare('select pg_sleep(0)')
-        self.assertIsNone(await stmt.fetchval())
-
-        await self.con.fetchval('select now($1::void)', None)
+        res = await self.con.fetchval('select pg_sleep(0)')
+        self.assertIsNone(res)
+        await self.con.fetchval('select now($1::void)', '')
 
     def test_bitstring(self):
         bitlen = random.randint(0, 1000)
@@ -424,6 +447,10 @@ class TestCodecs(tb.ConnectedTestCase):
                 32768,
                 -32768
             ]),
+            ('float4', ValueError, 'float value too large', [
+                4.1 * 10 ** 40,
+                -4.1 * 10 ** 40,
+            ]),
             ('int4', TypeError, 'an integer is required', [
                 '2',
                 'aa',
@@ -452,7 +479,11 @@ class TestCodecs(tb.ConnectedTestCase):
             (
                 r"SELECT '{{{{{{1}}}}}}'::int[]",
                 ((((((1,),),),),),)
-            )
+            ),
+            (
+                r"SELECT '{1, 2, NULL}'::int[]::anyarray",
+                (1, 2, None)
+            ),
         ]
 
         for sql, expected in cases:
@@ -464,6 +495,7 @@ class TestCodecs(tb.ConnectedTestCase):
             await self.con.fetchval("SELECT '{{{{{{{1}}}}}}}'::int[]")
 
         cases = [
+            (None,),
             (1, 2, 3, 4, 5, 6),
             ((1, 2), (4, 5), (6, 7)),
             (((1,), (2,)), ((4,), (5,)), ((None,), (7,))),
@@ -559,6 +591,10 @@ class TestCodecs(tb.ConnectedTestCase):
             self.assertEqual(at[0].type.name, 'test_composite')
             self.assertEqual(at[0].type.kind, 'composite')
 
+            res = await self.con.fetchval('''
+                SELECT $1::test_composite
+            ''', res)
+
         finally:
             await self.con.execute('DROP TYPE test_composite')
 
@@ -645,13 +681,29 @@ class TestCodecs(tb.ConnectedTestCase):
             await self.con.set_builtin_type_codec(
                 'hstore', codec_name='pg_contrib.hstore')
 
+            cases = [
+                {'ham': 'spam', 'nada': None},
+                {}
+            ]
+
             st = await self.con.prepare('''
                 SELECT $1::hstore AS result
             ''')
-            res = await st.fetchrow({'ham': 'spam', 'nada': None})
-            res = res['result']
 
-            self.assertEqual(res, {'ham': 'spam', 'nada': None})
+            for case in cases:
+                res = await st.fetchval(case)
+                self.assertEqual(res, case)
+
+            res = await self.con.fetchval('''
+                SELECT $1::hstore AS result
+            ''', (('foo', 2), ('bar', 3)))
+
+            self.assertEqual(res, {'foo': '2', 'bar': '3'})
+
+            with self.assertRaisesRegex(ValueError, 'null value not allowed'):
+                await self.con.fetchval('''
+                    SELECT $1::hstore AS result
+                ''', {None: '1'})
 
         finally:
             await self.con.execute('''
@@ -723,6 +775,86 @@ class TestCodecs(tb.ConnectedTestCase):
                 await self.con.execute('''
                     DROP TYPE mytype;
                 ''')
+
+        finally:
+            await self.con.execute('''
+                DROP EXTENSION hstore
+            ''')
+
+    async def test_custom_codec_binary(self):
+        """Test encoding/decoding using a custom codec in binary mode."""
+        await self.con.execute('''
+            CREATE EXTENSION IF NOT EXISTS hstore
+        ''')
+
+        longstruct = struct.Struct('!L')
+        ulong_unpack = lambda b: longstruct.unpack_from(b)[0]
+        ulong_pack = longstruct.pack
+
+        def hstore_decoder(data):
+            result = {}
+            n = ulong_unpack(data)
+            view = memoryview(data)
+            ptr = 4
+
+            for i in range(n):
+                klen = ulong_unpack(view[ptr:ptr + 4])
+                ptr += 4
+                k = bytes(view[ptr:ptr + klen]).decode()
+                ptr += klen
+                vlen = ulong_unpack(view[ptr:ptr + 4])
+                ptr += 4
+                if vlen == -1:
+                    v = None
+                else:
+                    v = bytes(view[ptr:ptr + vlen]).decode()
+                    ptr += vlen
+
+                result[k] = v
+
+            return result
+
+        def hstore_encoder(obj):
+            buffer = bytearray(ulong_pack(len(obj)))
+
+            for k, v in obj.items():
+                kenc = k.encode()
+                buffer += ulong_pack(len(kenc)) + kenc
+
+                if v is None:
+                    buffer += b'\xFF\xFF\xFF\xFF'  # -1
+                else:
+                    venc = v.encode()
+                    buffer += ulong_pack(len(venc)) + venc
+
+            return buffer
+
+        try:
+            await self.con.set_type_codec('hstore', encoder=hstore_encoder,
+                                          decoder=hstore_decoder,
+                                          binary=True)
+
+            st = await self.con.prepare('''
+                SELECT $1::hstore AS result
+            ''')
+
+            res = await st.fetchrow({'ham': 'spam'})
+            res = res['result']
+
+            self.assertEqual(res, {'ham': 'spam'})
+
+            pt = st.get_parameters()
+            self.assertTrue(isinstance(pt, tuple))
+            self.assertEqual(len(pt), 1)
+            self.assertEqual(pt[0].name, 'hstore')
+            self.assertEqual(pt[0].kind, 'scalar')
+            self.assertEqual(pt[0].schema, 'public')
+
+            at = st.get_attributes()
+            self.assertTrue(isinstance(at, tuple))
+            self.assertEqual(len(at), 1)
+            self.assertEqual(at[0].name, 'result')
+            self.assertEqual(at[0].type, pt[0])
 
         finally:
             await self.con.execute('''

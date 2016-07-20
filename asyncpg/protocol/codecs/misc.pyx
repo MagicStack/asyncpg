@@ -5,7 +5,7 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-cdef void_encode(ConnectionSettings settings, FastReadBuffer buf):
+cdef void_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     # Void is zero bytes
     buf.write_int32(0)
 

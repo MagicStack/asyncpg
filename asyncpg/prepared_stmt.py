@@ -99,8 +99,7 @@ class PreparedStatement:
         return json.loads(data)
 
     async def fetch(self, *args, timeout=None):
-        r"""Execute the statement and return the results as a list \
-            of :class:`Record` objects.
+        r"""Execute the statement and return a list of :class:`Record` objects.
 
         :param str query: Query text
         :param args: Query arguments
