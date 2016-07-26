@@ -299,7 +299,11 @@ of values either by a numeric index or by a field name:
 
    .. describe:: r[field]
 
-      Return the field of *r* with field name *field*.
+      Return the field of *r* with field name or index *field*.
+
+   .. describe:: name in r
+
+      Return ``True`` if record *r* has a field named *name*.
 
    .. describe:: iter(r)
 
