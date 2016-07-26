@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                0.5.0
+                0.5.1
               </div>
             
           
@@ -153,8 +153,9 @@
 <div class="viewcode-block" id="Transaction"><a class="viewcode-back" href="../../api/index.html#asyncpg.transaction.Transaction">[docs]</a><span class="k">class</span> <span class="nc">Transaction</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Represents a transaction or savepoint block.</span>
 
-<span class="sd">    Transactions are created by calling</span>
-<span class="sd">    :meth:`Connection.transaction`.</span>
+<span class="sd">    Transactions are created by calling the</span>
+<span class="sd">    :meth:`Connection.transaction() &lt;connection.Connection.transaction&gt;`</span>
+<span class="sd">    function.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_connection&#39;</span><span class="p">,</span> <span class="s1">&#39;_isolation&#39;</span><span class="p">,</span> <span class="s1">&#39;_readonly&#39;</span><span class="p">,</span> <span class="s1">&#39;_deferrable&#39;</span><span class="p">,</span>
@@ -370,7 +371,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.5.0',
+            VERSION:'0.5.1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

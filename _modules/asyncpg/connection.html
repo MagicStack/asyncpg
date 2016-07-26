@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                0.5.0
+                0.5.1
               </div>
             
           
@@ -149,10 +149,10 @@
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">transaction</span>
 
 
-<div class="viewcode-block" id="Connection"><a class="viewcode-back" href="../../api/index.html#asyncpg.Connection">[docs]</a><span class="k">class</span> <span class="nc">Connection</span><span class="p">:</span>
+<div class="viewcode-block" id="Connection"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection">[docs]</a><span class="k">class</span> <span class="nc">Connection</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;A representation of a database session.</span>
 
-<span class="sd">    Connections are created by calling :func:`~asyncpg.connect`.</span>
+<span class="sd">    Connections are created by calling :func:`~asyncpg.connection.connect`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_protocol&#39;</span><span class="p">,</span> <span class="s1">&#39;_transport&#39;</span><span class="p">,</span> <span class="s1">&#39;_loop&#39;</span><span class="p">,</span> <span class="s1">&#39;_types_stmt&#39;</span><span class="p">,</span>
@@ -183,7 +183,7 @@
     <span class="k">def</span> <span class="nf">get_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
 
-<div class="viewcode-block" id="Connection.transaction"><a class="viewcode-back" href="../../api/index.html#asyncpg.Connection.transaction">[docs]</a>    <span class="k">def</span> <span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">isolation</span><span class="o">=</span><span class="s1">&#39;read_committed&#39;</span><span class="p">,</span> <span class="n">readonly</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<div class="viewcode-block" id="Connection.transaction"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.transaction">[docs]</a>    <span class="k">def</span> <span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">isolation</span><span class="o">=</span><span class="s1">&#39;read_committed&#39;</span><span class="p">,</span> <span class="n">readonly</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                     <span class="n">deferrable</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create a :class:`~transaction.Transaction` object.</span>
 
@@ -204,7 +204,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">transaction</span><span class="o">.</span><span class="n">Transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">isolation</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">deferrable</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Connection.execute"><a class="viewcode-back" href="../../api/index.html#asyncpg.Connection.execute">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">script</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<div class="viewcode-block" id="Connection.execute"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.execute">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">script</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Execute an SQL command (or commands).</span>
 
 <span class="sd">        :return str: Status of the last SQL command.</span>
@@ -249,27 +249,36 @@
 
         <span class="k">return</span> <span class="n">state</span>
 
-    <span class="k">def</span> <span class="nf">cursor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">prefetch</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">CursorInterface</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span>
-                                      <span class="n">prefetch</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+<div class="viewcode-block" id="Connection.cursor"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.cursor">[docs]</a>    <span class="k">def</span> <span class="nf">cursor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">prefetch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a *cursor factory* for the specified query.</span>
 
-<div class="viewcode-block" id="Connection.prepare"><a class="viewcode-back" href="../../api/index.html#asyncpg.Connection.prepare">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="sd">        :param args: Query arguments.</span>
+<span class="sd">        :param int prefetch: The number of rows the *cursor iterator*</span>
+<span class="sd">                             will prefetch (defaults to ``50``.)</span>
+<span class="sd">        :param float timeout: Optional timeout in seconds.</span>
+
+<span class="sd">        :return: A :class:`~cursor.CursorFactory` object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">CursorFactory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span>
+                                    <span class="n">prefetch</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Connection.prepare"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.prepare">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create a *prepared statement* for the specified query.</span>
 
 <span class="sd">        :param str query: Text of the query to create a prepared statement for.</span>
-<span class="sd">        :param int timeout: Optional timeout value in seconds.</span>
+<span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 
 <span class="sd">        :return: A :class:`~prepared_stmt.PreparedStatement` instance.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">prepared_stmt</span><span class="o">.</span><span class="n">PreparedStatement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">stmt</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Connection.fetch"><a class="viewcode-back" href="../../api/index.html#asyncpg.Connection.fetch">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<div class="viewcode-block" id="Connection.fetch"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.fetch">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Run a query and return the results as a list of :class:`Record`.</span>
 
 <span class="sd">        :param str query: Query text.</span>
 <span class="sd">        :param args: Query arguments.</span>
-<span class="sd">        :param int timeout: Optional timeout value in seconds.</span>
+<span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 
 <span class="sd">        :return list: A list of :class:`Record` instances.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -278,14 +287,14 @@
         <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">data</span></div>
 
-<div class="viewcode-block" id="Connection.fetchval"><a class="viewcode-back" href="../../api/index.html#asyncpg.Connection.fetchval">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="Connection.fetchval"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.fetchval">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Run a query and return a value in the first row.</span>
 
 <span class="sd">        :param str query: Query text.</span>
 <span class="sd">        :param args: Query arguments.</span>
 <span class="sd">        :param int column: Numeric index within the record of the value to</span>
 <span class="sd">                           return (defaults to 0).</span>
-<span class="sd">        :param int timeout: Optional timeout value in seconds.</span>
+<span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 <span class="sd">                            If not specified, defaults to the value of</span>
 <span class="sd">                            ``command_timeout`` argument to the ``Connection``</span>
 <span class="sd">                            instance constructor.</span>
@@ -299,12 +308,12 @@
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">column</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="Connection.fetchrow"><a class="viewcode-back" href="../../api/index.html#asyncpg.Connection.fetchrow">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchrow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="Connection.fetchrow"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.fetchrow">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchrow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Run a query and return the first row.</span>
 
 <span class="sd">        :param str query: Query text</span>
 <span class="sd">        :param args: Query arguments</span>
-<span class="sd">        :param int timeout: Optional timeout value in seconds.</span>
+<span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 
 <span class="sd">        :return: The first row as a :class:`Record` instance.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -315,7 +324,7 @@
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="Connection.set_type_codec"><a class="viewcode-back" href="../../api/index.html#asyncpg.Connection.set_type_codec">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">set_type_codec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+<div class="viewcode-block" id="Connection.set_type_codec"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.set_type_codec">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">set_type_codec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                              <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;public&#39;</span><span class="p">,</span> <span class="n">encoder</span><span class="p">,</span> <span class="n">decoder</span><span class="p">,</span> <span class="n">binary</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Set an encoder/decoder pair for the specified data type.</span>
 
@@ -349,7 +358,7 @@
             <span class="n">oid</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">,</span> <span class="s1">&#39;scalar&#39;</span><span class="p">,</span>
             <span class="n">encoder</span><span class="p">,</span> <span class="n">decoder</span><span class="p">,</span> <span class="n">binary</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Connection.set_builtin_type_codec"><a class="viewcode-back" href="../../api/index.html#asyncpg.Connection.set_builtin_type_codec">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">set_builtin_type_codec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+<div class="viewcode-block" id="Connection.set_builtin_type_codec"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.set_builtin_type_codec">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">set_builtin_type_codec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                                      <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;public&#39;</span><span class="p">,</span> <span class="n">codec_name</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Set a builtin codec for the specified data type.</span>
 
@@ -376,7 +385,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">set_builtin_type_codec</span><span class="p">(</span>
             <span class="n">oid</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">,</span> <span class="s1">&#39;scalar&#39;</span><span class="p">,</span> <span class="n">codec_name</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Connection.is_closed"><a class="viewcode-back" href="../../api/index.html#asyncpg.Connection.is_closed">[docs]</a>    <span class="k">def</span> <span class="nf">is_closed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Connection.is_closed"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.is_closed">[docs]</a>    <span class="k">def</span> <span class="nf">is_closed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return ``True`` if the connection is closed, ``False`` otherwise.</span>
 
 <span class="sd">        :return bool: ``True`` if the connection is closed, ``False``</span>
@@ -384,7 +393,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">is_connected</span><span class="p">()</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_aborted</span></div>
 
-<div class="viewcode-block" id="Connection.close"><a class="viewcode-back" href="../../api/index.html#asyncpg.Connection.close">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Connection.close"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.close">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Close the connection gracefully.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
             <span class="k">return</span>
@@ -393,7 +402,7 @@
         <span class="n">protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span>
         <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="Connection.terminate"><a class="viewcode-back" href="../../api/index.html#asyncpg.Connection.terminate">[docs]</a>    <span class="k">def</span> <span class="nf">terminate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Connection.terminate"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.terminate">[docs]</a>    <span class="k">def</span> <span class="nf">terminate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Terminate the connection without waiting for pending data.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_close_stmts</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_aborted</span> <span class="o">=</span> <span class="kc">True</span>
@@ -472,7 +481,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">cancel</span><span class="p">())</span></div>
 
 
-<div class="viewcode-block" id="connect"><a class="viewcode-back" href="../../api/index.html#asyncpg.connect">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="n">dsn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+<div class="viewcode-block" id="connect"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.connect">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="n">dsn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                   <span class="n">host</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                   <span class="n">user</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                   <span class="n">database</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -481,7 +490,54 @@
                   <span class="n">statement_cache_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
                   <span class="n">command_timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                   <span class="o">**</span><span class="n">opts</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A coroutine to establish a connection to a PostgreSQL server.</span>
 
+<span class="sd">    Returns a new :class:`~asyncpg.connection.Connection` object.</span>
+
+<span class="sd">    :param dsn: Connection arguments specified using as a single string in the</span>
+<span class="sd">                following format:</span>
+<span class="sd">                ``postgres://user:pass@host:port/database?option=value``</span>
+
+<span class="sd">    :param host: database host address or a path to the directory containing</span>
+<span class="sd">                 database server UNIX socket (defaults to the default UNIX</span>
+<span class="sd">                 socket, or the value of the ``PGHOST`` environment variable,</span>
+<span class="sd">                 if set).</span>
+
+<span class="sd">    :param port: connection port number (defaults to ``5432``, or the value of</span>
+<span class="sd">                 the ``PGPORT`` environment variable, if set)</span>
+
+<span class="sd">    :param user: the name of the database role used for authentication</span>
+<span class="sd">                 (defaults to the name of the effective user of the process</span>
+<span class="sd">                 making the connection, or the value of ``PGUSER`` environment</span>
+<span class="sd">                 variable, if set)</span>
+
+<span class="sd">    :param password: password used for authentication</span>
+
+<span class="sd">    :param loop: An asyncio event loop instance.  If ``None``, the default</span>
+<span class="sd">                 event loop will be used.</span>
+
+<span class="sd">    :param float timeout: connection timeout in seconds.</span>
+
+<span class="sd">    :param float command_timeout: the default timeout for operations on</span>
+<span class="sd">                          this connection (the default is no timeout).</span>
+
+<span class="sd">    :param int statement_cache_size: the size of prepared statement LRU cache.</span>
+
+<span class="sd">    :return: A :class:`~asyncpg.connection.Connection` instance.</span>
+
+<span class="sd">    Example:</span>
+
+<span class="sd">    .. code-block:: pycon</span>
+
+<span class="sd">        &gt;&gt;&gt; import asyncpg</span>
+<span class="sd">        &gt;&gt;&gt; import asyncio</span>
+<span class="sd">        &gt;&gt;&gt; async def run():</span>
+<span class="sd">        ...     con = await asyncpg.connect(user=&#39;postgres&#39;)</span>
+<span class="sd">        ...     types = await con.fetch(&#39;SELECT * FROM pg_type&#39;)</span>
+<span class="sd">        ...     print(types)</span>
+<span class="sd">        &gt;&gt;&gt; asyncio.get_event_loop().run_until_complete(run())</span>
+<span class="sd">        [&lt;Record typname=&#39;bool&#39; typnamespace=11 ...</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">loop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
 
@@ -691,7 +747,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.5.0',
+            VERSION:'0.5.1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true
