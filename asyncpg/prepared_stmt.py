@@ -103,7 +103,7 @@ class PreparedStatement:
 
         :param str query: Query text
         :param args: Query arguments
-        :param int timeout: Optional timeout value in seconds.
+        :param float timeout: Optional timeout value in seconds.
 
         :return: A list of :class:`Record` instances.
         """
@@ -120,7 +120,7 @@ class PreparedStatement:
         :param args: Query arguments.
         :param int column: Numeric index within the record of the value to
                            return (defaults to 0).
-        :param int timeout: Optional timeout value in seconds.
+        :param float timeout: Optional timeout value in seconds.
                             If not specified, defaults to the value of
                             ``command_timeout`` argument to the ``Connection``
                             instance constructor.
@@ -141,7 +141,7 @@ class PreparedStatement:
 
         :param str query: Query text
         :param args: Query arguments
-        :param int timeout: Optional timeout value in seconds.
+        :param float timeout: Optional timeout value in seconds.
 
         :return: The first row as a :class:`Record` instance.
         """
