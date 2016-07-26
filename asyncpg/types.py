@@ -35,8 +35,8 @@ class Range:
     __slots__ = '_lower', '_upper', '_lower_inc', '_upper_inc', '_empty'
 
     def __init__(self, lower=None, upper=None, *,
-                       lower_inc=True, upper_inc=False,
-                       empty=False):
+                 lower_inc=True, upper_inc=False,
+                 empty=False):
         self._empty = empty
         if empty:
             self._lower = self._upper = None
