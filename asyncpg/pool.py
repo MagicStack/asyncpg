@@ -26,12 +26,13 @@ class Pool:
                  '_connect_args', '_connect_kwargs',
                  '_working_addr', '_working_opts',
                  '_con_count', '_max_queries', '_connections',
-                 '_initialized', '_closed')
+                 '_initialized', '_closed', '_setup')
 
     def __init__(self, *connect_args,
                  min_size,
                  max_size,
                  max_queries,
+                 setup,
                  loop,
                  **connect_kwargs):
 
@@ -55,6 +56,8 @@ class Pool:
         self._maxsize = max_size
         self._max_queries = max_queries
 
+        self._setup = setup
+
         self._connect_args = connect_args
         self._connect_kwargs = connect_kwargs
 
@@ -65,10 +68,9 @@ class Pool:
 
         self._closed = False
 
-    async def _new_connection(self, timeout=None):
+    async def _new_connection(self):
         if self._working_addr is None:
             con = await connection.connect(*self._connect_args,
-                                           timeout=timeout,
                                            loop=self._loop,
                                            **self._connect_kwargs)
 
@@ -83,7 +85,6 @@ class Pool:
                 host, port = self._working_addr
 
             con = await connection.connect(host=host, port=port,
-                                           timeout=timeout,
                                            loop=self._loop,
                                            **self._working_opts)
 
@@ -134,27 +135,40 @@ class Pool:
         return PoolAcquireContext(self, timeout)
 
     async def _acquire(self, timeout):
+        if timeout is None:
+            return await self._acquire_impl()
+        else:
+            return await asyncio.wait_for(self._acquire_impl(),
+                                          timeout=timeout,
+                                          loop=self._loop)
+
+    async def _acquire_impl(self):
         self._check_init()
 
         try:
-            return self._queue.get_nowait()
+            con = self._queue.get_nowait()
         except asyncio.QueueEmpty:
-            pass
+            con = None
 
-        if self._con_count < self._maxsize:
-            self._con_count += 1
+        if con is None:
+            if self._con_count < self._maxsize:
+                self._con_count += 1
+                try:
+                    con = await self._new_connection()
+                except:
+                    self._con_count -= 1
+                    raise
+            else:
+                con = await self._queue.get()
+
+        if self._setup is not None:
             try:
-                con = await self._new_connection(timeout=timeout)
+                await self._setup(con)
             except:
-                self._con_count -= 1
+                await self.release(con)
                 raise
-            return con
 
-        if timeout is None:
-            return await self._queue.get()
-        else:
-            return await asyncio.wait_for(self._queue.get(), timeout=timeout,
-                                          loop=self._loop)
+        return con
 
     async def release(self, connection):
         """Release a database connection back to the pool."""
@@ -246,6 +260,7 @@ def create_pool(dsn=None, *,
                 min_size=10,
                 max_size=10,
                 max_queries=50000,
+                setup=None,
                 loop=None,
                 **connect_kwargs):
     r"""Create a connection pool.
@@ -281,11 +296,16 @@ def create_pool(dsn=None, *,
     :param int max_size: Max number of connections in the pool.
     :param int max_queries: Number of queries after a connection is closed
                             and replaced with a new connection.
+    :param coroutine setup: A coroutine to initialize a connection right before
+                            it is returned from :meth:`~pool.Pool.acquire`.
+                            An example use case would be to automatically
+                            set up notifications listeners for all connections
+                            of a pool.
     :param loop: An asyncio event loop instance.  If ``None``, the default
                  event loop will be used.
     :return: An instance of :class:`~asyncpg.pool.Pool`.
     """
     return Pool(dsn,
                 min_size=min_size, max_size=max_size,
-                max_queries=max_queries, loop=loop,
+                max_queries=max_queries, loop=loop, setup=setup,
                 **connect_kwargs)

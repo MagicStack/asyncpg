@@ -81,3 +81,16 @@ class TestPool(tb.ClusterTestCase):
                 tasks = [worker() for _ in range(n)]
                 await asyncio.gather(*tasks, loop=self.loop)
                 await pool.close()
+
+    async def test_pool_06(self):
+        fut = asyncio.Future(loop=self.loop)
+
+        async def setup(con):
+            fut.set_result(con)
+
+        async with self.create_pool(database='postgres',
+                                    min_size=5, max_size=5,
+                                    setup=setup) as pool:
+            con = await pool.acquire()
+
+        self.assertIs(con, await fut)
