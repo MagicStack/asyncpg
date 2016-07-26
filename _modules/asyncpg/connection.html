@@ -158,7 +158,7 @@
     <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_protocol&#39;</span><span class="p">,</span> <span class="s1">&#39;_transport&#39;</span><span class="p">,</span> <span class="s1">&#39;_loop&#39;</span><span class="p">,</span> <span class="s1">&#39;_types_stmt&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_type_by_name_stmt&#39;</span><span class="p">,</span> <span class="s1">&#39;_top_xact&#39;</span><span class="p">,</span> <span class="s1">&#39;_uid&#39;</span><span class="p">,</span> <span class="s1">&#39;_aborted&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_stmt_cache_max_size&#39;</span><span class="p">,</span> <span class="s1">&#39;_stmt_cache&#39;</span><span class="p">,</span> <span class="s1">&#39;_stmts_to_close&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;_addr&#39;</span><span class="p">,</span> <span class="s1">&#39;_opts&#39;</span><span class="p">,</span> <span class="s1">&#39;_command_timeout&#39;</span><span class="p">)</span>
+                 <span class="s1">&#39;_addr&#39;</span><span class="p">,</span> <span class="s1">&#39;_opts&#39;</span><span class="p">,</span> <span class="s1">&#39;_command_timeout&#39;</span><span class="p">,</span> <span class="s1">&#39;_listeners&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">protocol</span><span class="p">,</span> <span class="n">transport</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">opts</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                  <span class="n">statement_cache_size</span><span class="p">,</span> <span class="n">command_timeout</span><span class="p">):</span>
@@ -180,8 +180,45 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_command_timeout</span> <span class="o">=</span> <span class="n">command_timeout</span>
 
-    <span class="k">def</span> <span class="nf">get_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="Connection.add_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.add_listener">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">add_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add a listener for Postgres notifications.</span>
+
+<span class="sd">        :param str channel: Channel to listen on.</span>
+<span class="sd">        :param callable callback:</span>
+<span class="sd">                A callable receiving the following arguments:</span>
+<span class="sd">                **connection**: a Connection the callback is registered with;</span>
+<span class="sd">                **pid**: PID of the Postgres server that sent the notification;</span>
+<span class="sd">                **channel**: name of the channel the notification was sent to;</span>
+<span class="sd">                **payload**: the payload.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">channel</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;LISTEN </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">channel</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Connection.remove_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.remove_listener">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">remove_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Remove a listening callback on the specified channel.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">channel</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">callback</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]:</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;UNLISTEN </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">channel</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Connection.get_server_pid"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.get_server_pid">[docs]</a>    <span class="k">def</span> <span class="nf">get_server_pid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the PID of the Postgres server the connection is bound to.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_server_pid</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Connection.get_settings"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.get_settings">[docs]</a>    <span class="k">def</span> <span class="nf">get_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return connection settings.</span>
+
+<span class="sd">        :return: :class:`~asyncpg.ConnectionSettings`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Connection.transaction"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.transaction">[docs]</a>    <span class="k">def</span> <span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">isolation</span><span class="o">=</span><span class="s1">&#39;read_committed&#39;</span><span class="p">,</span> <span class="n">readonly</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                     <span class="n">deferrable</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
@@ -398,6 +435,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
             <span class="k">return</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_close_stmts</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_aborted</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="n">protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span>
         <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
@@ -405,10 +443,12 @@
 <div class="viewcode-block" id="Connection.terminate"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.terminate">[docs]</a>    <span class="k">def</span> <span class="nf">terminate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Terminate the connection without waiting for pending data.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_close_stmts</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_aborted</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span></div>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
 <span class="s1">            SET SESSION AUTHORIZATION DEFAULT;</span>
 <span class="s1">            RESET ALL;</span>
@@ -478,7 +518,21 @@
                 <span class="n">waiter</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
                 <span class="n">w</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">cancel</span><span class="p">())</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">cancel</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">_notify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">payload</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">channel</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">cb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_exception_handler</span><span class="p">({</span>
+                    <span class="s1">&#39;message&#39;</span><span class="p">:</span> <span class="s1">&#39;Unhandled exception in asyncpg notification &#39;</span>
+                               <span class="s1">&#39;listener callback </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cb</span><span class="p">),</span>
+                    <span class="s1">&#39;exception&#39;</span><span class="p">:</span> <span class="n">ex</span>
+                <span class="p">})</span></div>
 
 
 <div class="viewcode-block" id="connect"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.connect">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="n">dsn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>

@@ -194,6 +194,28 @@ this connection (the default is no timeout).</li>
 <dd><p>A representation of a database session.</p>
 <p>Connections are created by calling <a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal"><span class="pre">connect()</span></code></a>.</p>
 <dl class="method">
+<dt id="asyncpg.connection.Connection.add_listener">
+<em class="property">coroutine </em><code class="descname">add_listener</code><span class="sig-paren">(</span><em>channel</em>, <em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.add_listener"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.add_listener" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a listener for Postgres notifications.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>channel</strong> (<em>str</em>) &#8211; Channel to listen on.</li>
+<li><strong>callback</strong> (<em>callable</em>) &#8211; A callable receiving the following arguments:
+<strong>connection</strong>: a Connection the callback is registered with;
+<strong>pid</strong>: PID of the Postgres server that sent the notification;
+<strong>channel</strong>: name of the channel the notification was sent to;
+<strong>payload</strong>: the payload.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="asyncpg.connection.Connection.close">
 <em class="property">coroutine </em><code class="descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.close" title="Permalink to this definition">¶</a></dt>
 <dd><p>Close the connection gracefully.</p>
@@ -308,6 +330,26 @@ instance constructor.</li>
 </dd></dl>
 
 <dl class="method">
+<dt id="asyncpg.connection.Connection.get_server_pid">
+<code class="descname">get_server_pid</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.get_server_pid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.get_server_pid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the PID of the Postgres server the connection is bound to.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.get_settings">
+<code class="descname">get_settings</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.get_settings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.get_settings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return connection settings.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><a class="reference internal" href="#asyncpg.ConnectionSettings" title="asyncpg.ConnectionSettings"><code class="xref py py-class docutils literal"><span class="pre">ConnectionSettings</span></code></a>.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="asyncpg.connection.Connection.is_closed">
 <code class="descname">is_closed</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.is_closed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.is_closed" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return <code class="docutils literal"><span class="pre">True</span></code> if the connection is closed, <code class="docutils literal"><span class="pre">False</span></code> otherwise.</p>
@@ -341,6 +383,12 @@ otherwise.</td>
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.remove_listener">
+<em class="property">coroutine </em><code class="descname">remove_listener</code><span class="sig-paren">(</span><em>channel</em>, <em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.remove_listener"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.remove_listener" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a listening callback on the specified channel.</p>
 </dd></dl>
 
 <dl class="method">
@@ -884,7 +932,7 @@ fetch subsets of the query results.</p>
 <span id="asyncpg-api-pool"></span><h2>Connection Pool<a class="headerlink" href="#connection-pool" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="asyncpg.pool.create_pool">
-<code class="descname">create_pool</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>min_size=10</em>, <em>max_size=10</em>, <em>max_queries=50000</em>, <em>loop=None</em>, <em>**connect_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#create_pool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.create_pool" title="Permalink to this definition">¶</a></dt>
+<code class="descname">create_pool</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>min_size=10</em>, <em>max_size=10</em>, <em>max_queries=50000</em>, <em>setup=None</em>, <em>loop=None</em>, <em>**connect_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#create_pool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.create_pool" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a connection pool.</p>
 <p>Can be used either with an <code class="docutils literal"><span class="pre">async</span> <span class="pre">with</span></code> block:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="k">with</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">create_pool</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">,</span>
@@ -917,6 +965,11 @@ with.</li>
 <li><strong>max_size</strong> (<em>int</em>) &#8211; Max number of connections in the pool.</li>
 <li><strong>max_queries</strong> (<em>int</em>) &#8211; Number of queries after a connection is closed
 and replaced with a new connection.</li>
+<li><strong>setup</strong> (<em>coroutine</em>) &#8211; A coroutine to initialize a connection right before
+it is returned from <a class="reference internal" href="#asyncpg.pool.Pool.acquire" title="asyncpg.pool.Pool.acquire"><code class="xref py py-meth docutils literal"><span class="pre">acquire()</span></code></a>.
+An example use case would be to automatically
+set up notifications listeners for all connections
+of a pool.</li>
 <li><strong>loop</strong> &#8211; An asyncio event loop instance.  If <code class="docutils literal"><span class="pre">None</span></code>, the default
 event loop will be used.</li>
 </ul>
@@ -1052,6 +1105,24 @@ of values either by a numeric index or by a field name:</p>
 <dt id="asyncpg.Record.items">
 <code class="descname">items</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.Record.items" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return an iterator over <code class="docutils literal"><span class="pre">(field,</span> <span class="pre">value)</span></code> pairs.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="asyncpg.ConnectionSettings">
+<em class="property">class </em><code class="descname">ConnectionSettings</code><a class="headerlink" href="#asyncpg.ConnectionSettings" title="Permalink to this definition">¶</a></dt>
+<dd><p>A read-only collection of Connection settings.</p>
+<dl class="describe">
+<dt>
+<code class="descname">settings.setting_name</code></dt>
+<dd><p>Return the value of the &#8220;setting_name&#8221; setting.  Raises an
+<code class="docutils literal"><span class="pre">AttributeError</span></code> if the setting is not defined.</p>
+<p>Example:</p>
+<div class="highlight-pycon"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">client_encoding</span>
+<span class="go">&#39;UTF8&#39;</span>
+</pre></div>
+</div>
 </dd></dl>
 
 </dd></dl>
