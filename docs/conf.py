@@ -24,6 +24,8 @@ extensions = [
     'sphinxcontrib.asyncio',
 ]
 
+add_module_names = False
+
 templates_path = ['_templates']
 source_suffix = '.rst'
 master_doc = 'index'

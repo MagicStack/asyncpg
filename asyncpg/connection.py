@@ -23,7 +23,7 @@ from . import transaction
 class Connection:
     """A representation of a database session.
 
-    Connections are created by calling :func:`~asyncpg.connect`.
+    Connections are created by calling :func:`~asyncpg.connection.connect`.
     """
 
     __slots__ = ('_protocol', '_transport', '_loop', '_types_stmt',
@@ -361,7 +361,54 @@ async def connect(dsn=None, *,
                   statement_cache_size=100,
                   command_timeout=None,
                   **opts):
+    """A coroutine to establish a connection to a PostgreSQL server.
 
+    Returns a new :class:`~asyncpg.connection.Connection` object.
+
+    :param dsn: Connection arguments specified using as a single string in the
+                following format:
+                ``postgres://user:pass@host:port/database?option=value``
+
+    :param host: database host address or a path to the directory containing
+                 database server UNIX socket (defaults to the default UNIX
+                 socket, or the value of the ``PGHOST`` environment variable,
+                 if set).
+
+    :param port: connection port number (defaults to ``5432``, or the value of
+                 the ``PGPORT`` environment variable, if set)
+
+    :param user: the name of the database role used for authentication
+                 (defaults to the name of the effective user of the process
+                 making the connection, or the value of ``PGUSER`` environment
+                 variable, if set)
+
+    :param password: password used for authentication
+
+    :param loop: An asyncio event loop instance.  If ``None``, the default
+                 event loop will be used.
+
+    :param float timeout: connection timeout in seconds.
+
+    :param float command_timeout: the default timeout for operations on
+                          this connection (the default is no timeout).
+
+    :param int statement_cache_size: the size of prepared statement LRU cache.
+
+    :return: A :class:`~asyncpg.connection.Connection` instance.
+
+    Example:
+
+    .. code-block:: pycon
+
+        >>> import asyncpg
+        >>> import asyncio
+        >>> async def run():
+        ...     con = await asyncpg.connect(user='postgres')
+        ...     types = await con.fetch('SELECT * FROM pg_type')
+        ...     print(types)
+        >>> asyncio.get_event_loop().run_until_complete(run())
+        [<Record typname='bool' typnamespace=11 ...
+    """
     if loop is None:
         loop = asyncio.get_event_loop()
 

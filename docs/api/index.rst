@@ -15,51 +15,10 @@ API Reference
 Connection
 ==========
 
-.. coroutinefunction:: connect(dsn=None, *, host=None, port=None, \
-                        user=None, password=None, \
-                        database=None, loop=None, timeout=60, \
-                        statement_cache_size=100, \
-                        command_timeout=None, \
-                        **opts)
-
-   Establish a connection to a PostgreSQL server and return a new
-   :class:`~asyncpg.connection.Connection` object.
-
-   :param dsn: Connection arguments specified using as a single string in the
-               following format:
-               ``postgres://user:pass@host:port/database?option=value``
-
-   :param host: database host address or a path to the directory containing
-                database server UNIX socket (defaults to the default UNIX
-                socket, or the value of the ``PGHOST`` environment variable,
-                if set).
-
-   :param port: connection port number (defaults to ``5432``, or the value of
-                the ``PGPORT`` environment variable, if set)
-
-   :param user: the name of the database role used for authentication
-                (defaults to the name of the effective user of the process
-                making the connection, or the value of ``PGUSER`` environment
-                variable, if set)
-
-   :param password: password used for authentication
-
-   :param loop: An asyncio event loop instance.  If ``None``, the default
-                event loop will be used.
-
-   :param float timeout: connection timeout (in seconds, defaults to 60
-                         seconds).
-
-   :param float statement_timeout: the default timeout for operations on
-                         this connection (the default is no timeout).
-
-   :param int statement_cache_size: the size of prepared statement LRU cache
-                         (defaults to 100).
-
-   :returns: :class:`~asyncpg.connection.Connection` instance.
+.. autofunction:: asyncpg.connection.connect
 
 
-.. autoclass:: asyncpg.connection.Connection()
+.. autoclass:: asyncpg.connection.Connection
    :members:
 
 
@@ -149,6 +108,10 @@ Alternatively, transactions can be used without an ``async with`` block:
         await tr.commit()
 
 
+See also the
+:meth:`Connection.transaction() <asyncpg.connection.Connection.transaction>`
+function.
+
 .. _savepoint: https://www.postgresql.org/docs/current/static/sql-savepoint.html
 
 
@@ -233,7 +196,7 @@ It's also possible to create cursors from prepared statements:
 .. note::
 
    Cursors created by a call to
-   :meth:`Conection.cursor() <asyncpg.connection.Connection.cursor>` or
+   :meth:`Connection.cursor() <asyncpg.connection.Connection.cursor>` or
    :meth:`PreparedStatement.cursor() <asyncpg.prepared_stmt.PreparedStatement.cursor>`
    are *non-scrollable*: they can only be read forwards.  To create a scrollable
    cursor, use the ``DECLARE ... SCROLL CURSOR`` SQL statement directly.
@@ -241,7 +204,7 @@ It's also possible to create cursors from prepared statements:
 .. warning::
 
    Cursors created by a call to
-   :meth:`Conection.cursor() <asyncpg.connection.Connection.cursor>` or
+   :meth:`Connection.cursor() <asyncpg.connection.Connection.cursor>` or
    :meth:`PreparedStatement.cursor() <asyncpg.prepared_stmt.PreparedStatement.cursor>`
    cannot be used outside of a transaction.  Any such attempt will result in
    :exc:`~asyncpg.exceptions.InterfaceError`.
@@ -268,6 +231,18 @@ It's also possible to create cursors from prepared statements:
    :members:
 
 
+.. _asyncpg-api-pool:
+
+Connection Pool
+===============
+
+.. autofunction:: asyncpg.pool.create_pool
+
+
+.. autoclass:: asyncpg.pool.Pool()
+   :members:
+
+
 .. _asyncpg-api-record:
 
 Record Objects
@@ -284,9 +259,14 @@ of values either by a numeric index or by a field name:
     >>> import asyncio
     >>> loop = asyncio.get_event_loop()
     >>> conn = loop.run_until_complete(asyncpg.connect())
-    >>> loop.run_until_complete(conn.fetchrow('''
+    >>> r = loop.run_until_complete(conn.fetchrow('''
     ...     SELECT oid, rolname, rolsuper FROM pg_roles WHERE rolname = user'''))
+    >>> r
     <Record oid=16388 rolname='elvis' rolsuper=True>
+    >>> r['oid']
+    16388
+    >>> r[0]
+    16388
 
 
 .. class:: Record()

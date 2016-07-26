@@ -24,8 +24,9 @@ ISOLATION_LEVELS = {'read_committed', 'serializable', 'repeatable_read'}
 class Transaction:
     """Represents a transaction or savepoint block.
 
-    Transactions are created by calling
-    :meth:`Connection.transaction`.
+    Transactions are created by calling the
+    :meth:`Connection.transaction() <connection.Connection.transaction>`
+    function.
     """
 
     __slots__ = ('_connection', '_isolation', '_readonly', '_deferrable',
