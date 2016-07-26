@@ -101,6 +101,7 @@ cdef class CoreProtocol:
 
     cdef _parse_msg_authentication(self)
     cdef _parse_msg_parameter_status(self)
+    cdef _parse_msg_notification(self)
     cdef _parse_msg_backend_key_data(self)
     cdef _parse_msg_ready_for_query(self)
     cdef _parse_data_msgs(self)
@@ -140,5 +141,6 @@ cdef class CoreProtocol:
     cdef _decode_row(self, const char* buf, int32_t buf_len)
 
     cdef _on_result(self)
+    cdef _on_notification(self, pid, channel, payload)
     cdef _set_server_parameter(self, name, val)
     cdef _on_connection_lost(self, exc)

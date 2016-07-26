@@ -29,7 +29,7 @@ class Connection:
     __slots__ = ('_protocol', '_transport', '_loop', '_types_stmt',
                  '_type_by_name_stmt', '_top_xact', '_uid', '_aborted',
                  '_stmt_cache_max_size', '_stmt_cache', '_stmts_to_close',
-                 '_addr', '_opts', '_command_timeout')
+                 '_addr', '_opts', '_command_timeout', '_listeners')
 
     def __init__(self, protocol, transport, loop, addr, opts, *,
                  statement_cache_size, command_timeout):
@@ -51,7 +51,44 @@ class Connection:
 
         self._command_timeout = command_timeout
 
+        self._listeners = {}
+
+    async def add_listener(self, channel, callback):
+        """Add a listener for Postgres notifications.
+
+        :param str channel: Channel to listen on.
+        :param callable callback:
+                A callable receiving the following arguments:
+                **connection**: a Connection the callback is registered with;
+                **pid**: PID of the Postgres server that sent the notification;
+                **channel**: name of the channel the notification was sent to;
+                **payload**: the payload.
+        """
+        if channel not in self._listeners:
+            await self.fetch('LISTEN {}'.format(channel))
+            self._listeners[channel] = set()
+        self._listeners[channel].add(callback)
+
+    async def remove_listener(self, channel, callback):
+        """Remove a listening callback on the specified channel."""
+        if channel not in self._listeners:
+            return
+        if callback not in self._listeners[channel]:
+            return
+        self._listeners[channel].remove(callback)
+        if not self._listeners[channel]:
+            del self._listeners[channel]
+            await self.fetch('UNLISTEN {}'.format(channel))
+
+    def get_server_pid(self):
+        """Return the PID of the Postgres server the connection is bound to."""
+        return self._protocol.get_server_pid()
+
     def get_settings(self):
+        """Return connection settings.
+
+        :return: :class:`~asyncpg.ConnectionSettings`.
+        """
         return self._protocol.get_settings()
 
     def transaction(self, *, isolation='read_committed', readonly=False,
@@ -269,6 +306,7 @@ class Connection:
         if self.is_closed():
             return
         self._close_stmts()
+        self._listeners = {}
         self._aborted = True
         protocol = self._protocol
         await protocol.close()
@@ -276,10 +314,12 @@ class Connection:
     def terminate(self):
         """Terminate the connection without waiting for pending data."""
         self._close_stmts()
+        self._listeners = {}
         self._aborted = True
         self._protocol.abort()
 
     async def reset(self):
+        self._listeners = {}
         await self.execute('''
             SET SESSION AUTHORIZATION DEFAULT;
             RESET ALL;
@@ -350,6 +390,20 @@ class Connection:
                 w.close()
 
         self._loop.create_task(cancel())
+
+    def _notify(self, pid, channel, payload):
+        if channel not in self._listeners:
+            return
+
+        for cb in self._listeners[channel]:
+            try:
+                cb(self, pid, channel, payload)
+            except Exception as ex:
+                self._loop.call_exception_handler({
+                    'message': 'Unhandled exception in asyncpg notification '
+                               'listener callback {!r}'.format(cb),
+                    'exception': ex
+                })
 
 
 async def connect(dsn=None, *,

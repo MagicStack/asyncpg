@@ -6,7 +6,6 @@
 
 
 import asyncio
-import asyncpg
 
 from asyncpg import _testbase as tb
 
@@ -16,11 +15,8 @@ class TestPool(tb.ClusterTestCase):
     async def test_pool_01(self):
         for n in {1, 3, 5, 10, 20, 100}:
             with self.subTest(tasksnum=n):
-                addr = self.cluster.get_connection_addr()
-                pool = await asyncpg.create_pool(host=addr[0], port=addr[1],
-                                                 database='postgres',
-                                                 loop=self.loop, min_size=5,
-                                                 max_size=10)
+                pool = await self.create_pool(database='postgres',
+                                              min_size=5, max_size=10)
 
                 async def worker():
                     con = await pool.acquire()
@@ -34,11 +30,8 @@ class TestPool(tb.ClusterTestCase):
     async def test_pool_02(self):
         for n in {1, 3, 5, 10, 20, 100}:
             with self.subTest(tasksnum=n):
-                addr = self.cluster.get_connection_addr()
-                async with asyncpg.create_pool(host=addr[0], port=addr[1],
-                                               database='postgres',
-                                               loop=self.loop, min_size=5,
-                                               max_size=5) as pool:
+                async with self.create_pool(database='postgres',
+                                            min_size=5, max_size=5) as pool:
 
                     async def worker():
                         con = await pool.acquire(timeout=1)
@@ -49,11 +42,8 @@ class TestPool(tb.ClusterTestCase):
                     await asyncio.gather(*tasks, loop=self.loop)
 
     async def test_pool_03(self):
-        addr = self.cluster.get_connection_addr()
-        pool = await asyncpg.create_pool(host=addr[0], port=addr[1],
-                                         database='postgres',
-                                         loop=self.loop, min_size=1,
-                                         max_size=1)
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
 
         con = await pool.acquire(timeout=1)
         with self.assertRaises(asyncio.TimeoutError):
@@ -63,11 +53,8 @@ class TestPool(tb.ClusterTestCase):
         del con
 
     async def test_pool_04(self):
-        addr = self.cluster.get_connection_addr()
-        pool = await asyncpg.create_pool(host=addr[0], port=addr[1],
-                                         database='postgres',
-                                         loop=self.loop, min_size=1,
-                                         max_size=1)
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
 
         con = await pool.acquire(timeout=0.1)
         con.terminate()
@@ -84,11 +71,8 @@ class TestPool(tb.ClusterTestCase):
     async def test_pool_05(self):
         for n in {1, 3, 5, 10, 20, 100}:
             with self.subTest(tasksnum=n):
-                addr = self.cluster.get_connection_addr()
-                pool = await asyncpg.create_pool(host=addr[0], port=addr[1],
-                                                 database='postgres',
-                                                 loop=self.loop, min_size=5,
-                                                 max_size=10)
+                pool = await self.create_pool(database='postgres',
+                                              min_size=5, max_size=10)
 
                 async def worker():
                     async with pool.acquire() as con:

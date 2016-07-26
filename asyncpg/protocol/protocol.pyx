@@ -113,6 +113,9 @@ cdef class BaseProtocol(CoreProtocol):
     def set_connection(self, connection):
         self.connection = connection
 
+    def get_server_pid(self):
+        return self.backend_pid
+
     def get_settings(self):
         return self.settings
 
@@ -444,6 +447,9 @@ cdef class BaseProtocol(CoreProtocol):
             self.statement = None
             self.last_query = None
             self.return_extra = False
+
+    cdef _on_notification(self, pid, channel, payload):
+        self.connection._notify(pid, channel, payload)
 
     cdef _on_connection_lost(self, exc):
         if self.closing:

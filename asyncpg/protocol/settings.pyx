@@ -32,13 +32,13 @@ cdef class ConnectionSettings:
     cpdef inline register_data_types(self, types):
         self._data_codecs.add_types(types)
 
-    cpdef inline add_python_codec(self, typeoid, typename, typeschema, typekind,
-                                 encoder, decoder, binary):
+    cpdef inline add_python_codec(self, typeoid, typename, typeschema,
+                                  typekind, encoder, decoder, binary):
         self._data_codecs.add_python_codec(typeoid, typename, typeschema,
                                            typekind, encoder, decoder, binary)
 
-    cpdef inline set_builtin_type_codec(self, typeoid, typename, typeschema, typekind,
-                                 alias_to):
+    cpdef inline set_builtin_type_codec(self, typeoid, typename, typeschema,
+                                        typekind, alias_to):
         self._data_codecs.set_builtin_type_codec(typeoid, typename, typeschema,
                                           typekind, alias_to)
 

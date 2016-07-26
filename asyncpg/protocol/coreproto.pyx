@@ -46,6 +46,10 @@ cdef class CoreProtocol:
                     # ParameterStatus
                     self._parse_msg_parameter_status()
                     continue
+                elif mtype == b'A':
+                    # NotificationResponse
+                    self._parse_msg_notification()
+                    continue
 
                 if state == PROTOCOL_AUTH:
                     self._process__auth(mtype)
@@ -303,6 +307,12 @@ cdef class CoreProtocol:
         val = val.decode(self.encoding)
 
         self._set_server_parameter(name, val)
+
+    cdef _parse_msg_notification(self):
+        pid = self.buffer.read_int32()
+        channel = self.buffer.read_cstr().decode(self.encoding)
+        payload = self.buffer.read_cstr().decode(self.encoding)
+        self._on_notification(pid, channel, payload)
 
     cdef _parse_msg_authentication(self):
         cdef:
@@ -615,6 +625,9 @@ cdef class CoreProtocol:
         pass
 
     cdef _on_result(self):
+        pass
+
+    cdef _on_notification(self, pid, channel, payload):
         pass
 
     cdef _on_connection_lost(self, exc):

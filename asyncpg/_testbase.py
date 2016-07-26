@@ -17,6 +17,7 @@ import unittest
 
 
 from asyncpg import cluster as pg_cluster
+from asyncpg import pool as pg_pool
 
 
 @contextlib.contextmanager
@@ -126,6 +127,11 @@ class ClusterTestCase(TestCase):
         self.cluster = _start_cluster({
             'log_connections': 'on'
         })
+
+    def create_pool(self, **kwargs):
+        addr = self.cluster.get_connection_addr()
+        return pg_pool.create_pool(host=addr[0], port=addr[1],
+                                   loop=self.loop, **kwargs)
 
 
 class ConnectedTestCase(ClusterTestCase):

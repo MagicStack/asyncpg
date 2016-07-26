@@ -301,6 +301,24 @@ of values either by a numeric index or by a field name:
 
       Return an iterator over ``(field, value)`` pairs.
 
+
+.. class:: ConnectionSettings()
+
+    A read-only collection of Connection settings.
+
+    .. describe:: settings.setting_name
+
+       Return the value of the "setting_name" setting.  Raises an
+       ``AttributeError`` if the setting is not defined.
+
+       Example:
+
+       .. code-block:: pycon
+
+           >>> connection.get_settings().client_encoding
+           'UTF8'
+
+
 Introspection
 =============
 

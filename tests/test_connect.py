@@ -22,6 +22,14 @@ class TestConnect(tb.ConnectedTestCase):
             await asyncpg.connect(user="__does_not_exist__", loop=self.loop)
 
 
+class TestSettings(tb.ConnectedTestCase):
+
+    async def test_get_settings_01(self):
+        self.assertEqual(
+            self.con.get_settings().client_encoding,
+            'UTF8')
+
+
 class TestAuthentication(tb.ConnectedTestCase):
     def setUp(self):
         super().setUp()
