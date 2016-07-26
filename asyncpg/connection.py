@@ -436,6 +436,9 @@ async def connect(dsn=None, *,
                  making the connection, or the value of ``PGUSER`` environment
                  variable, if set)
 
+    :param database: the name of the database (defaults to the value of
+                     ``PGDATABASE`` environment variable, if set.)
+
     :param password: password used for authentication
 
     :param loop: An asyncio event loop instance.  If ``None``, the default
