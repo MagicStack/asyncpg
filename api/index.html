@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                0.5.1
+                0.5.2
               </div>
             
           
@@ -160,6 +160,8 @@ the <code class="docutils literal"><span class="pre">PGPORT</span></code> enviro
 (defaults to the name of the effective user of the process
 making the connection, or the value of <code class="docutils literal"><span class="pre">PGUSER</span></code> environment
 variable, if set)</li>
+<li><strong>database</strong> &#8211; the name of the database (defaults to the value of
+<code class="docutils literal"><span class="pre">PGDATABASE</span></code> environment variable, if set.)</li>
 <li><strong>password</strong> &#8211; password used for authentication</li>
 <li><strong>loop</strong> &#8211; An asyncio event loop instance.  If <code class="docutils literal"><span class="pre">None</span></code>, the default
 event loop will be used.</li>
@@ -1219,7 +1221,7 @@ of values either by a numeric index or by a field name:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.5.1',
+            VERSION:'0.5.2',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true
