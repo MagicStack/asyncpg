@@ -139,17 +139,78 @@ provided by asyncpg supports *asynchronous iteration* via the ``async for``
 statement, and also a way to read row chunks and skip forward over the
 result set.
 
+To iterate over a cursor using a connection object use
+:meth:`Conection.cursor() <asyncpg.connection.Connection.cursor>`.
+To make the iteration efficient, the cursor will prefetch records to
+reduce the number of queries sent to the server:
+
+.. code-block:: python
+
+    async def iterate(con: Connection):
+        async with con.transaction():
+            # Postgres requires non-scrollable cursors to be created
+            # and used in a transaction.
+            async for record in con.cursor('SELECT generate_series(0, 100)'):
+                print(record)
+
+Or, alternatively, you can iterate over the cursor manually (cursor
+won't be prefetching any rows):
+
+.. code-block:: python
+
+    async def iterate(con: Connection):
+        async with con.transaction():
+            # Postgres requires non-scrollable cursors to be created
+            # and used in a transaction.
+
+            async with con.transaction():
+                # Create a Cursor object
+                cur = await con.cursor('SELECT generate_series(0, 100)')
+
+                # Move the cursor 10 rows forward
+                await cur.forward(10)
+
+                # Fetch one row and print it
+                print(await cur.fetchrow())
+
+                # Fetch a list of 5 rows and print it
+                print(await cur.fetch(5))
+
+It's also possible to create cursors from prepared statements:
+
+.. code-block:: python
+
+    async def iterate(con: Connection):
+        # Create a prepared statement that will accept one argument
+        stmt = await con.prepare('SELECT generate_series(0, $1)')
+
+        async with con.transaction():
+            # Postgres requires non-scrollable cursors to be created
+            # and used in a transaction.
+
+            # Execute the prepared statement passing `10` as the
+            # argument -- that will generate a series or records
+            # from 0..10.  Iterate over all of them and print every
+            # record.
+            async for record in stmt.cursor(10):
+                print(record)
+
+
 .. note::
 
-   Cursors created by a call to :meth:`PreparedStatement.cursor()`  are
-   *non-scrollable*: they can only be read forwards.  To create a scrollable
+   Cursors created by a call to
+   :meth:`Conection.cursor() <asyncpg.connection.Connection.cursor>` or
+   :meth:`PreparedStatement.cursor() <asyncpg.prepared_stmt.PreparedStatement.cursor>`
+   are *non-scrollable*: they can only be read forwards.  To create a scrollable
    cursor, use the ``DECLARE ... SCROLL CURSOR`` SQL statement directly.
 
 .. warning::
 
-   Cursors created by a call to :meth:`PreparedStatement.cursor()`
-   cannot be used outside of a transaction.  Any such attempt will result
-   in :exc:`~asyncpg.exceptions.InterfaceError`.
+   Cursors created by a call to
+   :meth:`Conection.cursor() <asyncpg.connection.Connection.cursor>` or
+   :meth:`PreparedStatement.cursor() <asyncpg.prepared_stmt.PreparedStatement.cursor>`
+   cannot be used outside of a transaction.  Any such attempt will result in
+   :exc:`~asyncpg.exceptions.InterfaceError`.
 
    To create a cursor usable outside of a transaction, use the
    ``DECLARE ... CURSOR WITH HOLD`` SQL statement directly.

@@ -43,7 +43,7 @@ class PreparedStatement:
 
     def cursor(self, *args, prefetch=None,
                timeout=None) -> cursor.CursorFactory:
-        """Return a *cursor interface* for the prepared statement.
+        """Return a *cursor factory* for the prepared statement.
 
         :param args: Query arguments.
         :param int prefetch: The number of rows the *cursor iterator*

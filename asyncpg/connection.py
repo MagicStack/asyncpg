@@ -121,6 +121,15 @@ class Connection:
         return state
 
     def cursor(self, query, *args, prefetch=None, timeout=None):
+        """Return a *cursor factory* for the specified query.
+
+        :param args: Query arguments.
+        :param int prefetch: The number of rows the *cursor iterator*
+                             will prefetch (defaults to ``50``.)
+        :param float timeout: Optional timeout in seconds.
+
+        :return: A :class:`~cursor.CursorFactory` object.
+        """
         return cursor.CursorFactory(self, query, None, args,
                                     prefetch, timeout)
 
