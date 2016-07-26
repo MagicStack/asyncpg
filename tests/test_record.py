@@ -212,6 +212,19 @@ class TestRecord(unittest.TestCase):
         self.assertNotIn(r3, d)
         self.assertIn(r4, d)
 
+    def test_record_contains(self):
+        r = Record(R_AB, (42, 43))
+        self.assertIn('a', r)
+        self.assertIn('b', r)
+        self.assertNotIn('z', r)
+
+        r = Record(None, (42, 43))
+        with self.assertRaises(TypeError):
+            self.assertIn('a', r)
+
+        with self.assertRaises(TypeError):
+            type(r).__contains__(None, 'a')
+
     def test_record_cmp(self):
         AB = collections.namedtuple('AB', ('a', 'b'))
 

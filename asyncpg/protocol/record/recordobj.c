@@ -469,6 +469,18 @@ record_items(PyObject *o, PyObject *args)
 }
 
 
+static int
+record_contains(ApgRecordObject *o, PyObject *arg)
+{
+    if (!ApgRecord_CheckExact(o)) {
+        PyErr_BadInternalCall();
+        return -1;
+    }
+
+    return PySequence_Contains(o->mapping, arg);
+}
+
+
 static PySequenceMethods record_as_sequence = {
     (lenfunc)record_length,                          /* sq_length */
     0,                                               /* sq_concat */
@@ -477,7 +489,7 @@ static PySequenceMethods record_as_sequence = {
     0,                                               /* sq_slice */
     0,                                               /* sq_ass_item */
     0,                                               /* sq_ass_slice */
-    0,                                               /* sq_contains */
+    (objobjproc)record_contains,                     /* sq_contains */
 };
 
 
