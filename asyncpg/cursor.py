@@ -11,7 +11,7 @@ from . import compat
 from . import exceptions
 
 
-class CursorInterface:
+class CursorFactory:
     """A cursor interface for the results of a query.
 
     A cursor interface can be used to initiate efficient traversal of the

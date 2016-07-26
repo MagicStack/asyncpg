@@ -121,8 +121,8 @@ class Connection:
         return state
 
     def cursor(self, query, *args, prefetch=None, timeout=None):
-        return cursor.CursorInterface(self, query, None, args,
-                                      prefetch, timeout)
+        return cursor.CursorFactory(self, query, None, args,
+                                    prefetch, timeout)
 
     async def prepare(self, query, *, timeout=None):
         """Create a *prepared statement* for the specified query.

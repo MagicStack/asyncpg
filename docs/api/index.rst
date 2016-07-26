@@ -155,7 +155,7 @@ result set.
    ``DECLARE ... CURSOR WITH HOLD`` SQL statement directly.
 
 
-.. autoclass:: asyncpg.cursor.CursorInterface()
+.. autoclass:: asyncpg.cursor.CursorFactory()
    :members:
 
    .. describe:: async for row in c

@@ -42,7 +42,7 @@ class PreparedStatement:
         return self._state._get_attributes()
 
     def cursor(self, *args, prefetch=None,
-               timeout=None) -> cursor.CursorInterface:
+               timeout=None) -> cursor.CursorFactory:
         """Return a *cursor interface* for the prepared statement.
 
         :param args: Query arguments.
@@ -50,12 +50,12 @@ class PreparedStatement:
                              will prefetch (defaults to ``50``.)
         :param float timeout: Optional timeout in seconds.
 
-        :return: A :class:`~cursor.CursorInterface` object.
+        :return: A :class:`~cursor.CursorFactory` object.
         """
         self.__check_open()
-        return cursor.CursorInterface(self._connection, self._query,
-                                      self._state, args, prefetch,
-                                      timeout)
+        return cursor.CursorFactory(self._connection, self._query,
+                                    self._state, args, prefetch,
+                                    timeout)
 
     async def explain(self, *args, analyze=False):
         """Return the execution plan of the statement.
