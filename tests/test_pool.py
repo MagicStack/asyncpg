@@ -73,7 +73,27 @@ class TestPool(tb.ClusterTestCase):
         con.terminate()
         await pool.release(con)
 
+        async with pool.acquire(timeout=0.1):
+            con.terminate()
+
         con = await pool.acquire(timeout=0.1)
         self.assertEqual(await con.fetchval('SELECT 1'), 1)
 
         await pool.close()
+
+    async def test_pool_05(self):
+        for n in {1, 3, 5, 10, 20, 100}:
+            with self.subTest(tasksnum=n):
+                addr = self.cluster.get_connection_addr()
+                pool = await asyncpg.create_pool(host=addr[0], port=addr[1],
+                                                 database='postgres',
+                                                 loop=self.loop, min_size=5,
+                                                 max_size=10)
+
+                async def worker():
+                    async with pool.acquire() as con:
+                        self.assertEqual(await con.fetchval('SELECT 1'), 1)
+
+                tasks = [worker() for _ in range(n)]
+                await asyncio.gather(*tasks, loop=self.loop)
+                await pool.close()
