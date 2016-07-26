@@ -282,3 +282,12 @@ of values either by a numeric index or by a field name:
    .. method:: items()
 
       Return an iterator over ``(field, value)`` pairs.
+
+Introspection
+=============
+
+.. autoclass:: asyncpg.types.Type()
+   :members:
+
+.. autoclass:: asyncpg.types.Attribute()
+   :members:

@@ -15,9 +15,18 @@ __all__ = (
 
 
 Type = collections.namedtuple('Type', ['oid', 'name', 'kind', 'schema'])
+Type.__doc__ = 'Database data type.'
+Type.oid.__doc__ = 'OID of the type.'
+Type.name.__doc__ = 'Type name.  For example "int2".'
+Type.kind.__doc__ = \
+    'Type kind.  Can be "scalar", "array", "composite" or "range".'
+Type.schema.__doc__ = 'Name of the database schema that defines the type.'
 
 
 Attribute = collections.namedtuple('Attribute', ['name', 'type'])
+Attribute.__doc__ = 'Database relation attribute.'
+Attribute.name.__doc__ = 'Attribute name.'
+Attribute.type.__doc__ = 'Attribute data type :class:`asyncpg.types.Type`.'
 
 
 class Range:

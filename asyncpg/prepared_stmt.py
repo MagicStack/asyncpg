@@ -24,20 +24,67 @@ class PreparedStatement:
         self._last_status = None
 
     def get_query(self) -> str:
-        """Return the text of the query for this prepared statement."""
+        """Return the text of the query for this prepared statement.
+
+        Example::
+
+            stmt = await connection.prepare('SELECT $1::int')
+            assert stmt.get_query() == "SELECT $1::int"
+        """
         return self._query
 
     def get_statusmsg(self) -> str:
-        """Return the status of the executed command."""
+        """Return the status of the executed command.
+
+        Example::
+
+            stmt = await connection.prepare('CREATE TABLE mytab (a int)')
+            await stmt.fetch()
+            assert stmt.get_statusmsg() == "CREATE TABLE"
+        """
         if self._last_status is None:
             return self._last_status
         return self._last_status.decode()
 
     def get_parameters(self):
+        """Return a description of statement parameters types.
+
+        :return: A tuple of :class:`asyncpg.types.Type`.
+
+        Example::
+
+            stmt = await connection.prepare('SELECT ($1::int, $2::text)')
+            print(stmt.get_parameters())
+
+            # Will print:
+            #   (Type(oid=23, name='int4', kind='scalar', schema='pg_catalog'),
+            #    Type(oid=25, name='text', kind='scalar', schema='pg_catalog'))
+        """
         self.__check_open()
         return self._state._get_parameters()
 
     def get_attributes(self):
+        """Return a description of relation attributes (columns).
+
+        :return: A tuple of :class:`asyncpg.types.Attribute`.
+
+        Example::
+
+            st = await self.con.prepare('''
+                SELECT typname, typnamespace FROM pg_type
+            ''')
+            print(st.get_attributes())
+
+            # Will print:
+            #   (Attribute(
+            #       name='typname',
+            #       type=Type(oid=19, name='name', kind='scalar',
+            #                 schema='pg_catalog')),
+            #    Attribute(
+            #       name='typnamespace',
+            #       type=Type(oid=26, name='oid', kind='scalar',
+            #                 schema='pg_catalog')))
+        """
         self.__check_open()
         return self._state._get_attributes()
 
