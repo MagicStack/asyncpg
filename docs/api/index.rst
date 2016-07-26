@@ -108,12 +108,46 @@ The most common way to use transactions is through an ``async with`` statement:
 
 .. code-block:: python
 
-   with connection.transaction():
-       connection.execute("INSERT INTO mytable VALUES(1, 2, 3)")
+   async with connection.transaction():
+       await connection.execute("INSERT INTO mytable VALUES(1, 2, 3)")
 
 
 asyncpg supports nested transactions (a nested transaction context will create
-a `savepoint`_.)
+a `savepoint`_.):
+
+.. code-block:: python
+
+   async with connection.transaction():
+       await connection.execute('CREATE TABLE mytab (a int)')
+
+       try:
+           # Create a nested transaction:
+           async with connection.transaction():
+               await connection.execute('INSERT INTO mytab (a) VALUES (1), (2)')
+               # This nested transaction will be automatically rolled back:
+               raise Exception
+       except:
+           # Ignore exception
+           pass
+
+       # Because the nested transaction was rolled back, there
+       # will be nothing in `mytab`.
+       assert await connection.fetch('SELECT a FROM mytab') == []
+
+Alternatively, transactions can be used without an ``async with`` block:
+
+.. code-block:: python
+
+    tr = connection.transaction()
+    await tr.start()
+    try:
+        ...
+    except:
+        await tr.rollback()
+        raise
+    finally:
+        await tr.commit()
+
 
 .. _savepoint: https://www.postgresql.org/docs/current/static/sql-savepoint.html
 
