@@ -5,6 +5,9 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+from collections.abc import Container as ContainerABC
+
+
 DEF ARRAY_MAXDIM = 6  # defined in postgresql/src/includes/c.h
 
 
@@ -19,8 +22,13 @@ ctypedef object (*decode_func_ex)(ConnectionSettings settings,
                                   const void *arg)
 
 
-cdef inline bint _is_array(object obj):
-    return cpython.PyTuple_Check(obj) or cpython.PyList_Check(obj)
+cdef inline bint _is_trivial_container(object obj):
+    return cpython.PyUnicode_Check(obj) or cpython.PyBytes_Check(obj) or \
+            PyByteArray_Check(obj) or PyMemoryView_Check(obj)
+
+
+cdef inline _is_container(object obj):
+    return not _is_trivial_container(obj) and isinstance(obj, ContainerABC)
 
 
 cdef _get_array_shape(object obj, int32_t *dims, int32_t *ndims):
@@ -37,7 +45,7 @@ cdef _get_array_shape(object obj, int32_t *dims, int32_t *ndims):
     dims[ndims[0] - 1] = mylen
 
     for elem in obj:
-        if _is_array(elem):
+        if _is_container(elem):
             if elemlen == -2:
                 elemlen = len(elem)
                 ndims[0] += 1
@@ -80,9 +88,10 @@ cdef inline array_encode(ConnectionSettings settings, WriteBuffer buf,
         int32_t ndims = 1
         int32_t i
 
-    if not _is_array(obj):
+    if not _is_container(obj):
         raise TypeError(
-            'list or tuple expected (got type {})'.format(type(obj)))
+            'a non-trivial iterable expected (got type {!r})'.format(
+                type(obj).__name__))
 
     _get_array_shape(obj, dims, &ndims)
 

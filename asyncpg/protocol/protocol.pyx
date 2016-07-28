@@ -23,7 +23,8 @@ from asyncpg.protocol cimport record
 from asyncpg.protocol.python cimport (
                      PyMem_Malloc, PyMem_Realloc, PyMem_Calloc, PyMem_Free,
                      PyMemoryView_GET_BUFFER, PyMemoryView_Check,
-                     PyUnicode_AsUTF8AndSize, PyByteArray_AsString)
+                     PyUnicode_AsUTF8AndSize, PyByteArray_AsString,
+                     PyByteArray_Check)
 
 from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
 

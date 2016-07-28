@@ -542,7 +542,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 "SELECT $1::int[]",
                 [[1], ['t'], [2]])
 
-        with self.assertRaisesRegex(TypeError, 'list or tuple expected'):
+        with self.assertRaisesRegex(TypeError, 'non-trivial iterable expected'):
             await self.con.fetchval(
                 "SELECT $1::int[]",
                 1)

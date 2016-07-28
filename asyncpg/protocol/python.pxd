@@ -13,7 +13,10 @@ cdef extern from "Python.h":
     void* PyMem_Calloc(size_t nelem, size_t elsize)  # Python >= 3.5!
     void PyMem_Free(void *p)
 
+    int PyByteArray_Check(object)
+
     int PyMemoryView_Check(object)
     Py_buffer *PyMemoryView_GET_BUFFER(object)
+
     char* PyUnicode_AsUTF8AndSize(object unicode, ssize_t *size) except NULL
     char* PyByteArray_AsString(object)
