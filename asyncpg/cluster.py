@@ -9,22 +9,21 @@ import asyncio
 import errno
 import os
 import os.path
+import platform
 import random
 import re
 import shutil
 import socket
 import subprocess
-import sys
 import tempfile
 import time
 
 import asyncpg
 
 
-class ClusterError(Exception):
-    pass
+_system = platform.uname().system
 
-if sys.platform == 'linux':
+if _system == 'Linux':
     def ensure_dead_with_parent():
         import ctypes
         import signal
@@ -36,8 +35,7 @@ if sys.platform == 'linux':
         except Exception as e:
             print(e)
 else:
-    def ensure_dead_with_parent():
-        pass
+    ensure_dead_with_parent = None
 
 
 def find_available_port(port_range=(49152, 65535), max_tries=1000):
@@ -65,6 +63,10 @@ def find_available_port(port_range=(49152, 65535), max_tries=1000):
     return port
 
 
+class ClusterError(Exception):
+    pass
+
+
 class Cluster:
     def __init__(self, data_dir, *, pg_config_path=None):
         self._data_dir = data_dir
@@ -88,7 +90,7 @@ class Cluster:
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = process.stdout, process.stderr
 
-        if process.returncode == 4:
+        if process.returncode == 4 or not os.listdir(self._data_dir):
             return 'not-initialized'
         elif process.returncode == 3:
             return 'stopped'
