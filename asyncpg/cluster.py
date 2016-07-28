@@ -78,6 +78,9 @@ class Cluster:
         self._daemon_process = None
         self._connection_addr = None
 
+    def is_managed(self):
+        return True
+
     def get_data_dir(self):
         return self._data_dir
 
@@ -448,12 +451,14 @@ class RunningCluster(Cluster):
         self.host = host
         self.port = port
 
+    def is_managed(self):
+        return False
+
+    def get_connection_addr(self):
+        return self.host, self.port
+
     def get_status(self):
         return 'running'
-
-    async def connect(self, loop=None, **kwargs):
-        return await asyncpg.connect(
-            host=self.host, port=self.port, loop=loop, **kwargs)
 
     def init(self, **settings):
         pass
@@ -466,3 +471,10 @@ class RunningCluster(Cluster):
 
     def destroy(self):
         pass
+
+    def reset_hba(self):
+        raise ClusterError('cannot modify HBA records of unmanaged cluster')
+
+    def add_hba_entry(self, *, type='host', database, user, address=None,
+                      auth_method, auth_options=None):
+        raise ClusterError('cannot modify HBA records of unmanaged cluster')

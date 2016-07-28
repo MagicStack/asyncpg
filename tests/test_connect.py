@@ -27,6 +27,9 @@ class TestAuthentication(tb.ConnectedTestCase):
     def setUp(self):
         super().setUp()
 
+        if not self.cluster.is_managed():
+            self.skipTest('unmanaged cluster')
+
         methods = [
             ('trust', None),
             ('reject', None),
