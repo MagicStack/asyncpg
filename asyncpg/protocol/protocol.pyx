@@ -487,3 +487,6 @@ def _create_record(object mapping, tuple elems):
         cpython.Py_INCREF(elem)
         record.ApgRecord_SET_ITEM(rec, i, elem)
     return rec
+
+
+record.ApgRecord_InitTypes()

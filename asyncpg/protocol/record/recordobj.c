@@ -51,7 +51,7 @@ ApgRecord_New(PyObject *mapping, Py_ssize_t size)
     Py_INCREF(mapping);
     o->mapping = mapping;
     o->self_hash = -1;
-    _PyObject_GC_TRACK(o);
+    PyObject_GC_Track(o);
     return (PyObject *) o;
 }
 
@@ -509,7 +509,7 @@ static PyMethodDef record_methods[] = {
 
 
 PyTypeObject ApgRecord_Type = {
-    PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    PyVarObject_HEAD_INIT(NULL, 0)
     "Record",                                        /* tp_name */
     sizeof(ApgRecordObject) - sizeof(PyObject *),    /* tp_basic_size */
     sizeof(PyObject *),                              /* tp_itemsize */
@@ -565,7 +565,7 @@ typedef struct {
 static void
 record_iter_dealloc(ApgRecordIterObject *it)
 {
-    _PyObject_GC_UNTRACK(it);
+    PyObject_GC_UnTrack(it);
     Py_CLEAR(it->it_seq);
     PyObject_GC_Del(it);
 }
@@ -627,7 +627,7 @@ static PyMethodDef record_iter_methods[] = {
 
 
 PyTypeObject ApgRecordIter_Type = {
-    PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    PyVarObject_HEAD_INIT(NULL, 0)
     "RecordIterator",                           /* tp_name */
     sizeof(ApgRecordIterObject),                /* tp_basicsize */
     0,                                          /* tp_itemsize */
@@ -675,7 +675,7 @@ record_iter(PyObject *seq)
     it->it_index = 0;
     Py_INCREF(seq);
     it->it_seq = (ApgRecordObject *)seq;
-    _PyObject_GC_TRACK(it);
+    PyObject_GC_Track(it);
     return (PyObject *)it;
 }
 
@@ -694,7 +694,7 @@ typedef struct {
 static void
 record_items_dealloc(ApgRecordItemsObject *it)
 {
-    _PyObject_GC_UNTRACK(it);
+    PyObject_GC_UnTrack(it);
     Py_CLEAR(it->it_map_iter);
     Py_CLEAR(it->it_seq);
     PyObject_GC_Del(it);
@@ -784,7 +784,7 @@ static PyMethodDef record_items_methods[] = {
 
 
 PyTypeObject ApgRecordItems_Type = {
-    PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    PyVarObject_HEAD_INIT(NULL, 0)
     "RecordItemsIterator",                      /* tp_name */
     sizeof(ApgRecordItemsObject),               /* tp_basicsize */
     0,                                          /* tp_itemsize */
@@ -841,7 +841,25 @@ record_new_items_iter(PyObject *seq)
     it->it_index = 0;
     Py_INCREF(seq);
     it->it_seq = (ApgRecordObject *)seq;
-    _PyObject_GC_TRACK(it);
+    PyObject_GC_Track(it);
 
     return (PyObject *)it;
+}
+
+
+int ApgRecord_InitTypes(void)
+{
+    if (PyType_Ready(&ApgRecord_Type) < 0) {
+        return -1;
+    }
+
+    if (PyType_Ready(&ApgRecordIter_Type) < 0) {
+        return -1;
+    }
+
+    if (PyType_Ready(&ApgRecordItems_Type) < 0) {
+        return -1;
+    }
+
+    return 0;
 }
