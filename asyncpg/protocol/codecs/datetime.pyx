@@ -12,27 +12,27 @@ date_from_ordinal = datetime.date.fromordinal
 timedelta = datetime.timedelta
 
 pg_epoch_datetime = datetime.datetime(2000, 1, 1)
-cdef long pg_epoch_datetime_ts = \
+cdef int32_t pg_epoch_datetime_ts = \
     cpython.PyLong_AsLong(int(pg_epoch_datetime.timestamp()))
 
 pg_epoch_datetime_utc = datetime.datetime(2000, 1, 1, tzinfo=utc)
-cdef long pg_epoch_datetime_utc_ts = \
+cdef int32_t pg_epoch_datetime_utc_ts = \
     cpython.PyLong_AsLong(pg_epoch_datetime_utc.timestamp())
 
 pg_epoch_date = datetime.date(2000, 1, 1)
-cdef long pg_date_offset_ord = \
+cdef int32_t pg_date_offset_ord = \
     cpython.PyLong_AsLong(pg_epoch_date.toordinal())
 
 # Binary representations of infinity for datetimes.
-cdef long long pg_time64_infinity = 0x7fffffffffffffff
-cdef long long pg_time64_negative_infinity = 0x8000000000000000
+cdef int64_t pg_time64_infinity = 0x7fffffffffffffff
+cdef int64_t pg_time64_negative_infinity = 0x8000000000000000
 cdef int32_t pg_date_infinity = 0x7fffffff
 cdef int32_t pg_date_negative_infinity = 0x80000000
 
 infinity_datetime = datetime.datetime(
     datetime.MAXYEAR, 12, 31, 23, 59, 59, 999999)
 
-cdef long infinity_datetime_ord = cpython.PyLong_AsLong(
+cdef int32_t infinity_datetime_ord = cpython.PyLong_AsLong(
     infinity_datetime.toordinal())
 
 cdef int64_t infinity_datetime_ts = 252455615999999999
@@ -40,19 +40,19 @@ cdef int64_t infinity_datetime_ts = 252455615999999999
 negative_infinity_datetime = datetime.datetime(
     datetime.MINYEAR, 1, 1, 0, 0, 0, 0)
 
-cdef long negative_infinity_datetime_ord = cpython.PyLong_AsLong(
+cdef int32_t negative_infinity_datetime_ord = cpython.PyLong_AsLong(
     negative_infinity_datetime.toordinal())
 
 cdef int64_t negative_infinity_datetime_ts = -63082281600000000
 
 infinity_date = datetime.date(datetime.MAXYEAR, 12, 31)
 
-cdef long infinity_date_ord = cpython.PyLong_AsLong(
+cdef int32_t infinity_date_ord = cpython.PyLong_AsLong(
     infinity_date.toordinal())
 
 negative_infinity_date = datetime.date(datetime.MINYEAR, 1, 1)
 
-cdef long negative_infinity_date_ord = cpython.PyLong_AsLong(
+cdef int32_t negative_infinity_date_ord = cpython.PyLong_AsLong(
     negative_infinity_date.toordinal())
 
 
@@ -117,7 +117,7 @@ cdef date_decode(ConnectionSettings settings, FastReadBuffer buf):
 cdef timestamp_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     delta = obj - pg_epoch_datetime
     cdef:
-        int64_t seconds = cpython.PyLong_AsLong(delta.days) * 86400 + \
+        int64_t seconds = cpython.PyLong_AsLongLong(delta.days) * 86400 + \
                                 cpython.PyLong_AsLong(delta.seconds)
         int32_t microseconds = cpython.PyLong_AsLong(delta.microseconds)
 
@@ -154,7 +154,7 @@ cdef timestamptz_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
     delta = obj.astimezone(utc) - pg_epoch_datetime_utc
     cdef:
-        int64_t seconds = cpython.PyLong_AsLong(delta.days) * 86400 + \
+        int64_t seconds = cpython.PyLong_AsLongLong(delta.days) * 86400 + \
                                 cpython.PyLong_AsLong(delta.seconds)
         int32_t microseconds = cpython.PyLong_AsLong(delta.microseconds)
 
