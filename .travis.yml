@@ -1,21 +1,60 @@
-language: python
+language: generic
 
-os:
-    - linux
+sudo: required
 
 services:
     - postgresql
+    - docker
 
 addons:
-    postgresql: "9.4"
+    postgresql: '9.4'
 
-python:
-    - 3.5
+env:
+    global:
+        - PYMODULE=asyncpg
+        - PYPI_USER=magicstack-ci
+        - secure: "XEUUpzRZeesmMUfImKbCJm1D1LmWXkCW6ywtquuLEp6vRboH+URW8XtOhPehj47kn+/D4LpS9DR7GTBQ2DJR6kb07uqMu4b3WhTj8gewc8T5A0bxbdkkxHDfUCw7RF+EYLoN+n8xdqgBHImLLeuY/iRf+/IUJxGBARC4OZkejXhqJktNkXNO7aDcFfl9jcU0s1azaGbgeaShSAnnQPcdnJQ5tn7qHPPjTMWWly09A0K6CGqFK9bXUlD/hLGyC6NjOc8zMhv6vt4rI/zkjtSf219t4svivTjZsWWP6LMoWNWvwbOVfr8MThU4449lfplTWkmvEP6cQAJrvLjBOKOfwvV1MhqCMLGUMxeagYq7bHwSKQQ7t+r4a3jX94go+3Y1AQ0z9Yun+UW4qxrmHeIR5tLh2cePQylkIiTaWePZNPsVl3xF9HJtWcVgNgij4r+EU6WC9EqlV4DJyISjsptSa69CLBieWrzPYNxCPr6cTXYKKu6svRj3uho2q+c3Iavzjt4e5VEgppeduXIrvqMsaAa/E+j7b3QmC0HfZ4k8U5J2evtell5gh70Vf20A9LsOF06m+I0mSDwrpGasSFCNrWH4n3cUDTlGzc93Zqw5eAmg0yYxLKWk1sHNLOB3hNn+NLSIkS6Drcrsya+Fp5k93I4qDIXvC9n7ODLMirAJ76o="
+
+matrix:
+    include:
+        - os: osx
+          osx_image: beta-xcode6.1  # OS X 10.9
+          # Travis macOS env does not support Python yet,
+          # so we have to set things up manually in install.sh.
+          env: PYTHON_VERSION=3.5.2
+               PIP_USER=1
+
+        - os: linux
+          dist: trusty
+          language: python
+          python: "3.5"
+          services: [postgresql, docker]
+
+cache:
+    directories:
+        - $HOME/.cache/pip
+
+before_install:
+    - .ci/travis-before-install.sh
 
 install:
-    - "pip install cython"
-    - "pip install uvloop"
+    - .ci/travis-install.sh
 
 script:
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then eval "$(pyenv init -)"; fi
     - make && make test
     - make debug && make test
+
+before_deploy:
+    - .ci/travis-build-and-upload.sh
+
+deploy:
+    skip_cleanup: true
+    provider: pypi
+    user: magicstack-ci
+    password:
+        secure: r8q6OnKwfMO3/obfBDLIjVHrk9VGwcKCrFAUefTvbVVO1oBxpT0gPbASorxgU27h5u2o6L0qp9YUitSyRJBfN4C7BM4aAzVp3FEVvC6KzUYxcxZguveq3Lc+6cBo+AFXE3Kuz7Zxmw3yNqIPkdHJrkKqdANLDVjrSs87uiPuK8s7oH7pxmVTq40ymdkA1Da5QsY6dONDohIJ3Z6HLlKEFzNYiFDY7NK+vDq/+U5UZZZlZb6MAQ07R4RvFoFnH0PNDnyJd6qGOJaJ1W1ge87lOOsdhsUeUiC1BuUGtlRPkwsNBdygJ5RDotn9O6gnvSdtra/d9z5Jpju8Vhbad2b3dKU32ZYnApmZuVGx9O/fQ9yaYc5KkJdjhAIHghfOL7UKOw9+IDzOcg8Glx7+uQ7vbwgY0TulJDCH2dWfwYXMfRdmzxOZlcTGVg1wtHB7s3bEvksG/N4YTn6YCqSPvJ4nbUQiZ0Ji4VCx8SX6S+vkEvVTUPPncmEBIoGAvmMtXBHs93FovwCFbNTugiDOeKB+rWnve9Hj45Ou6lmWNlIyWJss0k9waGmXltomYLKShMAZ5uqe+Oyk4889E2KFaGt34qEuXHAybpxXbjXJewVcMExBkHdRdRr0kVu7OO/7JVJ2kCkp2wRe9QKe0eBgCPs2eUIxKFVCOoDD1HMQ/ytbWIM=
+    distributions: sdist
+    on:
+        tags: true
+        all_branches: true
