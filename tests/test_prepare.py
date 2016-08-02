@@ -353,7 +353,8 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertIsNone(await self.con.fetchrow(''))
 
     async def test_prepare_19_concurrent_calls(self):
-        st = self.loop.create_task(self.con.prepare('SELECT 1'))
+        st = self.loop.create_task(self.con.prepare(
+            'SELECT ROW(pg_sleep(0.02), 1)'))
         await asyncio.sleep(0, loop=self.loop)
 
         with self.assertRaisesRegex(asyncpg.InterfaceError,
@@ -361,7 +362,7 @@ class TestPrepare(tb.ConnectedTestCase):
             await self.con.execute('SELECT 2')
 
         st = await st
-        self.assertEqual(await st.fetchval(), 1)
+        self.assertEqual(await st.fetchval(), (None, 1))
 
     async def test_prepare_20_concurrent_calls(self):
         for methname, val in [('fetch', [(1,)]),
