@@ -7,7 +7,7 @@
 
 cdef extern from "record/recordobj.h":
 
-	int ApgRecord_InitTypes()
+	int ApgRecord_InitTypes() except -1
 
 	int ApgRecord_CheckExact(object)
 	object ApgRecord_New(object, int)
