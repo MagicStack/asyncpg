@@ -32,7 +32,7 @@ _upload_wheels() {
 if [ "${TRAVIS_OS_NAME}" == "linux" ]; then
     docker pull quay.io/pypa/manylinux1_x86_64
     docker run --rm \
-        -v "${_root}":/io \
+        -v "${_root}":/io -e "PYMODULE=${PYMODULE}" \
         quay.io/pypa/manylinux1_x86_64 \
             /io/.ci/build-manylinux-wheels.sh
 
@@ -40,7 +40,7 @@ if [ "${TRAVIS_OS_NAME}" == "linux" ]; then
 
     docker pull quay.io/pypa/manylinux1_i686
     docker run --rm \
-        -v "${_root}":/io  \
+        -v "${_root}":/io -e "PYMODULE=${PYMODULE}" \
         quay.io/pypa/manylinux1_i686 linux32 \
             /io/.ci/build-manylinux-wheels.sh
 
