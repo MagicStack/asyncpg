@@ -353,7 +353,7 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertIsNone(await self.con.fetchrow(''))
 
     async def test_prepare_19_concurrent_calls(self):
-        st = self.loop.create_task(self.con.prepare(
+        st = self.loop.create_task(self.con.fetchval(
             'SELECT ROW(pg_sleep(0.02), 1)'))
         await asyncio.sleep(0, loop=self.loop)
 
@@ -361,8 +361,7 @@ class TestPrepare(tb.ConnectedTestCase):
                                     'another operation'):
             await self.con.execute('SELECT 2')
 
-        st = await st
-        self.assertEqual(await st.fetchval(), (None, 1))
+        self.assertEqual(await st, (None, 1))
 
     async def test_prepare_20_concurrent_calls(self):
         for methname, val in [('fetch', [(1,)]),
