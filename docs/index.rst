@@ -5,6 +5,7 @@
     :target: https://pypi.python.org/pypi/asyncpg
 
 
+=======
 asyncpg
 =======
 
@@ -13,6 +14,9 @@ PostgreSQL and Python/asyncio.  asyncpg is an efficient, clean implementation
 of PostgreSQL server binary protocol for use with Python's ``asyncio``
 framework.
 
+**asyncpg** is a C extension and it is only currently compatible with
+CPython 3.5.
+
 
 Contents
 --------
@@ -20,4 +24,6 @@ Contents
 .. toctree::
    :maxdepth: 2
 
+   installation
+   examples
    api/index
