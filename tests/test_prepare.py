@@ -355,7 +355,10 @@ class TestPrepare(tb.ConnectedTestCase):
     async def test_prepare_19_concurrent_calls(self):
         st = self.loop.create_task(self.con.fetchval(
             'SELECT ROW(pg_sleep(0.02), 1)'))
-        await asyncio.sleep(0, loop=self.loop)
+
+        # Wait for some time to make sure the first query is fully
+        # prepared (!) and is now awaiting the results (!!).
+        await asyncio.sleep(0.01, loop=self.loop)
 
         with self.assertRaisesRegex(asyncpg.InterfaceError,
                                     'another operation'):
