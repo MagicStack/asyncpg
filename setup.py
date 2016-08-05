@@ -15,7 +15,7 @@ if sys.version_info < (3, 5):
 
 setuptools.setup(
     name='asyncpg',
-    version='0.5.2',
+    version='0.5.3',
     description='An asyncio PosgtreSQL driver',
     classifiers=[
         'License :: OSI Approved :: Apache Software License',
