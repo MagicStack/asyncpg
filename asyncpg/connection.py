@@ -112,12 +112,38 @@ class Connection:
         """
         return transaction.Transaction(self, isolation, readonly, deferrable)
 
-    async def execute(self, script: str, *, timeout: float=None) -> str:
+    async def execute(self, query: str, *args, timeout: float=None) -> str:
         """Execute an SQL command (or commands).
 
+        This method can execute many SQL commands at once, when no arguments
+        are provided.
+
+        Example:
+
+        .. code-block:: pycon
+
+            >>> await con.execute('''
+            ...     CREATE TABLE mytab (a int);
+            ... ''')
+            CREATE TABLE
+
+            >>> await con.execute('''
+            ...     INSERT INTO mytab (a) VALUES ($1), ($2)
+            ... ''', 10, 20)
+            INSERT 0 2
+
+        :param args: Query arguments.
+        :param float timeout: Optional timeout value in seconds.
         :return str: Status of the last SQL command.
         """
-        return await self._protocol.query(script, timeout)
+        if not args:
+            return await self._protocol.query(query, timeout)
+
+        stmt = await self._get_statement(query, timeout)
+        protocol = self._protocol
+        _, status, _ = await protocol.bind_execute(stmt, args, '', 0,
+                                                   True, timeout)
+        return status.decode()
 
     async def _get_statement(self, query, timeout):
         cache = self._stmt_cache_max_size > 0

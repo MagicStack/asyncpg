@@ -25,6 +25,29 @@ class TestExecuteScript(tb.ConnectedTestCase):
         self.assertEqual(self.con._protocol.queries_count, 1)
         self.assertEqual(status, 'SELECT 10')
 
+    async def test_execute_script_2(self):
+        status = await self.con.execute('''
+            CREATE TABLE mytab (a int);
+        ''')
+        self.assertEqual(status, 'CREATE TABLE')
+
+        try:
+            status = await self.con.execute('''
+                INSERT INTO mytab (a) VALUES ($1), ($2)
+            ''', 10, 20)
+            self.assertEqual(status, 'INSERT 0 2')
+        finally:
+            await self.con.execute('DROP TABLE mytab')
+
+    async def test_execute_script_3(self):
+        with self.assertRaisesRegex(asyncpg.PostgresSyntaxError,
+                                    'cannot insert multiple commands'):
+
+            await self.con.execute('''
+                CREATE TABLE mytab (a int);
+                INSERT INTO mytab (a) VALUES ($1), ($2);
+            ''', 10, 20)
+
     async def test_execute_script_check_transactionality(self):
         with self.assertRaises(asyncpg.PostgresError):
             await self.con.execute('''
