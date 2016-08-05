@@ -1,0 +1,400 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>asyncpg.transaction &mdash; asyncpg Documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="asyncpg Documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> asyncpg
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.5.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Reference</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">asyncpg</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+    <li>asyncpg.transaction</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for asyncpg.transaction</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright (C) 2016-present the ayncpg authors and contributors</span>
+<span class="c1"># &lt;see AUTHORS file&gt;</span>
+<span class="c1">#</span>
+<span class="c1"># This module is part of asyncpg and is released under</span>
+<span class="c1"># the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0</span>
+
+
+<span class="kn">import</span> <span class="nn">enum</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">exceptions</span> <span class="k">as</span> <span class="n">apg_errors</span>
+
+
+<span class="k">class</span> <span class="nc">TransactionState</span><span class="p">(</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">NEW</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">STARTED</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">COMMITTED</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">ROLLEDBACK</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">FAILED</span> <span class="o">=</span> <span class="mi">4</span>
+
+
+<span class="n">ISOLATION_LEVELS</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;read_committed&#39;</span><span class="p">,</span> <span class="s1">&#39;serializable&#39;</span><span class="p">,</span> <span class="s1">&#39;repeatable_read&#39;</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="Transaction"><a class="viewcode-back" href="../../api/index.html#asyncpg.transaction.Transaction">[docs]</a><span class="k">class</span> <span class="nc">Transaction</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Represents a transaction or savepoint block.</span>
+
+<span class="sd">    Transactions are created by calling</span>
+<span class="sd">    :meth:`Connection.transaction`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_connection&#39;</span><span class="p">,</span> <span class="s1">&#39;_isolation&#39;</span><span class="p">,</span> <span class="s1">&#39;_readonly&#39;</span><span class="p">,</span> <span class="s1">&#39;_deferrable&#39;</span><span class="p">,</span>
+                 <span class="s1">&#39;_state&#39;</span><span class="p">,</span> <span class="s1">&#39;_nested&#39;</span><span class="p">,</span> <span class="s1">&#39;_id&#39;</span><span class="p">,</span> <span class="s1">&#39;_managed&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">isolation</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">deferrable</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">isolation</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ISOLATION_LEVELS</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;isolation is expected to be either of </span><span class="si">{}</span><span class="s1">, &#39;</span>
+                <span class="s1">&#39;got </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ISOLATION_LEVELS</span><span class="p">,</span> <span class="n">isolation</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">isolation</span> <span class="o">!=</span> <span class="s1">&#39;serializable&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">readonly</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s1">&#39;&quot;readonly&quot; is only supported for &#39;</span>
+                    <span class="s1">&#39;serializable transactions&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">deferrable</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">readonly</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s1">&#39;&quot;deferrable&quot; is only supported for &#39;</span>
+                    <span class="s1">&#39;serializable readonly transactions&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="o">=</span> <span class="n">connection</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="o">=</span> <span class="n">isolation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_readonly</span> <span class="o">=</span> <span class="n">readonly</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_deferrable</span> <span class="o">=</span> <span class="n">deferrable</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">NEW</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nested</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_managed</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">__aenter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_managed</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                <span class="s1">&#39;cannot enter context: already in an `async with` block&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_managed</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">__aexit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">extype</span><span class="p">,</span> <span class="n">ex</span><span class="p">,</span> <span class="n">tb</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">extype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__rollback</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__commit</span><span class="p">()</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_managed</span> <span class="o">=</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="Transaction.start"><a class="viewcode-back" href="../../api/index.html#asyncpg.transaction.Transaction.start">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Enter the transaction or savepoint block.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__check_state_base</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">STARTED</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                <span class="s1">&#39;cannot start; the transaction is already started&#39;</span><span class="p">)</span>
+
+        <span class="n">con</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span>
+
+        <span class="k">if</span> <span class="n">con</span><span class="o">.</span><span class="n">_top_xact</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">con</span><span class="o">.</span><span class="n">_top_xact</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Nested transaction block</span>
+            <span class="n">top_xact</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_top_xact</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="o">!=</span> <span class="n">top_xact</span><span class="o">.</span><span class="n">_isolation</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                    <span class="s1">&#39;nested transaction has a different isolation level: &#39;</span>
+                    <span class="s1">&#39;current </span><span class="si">{!r}</span><span class="s1"> != outer </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span><span class="p">,</span> <span class="n">top_xact</span><span class="o">.</span><span class="n">_isolation</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_nested</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nested</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_id</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">()</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;SAVEPOINT </span><span class="si">{}</span><span class="s1">;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_id</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="o">==</span> <span class="s1">&#39;read_committed&#39;</span><span class="p">:</span>
+                <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;BEGIN;&#39;</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="o">==</span> <span class="s1">&#39;repeatable_read&#39;</span><span class="p">:</span>
+                <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;BEGIN ISOLATION LEVEL REPEATABLE READ;&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;BEGIN ISOLATION LEVEL SERIALIZABLE&#39;</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_readonly</span><span class="p">:</span>
+                    <span class="n">query</span> <span class="o">+=</span> <span class="s1">&#39; READ ONLY&#39;</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deferrable</span><span class="p">:</span>
+                    <span class="n">query</span> <span class="o">+=</span> <span class="s1">&#39; DEFERRABLE&#39;</span>
+                <span class="n">query</span> <span class="o">+=</span> <span class="s1">&#39;;&#39;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">FAILED</span>
+            <span class="k">raise</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">STARTED</span></div>
+
+    <span class="k">def</span> <span class="nf">__check_state_base</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">opname</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">COMMITTED</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                <span class="s1">&#39;cannot </span><span class="si">{}</span><span class="s1">; the transaction is already committed&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">opname</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">ROLLEDBACK</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                <span class="s1">&#39;cannot </span><span class="si">{}</span><span class="s1">; the transaction is already rolled back&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">opname</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">FAILED</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                <span class="s1">&#39;cannot </span><span class="si">{}</span><span class="s1">; the transaction is in error state&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">opname</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__check_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">opname</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">STARTED</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">NEW</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                    <span class="s1">&#39;cannot </span><span class="si">{}</span><span class="s1">; the transaction is not yet started&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="n">opname</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__check_state_base</span><span class="p">(</span><span class="n">opname</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">__commit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__check_state</span><span class="p">(</span><span class="s1">&#39;commit&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_top_xact</span> <span class="ow">is</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_top_xact</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nested</span><span class="p">:</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;RELEASE SAVEPOINT </span><span class="si">{}</span><span class="s1">;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_id</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;COMMIT;&#39;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">FAILED</span>
+            <span class="k">raise</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">COMMITTED</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">__rollback</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__check_state</span><span class="p">(</span><span class="s1">&#39;rollback&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_top_xact</span> <span class="ow">is</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_top_xact</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nested</span><span class="p">:</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;ROLLBACK TO </span><span class="si">{}</span><span class="s1">;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_id</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;ROLLBACK;&#39;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">FAILED</span>
+            <span class="k">raise</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">ROLLEDBACK</span>
+
+<div class="viewcode-block" id="Transaction.commit"><a class="viewcode-back" href="../../api/index.html#asyncpg.transaction.Transaction.commit">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Exit the transaction or savepoint block and commit changes.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_managed</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                <span class="s1">&#39;cannot manually commit from within an `async with` block&#39;</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__commit</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Transaction.rollback"><a class="viewcode-back" href="../../api/index.html#asyncpg.transaction.Transaction.rollback">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">rollback</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Exit the transaction or savepoint block and rollback changes.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_managed</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                <span class="s1">&#39;cannot manually rollback from within an `async with` block&#39;</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__rollback</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;state:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()))</span>
+
+        <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_readonly</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;readonly&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deferrable</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;deferrable&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__module__</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;asyncpg.&#39;</span><span class="p">):</span>
+            <span class="n">mod</span> <span class="o">=</span> <span class="s1">&#39;asyncpg&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mod</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__module__</span>
+
+        <span class="k">return</span> <span class="s1">&#39;&lt;</span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1"> </span><span class="si">{:#x}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">mod</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">attrs</span><span class="p">),</span> <span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016-present, the ayncpg authors and contributors.
+
+    </p>
+  </div> 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.5.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
