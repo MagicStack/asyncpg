@@ -50,6 +50,10 @@ release: clean compile test
 	$(PYTHON) setup.py sdist upload
 
 
+htmldocs:
+	$(MAKE) -C docs html
+
+
 # Script to patch Cython 'async def' coroutines to have a 'tp_iter' slot,
 # which makes them compatible with 'yield from' without the
 # `asyncio.coroutine` decorator.

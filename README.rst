@@ -18,7 +18,7 @@ Documentation
 -------------
 
 The project documentation can be found
-`here <https://magicstack.github.io/asyncpg/>`_.
+`here <https://magicstack.github.io/asyncpg/current/>`_.
 
 
 Performance
