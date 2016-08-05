@@ -271,7 +271,7 @@ def create_pool(dsn=None, *,
 
         async with asyncpg.create_pool(user='postgres',
                                        command_timeout=60) as pool:
-            async with poll.acquire() as con:
+            async with pool.acquire() as con:
                 await con.fetch('SELECT 1')
 
     Or directly with ``await``:
@@ -279,7 +279,7 @@ def create_pool(dsn=None, *,
     .. code-block:: python
 
         pool = await asyncpg.create_pool(user='postgres', command_timeout=60)
-        con = await poll.acquire()
+        con = await pool.acquire()
         try:
             await con.fetch('SELECT 1')
         finally:
