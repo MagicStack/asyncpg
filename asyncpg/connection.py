@@ -124,8 +124,9 @@ class Connection:
 
             >>> await con.execute('''
             ...     CREATE TABLE mytab (a int);
+            ...     INSERT INTO mytab (a) VALUES (100), (200), (300);
             ... ''')
-            CREATE TABLE
+            INSERT 0 3
 
             >>> await con.execute('''
             ...     INSERT INTO mytab (a) VALUES ($1), ($2)
