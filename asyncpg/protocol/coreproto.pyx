@@ -13,7 +13,7 @@ cdef class CoreProtocol:
     def __init__(self, con_args):
         self.buffer = ReadBuffer()
         self.user = con_args.get('user')
-        self.password = con_args.pop('password', None)
+        self.password = con_args.get('password')
         self.auth_msg = None
         self.con_args = con_args
         self.transport = None
@@ -497,6 +497,8 @@ cdef class CoreProtocol:
         buf.write_bytestring("'{}'".format(self.encoding).encode('ascii'))
 
         for param in self.con_args:
+            if param == 'password':
+                continue
             buf.write_str(param, self.encoding)
             buf.write_str(self.con_args[param], self.encoding)
 

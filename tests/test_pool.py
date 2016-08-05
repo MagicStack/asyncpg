@@ -10,7 +10,7 @@ import asyncio
 from asyncpg import _testbase as tb
 
 
-class TestPool(tb.ClusterTestCase):
+class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_01(self):
         for n in {1, 3, 5, 10, 20, 100}:
@@ -94,3 +94,47 @@ class TestPool(tb.ClusterTestCase):
             con = await pool.acquire()
 
         self.assertIs(con, await fut)
+
+    async def test_pool_auth(self):
+        if not self.cluster.is_managed():
+            self.skipTest('unmanaged cluster')
+
+        self.cluster.reset_hba()
+
+        self.cluster.add_hba_entry(
+            type='local',
+            database='postgres', user='pooluser',
+            auth_method='md5')
+
+        self.cluster.add_hba_entry(
+            type='host', address='127.0.0.0/32',
+            database='postgres', user='pooluser',
+            auth_method='md5')
+
+        self.cluster.reload()
+
+        try:
+            await self.con.execute('''
+                CREATE ROLE pooluser WITH LOGIN PASSWORD 'poolpassword'
+            ''')
+
+            pool = await self.create_pool(database='postgres',
+                                          user='pooluser',
+                                          password='poolpassword',
+                                          min_size=5, max_size=10)
+
+            async def worker():
+                con = await pool.acquire()
+                self.assertEqual(await con.fetchval('SELECT 1'), 1)
+                await pool.release(con)
+
+            tasks = [worker() for _ in range(5)]
+            await asyncio.gather(*tasks, loop=self.loop)
+            await pool.close()
+
+        finally:
+            await self.con.execute('DROP ROLE pooluser')
+
+            # Reset cluster's pg_hba.conf since we've meddled with it
+            self.cluster.trust_local_connections()
+            self.cluster.reload()
