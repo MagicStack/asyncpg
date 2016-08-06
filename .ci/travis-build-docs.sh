@@ -49,7 +49,7 @@ if git diff --quiet --exit-code; then
     exit 0
 fi
 
-git add .
+git add --all .
 git commit -m "Automatic documentation update" --author="${AUTHOR}"
 
 set +x
