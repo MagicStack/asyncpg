@@ -354,7 +354,7 @@ class TestPrepare(tb.ConnectedTestCase):
 
     async def test_prepare_19_concurrent_calls(self):
         st = self.loop.create_task(self.con.fetchval(
-            'SELECT ROW(pg_sleep(0.02), 1)'))
+            'SELECT ROW(pg_sleep(0.03), 1)'))
 
         # Wait for some time to make sure the first query is fully
         # prepared (!) and is now awaiting the results (!!).
@@ -367,20 +367,26 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual(await st, (None, 1))
 
     async def test_prepare_20_concurrent_calls(self):
-        for methname, val in [('fetch', [(1,)]),
-                              ('fetchval', 1),
-                              ('fetchrow', (1,))]:
+        expected = ((None, 1),)
 
-            meth = getattr(self.con, methname)
+        for methname, val in [('fetch', [expected]),
+                              ('fetchval', expected[0]),
+                              ('fetchrow', expected)]:
 
-            vf = self.loop.create_task(meth('SELECT 1'))
-            await asyncio.sleep(0, loop=self.loop)
+            with self.subTest(meth=methname):
 
-            with self.assertRaisesRegex(asyncpg.InterfaceError,
-                                        'another operation'):
-                await meth('SELECT 2')
+                meth = getattr(self.con, methname)
 
-            self.assertEqual(await vf, val)
+                vf = self.loop.create_task(
+                    meth('SELECT ROW(pg_sleep(0.03), 1)'))
+
+                await asyncio.sleep(0.01, loop=self.loop)
+
+                with self.assertRaisesRegex(asyncpg.InterfaceError,
+                                            'another operation'):
+                    await meth('SELECT 2')
+
+                self.assertEqual(await vf, val)
 
     async def test_prepare_21_errors(self):
         stmt = await self.con.prepare('SELECT 10 / $1::int')
