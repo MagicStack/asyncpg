@@ -31,7 +31,7 @@
 
   
     <link rel="top" title="asyncpg Documentation" href="../index.html"/>
-        <link rel="prev" title="asyncpg" href="../index.html"/> 
+        <link rel="prev" title="Usage Examples" href="../examples.html"/> 
 
   
   <script src="../_static/js/modernizr.min.js"></script>
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                0.5.2
+                0.5.3
               </div>
             
           
@@ -81,6 +81,8 @@
             
             
                 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Usage Examples</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#connection">Connection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#prepared-statements">Prepared Statements</a></li>
@@ -248,16 +250,41 @@ will prefetch (defaults to <code class="docutils literal"><span class="pre">50</
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.execute">
-<em class="property">coroutine </em><code class="descname">execute</code><span class="sig-paren">(</span><em>script: str</em>, <em>*</em>, <em>timeout: float = None</em><span class="sig-paren">)</span> &rarr; str<a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.execute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.execute" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">execute</code><span class="sig-paren">(</span><em>query: str</em>, <em>*args</em>, <em>*</em>, <em>timeout: float = None</em><span class="sig-paren">)</span> &rarr; str<a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.execute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.execute" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute an SQL command (or commands).</p>
+<p>This method can execute many SQL commands at once, when no arguments
+are provided.</p>
+<p>Example:</p>
+<div class="highlight-pycon"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">    CREATE TABLE mytab (a int);</span>
+<span class="gp">... </span><span class="s1">    INSERT INTO mytab (a) VALUES (100), (200), (300);</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="go">INSERT 0 3</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">    INSERT INTO mytab (a) VALUES ($1), ($2)</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+<span class="go">INSERT 0 2</span>
+</pre></div>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return str:</th><td class="field-body">Status of the last SQL command.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>args</strong> &#8211; Query arguments.</li>
+<li><strong>timeout</strong> (<em>float</em>) &#8211; Optional timeout value in seconds.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return str:</th><td class="field-body"><p class="first last">Status of the last SQL command.</p>
+</td>
 </tr>
 </tbody>
 </table>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.5.4: </span>Made it possible to pass query arguments.</p>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -939,13 +966,13 @@ fetch subsets of the query results.</p>
 <p>Can be used either with an <code class="docutils literal"><span class="pre">async</span> <span class="pre">with</span></code> block:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="k">with</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">create_pool</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">,</span>
                                <span class="n">command_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
-    <span class="n">async</span> <span class="k">with</span> <span class="n">poll</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
+    <span class="n">async</span> <span class="k">with</span> <span class="n">pool</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
         <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT 1&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Or directly with <code class="docutils literal"><span class="pre">await</span></code>:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">pool</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">create_pool</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">,</span> <span class="n">command_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
-<span class="n">con</span> <span class="o">=</span> <span class="n">await</span> <span class="n">poll</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+<span class="n">con</span> <span class="o">=</span> <span class="n">await</span> <span class="n">pool</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
 <span class="k">try</span><span class="p">:</span>
     <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT 1&#39;</span><span class="p">)</span>
 <span class="k">finally</span><span class="p">:</span>
@@ -1191,7 +1218,7 @@ of values either by a numeric index or by a field name:</p>
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
       
-        <a href="../index.html" class="btn btn-neutral" title="asyncpg" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="../examples.html" class="btn btn-neutral" title="Usage Examples" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -1221,7 +1248,7 @@ of values either by a numeric index or by a field name:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.5.2',
+            VERSION:'0.5.3',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

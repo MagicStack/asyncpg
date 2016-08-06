@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                0.5.2
+                0.5.3
               </div>
             
           
@@ -81,6 +81,8 @@
             
             
                 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Usage Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Reference</a></li>
 </ul>
 
@@ -241,12 +243,41 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">transaction</span><span class="o">.</span><span class="n">Transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">isolation</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">deferrable</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Connection.execute"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.execute">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">script</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<div class="viewcode-block" id="Connection.execute"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.execute">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Execute an SQL command (or commands).</span>
 
+<span class="sd">        This method can execute many SQL commands at once, when no arguments</span>
+<span class="sd">        are provided.</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">        .. code-block:: pycon</span>
+
+<span class="sd">            &gt;&gt;&gt; await con.execute(&#39;&#39;&#39;</span>
+<span class="sd">            ...     CREATE TABLE mytab (a int);</span>
+<span class="sd">            ...     INSERT INTO mytab (a) VALUES (100), (200), (300);</span>
+<span class="sd">            ... &#39;&#39;&#39;)</span>
+<span class="sd">            INSERT 0 3</span>
+
+<span class="sd">            &gt;&gt;&gt; await con.execute(&#39;&#39;&#39;</span>
+<span class="sd">            ...     INSERT INTO mytab (a) VALUES ($1), ($2)</span>
+<span class="sd">            ... &#39;&#39;&#39;, 10, 20)</span>
+<span class="sd">            INSERT 0 2</span>
+
+<span class="sd">        :param args: Query arguments.</span>
+<span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 <span class="sd">        :return str: Status of the last SQL command.</span>
+
+<span class="sd">        .. versionchanged:: 0.5.4</span>
+<span class="sd">           Made it possible to pass query arguments.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="p">:</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+
+        <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+                                                         <span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">status</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span></div>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_get_statement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
         <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache_max_size</span> <span class="o">&gt;</span> <span class="mi">0</span>
@@ -320,8 +351,8 @@
 <span class="sd">        :return list: A list of :class:`Record` instances.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
-        <span class="n">protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+                                                 <span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">data</span></div>
 
 <div class="viewcode-block" id="Connection.fetchval"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.fetchval">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -339,8 +370,8 @@
 <span class="sd">        :return: The value of the specified column of the first record.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
-        <span class="n">protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span>
+                                                 <span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">column</span><span class="p">]</span></div>
@@ -355,8 +386,8 @@
 <span class="sd">        :return: The first row as a :class:`Record` instance.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
-        <span class="n">protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span>
+                                                 <span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
@@ -437,8 +468,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_close_stmts</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_aborted</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="n">protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span>
-        <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Connection.terminate"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.terminate">[docs]</a>    <span class="k">def</span> <span class="nf">terminate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Terminate the connection without waiting for pending data.&quot;&quot;&quot;</span>
@@ -479,9 +509,8 @@
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_cleanup_stmts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">to_close</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmts_to_close</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stmts_to_close</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-        <span class="n">protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span>
         <span class="k">for</span> <span class="n">stmt</span> <span class="ow">in</span> <span class="n">to_close</span><span class="p">:</span>
-            <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">close_statement</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">close_statement</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_request_portal_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">()</span>
@@ -804,7 +833,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.5.2',
+            VERSION:'0.5.3',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true
