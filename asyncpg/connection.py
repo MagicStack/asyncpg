@@ -136,6 +136,9 @@ class Connection:
         :param args: Query arguments.
         :param float timeout: Optional timeout value in seconds.
         :return str: Status of the last SQL command.
+
+        .. versionchanged:: 0.5.4
+           Made it possible to pass query arguments.
         """
         if not args:
             return await self._protocol.query(query, timeout)
