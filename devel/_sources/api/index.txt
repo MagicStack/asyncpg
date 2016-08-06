@@ -15,51 +15,10 @@ API Reference
 Connection
 ==========
 
-.. coroutinefunction:: connect(dsn=None, *, host=None, port=None, \
-                        user=None, password=None, \
-                        database=None, loop=None, timeout=60, \
-                        statement_cache_size=100, \
-                        command_timeout=None, \
-                        **opts)
-
-   Establish a connection to a PostgreSQL server and return a new
-   :class:`~asyncpg.connection.Connection` object.
-
-   :param dsn: Connection arguments specified using as a single string in the
-               following format:
-               ``postgres://user:pass@host:port/database?option=value``
-
-   :param host: database host address or a path to the directory containing
-                database server UNIX socket (defaults to the default UNIX
-                socket, or the value of the ``PGHOST`` environment variable,
-                if set).
-
-   :param port: connection port number (defaults to ``5432``, or the value of
-                the ``PGPORT`` environment variable, if set)
-
-   :param user: the name of the database role used for authentication
-                (defaults to the name of the effective user of the process
-                making the connection, or the value of ``PGUSER`` environment
-                variable, if set)
-
-   :param password: password used for authentication
-
-   :param loop: An asyncio event loop instance.  If ``None``, the default
-                event loop will be used.
-
-   :param float timeout: connection timeout (in seconds, defaults to 60
-                         seconds).
-
-   :param float statement_timeout: the default timeout for operations on
-                         this connection (the default is no timeout).
-
-   :param int statement_cache_size: the size of prepared statement LRU cache
-                         (defaults to 100).
-
-   :returns: :class:`~asyncpg.connection.Connection` instance.
+.. autofunction:: asyncpg.connection.connect
 
 
-.. autoclass:: asyncpg.connection.Connection()
+.. autoclass:: asyncpg.connection.Connection
    :members:
 
 
@@ -108,12 +67,50 @@ The most common way to use transactions is through an ``async with`` statement:
 
 .. code-block:: python
 
-   with connection.transaction():
-       connection.execute("INSERT INTO mytable VALUES(1, 2, 3)")
+   async with connection.transaction():
+       await connection.execute("INSERT INTO mytable VALUES(1, 2, 3)")
 
 
 asyncpg supports nested transactions (a nested transaction context will create
-a `savepoint`_.)
+a `savepoint`_.):
+
+.. code-block:: python
+
+   async with connection.transaction():
+       await connection.execute('CREATE TABLE mytab (a int)')
+
+       try:
+           # Create a nested transaction:
+           async with connection.transaction():
+               await connection.execute('INSERT INTO mytab (a) VALUES (1), (2)')
+               # This nested transaction will be automatically rolled back:
+               raise Exception
+       except:
+           # Ignore exception
+           pass
+
+       # Because the nested transaction was rolled back, there
+       # will be nothing in `mytab`.
+       assert await connection.fetch('SELECT a FROM mytab') == []
+
+Alternatively, transactions can be used without an ``async with`` block:
+
+.. code-block:: python
+
+    tr = connection.transaction()
+    await tr.start()
+    try:
+        ...
+    except:
+        await tr.rollback()
+        raise
+    finally:
+        await tr.commit()
+
+
+See also the
+:meth:`Connection.transaction() <asyncpg.connection.Connection.transaction>`
+function.
 
 .. _savepoint: https://www.postgresql.org/docs/current/static/sql-savepoint.html
 
@@ -139,23 +136,84 @@ provided by asyncpg supports *asynchronous iteration* via the ``async for``
 statement, and also a way to read row chunks and skip forward over the
 result set.
 
+To iterate over a cursor using a connection object use
+:meth:`Conection.cursor() <asyncpg.connection.Connection.cursor>`.
+To make the iteration efficient, the cursor will prefetch records to
+reduce the number of queries sent to the server:
+
+.. code-block:: python
+
+    async def iterate(con: Connection):
+        async with con.transaction():
+            # Postgres requires non-scrollable cursors to be created
+            # and used in a transaction.
+            async for record in con.cursor('SELECT generate_series(0, 100)'):
+                print(record)
+
+Or, alternatively, you can iterate over the cursor manually (cursor
+won't be prefetching any rows):
+
+.. code-block:: python
+
+    async def iterate(con: Connection):
+        async with con.transaction():
+            # Postgres requires non-scrollable cursors to be created
+            # and used in a transaction.
+
+            async with con.transaction():
+                # Create a Cursor object
+                cur = await con.cursor('SELECT generate_series(0, 100)')
+
+                # Move the cursor 10 rows forward
+                await cur.forward(10)
+
+                # Fetch one row and print it
+                print(await cur.fetchrow())
+
+                # Fetch a list of 5 rows and print it
+                print(await cur.fetch(5))
+
+It's also possible to create cursors from prepared statements:
+
+.. code-block:: python
+
+    async def iterate(con: Connection):
+        # Create a prepared statement that will accept one argument
+        stmt = await con.prepare('SELECT generate_series(0, $1)')
+
+        async with con.transaction():
+            # Postgres requires non-scrollable cursors to be created
+            # and used in a transaction.
+
+            # Execute the prepared statement passing `10` as the
+            # argument -- that will generate a series or records
+            # from 0..10.  Iterate over all of them and print every
+            # record.
+            async for record in stmt.cursor(10):
+                print(record)
+
+
 .. note::
 
-   Cursors created by a call to :meth:`PreparedStatement.cursor()`  are
-   *non-scrollable*: they can only be read forwards.  To create a scrollable
+   Cursors created by a call to
+   :meth:`Connection.cursor() <asyncpg.connection.Connection.cursor>` or
+   :meth:`PreparedStatement.cursor() <asyncpg.prepared_stmt.PreparedStatement.cursor>`
+   are *non-scrollable*: they can only be read forwards.  To create a scrollable
    cursor, use the ``DECLARE ... SCROLL CURSOR`` SQL statement directly.
 
 .. warning::
 
-   Cursors created by a call to :meth:`PreparedStatement.cursor()`
-   cannot be used outside of a transaction.  Any such attempt will result
-   in :exc:`~asyncpg.exceptions.InterfaceError`.
+   Cursors created by a call to
+   :meth:`Connection.cursor() <asyncpg.connection.Connection.cursor>` or
+   :meth:`PreparedStatement.cursor() <asyncpg.prepared_stmt.PreparedStatement.cursor>`
+   cannot be used outside of a transaction.  Any such attempt will result in
+   :exc:`~asyncpg.exceptions.InterfaceError`.
 
    To create a cursor usable outside of a transaction, use the
    ``DECLARE ... CURSOR WITH HOLD`` SQL statement directly.
 
 
-.. autoclass:: asyncpg.cursor.CursorInterface()
+.. autoclass:: asyncpg.cursor.CursorFactory()
    :members:
 
    .. describe:: async for row in c
@@ -170,6 +228,18 @@ result set.
 
 
 .. autoclass:: asyncpg.cursor.Cursor()
+   :members:
+
+
+.. _asyncpg-api-pool:
+
+Connection Pool
+===============
+
+.. autofunction:: asyncpg.pool.create_pool
+
+
+.. autoclass:: asyncpg.pool.Pool()
    :members:
 
 
@@ -189,9 +259,14 @@ of values either by a numeric index or by a field name:
     >>> import asyncio
     >>> loop = asyncio.get_event_loop()
     >>> conn = loop.run_until_complete(asyncpg.connect())
-    >>> loop.run_until_complete(conn.fetchrow('''
+    >>> r = loop.run_until_complete(conn.fetchrow('''
     ...     SELECT oid, rolname, rolsuper FROM pg_roles WHERE rolname = user'''))
+    >>> r
     <Record oid=16388 rolname='elvis' rolsuper=True>
+    >>> r['oid']
+    16388
+    >>> r[0]
+    16388
 
 
 .. class:: Record()
@@ -204,7 +279,11 @@ of values either by a numeric index or by a field name:
 
    .. describe:: r[field]
 
-      Return the field of *r* with field name *field*.
+      Return the field of *r* with field name or index *field*.
+
+   .. describe:: name in r
+
+      Return ``True`` if record *r* has a field named *name*.
 
    .. describe:: iter(r)
 
@@ -221,3 +300,30 @@ of values either by a numeric index or by a field name:
    .. method:: items()
 
       Return an iterator over ``(field, value)`` pairs.
+
+
+.. class:: ConnectionSettings()
+
+    A read-only collection of Connection settings.
+
+    .. describe:: settings.setting_name
+
+       Return the value of the "setting_name" setting.  Raises an
+       ``AttributeError`` if the setting is not defined.
+
+       Example:
+
+       .. code-block:: pycon
+
+           >>> connection.get_settings().client_encoding
+           'UTF8'
+
+
+Introspection
+=============
+
+.. autoclass:: asyncpg.types.Type()
+   :members:
+
+.. autoclass:: asyncpg.types.Attribute()
+   :members:
