@@ -23,7 +23,7 @@ The project documentation can be found
 Performance
 -----------
 
-In our testing asyncpg is, on average, **2x** faster than psycopg2
+In our testing asyncpg is, on average, **3x** faster than psycopg2
 (and its asyncio variant -- aiopg).
 
 .. image:: performance.png
