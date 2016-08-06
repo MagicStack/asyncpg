@@ -141,9 +141,8 @@ class Connection:
             return await self._protocol.query(query, timeout)
 
         stmt = await self._get_statement(query, timeout)
-        protocol = self._protocol
-        _, status, _ = await protocol.bind_execute(stmt, args, '', 0,
-                                                   True, timeout)
+        _, status, _ = await self._protocol.bind_execute(stmt, args, '', 0,
+                                                         True, timeout)
         return status.decode()
 
     async def _get_statement(self, query, timeout):
@@ -218,8 +217,8 @@ class Connection:
         :return list: A list of :class:`Record` instances.
         """
         stmt = await self._get_statement(query, timeout)
-        protocol = self._protocol
-        data = await protocol.bind_execute(stmt, args, '', 0, False, timeout)
+        data = await self._protocol.bind_execute(stmt, args, '', 0,
+                                                 False, timeout)
         return data
 
     async def fetchval(self, query, *args, column=0, timeout=None):
@@ -237,8 +236,8 @@ class Connection:
         :return: The value of the specified column of the first record.
         """
         stmt = await self._get_statement(query, timeout)
-        protocol = self._protocol
-        data = await protocol.bind_execute(stmt, args, '', 1, False, timeout)
+        data = await self._protocol.bind_execute(stmt, args, '', 1,
+                                                 False, timeout)
         if not data:
             return None
         return data[0][column]
@@ -253,8 +252,8 @@ class Connection:
         :return: The first row as a :class:`Record` instance.
         """
         stmt = await self._get_statement(query, timeout)
-        protocol = self._protocol
-        data = await protocol.bind_execute(stmt, args, '', 1, False, timeout)
+        data = await self._protocol.bind_execute(stmt, args, '', 1,
+                                                 False, timeout)
         if not data:
             return None
         return data[0]
@@ -335,8 +334,7 @@ class Connection:
         self._close_stmts()
         self._listeners = {}
         self._aborted = True
-        protocol = self._protocol
-        await protocol.close()
+        await self._protocol.close()
 
     def terminate(self):
         """Terminate the connection without waiting for pending data."""
@@ -377,9 +375,8 @@ class Connection:
     async def _cleanup_stmts(self):
         to_close = self._stmts_to_close
         self._stmts_to_close = set()
-        protocol = self._protocol
         for stmt in to_close:
-            await protocol.close_statement(stmt, False)
+            await self._protocol.close_statement(stmt, False)
 
     def _request_portal_name(self):
         return self._get_unique_id()
