@@ -267,6 +267,9 @@
 <span class="sd">        :param args: Query arguments.</span>
 <span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 <span class="sd">        :return str: Status of the last SQL command.</span>
+
+<span class="sd">        .. versionchanged:: 0.5.4</span>
+<span class="sd">           Made it possible to pass query arguments.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="p">:</span>
             <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
