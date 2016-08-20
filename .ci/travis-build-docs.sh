@@ -24,6 +24,9 @@ if [ "${TRAVIS_PULL_REQUEST}" != "false" \
 fi
 
 
+git config --global user.email "infra@magic.io"
+git config --global user.name "Travis CI"
+
 REPO=$(git config remote.origin.url)
 SSH_REPO=${REPO/https:\/\/github.com\//git@github.com:}
 COMMITISH=$(git rev-parse --verify HEAD)
