@@ -12,6 +12,7 @@ import pickle
 import sys
 import unittest
 
+from asyncpg import _testbase as tb
 from asyncpg.protocol.protocol import _create_record as Record
 
 
@@ -21,7 +22,7 @@ R_AC = collections.OrderedDict([('a', 0), ('c', 1)])
 R_ABC = collections.OrderedDict([('a', 0), ('b', 1), ('c', 2)])
 
 
-class TestRecord(unittest.TestCase):
+class TestRecord(tb.ConnectedTestCase):
 
     @contextlib.contextmanager
     def checkref(self, *objs):
@@ -279,3 +280,11 @@ class TestRecord(unittest.TestCase):
         r = Record(R_A, (42,))
         with self.assertRaises(Exception):
             pickle.dumps(r)
+
+    @unittest.expectedFailure
+    async def test_record_duplicate_colnames(self):
+        """Test that Record handles duplicate column names."""
+        r = await self.con.fetchrow('SELECT 1 as a, 2 as a')
+        self.assertEqual(r['a'], 2)
+        self.assertEqual(r[0], 1)
+        self.assertEqual(repr(r), '<Record a=1 a=2>')
