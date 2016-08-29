@@ -281,7 +281,6 @@ class TestRecord(tb.ConnectedTestCase):
         with self.assertRaises(Exception):
             pickle.dumps(r)
 
-    @unittest.expectedFailure
     async def test_record_duplicate_colnames(self):
         """Test that Record handles duplicate column names."""
         r = await self.con.fetchrow('SELECT 1 as a, 2 as a')

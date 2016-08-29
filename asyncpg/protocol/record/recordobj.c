@@ -17,12 +17,12 @@ static int numfree[ApgRecord_MAXSAVESIZE];
 
 
 PyObject *
-ApgRecord_New(PyObject *mapping, Py_ssize_t size)
+ApgRecord_New(PyObject *desc, Py_ssize_t size)
 {
     ApgRecordObject *o;
     Py_ssize_t i;
 
-    if (size < 1 || mapping == NULL) {
+    if (size < 1 || desc == NULL || !ApgRecordDesc_CheckExact(desc)) {
         PyErr_BadInternalCall();
         return NULL;
     }
@@ -48,8 +48,8 @@ ApgRecord_New(PyObject *mapping, Py_ssize_t size)
         o->ob_item[i] = NULL;
     }
 
-    Py_INCREF(mapping);
-    o->mapping = mapping;
+    Py_INCREF(desc);
+    o->desc = (ApgRecordDescObject*)desc;
     o->self_hash = -1;
     PyObject_GC_Track(o);
     return (PyObject *) o;
@@ -66,7 +66,7 @@ record_dealloc(ApgRecordObject *o)
 
     o->self_hash = -1;
 
-    Py_CLEAR(o->mapping);
+    Py_CLEAR(o->desc);
 
     Py_TRASHCAN_SAFE_BEGIN(o)
     if (len > 0) {
@@ -96,7 +96,7 @@ record_traverse(ApgRecordObject *o, visitproc visit, void *arg)
 {
     Py_ssize_t i;
 
-    Py_VISIT(o->mapping);
+    Py_VISIT(o->desc);
 
     for (i = Py_SIZE(o); --i >= 0;) {
         if (o->ob_item[i] != NULL) {
@@ -300,7 +300,7 @@ record_subscript(ApgRecordObject* o, PyObject* item)
     }
     else {
         PyObject *mapped;
-        mapped = PyObject_GetItem(o->mapping, item);
+        mapped = PyObject_GetItem(o->desc->mapping, item);
         if (mapped != NULL) {
             Py_ssize_t i;
             PyObject *result;
@@ -348,7 +348,7 @@ record_repr(ApgRecordObject *v)
     n = Py_SIZE(v);
     assert(n > 0);
 
-    keys_iter = PyObject_GetIter(v->mapping);
+    keys_iter = PyObject_GetIter(v->desc->keys);
     if (keys_iter == NULL) {
         return NULL;
     }
@@ -453,7 +453,7 @@ record_keys(PyObject *o, PyObject *args)
         return NULL;
     }
 
-    return PyObject_GetIter(((ApgRecordObject*)o)->mapping);
+    return PyObject_GetIter(((ApgRecordObject*)o)->desc->mapping);
 }
 
 
@@ -477,7 +477,7 @@ record_contains(ApgRecordObject *o, PyObject *arg)
         return -1;
     }
 
-    return PySequence_Contains(o->mapping, arg);
+    return PySequence_Contains(o->desc->mapping, arg);
 }
 
 
@@ -828,7 +828,7 @@ record_new_items_iter(PyObject *seq)
         return NULL;
     }
 
-    map_iter = PyObject_GetIter(((ApgRecordObject*)seq)->mapping);
+    map_iter = PyObject_GetIter(((ApgRecordObject*)seq)->desc->mapping);
     if (map_iter == NULL) {
         return NULL;
     }
@@ -853,6 +853,10 @@ int ApgRecord_InitTypes(void)
         return -1;
     }
 
+    if (PyType_Ready(&ApgRecordDesc_Type) < 0) {
+        return -1;
+    }
+
     if (PyType_Ready(&ApgRecordIter_Type) < 0) {
         return -1;
     }
@@ -862,4 +866,86 @@ int ApgRecord_InitTypes(void)
     }
 
     return 0;
+}
+
+
+/* ----------------- */
+
+
+static void
+record_desc_dealloc(ApgRecordDescObject *o)
+{
+    PyObject_GC_UnTrack(o);
+    Py_CLEAR(o->mapping);
+    Py_CLEAR(o->keys);
+    PyObject_GC_Del(o);
+}
+
+
+static int
+record_desc_traverse(ApgRecordDescObject *o, visitproc visit, void *arg)
+{
+    Py_VISIT(o->mapping);
+    Py_VISIT(o->keys);
+    return 0;
+}
+
+
+PyTypeObject ApgRecordDesc_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "RecordDescriptor",                         /* tp_name */
+    sizeof(ApgRecordDescObject),                /* tp_basicsize */
+    0,                                          /* tp_itemsize */
+    /* methods */
+    (destructor)record_desc_dealloc,            /* tp_dealloc */
+    0,                                          /* tp_print */
+    0,                                          /* tp_getattr */
+    0,                                          /* tp_setattr */
+    0,                                          /* tp_reserved */
+    0,                                          /* tp_repr */
+    0,                                          /* tp_as_number */
+    0,                                          /* tp_as_sequence */
+    0,                                          /* tp_as_mapping */
+    0,                                          /* tp_hash */
+    0,                                          /* tp_call */
+    0,                                          /* tp_str */
+    PyObject_GenericGetAttr,                    /* tp_getattro */
+    0,                                          /* tp_setattro */
+    0,                                          /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,    /* tp_flags */
+    0,                                          /* tp_doc */
+    (traverseproc)record_desc_traverse,         /* tp_traverse */
+    0,                                          /* tp_clear */
+    0,                                          /* tp_richcompare */
+    0,                                          /* tp_weaklistoffset */
+    PyObject_SelfIter,                          /* tp_iter */
+    0,                                          /* tp_iternext */
+    0,                                          /* tp_methods */
+    0,
+};
+
+
+PyObject *
+ApgRecordDesc_New(PyObject *mapping, PyObject *keys)
+{
+    ApgRecordDescObject *o;
+
+    if (!mapping || !keys || !PyTuple_CheckExact(keys)) {
+        PyErr_BadInternalCall();
+        return NULL;
+    }
+
+    o = PyObject_GC_New(ApgRecordDescObject, &ApgRecordDesc_Type);
+    if (o == NULL) {
+        return NULL;
+    }
+
+    Py_INCREF(mapping);
+    o->mapping = mapping;
+
+    Py_INCREF(keys);
+    o->keys = keys;
+
+    PyObject_GC_Track(o);
+    return (PyObject *) o;
 }

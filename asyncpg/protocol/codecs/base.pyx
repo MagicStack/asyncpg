@@ -35,8 +35,13 @@ cdef class Codec:
         self.py_decoder = py_decoder
         self.element_codec = element_codec
         self.element_type_oids = element_type_oids
-        self.element_names = element_names
         self.element_codecs = element_codecs
+
+        if element_names is not None:
+            self.element_names = record.ApgRecordDesc_New(
+                element_names, tuple(element_names))
+        else:
+            self.element_names = None
 
         if type == CODEC_C:
             self.encoder = <codec_encode_func>&self.encode_scalar

@@ -481,7 +481,8 @@ def _create_record(object mapping, tuple elems):
         object rec
         int32_t i
 
-    rec = record.ApgRecord_New(mapping, len(elems))
+    desc = record.ApgRecordDesc_New(mapping, tuple(mapping) if mapping else ())
+    rec = record.ApgRecord_New(desc, len(elems))
     for i in range(len(elems)):
         elem = elems[i]
         cpython.Py_INCREF(elem)

@@ -16,7 +16,7 @@ cdef class PreparedStatementState:
         self.row_desc = self.parameters_desc = None
         self.args_codecs = self.rows_codecs = None
         self.args_num = self.cols_num = 0
-        self.cols_mapping = None
+        self.cols_desc = None
         self.closed = False
         self.refs = 0
         self.buffer = FastReadBuffer.new()
@@ -134,20 +134,24 @@ cdef class PreparedStatementState:
 
     cdef _ensure_rows_decoder(self):
         cdef:
+            list cols_names
             object cols_mapping
             tuple row
             int oid
             Codec codec
             list codecs
 
-        if self.cols_num == 0 or self.cols_mapping is not None:
+        if self.cols_num == 0 or self.cols_desc is not None:
             return
 
         cols_mapping = collections.OrderedDict()
+        cols_names = []
         codecs = []
         for i from 0 <= i < self.cols_num:
             row = self.row_desc[i]
-            cols_mapping[row[0].decode(self.settings._encoding)] = i
+            col_name = row[0].decode(self.settings._encoding)
+            cols_mapping[col_name] = i
+            cols_names.append(col_name)
             oid = row[3]
             codec = self.settings.get_data_codec(<uint32_t>oid)
             if codec is None or not codec.has_decoder():
@@ -157,7 +161,9 @@ cdef class PreparedStatementState:
 
             codecs.append(codec)
 
-        self.cols_mapping = cols_mapping
+        self.cols_desc = record.ApgRecordDesc_New(
+            cols_mapping, tuple(cols_names))
+
         self.rows_codecs = tuple(codecs)
 
     cdef _ensure_args_encoder(self):
@@ -215,7 +221,7 @@ cdef class PreparedStatementState:
         if rows_codecs is None or len(rows_codecs) < fnum:
             raise RuntimeError('invalid rows_codecs')
 
-        dec_row = record.ApgRecord_New(self.cols_mapping, fnum)
+        dec_row = record.ApgRecord_New(self.cols_desc, fnum)
         for i in range(fnum):
             flen = hton.unpack_int32(rbuf.read(4))
 
