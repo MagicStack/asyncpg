@@ -322,7 +322,7 @@ class Line(tuple):
 
     @property
     def C(self):
-        return self[1]
+        return self[2]
 
 
 class LineSegment(tuple):
