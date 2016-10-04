@@ -77,6 +77,7 @@ class Cluster:
         self._daemon_pid = None
         self._daemon_process = None
         self._connection_addr = None
+        self._connection_spec_override = None
 
     def is_managed(self):
         return True
@@ -111,9 +112,9 @@ class Cluster:
                     process.returncode, stderr))
 
     async def connect(self, loop=None, **kwargs):
-        conn_addr = self.get_connection_addr()
-        return await asyncpg.connect(
-            host=conn_addr[0], port=conn_addr[1], loop=loop, **kwargs)
+        conn_info = self.get_connection_spec()
+        conn_info.update(kwargs)
+        return await asyncpg.connect(loop=loop, **conn_info)
 
     def init(self, **settings):
         """Initialize cluster."""
@@ -130,14 +131,16 @@ class Cluster:
 
         process = subprocess.run(
             [self._pg_ctl, 'init', '-D', self._data_dir] + extra_args,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-        stderr = process.stderr
+        output = process.stdout
 
         if process.returncode != 0:
             raise ClusterError(
-                'pg_ctl init exited with status {:d}: {}'.format(
-                    process.returncode, stderr.decode()))
+                'pg_ctl init exited with status {:d}:\n{}'.format(
+                    process.returncode, output.decode()))
+
+        return output.decode()
 
     def start(self, wait=60, *, server_settings={}, **opts):
         """Start the cluster."""
@@ -213,15 +216,27 @@ class Cluster:
         else:
             raise ClusterError('cannot destroy {} cluster'.format(status))
 
-    def get_connection_addr(self):
+    def _get_connection_spec(self):
+        if self._connection_addr is None:
+            self._connection_addr = self._connection_addr_from_pidfile()
+
+        if self._connection_addr is not None:
+            if self._connection_spec_override:
+                args = self._connection_addr.copy()
+                args.update(self._connection_spec_override)
+                return args
+            else:
+                return self._connection_addr
+
+    def get_connection_spec(self):
         status = self.get_status()
         if status != 'running':
             raise ClusterError('cluster is not running')
 
-        if self._connection_addr is None:
-            self._connection_addr = self._connection_addr_from_pidfile()
+        return self._get_connection_spec()
 
-        return self._connection_addr['host'], self._connection_addr['port']
+    def override_connection_spec(self, **kwargs):
+        self._connection_spec_override = kwargs
 
     def reset_hba(self):
         """Remove all records from pg_hba.conf."""
@@ -345,9 +360,8 @@ class Cluster:
         try:
             for i in range(timeout):
                 if self._connection_addr is None:
-                    self._connection_addr = \
-                        self._connection_addr_from_pidfile()
-                    if self._connection_addr is None:
+                    conn_spec = self._get_connection_spec()
+                    if conn_spec is None:
                         time.sleep(1)
                         continue
 
@@ -441,21 +455,14 @@ class TempCluster(Cluster):
 
 
 class RunningCluster(Cluster):
-    def __init__(self, host=None, port=None):
-        if host is None:
-            host = os.environ.get('PGHOST') or 'localhost'
-
-        if port is None:
-            port = os.environ.get('PGPORT') or 5432
-
-        self.host = host
-        self.port = port
+    def __init__(self, **kwargs):
+        self.conn_spec = kwargs
 
     def is_managed(self):
         return False
 
-    def get_connection_addr(self):
-        return self.host, self.port
+    def get_connection_spec(self):
+        return self.conn_spec
 
     def get_status(self):
         return 'running'

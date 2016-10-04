@@ -129,9 +129,9 @@ class ClusterTestCase(TestCase):
         })
 
     def create_pool(self, **kwargs):
-        addr = self.cluster.get_connection_addr()
-        return pg_pool.create_pool(host=addr[0], port=addr[1],
-                                   loop=self.loop, **kwargs)
+        conn_spec = self.cluster.get_connection_spec()
+        conn_spec.update(kwargs)
+        return pg_pool.create_pool(loop=self.loop, **conn_spec)
 
 
 class ConnectedTestCase(ClusterTestCase):
