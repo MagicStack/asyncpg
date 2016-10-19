@@ -313,7 +313,10 @@ cdef class DataCodecConfig:
             schema = ti['ns']
             array_element_oid = ti['elemtype']
             range_subtype_oid = ti['range_subtype']
-            comp_type_attrs = ti['attrtypoids']
+            if ti['attrtypoids']:
+                comp_type_attrs = tuple(ti['attrtypoids'])
+            else:
+                comp_type_attrs = None
             base_type = ti['basetype']
 
             if array_element_oid:

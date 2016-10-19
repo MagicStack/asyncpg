@@ -202,9 +202,9 @@ type_samples = [
          'output': uuid.UUID('00000000-0000-0000-0000-000000000000')}
     ]),
     ('uuid[]', 'uuid[]', [
-        (uuid.UUID('38a4ff5a-3a56-11e6-a6c2-c8f73323c6d4'),
-         uuid.UUID('00000000-0000-0000-0000-000000000000')),
-        ()
+        [uuid.UUID('38a4ff5a-3a56-11e6-a6c2-c8f73323c6d4'),
+         uuid.UUID('00000000-0000-0000-0000-000000000000')],
+        []
     ]),
     ('json', 'json', [
         '[1, 2, 3, 4]',
@@ -215,30 +215,30 @@ type_samples = [
         '{"a": [1, 2], "b": 0}'
     ]),
     ('oid[]', 'oid[]', [
-        (1, 2, 3, 4),
-        ()
+        [1, 2, 3, 4],
+        []
     ]),
     ('smallint[]', 'int2[]', [
-        (1, 2, 3, 4),
-        (1, 2, 3, 4, 5, 6, 7, 8, 9, 0),
-        ()
+        [1, 2, 3, 4],
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 0],
+        []
     ]),
     ('bigint[]', 'int8[]', [
-        (2 ** 42, -2 ** 54, 0),
-        ()
+        [2 ** 42, -2 ** 54, 0],
+        []
     ]),
     ('int[]', 'int4[]', [
-        (2 ** 22, -2 ** 24, 0),
-        ()
+        [2 ** 22, -2 ** 24, 0],
+        []
     ]),
     ('time[]', 'time[]', [
-        (datetime.time(12, 15, 20), datetime.time(0, 1, 1)),
-        ()
+        [datetime.time(12, 15, 20), datetime.time(0, 1, 1)],
+        []
     ]),
     ('text[]', 'text[]', [
-        ('ABCDE', 'EDCBA'),
-        (),
-        ('A' * 1024 * 1024,) * 10
+        ['ABCDE', 'EDCBA'],
+        [],
+        ['A' * 1024 * 1024] * 10
     ]),
     ('float8', 'float8', [
         1.1,
@@ -474,15 +474,15 @@ class TestCodecs(tb.ConnectedTestCase):
         cases = [
             (
                 r"SELECT '[1:3][-1:0]={{1,2},{4,5},{6,7}}'::int[]",
-                ((1, 2), (4, 5), (6, 7))
+                [[1, 2], [4, 5], [6, 7]]
             ),
             (
                 r"SELECT '{{{{{{1}}}}}}'::int[]",
-                ((((((1,),),),),),)
+                [[[[[[1]]]]]]
             ),
             (
                 r"SELECT '{1, 2, NULL}'::int[]::anyarray",
-                (1, 2, None)
+                [1, 2, None]
             ),
         ]
 
@@ -495,12 +495,12 @@ class TestCodecs(tb.ConnectedTestCase):
             await self.con.fetchval("SELECT '{{{{{{{1}}}}}}}'::int[]")
 
         cases = [
-            (None,),
-            (1, 2, 3, 4, 5, 6),
-            ((1, 2), (4, 5), (6, 7)),
-            (((1,), (2,)), ((4,), (5,)), ((None,), (7,))),
-            ((((((1,),),),),),),
-            ((((((None,),),),),),)
+            [None],
+            [1, 2, 3, 4, 5, 6],
+            [[1, 2], [4, 5], [6, 7]],
+            [[[1], [2]], [[4], [5]], [[None], [7]]],
+            [[[[[[1]]]]]],
+            [[[[[[None]]]]]]
         ]
 
         st = await self.con.prepare(
@@ -579,11 +579,11 @@ class TestCodecs(tb.ConnectedTestCase):
 
             self.assertIsNone(res['a'])
             self.assertEqual(res['b'], '5678')
-            self.assertEqual(res['c'], (9, None, 11))
+            self.assertEqual(res['c'], [9, None, 11])
 
             self.assertIsNone(res[0])
             self.assertEqual(res[1], '5678')
-            self.assertEqual(res[2], (9, None, 11))
+            self.assertEqual(res[2], [9, None, 11])
 
             at = st.get_attributes()
             self.assertEqual(len(at), 1)
@@ -860,3 +860,19 @@ class TestCodecs(tb.ConnectedTestCase):
             await self.con.execute('''
                 DROP EXTENSION hstore
             ''')
+
+    async def test_composites_in_arrays(self):
+        await self.con.execute('''
+            CREATE TYPE t AS (a text, b int);
+            CREATE TABLE tab (d t[]);
+        ''')
+
+        await self.con.execute(
+            'INSERT INTO tab (d) VALUES ($1)',
+            [('a', 1)])
+
+        r = await self.con.fetchval('''
+            SELECT d FROM tab
+        ''')
+
+        self.assertEqual(r, [('a', 1)])
