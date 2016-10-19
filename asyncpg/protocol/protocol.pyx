@@ -34,8 +34,6 @@ from asyncpg import exceptions as apg_exc
 
 from asyncpg.protocol cimport hton
 
-
-include "__debug.pxi"
 include "consts.pxi"
 include "pgtypes.pxi"
 
@@ -337,7 +335,7 @@ cdef class BaseProtocol(CoreProtocol):
         waiter.set_result(True)
 
     cdef _on_result__prepare(self, object waiter):
-        IF DEBUG:
+        if ASYNCPG_DEBUG:
             if self.statement is None:
                 raise RuntimeError(
                     '_on_result__prepare: statement is None')
@@ -367,7 +365,7 @@ cdef class BaseProtocol(CoreProtocol):
         waiter.set_result(self.result_status_msg.decode(self.encoding))
 
     cdef _decode_row(self, const char* buf, int32_t buf_len):
-        IF DEBUG:
+        if ASYNCPG_DEBUG:
             if self.statement is None:
                 raise RuntimeError(
                     '_decode_row: statement is None')
@@ -378,7 +376,7 @@ cdef class BaseProtocol(CoreProtocol):
         waiter = self.waiter
         self.waiter = None
 
-        IF DEBUG:
+        if ASYNCPG_DEBUG:
             if waiter is None:
                 raise RuntimeError('_on_result: waiter is None')
 

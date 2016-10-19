@@ -288,7 +288,7 @@ cdef class ReadBuffer:
         self._pos0 = 0
         self._len0 = len(self._buf0)
 
-        IF DEBUG:
+        if ASYNCPG_DEBUG:
             if self._len0 < 1:
                 raise RuntimeError(
                     'debug: second buffer of ReadBuffer is empty')
@@ -300,7 +300,7 @@ cdef class ReadBuffer:
         cdef:
             char * result
 
-        IF DEBUG:
+        if ASYNCPG_DEBUG:
             if nbytes > self._length:
                 return NULL
 
@@ -361,7 +361,7 @@ cdef class ReadBuffer:
     cdef inline read_byte(self):
         cdef char* first_byte
 
-        IF DEBUG:
+        if ASYNCPG_DEBUG:
             if not self._buf0:
                 raise RuntimeError(
                     'debug: first buffer of ReadBuffer is empty')
@@ -537,12 +537,12 @@ cdef class ReadBuffer:
             raise BufferError('no message to discard')
 
         if self._current_message_len_unread:
-            IF DEBUG:
+            if ASYNCPG_DEBUG:
                 mtype = chr(self._current_message_type)
 
             discarded = self.consume_message()
 
-            IF DEBUG:
+            if ASYNCPG_DEBUG:
                 print('!!! discarding message {!r} unread data: {!r}'.format(
                     mtype,
                     (<Memory>discarded).as_bytes()))

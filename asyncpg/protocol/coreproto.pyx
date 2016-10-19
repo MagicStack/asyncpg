@@ -270,7 +270,7 @@ cdef class CoreProtocol:
             object row
             Memory mem
 
-        IF DEBUG:
+        if ASYNCPG_DEBUG:
             if buf.get_message_type() != b'D':
                 raise RuntimeError(
                     '_parse_data_msgs: first message is not "D"')
