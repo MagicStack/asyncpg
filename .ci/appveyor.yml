@@ -31,5 +31,4 @@ artifacts:
 deploy_script:
     - cmd: "%PYTHON% -m twine upload dist\\*.whl"
       on:
-        branch: master
         appveyor_repo_tag: true
