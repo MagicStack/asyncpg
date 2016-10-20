@@ -62,7 +62,7 @@
             
             
               <div class="version">
-                0.5.4
+                0.6.0
               </div>
             
           
@@ -544,6 +544,10 @@
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">w</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
                 <span class="k">await</span> <span class="n">r</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>  <span class="c1"># Wait until EOF</span>
+            <span class="k">except</span> <span class="ne">ConnectionResetError</span><span class="p">:</span>
+                <span class="c1"># On some systems Postgres will reset the connection</span>
+                <span class="c1"># after processing the cancellation command.</span>
+                <span class="k">pass</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
                 <span class="n">waiter</span><span class="o">.</span><span class="n">set_exception</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span>
             <span class="k">finally</span><span class="p">:</span>
@@ -836,7 +840,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.5.4',
+            VERSION:'0.6.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true
