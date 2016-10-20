@@ -496,7 +496,7 @@ class RunningCluster(Cluster):
         return False
 
     def get_connection_spec(self):
-        return self.conn_spec
+        return dict(self.conn_spec)
 
     def get_status(self):
         return 'running'
