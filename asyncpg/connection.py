@@ -410,6 +410,10 @@ class Connection:
             try:
                 w.write(msg)
                 await r.read()  # Wait until EOF
+            except ConnectionResetError:
+                # On some systems Postgres will reset the connection
+                # after processing the cancellation command.
+                pass
             except Exception as ex:
                 waiter.set_exception(ex)
             finally:

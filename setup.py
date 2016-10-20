@@ -7,6 +7,7 @@
 
 import os
 import os.path
+import platform
 import re
 import sys
 
@@ -20,6 +21,9 @@ if sys.version_info < (3, 5):
 
 CFLAGS = ['-O2']
 LDFLAGS = []
+
+if platform.uname().system == 'Windows':
+    LDFLAGS.append('ws2_32.lib')
 
 
 class build_ext(_build_ext.build_ext):

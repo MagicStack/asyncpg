@@ -8,11 +8,14 @@
 import contextlib
 import ipaddress
 import os
+import platform
 import unittest
 
 import asyncpg
 from asyncpg import _testbase as tb
 from asyncpg.connection import _parse_connect_params
+
+_system = platform.uname().system
 
 
 class TestSettings(tb.ConnectedTestCase):
@@ -47,13 +50,20 @@ class TestAuthentication(tb.ConnectedTestCase):
                     ' PASSWORD {!r}'.format(password) if password else ''
                 )
             )
+
+            if _system != 'Windows':
+                self.cluster.add_hba_entry(
+                    type='local',
+                    database='postgres', user='{}_user'.format(method),
+                    auth_method=method)
+
             self.cluster.add_hba_entry(
-                type='local', address=ipaddress.ip_network('127.0.0.0/24'),
+                type='host', address=ipaddress.ip_network('127.0.0.0/24'),
                 database='postgres', user='{}_user'.format(method),
                 auth_method=method)
 
             self.cluster.add_hba_entry(
-                type='host', address=ipaddress.ip_network('127.0.0.0/24'),
+                type='host', address=ipaddress.ip_network('::1/128'),
                 database='postgres', user='{}_user'.format(method),
                 auth_method=method)
 

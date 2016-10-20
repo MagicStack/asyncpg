@@ -645,7 +645,9 @@ cdef class CoreProtocol:
         self.transport = transport
 
         sock = transport.get_extra_info('socket')
-        if sock is not None and sock.family != socket.AF_UNIX:
+        if (sock is not None and
+              (not hasattr(socket, 'AF_UNIX')
+               or sock.family != socket.AF_UNIX)):
             sock.setsockopt(socket.IPPROTO_TCP,
                             socket.TCP_NODELAY, 1)
 

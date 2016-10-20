@@ -1,0 +1,35 @@
+services:
+    - postgresql95
+
+environment:
+    global:
+        PGINSTALLATION: C:\\Program Files\\PostgreSQL\\9.5\\bin
+        TWINE_USERNAME: magicstack-ci
+        TWINE_PASSWORD:
+            secure: lJ+XbDBgnR3SA1hyBl7kZ+fOJYQYVlZ2A27Vt9p+TNJ6Fsv41Yx7O0fb9bTdiVV+
+
+    matrix:
+        - PYTHON: "C:\\Python35\\python.exe"
+        - PYTHON: "C:\\Python35-x64\\python.exe"
+
+install:
+    - "%PYTHON% -m pip install --upgrade pip wheel setuptools"
+    - "%PYTHON% -m pip install -r .ci/requirements-win.txt"
+
+build_script:
+    - "%PYTHON% setup.py build_ext --inplace"
+
+test_script:
+    - "%PYTHON% -m unittest discover -s tests"
+
+after_test:
+    - "%PYTHON% setup.py bdist_wheel"
+
+artifacts:
+    - path: dist\*
+
+deploy_script:
+    - cmd: "%PYTHON% -m twine upload dist\\*.whl"
+      on:
+        branch: master
+        appveyor_repo_tag: true

@@ -6,8 +6,12 @@
 
 
 import asyncio
+import platform
 
 from asyncpg import _testbase as tb
+
+
+_system = platform.uname().system
 
 
 class TestPool(tb.ConnectedTestCase):
@@ -101,13 +105,19 @@ class TestPool(tb.ConnectedTestCase):
 
         self.cluster.reset_hba()
 
+        if _system != 'Windows':
+            self.cluster.add_hba_entry(
+                type='local',
+                database='postgres', user='pooluser',
+                auth_method='md5')
+
         self.cluster.add_hba_entry(
-            type='local',
+            type='host', address='127.0.0.1/32',
             database='postgres', user='pooluser',
             auth_method='md5')
 
         self.cluster.add_hba_entry(
-            type='host', address='127.0.0.0/32',
+            type='host', address='::1/128',
             database='postgres', user='pooluser',
             auth_method='md5')
 

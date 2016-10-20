@@ -8,11 +8,18 @@
 from libc.stdint cimport int16_t, int32_t, uint16_t, uint32_t, int64_t, uint64_t
 
 
-cdef extern from "arpa/inet.h":
-    uint32_t htonl(uint32_t hostlong)
-    uint16_t htons(uint16_t hostshort)
-    uint32_t ntohl(uint32_t netlong)
-    uint16_t ntohs(uint16_t netshort)
+IF UNAME_SYSNAME == "Windows":
+    cdef extern from "winsock2.h":
+        uint32_t htonl(uint32_t hostlong)
+        uint16_t htons(uint16_t hostshort)
+        uint32_t ntohl(uint32_t netlong)
+        uint16_t ntohs(uint16_t netshort)
+ELSE:
+    cdef extern from "arpa/inet.h":
+        uint32_t htonl(uint32_t hostlong)
+        uint16_t htons(uint16_t hostshort)
+        uint32_t ntohl(uint32_t netlong)
+        uint16_t ntohs(uint16_t netshort)
 
 
 cdef inline void pack_int16(char* buf, int16_t x):

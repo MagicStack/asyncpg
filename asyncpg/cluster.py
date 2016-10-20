@@ -23,6 +23,16 @@ import asyncpg
 
 _system = platform.uname().system
 
+if _system == 'Windows':
+    def platform_exe(name):
+        if name.endswith('.exe'):
+            return name
+        return name + '.exe'
+else:
+    def platform_exe(name):
+        return name
+
+
 if _system == 'Linux':
     def ensure_dead_with_parent():
         import ctypes
@@ -165,13 +175,29 @@ class Cluster:
         for k, v in server_settings.items():
             extra_args.extend(['-c', '{}={}'.format(k, v)])
 
-        self._daemon_process = \
-            subprocess.Popen(
-                [self._postgres, '-D', self._data_dir, *extra_args],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                preexec_fn=ensure_dead_with_parent)
+        if _system == 'Windows':
+            # On Windows we have to use pg_ctl as direct execution
+            # of postgres daemon under an Administrative account
+            # is not permitted and there is no easy way to drop
+            # privileges.
+            process = subprocess.run(
+                [self._pg_ctl, 'start', '-D', self._data_dir,
+                 '-o', ' '.join(extra_args)],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            stderr = process.stderr
 
-        self._daemon_pid = self._daemon_process.pid
+            if process.returncode != 0:
+                raise ClusterError(
+                    'pg_ctl start exited with status {:d}: {}'.format(
+                        process.returncode, stderr.decode()))
+        else:
+            self._daemon_process = \
+                subprocess.Popen(
+                    [self._postgres, '-D', self._data_dir, *extra_args],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    preexec_fn=ensure_dead_with_parent)
+
+            self._daemon_pid = self._daemon_process.pid
 
         self._test_connection(timeout=wait)
 
@@ -291,9 +317,14 @@ class Cluster:
 
     def trust_local_connections(self):
         self.reset_hba()
-        self.add_hba_entry(type='local', database='all',
-                           user='all', auth_method='trust')
+
+        if _system != 'Windows':
+            self.add_hba_entry(type='local', database='all',
+                               user='all', auth_method='trust')
         self.add_hba_entry(type='host', address='127.0.0.1/32',
+                           database='all', user='all',
+                           auth_method='trust')
+        self.add_hba_entry(type='host', address='::1/128',
                            database='all', user='all',
                            auth_method='trust')
         status = self.get_status()
@@ -367,8 +398,9 @@ class Cluster:
 
                 try:
                     con = loop.run_until_complete(
-                        asyncpg.connect(database='postgres', timeout=5,
-                                        loop=loop, **self._connection_addr))
+                        asyncpg.connect(database='postgres',
+                                        timeout=5, loop=loop,
+                                        **self._connection_addr))
                 except (OSError, asyncio.TimeoutError,
                         asyncpg.CannotConnectNowError,
                         asyncpg.PostgresConnectionError):
@@ -409,11 +441,13 @@ class Cluster:
         if pg_config_path is None:
             pg_install = os.environ.get('PGINSTALLATION')
             if pg_install:
-                pg_config_path = os.path.join(pg_install, 'pg_config')
+                pg_config_path = platform_exe(
+                    os.path.join(pg_install, 'pg_config'))
             else:
                 pathenv = os.environ.get('PATH').split(os.pathsep)
                 for path in pathenv:
-                    pg_config_path = os.path.join(path, 'pg_config')
+                    pg_config_path = platform_exe(
+                        os.path.join(path, 'pg_config'))
                     if os.path.exists(pg_config_path):
                         break
                 else:
@@ -434,7 +468,7 @@ class Cluster:
                 'could not find {} executable: '.format(binary) +
                 'pg_config output did not provide the BINDIR value')
 
-        bpath = os.path.join(bindir, binary)
+        bpath = platform_exe(os.path.join(bindir, binary))
 
         if not os.path.isfile(bpath):
             raise ClusterError(
