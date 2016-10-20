@@ -162,7 +162,7 @@ class build_ext(_build_ext.build_ext):
 
 setuptools.setup(
     name='asyncpg',
-    version='0.6.2',
+    version='0.6.3',
     description='An asyncio PosgtreSQL driver',
     classifiers=[
         'License :: OSI Approved :: Apache Software License',

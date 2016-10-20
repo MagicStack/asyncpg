@@ -6,9 +6,6 @@ services:
     - postgresql
     - docker
 
-addons:
-    postgresql: '9.4'
-
 env:
     global:
         - PYMODULE=asyncpg
@@ -19,7 +16,7 @@ env:
 matrix:
     include:
         - os: osx
-          osx_image: beta-xcode6.1  # OS X 10.9
+          osx_image: xcode7.1  # OS X 10.10
           # Travis macOS env does not support Python yet,
           # so we have to set things up manually in install.sh.
           env: PYTHON_VERSION=3.5.2
@@ -30,6 +27,8 @@ matrix:
           language: python
           python: "3.5"
           services: [postgresql, docker]
+          addons:
+              postgresql: '9.4'
 
 cache:
     directories:
@@ -42,9 +41,7 @@ install:
     - .ci/travis-install.sh
 
 script:
-    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then eval "$(pyenv init -)"; fi
-    - make && make test
-    - make debug && make test
+    - .ci/travis-tests.sh
     - .ci/travis-build-docs.sh
 
 before_deploy:

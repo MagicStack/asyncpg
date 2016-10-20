@@ -3,18 +3,16 @@
 set -e -x
 
 if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
-    brew update
-
-    brew outdated postgresql || brew upgrade postgresql
-
-    brew outdated pyenv || brew upgrade pyenv
+    git clone --depth 1 https://github.com/yyuu/pyenv.git ~/.pyenv
+    PYENV_ROOT="$HOME/.pyenv"
+    PATH="$PYENV_ROOT/bin:$PATH"
     eval "$(pyenv init -)"
-    pyenv versions
 
     if ! (pyenv versions | grep "${PYTHON_VERSION}$"); then
         pyenv install ${PYTHON_VERSION}
     fi
-    pyenv local ${PYTHON_VERSION}
+    pyenv global ${PYTHON_VERSION}
+    pyenv rehash
 fi
 
 pip install --upgrade pip wheel
