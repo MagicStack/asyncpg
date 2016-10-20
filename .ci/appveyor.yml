@@ -29,6 +29,4 @@ artifacts:
     - path: dist\*
 
 deploy_script:
-    - cmd: "%PYTHON% -m twine upload dist\\*.whl"
-      on:
-        appveyor_repo_tag: true
+    - cmd: "if %APPVEYOR_REPO_TAG%==true %PYTHON% -m twine upload dist\\*.whl"
