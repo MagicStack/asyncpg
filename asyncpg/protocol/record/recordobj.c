@@ -22,7 +22,7 @@ ApgRecord_New(PyObject *desc, Py_ssize_t size)
     ApgRecordObject *o;
     Py_ssize_t i;
 
-    if (size < 1 || desc == NULL || !ApgRecordDesc_CheckExact(desc)) {
+    if (size < 0 || desc == NULL || !ApgRecordDesc_CheckExact(desc)) {
         PyErr_BadInternalCall();
         return NULL;
     }
@@ -346,7 +346,9 @@ record_repr(ApgRecordObject *v)
     _PyUnicodeWriter writer;
 
     n = Py_SIZE(v);
-    assert(n > 0);
+    if (n == 0) {
+        return PyUnicode_FromString("<Record>");
+    }
 
     keys_iter = PyObject_GetIter(v->desc->keys);
     if (keys_iter == NULL) {

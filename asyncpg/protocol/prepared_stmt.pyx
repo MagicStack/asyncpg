@@ -141,7 +141,11 @@ cdef class PreparedStatementState:
             Codec codec
             list codecs
 
-        if self.cols_num == 0 or self.cols_desc is not None:
+        if self.cols_desc is not None:
+            return
+
+        if self.cols_num == 0:
+            self.cols_desc = record.ApgRecordDesc_New({}, ())
             return
 
         cols_mapping = collections.OrderedDict()
@@ -219,7 +223,9 @@ cdef class PreparedStatementState:
                     fnum, self.cols_num))
 
         if rows_codecs is None or len(rows_codecs) < fnum:
-            raise RuntimeError('invalid rows_codecs')
+            if fnum > 0:
+                # It's OK to have no rows_codecs for empty records
+                raise RuntimeError('invalid rows_codecs')
 
         dec_row = record.ApgRecord_New(self.cols_desc, fnum)
         for i in range(fnum):

@@ -395,3 +395,8 @@ class TestPrepare(tb.ConnectedTestCase):
             await stmt.fetchval(0)
 
         self.assertEqual(await stmt.fetchval(5), 2)
+
+    async def test_prepare_22_empty(self):
+        result = await self.con.fetchrow('SELECT')
+        self.assertEqual(result, ())
+        self.assertEqual(repr(result), '<Record>')

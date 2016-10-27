@@ -479,7 +479,12 @@ def _create_record(object mapping, tuple elems):
         object rec
         int32_t i
 
-    desc = record.ApgRecordDesc_New(mapping, tuple(mapping) if mapping else ())
+    if mapping is None:
+        desc = record.ApgRecordDesc_New({}, ())
+    else:
+        desc = record.ApgRecordDesc_New(
+            mapping, tuple(mapping) if mapping else ())
+
     rec = record.ApgRecord_New(desc, len(elems))
     for i in range(len(elems)):
         elem = elems[i]

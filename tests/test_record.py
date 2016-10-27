@@ -10,7 +10,6 @@ import collections
 import gc
 import pickle
 import sys
-import unittest
 
 from asyncpg import _testbase as tb
 from asyncpg.protocol.protocol import _create_record as Record
@@ -36,10 +35,6 @@ class TestRecord(tb.ConnectedTestCase):
             if before != after:
                 self.fail('refcounts differ for {!r}: {:+}'.format(
                     objs[i], after - before))
-
-    def test_record_zero_length(self):
-        with self.assertRaises(SystemError):
-            Record({}, ())
 
     def test_record_gc(self):
         elem = object()
@@ -153,10 +148,7 @@ class TestRecord(tb.ConnectedTestCase):
         r = Record(R_AB, (42, 43))
         vv = r.keys()
         self.assertEqual(tuple(vv), ('a', 'b'))
-
-        # test invalid record
-        with self.assertRaisesRegex(TypeError, 'not iterable'):
-            Record(None, (42, 43)).keys()
+        self.assertEqual(list(Record(None, (42, 43)).keys()), [])
 
     def test_record_items(self):
         r = Record(R_AB, (42, 43))
@@ -188,9 +180,12 @@ class TestRecord(tb.ConnectedTestCase):
         self.assertEqual(list(r.items()), [('a', 42)])
         r = Record(R_AB, (42,))
         self.assertEqual(list(r.items()), [('a', 42)])
-        r = Record(None, (42, 43))
-        with self.assertRaises(TypeError):
-            list(r.items())
+
+        # Try to iterate over exhausted items() iterator
+        r = Record(R_A, (42, 43))
+        it = r.items()
+        list(it)
+        list(it)
 
     def test_record_hash(self):
         AB = collections.namedtuple('AB', ('a', 'b'))
@@ -220,8 +215,7 @@ class TestRecord(tb.ConnectedTestCase):
         self.assertNotIn('z', r)
 
         r = Record(None, (42, 43))
-        with self.assertRaises(TypeError):
-            self.assertIn('a', r)
+        self.assertNotIn('a', r)
 
         with self.assertRaises(TypeError):
             type(r).__contains__(None, 'a')
@@ -280,6 +274,21 @@ class TestRecord(tb.ConnectedTestCase):
         r = Record(R_A, (42,))
         with self.assertRaises(Exception):
             pickle.dumps(r)
+
+    def test_record_empty(self):
+        r = Record(None, ())
+        self.assertEqual(r, ())
+        self.assertLess(r, (1,))
+        self.assertEqual(len(r), 0)
+        self.assertFalse(r)
+        self.assertNotIn('a', r)
+        self.assertEqual(repr(r), '<Record>')
+        self.assertEqual(str(r), '<Record>')
+        with self.assertRaisesRegex(KeyError, 'aaa'):
+            r['aaa']
+        self.assertEqual(dict(r.items()), {})
+        self.assertEqual(list(r.keys()), [])
+        self.assertEqual(list(r.values()), [])
 
     async def test_record_duplicate_colnames(self):
         """Test that Record handles duplicate column names."""
