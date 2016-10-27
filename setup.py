@@ -32,12 +32,15 @@ class build_ext(_build_ext.build_ext):
             'run cythonize() even if .c files are present'),
         ('cython-annotate', None,
             'Produce a colorized HTML version of the Cython source.'),
+        ('cython-directives=', None,
+            'Cythion compiler directives'),
     ]
 
     def initialize_options(self):
         super(build_ext, self).initialize_options()
         self.cython_always = False
         self.cython_annotate = None
+        self.cython_directives = None
 
     def finalize_options(self):
         need_cythonize = self.cython_always
