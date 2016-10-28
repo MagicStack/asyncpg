@@ -134,8 +134,9 @@ class Cluster:
                     self._data_dir))
 
         if settings:
-            extra_args = ['-o'] + ['--{}={}'.format(k, v)
-                                   for k, v in settings.items()]
+            settings_args = ['--{}={}'.format(k, v)
+                             for k, v in settings.items()]
+            extra_args = ['-o'] + [' '.join(settings_args)]
         else:
             extra_args = []
 
