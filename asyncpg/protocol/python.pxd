@@ -14,9 +14,13 @@ cdef extern from "Python.h":
     void PyMem_Free(void *p)
 
     int PyByteArray_Check(object)
+    ssize_t PyByteArray_Size(object)
+    int PyByteArray_Resize(object, ssize_t)
+    object PyByteArray_FromStringAndSize(const char *, ssize_t)
 
     int PyMemoryView_Check(object)
     Py_buffer *PyMemoryView_GET_BUFFER(object)
+    object PyMemoryView_FromMemory(char *mem, ssize_t size, int flags)
 
     char* PyUnicode_AsUTF8AndSize(object unicode, ssize_t *size) except NULL
     char* PyByteArray_AsString(object)

@@ -22,6 +22,7 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
+    'sphinx.ext.intersphinx',
     'sphinxcontrib.asyncio',
 ]
 
@@ -91,3 +92,7 @@ texinfo_documents = [
      'Python asyncio framework',
      'Miscellaneous'),
 ]
+
+# -- Options for intersphinx ----------------------------------------------
+
+intersphinx_mapping = {'python': ('https://docs.python.org/3', None)}

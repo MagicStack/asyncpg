@@ -15,8 +15,8 @@ cdef enum ProtocolState:
     PROTOCOL_IDLE = 0
 
     PROTOCOL_FAILED = 1
-
     PROTOCOL_ERROR_CONSUME = 2
+    PROTOCOL_CANCELLED = 3
 
     PROTOCOL_AUTH = 10
     PROTOCOL_PREPARE = 11
@@ -26,6 +26,11 @@ cdef enum ProtocolState:
     PROTOCOL_SIMPLE_QUERY = 15
     PROTOCOL_EXECUTE = 16
     PROTOCOL_BIND = 17
+    PROTOCOL_COPY_OUT = 18
+    PROTOCOL_COPY_OUT_DATA = 19
+    PROTOCOL_COPY_OUT_DONE = 20
+    PROTOCOL_COPY_IN = 21
+    PROTOCOL_COPY_IN_DATA = 22
 
 
 cdef enum AuthenticationMessage:
@@ -106,6 +111,8 @@ cdef class CoreProtocol:
     cdef _process__close_stmt_portal(self, char mtype)
     cdef _process__simple_query(self, char mtype)
     cdef _process__bind(self, char mtype)
+    cdef _process__copy_out(self, char mtype)
+    cdef _process__copy_out_data(self, char mtype)
 
     cdef _parse_msg_authentication(self)
     cdef _parse_msg_parameter_status(self)
@@ -113,6 +120,7 @@ cdef class CoreProtocol:
     cdef _parse_msg_backend_key_data(self)
     cdef _parse_msg_ready_for_query(self)
     cdef _parse_data_msgs(self)
+    cdef _parse_copy_data_msgs(self)
     cdef _parse_msg_error_response(self, is_error)
     cdef _parse_msg_command_complete(self)
 
@@ -148,6 +156,7 @@ cdef class CoreProtocol:
     cdef _execute(self, str portal_name, int32_t limit)
     cdef _close(self, str name, bint is_portal)
     cdef _simple_query(self, str query)
+    cdef _copy_out(self, str copy_stmt)
     cdef _terminate(self)
 
     cdef _decode_row(self, const char* buf, ssize_t buf_len)

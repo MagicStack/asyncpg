@@ -10,6 +10,7 @@ import collections
 import struct
 import time
 
+from . import compat
 from . import connect_utils
 from . import cursor
 from . import exceptions
@@ -18,6 +19,7 @@ from . import prepared_stmt
 from . import protocol
 from . import serverversion
 from . import transaction
+from . import utils
 
 
 class ConnectionMeta(type):
@@ -344,6 +346,178 @@ class Connection(metaclass=ConnectionMeta):
         if not data:
             return None
         return data[0]
+
+    async def copy_from_table(self, table_name, *, output,
+                              columns=None, schema_name=None, timeout=None,
+                              format=None, oids=None, delimiter=None,
+                              null=None, header=None, quote=None,
+                              escape=None, force_quote=None, encoding=None):
+        """Copy table contents to a file or file-like object.
+
+        :param str table_name:
+            The name of the table to copy data from.
+
+        :param output:
+            A :term:`path-like object <python:path-like object>`,
+            or a :term:`file-like object <python:file-like object>`, or
+            a :term:`coroutine function <python:coroutine function>`
+            that takes a ``bytes`` instance as a sole argument.
+
+        :param list columns:
+            An optional list of column names to copy.
+
+        :param str schema_name:
+            An optional schema name to qualify the table.
+
+        :param float timeout:
+            Optional timeout value in seconds.
+
+        The remaining kewyword arguments are ``COPY`` statement options,
+        see `COPY statement documentation`_ for details.
+
+        :return: The status string of the COPY command.
+
+        .. versionadded:: 0.11.0
+
+        .. _`COPY statement documentation`: https://www.postgresql.org/docs/\
+                                            current/static/sql-copy.html
+
+        """
+        tabname = utils._quote_ident(table_name)
+        if schema_name:
+            tabname = utils._quote_ident(schema_name) + '.' + tabname
+
+        if columns:
+            cols = '({})'.format(
+                ', '.join(utils._quote_ident(c) for c in columns))
+        else:
+            cols = ''
+
+        opts = self._format_copy_opts(
+            format=format, oids=oids, delimiter=delimiter,
+            null=null, header=header, quote=quote, escape=escape,
+            force_quote=force_quote, encoding=encoding
+        )
+
+        copy_stmt = 'COPY {tab}{cols} TO STDOUT {opts}'.format(
+            tab=tabname, cols=cols, opts=opts)
+
+        return await self._copy_out(copy_stmt, output, timeout)
+
+    async def copy_from_query(self, query, *args, output,
+                              timeout=None, format=None, oids=None,
+                              delimiter=None, null=None, header=None,
+                              quote=None, escape=None, force_quote=None,
+                              encoding=None):
+        """Copy the results of a query to a file or file-like object.
+
+        :param str query:
+            The query to copy the results of.
+
+        :param *args:
+            Query arguments.
+
+        :param output:
+            A :term:`path-like object <python:path-like object>`,
+            or a :term:`file-like object <python:file-like object>`, or
+            a :term:`coroutine function <python:coroutine function>`
+            that takes a ``bytes`` instance as a sole argument.
+
+        :param float timeout:
+            Optional timeout value in seconds.
+
+        The remaining kewyword arguments are ``COPY`` statement options,
+        see `COPY statement documentation`_ for details.
+
+        :return: The status string of the COPY command.
+
+        .. versionadded:: 0.11.0
+
+        .. _`COPY statement documentation`: https://www.postgresql.org/docs/\
+                                            current/static/sql-copy.html
+
+        """
+        opts = self._format_copy_opts(
+            format=format, oids=oids, delimiter=delimiter,
+            null=null, header=header, quote=quote, escape=escape,
+            force_quote=force_quote, encoding=encoding
+        )
+
+        if args:
+            query = await utils._mogrify(self, query, args)
+
+        copy_stmt = 'COPY ({query}) TO STDOUT {opts}'.format(
+            query=query, opts=opts)
+
+        return await self._copy_out(copy_stmt, output, timeout)
+
+    def _format_copy_opts(self, *, format=None, oids=None, freeze=None,
+                          delimiter=None, null=None, header=None, quote=None,
+                          escape=None, force_quote=None, force_not_null=None,
+                          force_null=None, encoding=None):
+        kwargs = dict(locals())
+        kwargs.pop('self')
+        opts = []
+
+        if force_quote is not None and isinstance(force_quote, bool):
+            kwargs.pop('force_quote')
+            if force_quote:
+                opts.append('FORCE_QUOTE *')
+
+        for k, v in kwargs.items():
+            if v is not None:
+                if k in ('force_not_null', 'force_null', 'force_quote'):
+                    v = '(' + ', '.join(utils._quote_ident(c) for c in v) + ')'
+                elif k in ('oids', 'freeze', 'header'):
+                    v = str(v)
+                else:
+                    v = utils._quote_literal(v)
+
+                opts.append('{} {}'.format(k.upper(), v))
+
+        if opts:
+            return '(' + ', '.join(opts) + ')'
+        else:
+            return ''
+
+    async def _copy_out(self, copy_stmt, output, timeout):
+        try:
+            path = compat.fspath(output)
+        except TypeError:
+            # output is not a path-like object
+            path = None
+
+        writer = None
+        opened_by_us = False
+        run_in_executor = self._loop.run_in_executor
+
+        if path is not None:
+            # a path
+            f = await run_in_executor(None, open, path, 'wb')
+            opened_by_us = True
+        elif hasattr(output, 'write'):
+            # file-like
+            f = output
+        elif callable(output):
+            # assuming calling output returns an awaitable.
+            writer = output
+        else:
+            raise TypeError(
+                'output is expected to be a file-like object, '
+                'a path-like object or a coroutine function, '
+                'not {}'.format(type(output).__name__)
+            )
+
+        if writer is None:
+            async def _writer(data):
+                await run_in_executor(None, f.write, data)
+            writer = _writer
+
+        try:
+            return await self._protocol.copy_out(copy_stmt, writer, timeout)
+        finally:
+            if opened_by_us:
+                f.close()
 
     async def set_type_codec(self, typename, *,
                              schema='public', encoder, decoder, binary=False):
