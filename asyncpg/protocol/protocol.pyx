@@ -14,6 +14,7 @@ import asyncio
 import codecs
 import collections
 import socket
+import time
 
 from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, \
                          int32_t, uint32_t, int64_t, uint64_t
@@ -23,8 +24,11 @@ from asyncpg.protocol cimport record
 from asyncpg.protocol.python cimport (
                      PyMem_Malloc, PyMem_Realloc, PyMem_Calloc, PyMem_Free,
                      PyMemoryView_GET_BUFFER, PyMemoryView_Check,
+                     PyMemoryView_FromMemory,
                      PyUnicode_AsUTF8AndSize, PyByteArray_AsString,
                      PyByteArray_Check, PyUnicode_AsUCS4Copy,
+                     PyByteArray_Size, PyByteArray_Resize,
+                     PyByteArray_FromStringAndSize,
                      PyUnicode_FromKindAndData, PyUnicode_4BYTE_KIND)
 
 from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
@@ -101,6 +105,7 @@ cdef class BaseProtocol(CoreProtocol):
         self.last_query = None
 
         self.closing = False
+        self.is_reading = True
 
         self.timeout_handle = None
         self.timeout_callback = self._on_timeout
@@ -126,6 +131,16 @@ cdef class BaseProtocol(CoreProtocol):
         # PQTRANS_INTRANS = idle, within transaction block
         # PQTRANS_INERROR = idle, within failed transaction
         return self.xact_status in (PQTRANS_INTRANS, PQTRANS_INERROR)
+
+    cdef inline resume_reading(self):
+        if not self.is_reading:
+            self.is_reading = True
+            self.transport.resume_reading()
+
+    cdef inline pause_reading(self):
+        if self.is_reading:
+            self.is_reading = False
+            self.transport.pause_reading()
 
     async def prepare(self, stmt_name, query, timeout):
         if self.cancel_waiter is not None:
@@ -266,6 +281,57 @@ cdef class BaseProtocol(CoreProtocol):
 
         return await self._new_waiter(timeout)
 
+    async def copy_out(self, copy_stmt, sink, timeout):
+        if self.cancel_waiter is not None:
+            await self.cancel_waiter
+        if self.cancel_sent_waiter is not None:
+            await self.cancel_sent_waiter
+            self.cancel_sent_waiter = None
+
+        self._check_state()
+
+        timeout = self._get_timeout_impl(timeout)
+        timer = Timer(timeout)
+
+        # The copy operation is guarded by a single timeout
+        # on the top level.
+        waiter = self._new_waiter(timer.get_remaining_budget())
+
+        self._copy_out(copy_stmt)
+
+        try:
+            while True:
+                self.resume_reading()
+
+                with timer:
+                    buffer, done, status_msg = await waiter
+
+                # buffer will be empty if CopyDone was received apart from
+                # the last CopyData message.
+                if buffer:
+                    try:
+                        with timer:
+                            await asyncio.wait_for(
+                                sink(buffer),
+                                timeout=timer.get_remaining_budget(),
+                                loop=self.loop)
+                    except Exception as ex:
+                        # Abort the COPY operation on any error in
+                        # output sink.
+                        self._request_cancel()
+                        raise
+
+                # done will be True upon receipt of CopyDone.
+                if done:
+                    break
+
+                waiter = self._new_waiter(timer.get_remaining_budget())
+
+        finally:
+            self.resume_reading()
+
+        return status_msg
+
     async def close_statement(self, PreparedStatementState state, timeout):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
@@ -322,6 +388,7 @@ cdef class BaseProtocol(CoreProtocol):
         self.cancel_waiter = self.create_future()
         self.cancel_sent_waiter = self.create_future()
         self.connection._cancel_current_command(self.cancel_sent_waiter)
+        self._set_state(PROTOCOL_CANCELLED)
 
     def _on_timeout(self, fut):
         if self.waiter is not fut or fut.done() or \
@@ -393,6 +460,9 @@ cdef class BaseProtocol(CoreProtocol):
                 'cannot perform operation: another operation is in progress')
 
     cdef _new_waiter(self, timeout):
+        if self.waiter is not None:
+            raise apg_exc.InterfaceError(
+                'cannot perform operation: another operation is in progress')
         self.waiter = self.create_future()
         if timeout is not None:
             self.timeout_handle = self.connection._loop.call_later(
@@ -432,6 +502,19 @@ cdef class BaseProtocol(CoreProtocol):
 
     cdef _on_result__simple_query(self, object waiter):
         waiter.set_result(self.result_status_msg.decode(self.encoding))
+
+    cdef _on_result__copy_out(self, object waiter):
+        cdef bint copy_done = self.state == PROTOCOL_COPY_OUT_DONE
+        if copy_done:
+            status_msg = self.result_status_msg.decode(self.encoding)
+        else:
+            status_msg = None
+
+        # We need to put some backpressure on Postgres
+        # here in case the sink is slow to process the output.
+        self.pause_reading()
+
+        waiter.set_result((self.result, copy_done, status_msg))
 
     cdef _decode_row(self, const char* buf, ssize_t buf_len):
         if ASYNCPG_DEBUG:
@@ -489,6 +572,10 @@ cdef class BaseProtocol(CoreProtocol):
             elif self.state == PROTOCOL_SIMPLE_QUERY:
                 self._on_result__simple_query(waiter)
 
+            elif (self.state == PROTOCOL_COPY_OUT_DATA or
+                    self.state == PROTOCOL_COPY_OUT_DONE):
+                self._on_result__copy_out(waiter)
+
             else:
                 raise RuntimeError(
                     'got result for unknown protocol state {}'.
@@ -503,9 +590,12 @@ cdef class BaseProtocol(CoreProtocol):
             self.timeout_handle = None
 
         if self.cancel_waiter is not None:
+            # We have received the result of a cancelled operation.
+            # Check that the result waiter (if it exists) has a result.
             if self.waiter is not None and not self.waiter.done():
                 self.cancel_waiter.set_exception(
-                    RuntimeError('invalid state after cancellation'))
+                    RuntimeError(
+                        'invalid result waiter state on cancellation'))
             else:
                 self.cancel_waiter.set_result(None)
             self.cancel_waiter = None
@@ -538,6 +628,23 @@ cdef class BaseProtocol(CoreProtocol):
             # Throw an error in any awaiting waiter.
             self.closing = True
             self._handle_waiter_on_connection_lost(exc)
+
+
+class Timer:
+    def __init__(self, budget):
+        self._budget = budget
+        self._started = 0
+
+    def __enter__(self):
+        if self._budget is not None:
+            self._started = time.monotonic()
+
+    def __exit__(self, et, e, tb):
+        if self._budget is not None:
+            self._budget -= time.monotonic() - self._started
+
+    def get_remaining_budget(self):
+        return self._budget
 
 
 class Protocol(BaseProtocol, asyncio.Protocol):

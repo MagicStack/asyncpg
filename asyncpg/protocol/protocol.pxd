@@ -37,6 +37,7 @@ cdef class BaseProtocol(CoreProtocol):
         object timeout_callback
         object completed_callback
         object connection
+        bint is_reading
 
         str last_query
 
@@ -56,7 +57,11 @@ cdef class BaseProtocol(CoreProtocol):
     cdef _on_result__close_stmt_or_portal(self, object waiter)
     cdef _on_result__simple_query(self, object waiter)
     cdef _on_result__bind(self, object waiter)
+    cdef _on_result__copy_out(self, object waiter)
 
     cdef _handle_waiter_on_connection_lost(self, cause)
 
     cdef _dispatch_result(self)
+
+    cdef inline resume_reading(self)
+    cdef inline pause_reading(self)

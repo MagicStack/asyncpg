@@ -296,6 +296,11 @@ cdef class ReadBuffer:
                     'debug: second buffer of ReadBuffer is empty')
 
     cdef inline char* _try_read_bytes(self, ssize_t nbytes):
+        # Try to read *nbytes* from the first buffer.
+        #
+        # Returns pointer to data if there is at least *nbytes*
+        # in the buffer, NULL otherwise.
+        #
         # Important: caller must call _ensure_first_buf() prior
         # to calling try_read_bytes, and must not overread
 
@@ -321,9 +326,32 @@ cdef class ReadBuffer:
         else:
             return NULL
 
-    cdef inline read(self, ssize_t nbytes):
+    cdef inline _read(self, char *buf, ssize_t nbytes):
         cdef:
-            object result
+            ssize_t nread
+            char *buf0
+
+        while True:
+            buf0 = cpython.PyBytes_AS_STRING(self._buf0)
+
+            if self._pos0 + nbytes > self._len0:
+                nread = self._len0 - self._pos0
+                memcpy(buf, buf0 + self._pos0, <size_t>nread)
+                self._pos0 = self._len0
+                self._length -= nread
+                nbytes -= nread
+                buf += nread
+                self._ensure_first_buf()
+
+            else:
+                memcpy(buf, buf0 + self._pos0, <size_t>nbytes)
+                self._pos0 += nbytes
+                self._length -= nbytes
+                break
+
+    cdef read(self, ssize_t nbytes):
+        cdef:
+            bytearray result
             ssize_t nread
             char *buf
 
@@ -341,24 +369,11 @@ cdef class ReadBuffer:
             if self._current_message_len_unread < 0:
                 raise BufferError('buffer overread')
 
-        result = bytearray()
-        while True:
-            if self._pos0 + nbytes > self._len0:
-                result.extend(self._buf0[self._pos0:])
-                nread = self._len0 - self._pos0
-                self._pos0 = self._len0
-                self._length -= nread
-                nbytes -= nread
-                self._ensure_first_buf()
+        result = PyByteArray_FromStringAndSize(NULL, nbytes)
+        buf = PyByteArray_AsString(result)
+        self._read(buf, nbytes)
 
-            else:
-                result.extend(self._buf0[self._pos0:self._pos0 + nbytes])
-                self._pos0 += nbytes
-                self._length -= nbytes
-                return Memory.new(
-                    PyByteArray_AsString(result),
-                    result,
-                    len(result))
+        return Memory.new(buf, result, nbytes)
 
     cdef inline read_byte(self):
         cdef char* first_byte
@@ -506,6 +521,9 @@ cdef class ReadBuffer:
         self._current_message_ready = 1
         return 1
 
+    cdef inline int32_t has_message_type(self, char mtype) except -1:
+        return self.has_message() and self.get_message_type() == mtype
+
     cdef inline char* try_consume_message(self, ssize_t* len):
         cdef ssize_t buf_len
 
@@ -529,6 +547,35 @@ cdef class ReadBuffer:
             mem = None
         self._discard_message()
         return mem
+
+    cdef bytearray consume_messages(self, char mtype):
+        """Consume consecutive messages of the same type."""
+        cdef:
+            char *buf
+            ssize_t nbytes
+            ssize_t total_bytes = 0
+            bytearray result
+
+        if not self.has_message_type(mtype):
+            return None
+
+        # consume_messages is a volume-oriented method, so
+        # we assume that the remainder of the buffer will contain
+        # messages of the requested type.
+        result = PyByteArray_FromStringAndSize(NULL, self._length)
+        buf = PyByteArray_AsString(result)
+
+        while self.has_message_type(mtype):
+            nbytes = self._current_message_len_unread
+            self._read(buf, nbytes)
+            buf += nbytes
+            total_bytes += nbytes
+            self._discard_message()
+
+        # Clamp the result to an actual size read.
+        PyByteArray_Resize(result, total_bytes)
+
+        return result
 
     cdef discard_message(self):
         if self._current_message_type == 0:

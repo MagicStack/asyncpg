@@ -99,14 +99,17 @@ cdef class ReadBuffer:
     cdef _switch_to_next_buf(self)
     cdef inline read_byte(self)
     cdef inline char* _try_read_bytes(self, ssize_t nbytes)
-    cdef inline read(self, ssize_t nbytes)
+    cdef inline _read(self, char *buf, ssize_t nbytes)
+    cdef read(self, ssize_t nbytes)
     cdef inline read_bytes(self, ssize_t n)
     cdef inline read_int32(self)
     cdef inline read_int16(self)
     cdef inline read_cstr(self)
     cdef int32_t has_message(self) except -1
+    cdef inline int32_t has_message_type(self, char mtype) except -1
     cdef inline char* try_consume_message(self, ssize_t* len)
     cdef Memory consume_message(self)
+    cdef bytearray consume_messages(self, char mtype)
     cdef discard_message(self)
     cdef inline _discard_message(self)
     cdef inline char get_message_type(self)

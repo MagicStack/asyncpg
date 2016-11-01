@@ -81,6 +81,23 @@ cdef class CoreProtocol:
                 elif state == PROTOCOL_SIMPLE_QUERY:
                     self._process__simple_query(mtype)
 
+                elif state == PROTOCOL_COPY_OUT:
+                    self._process__copy_out(mtype)
+
+                elif (state == PROTOCOL_COPY_OUT_DATA or
+                        state == PROTOCOL_COPY_OUT_DONE):
+                    self._process__copy_out_data(mtype)
+
+                elif state == PROTOCOL_CANCELLED:
+                    # discard all messages until the sync message
+                    if mtype == b'E':
+                        self._parse_msg_error_response(True)
+                    elif mtype == b'Z':
+                        self._parse_msg_ready_for_query()
+                        self._push_result()
+                    else:
+                        self.buffer.consume_message()
+
                 elif state == PROTOCOL_ERROR_CONSUME:
                     # Error in protocol (on asyncpg side);
                     # discard all messages until sync message
@@ -303,6 +320,42 @@ cdef class CoreProtocol:
             # We don't really care about COPY IN etc
             self.buffer.consume_message()
 
+    cdef _process__copy_out(self, char mtype):
+        if mtype == b'E':
+            self._parse_msg_error_response(True)
+
+        elif mtype == b'H':
+            # CopyOutResponse
+            self._set_state(PROTOCOL_COPY_OUT_DATA)
+            self.buffer.consume_message()
+
+        elif mtype == b'Z':
+            # ReadyForQuery
+            self._parse_msg_ready_for_query()
+            self._push_result()
+
+    cdef _process__copy_out_data(self, char mtype):
+        if mtype == b'E':
+            self._parse_msg_error_response(True)
+
+        elif mtype == b'd':
+            # CopyData
+            self._parse_copy_data_msgs()
+
+        elif mtype == b'c':
+            # CopyDone
+            self.buffer.consume_message()
+            self._set_state(PROTOCOL_COPY_OUT_DONE)
+
+        elif mtype == b'C':
+            # CommandComplete
+            self._parse_msg_command_complete()
+
+        elif mtype == b'Z':
+            # ReadyForQuery
+            self._parse_msg_ready_for_query()
+            self._push_result()
+
     cdef _parse_msg_command_complete(self):
         cdef:
             char* cbuf
@@ -314,6 +367,25 @@ cdef class CoreProtocol:
         else:
             msg = self.buffer.read_cstr()
         self.result_status_msg = msg
+
+    cdef _parse_copy_data_msgs(self):
+        cdef:
+            ReadBuffer buf = self.buffer
+
+        self.result = buf.consume_messages(b'd')
+
+        self._skip_discard = True
+
+        # By this point we have consumed all CopyData messages
+        # in the inbound buffer.  If there are no messages left
+        # in the buffer, we need to push the accumulated data
+        # out to the caller in anticipation of the new CopyData
+        # batch.  If there _are_ non-CopyData messages left,
+        # we must not push the result here and let the
+        # _process__copy_out_data subprotocol do the job.
+        if not buf.has_message():
+            self._on_result()
+            self.result = None
 
     cdef _parse_data_msgs(self):
         cdef:
@@ -505,8 +577,19 @@ cdef class CoreProtocol:
         elif new_state == PROTOCOL_FAILED:
             self.state = PROTOCOL_FAILED
 
+        elif new_state == PROTOCOL_CANCELLED:
+            self.state = PROTOCOL_CANCELLED
+
         else:
             if self.state == PROTOCOL_IDLE:
+                self.state = new_state
+
+            elif (self.state == PROTOCOL_COPY_OUT and
+                    new_state == PROTOCOL_COPY_OUT_DATA):
+                self.state = new_state
+
+            elif (self.state == PROTOCOL_COPY_OUT_DATA and
+                    new_state == PROTOCOL_COPY_OUT_DONE):
                 self.state = new_state
 
             elif self.state == PROTOCOL_FAILED:
@@ -712,6 +795,18 @@ cdef class CoreProtocol:
         self._set_state(PROTOCOL_SIMPLE_QUERY)
         buf = WriteBuffer.new_message(b'Q')
         buf.write_str(query, self.encoding)
+        buf.end_message()
+        self._write(buf)
+
+    cdef _copy_out(self, str copy_stmt):
+        cdef WriteBuffer buf
+
+        self._ensure_connected()
+        self._set_state(PROTOCOL_COPY_OUT)
+
+        # Send the COPY .. TO STDOUT using the SimpleQuery protocol.
+        buf = WriteBuffer.new_message(b'Q')
+        buf.write_str(copy_stmt, self.encoding)
         buf.end_message()
         self._write(buf)
 
