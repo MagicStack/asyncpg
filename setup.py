@@ -10,6 +10,7 @@ import os.path
 import platform
 import re
 import sys
+import unittest
 
 import setuptools
 from setuptools.command import build_ext as _build_ext
@@ -24,6 +25,12 @@ LDFLAGS = []
 
 if platform.uname().system == 'Windows':
     LDFLAGS.append('ws2_32.lib')
+
+
+def discover_tests():
+    test_loader = unittest.TestLoader()
+    test_suite = test_loader.discover('tests', pattern='test_*.py')
+    return test_suite
 
 
 class build_ext(_build_ext.build_ext):
@@ -193,4 +200,5 @@ setuptools.setup(
             extra_link_args=LDFLAGS)
     ],
     cmdclass={'build_ext': build_ext},
+    test_suite='setup.discover_tests',
 )
