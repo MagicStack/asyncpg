@@ -153,8 +153,14 @@ cdef class Codec:
 
             if received_elem_typ != elem_typ:
                 raise RuntimeError(
-                    'unexpected attribute data type: {}, expected {}'
-                        .format(received_elem_typ, elem_typ))
+                    'unexpected data type of composite type attribute {}: '
+                    '{!r}, expected {!r}'
+                        .format(
+                            i,
+                            TYPEMAP.get(received_elem_typ, received_elem_typ),
+                            TYPEMAP.get(elem_typ, elem_typ)
+                        )
+                )
 
             elem_len = hton.unpack_int32(buf.read(4))
             if elem_len == -1:

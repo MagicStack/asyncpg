@@ -867,12 +867,36 @@ class TestCodecs(tb.ConnectedTestCase):
             CREATE TABLE tab (d t[]);
         ''')
 
-        await self.con.execute(
-            'INSERT INTO tab (d) VALUES ($1)',
-            [('a', 1)])
+        try:
+            await self.con.execute(
+                'INSERT INTO tab (d) VALUES ($1)',
+                [('a', 1)])
 
-        r = await self.con.fetchval('''
-            SELECT d FROM tab
+            r = await self.con.fetchval('''
+                SELECT d FROM tab
+            ''')
+
+            self.assertEqual(r, [('a', 1)])
+        finally:
+            await self.con.execute('''
+                DROP TABLE tab;
+                DROP TYPE t;
+            ''')
+
+    async def test_table_as_composite(self):
+        await self.con.execute('''
+            CREATE TABLE tab (a text, b int);
+            INSERT INTO tab VALUES ('1', 1);
         ''')
 
-        self.assertEqual(r, [('a', 1)])
+        try:
+            r = await self.con.fetchrow('''
+                SELECT tab FROM tab
+            ''')
+
+            self.assertEqual(r, (('1', 1),))
+
+        finally:
+            await self.con.execute('''
+                DROP TABLE tab;
+            ''')

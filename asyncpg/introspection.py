@@ -20,6 +20,8 @@ AS (
             pg_attribute ia
             INNER JOIN pg_class c
                 ON (ia.attrelid = c.oid)
+        WHERE
+            ia.attnum > 0 AND NOT ia.attisdropped
         GROUP BY
             c.reltype
     ),
