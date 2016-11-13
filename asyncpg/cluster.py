@@ -109,7 +109,7 @@ class Cluster:
         elif process.returncode == 3:
             return 'stopped'
         elif process.returncode == 0:
-            r = re.match(r'.*PID:\s+(\d+).*', stdout.decode())
+            r = re.match(r'.*PID\s?:\s+(\d+).*', stdout.decode())
             if not r:
                 raise ClusterError(
                     'could not parse pg_ctl status output: {}'.format(
