@@ -62,7 +62,7 @@ cdef net_decode(ConnectionSettings settings, FastReadBuffer buf):
 
     addr = cpython.PyBytes_FromStringAndSize(buf.read(addrlen), addrlen)
 
-    if is_cidr:
+    if is_cidr or bits > 0:
         return _ipnet(addr).supernet(new_prefix=cpython.PyLong_FromLong(bits))
     else:
         return _ipaddr(addr)
@@ -81,8 +81,14 @@ cdef inet_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     cdef:
         object ipaddr
 
-    ipaddr = _ipaddr(obj)
-    _net_encode(buf, ipaddr.version, 0, 0, ipaddr.packed)
+    try:
+        ipaddr = _ipaddr(obj)
+    except ValueError:
+        # PostgreSQL accepts *both* CIDR and host values
+        # for the host datatype.
+        cidr_encode(settings, buf, obj)
+    else:
+        _net_encode(buf, ipaddr.version, 0, 0, ipaddr.packed)
 
 
 cdef init_network_codecs():

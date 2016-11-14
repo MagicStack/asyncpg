@@ -287,6 +287,12 @@ type_samples = [
         ipaddress.IPv6Address('ffff' + ':ffff' * 7),
         ipaddress.IPv6Address('::1'),
         ipaddress.IPv6Address('::'),
+        dict(
+            input='127.0.0.0/8',
+            output=ipaddress.IPv4Network('127.0.0.0/8')),
+        dict(
+            input='127.0.0.1/32',
+            output=ipaddress.IPv4Network('127.0.0.1/32')),
     ]),
     ('macaddr', 'macaddr', [
         '00:00:00:00:00:00',
