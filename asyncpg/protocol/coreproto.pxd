@@ -21,10 +21,11 @@ cdef enum ProtocolState:
     PROTOCOL_AUTH = 10
     PROTOCOL_PREPARE = 11
     PROTOCOL_BIND_EXECUTE = 12
-    PROTOCOL_CLOSE_STMT_PORTAL = 13
-    PROTOCOL_SIMPLE_QUERY = 14
-    PROTOCOL_EXECUTE = 15
-    PROTOCOL_BIND = 16
+    PROTOCOL_BIND_EXECUTE_MANY = 13
+    PROTOCOL_CLOSE_STMT_PORTAL = 14
+    PROTOCOL_SIMPLE_QUERY = 15
+    PROTOCOL_EXECUTE = 16
+    PROTOCOL_BIND = 17
 
 
 cdef enum AuthenticationMessage:
@@ -67,6 +68,12 @@ cdef class CoreProtocol:
     cdef:
         ReadBuffer buffer
         bint _skip_discard
+        bint _discard_data
+
+        # executemany support data
+        object _execute_iter
+        str _execute_portal_name
+        str _execute_stmt_name
 
         ConnectionStatus con_status
         ProtocolState state
@@ -95,6 +102,7 @@ cdef class CoreProtocol:
     cdef _process__auth(self, char mtype)
     cdef _process__prepare(self, char mtype)
     cdef _process__bind_execute(self, char mtype)
+    cdef _process__bind_execute_many(self, char mtype)
     cdef _process__close_stmt_portal(self, char mtype)
     cdef _process__simple_query(self, char mtype)
     cdef _process__bind(self, char mtype)
@@ -129,8 +137,12 @@ cdef class CoreProtocol:
 
     cdef _connect(self)
     cdef _prepare(self, str stmt_name, str query)
+    cdef _send_bind_message(self, str portal_name, str stmt_name,
+                            WriteBuffer bind_data, int32_t limit)
     cdef _bind_execute(self, str portal_name, str stmt_name,
                        WriteBuffer bind_data, int32_t limit)
+    cdef _bind_execute_many(self, str portal_name, str stmt_name,
+                            object bind_data)
     cdef _bind(self, str portal_name, str stmt_name,
                WriteBuffer bind_data)
     cdef _execute(self, str portal_name, int32_t limit)
