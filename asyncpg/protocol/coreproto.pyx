@@ -24,6 +24,11 @@ cdef class CoreProtocol:
 
         self._skip_discard = False
 
+        # executemany support data
+        self._execute_iter = None
+        self._execute_portal_name = None
+        self._execute_stmt_name = None
+
         self._reset_result()
 
     cdef _write(self, buf):
@@ -59,6 +64,9 @@ cdef class CoreProtocol:
 
                 elif state == PROTOCOL_BIND_EXECUTE:
                     self._process__bind_execute(mtype)
+
+                elif state == PROTOCOL_BIND_EXECUTE_MANY:
+                    self._process__bind_execute_many(mtype)
 
                 elif state == PROTOCOL_EXECUTE:
                     self._process__bind_execute(mtype)
@@ -194,6 +202,49 @@ cdef class CoreProtocol:
             # EmptyQueryResponse
             self.buffer.consume_message()
 
+    cdef _process__bind_execute_many(self, char mtype):
+        cdef WriteBuffer buf
+
+        if mtype == b'D':
+            # DataRow
+            self._parse_data_msgs()
+
+        elif mtype == b's':
+            # PortalSuspended
+            self.buffer.consume_message()
+
+        elif mtype == b'C':
+            # CommandComplete
+            self._parse_msg_command_complete()
+
+        elif mtype == b'E':
+            # ErrorResponse
+            self._parse_msg_error_response(True)
+
+        elif mtype == b'2':
+            # BindComplete
+            self.buffer.consume_message()
+
+        elif mtype == b'Z':
+            # ReadyForQuery
+            self._parse_msg_ready_for_query()
+            if self.result_type == RESULT_FAILED:
+                self._push_result()
+            else:
+                try:
+                    buf = <WriteBuffer>next(self._execute_iter)
+                except StopIteration:
+                    self._push_result()
+                else:
+                    # Next iteration over the executemany() arg sequence
+                    self._send_bind_message(
+                        self._execute_portal_name, self._execute_stmt_name,
+                        buf, 0)
+
+        elif mtype == b'I':
+            # EmptyQueryResponse
+            self.buffer.consume_message()
+
     cdef _process__bind(self, char mtype):
         if mtype == b'E':
             # ErrorResponse
@@ -275,6 +326,14 @@ cdef class CoreProtocol:
                 raise RuntimeError(
                     '_parse_data_msgs: first message is not "D"')
 
+        if self._discard_data:
+            while True:
+                buf.consume_message()
+                if not buf.has_message() or buf.get_message_type() != b'D':
+                    self._skip_discard = True
+                    return
+
+        if ASYNCPG_DEBUG:
             if type(self.result) is not list:
                 raise RuntimeError(
                     '_parse_data_msgs: result is not a list, but {!r}'.
@@ -424,6 +483,7 @@ cdef class CoreProtocol:
         self.result_row_desc = None
         self.result_status_msg = None
         self.result_execute_completed = False
+        self._discard_data = False
 
     cdef _set_state(self, ProtocolState new_state):
         if new_state == PROTOCOL_IDLE:
@@ -537,15 +597,10 @@ cdef class CoreProtocol:
 
         self.transport.write(memoryview(packet))
 
-    cdef _bind_execute(self, str portal_name, str stmt_name,
-                       WriteBuffer bind_data, int32_t limit):
+    cdef _send_bind_message(self, str portal_name, str stmt_name,
+                            WriteBuffer bind_data, int32_t limit):
 
         cdef WriteBuffer buf
-
-        self._ensure_connected()
-        self._set_state(PROTOCOL_BIND_EXECUTE)
-
-        self.result = []
 
         buf = self._build_bind_message(portal_name, stmt_name, bind_data)
         self._write(buf)
@@ -557,6 +612,39 @@ cdef class CoreProtocol:
         self._write(buf)
 
         self._write_sync_message()
+
+    cdef _bind_execute(self, str portal_name, str stmt_name,
+                       WriteBuffer bind_data, int32_t limit):
+
+        cdef WriteBuffer buf
+
+        self._ensure_connected()
+        self._set_state(PROTOCOL_BIND_EXECUTE)
+
+        self.result = []
+
+        self._send_bind_message(portal_name, stmt_name, bind_data, limit)
+
+    cdef _bind_execute_many(self, str portal_name, str stmt_name,
+                            object bind_data):
+
+        cdef WriteBuffer buf
+
+        self._ensure_connected()
+        self._set_state(PROTOCOL_BIND_EXECUTE_MANY)
+
+        self.result = None
+        self._discard_data = True
+        self._execute_iter = bind_data
+        self._execute_portal_name = portal_name
+        self._execute_stmt_name = stmt_name
+
+        try:
+            buf = <WriteBuffer>next(bind_data)
+        except StopIteration:
+            self._push_result()
+        else:
+            self._send_bind_message(portal_name, stmt_name, buf, 0)
 
     cdef _execute(self, str portal_name, int32_t limit):
         cdef WriteBuffer buf

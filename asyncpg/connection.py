@@ -148,6 +148,27 @@ class Connection:
                                                          True, timeout)
         return status.decode()
 
+    async def executemany(self, command: str, args, timeout: float=None):
+        """Execute an SQL *command* for each sequence of arguments in *args*.
+
+        Example:
+
+        .. code-block:: pycon
+
+            >>> await con.executemany('''
+            ...     INSERT INTO mytab (a) VALUES ($1, $2, $3);
+            ... ''', [(1, 2, 3), (4, 5, 6)])
+
+        :param command: Command to execute.
+        :args: An iterable containing sequences of arguments.
+        :param float timeout: Optional timeout value in seconds.
+        :return None: This method discards the results of the operations.
+
+        .. versionadded:: 0.7.0
+        """
+        stmt = await self._get_statement(command, timeout)
+        return await self._protocol.bind_execute_many(stmt, args, '', timeout)
+
     async def _get_statement(self, query, timeout):
         cache = self._stmt_cache_max_size > 0
 

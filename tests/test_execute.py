@@ -97,3 +97,38 @@ class TestExecuteScript(tb.ConnectedTestCase):
             await fut
 
         self.con.terminate()
+
+    async def test_execute_many_1(self):
+        await self.con.execute('CREATE TEMP TABLE exmany (a text, b int)')
+
+        try:
+            result = await self.con.executemany('''
+                INSERT INTO exmany VALUES($1, $2)
+            ''', [
+                ('a', 1), ('b', 2), ('c', 3), ('d', 4)
+            ])
+
+            self.assertIsNone(result)
+
+            result = await self.con.fetch('''
+                SELECT * FROM exmany
+            ''')
+
+            self.assertEqual(result, [
+                ('a', 1), ('b', 2), ('c', 3), ('d', 4)
+            ])
+
+            # Empty set
+            result = await self.con.executemany('''
+                INSERT INTO exmany VALUES($1, $2)
+            ''', ())
+
+            result = await self.con.fetch('''
+                SELECT * FROM exmany
+            ''')
+
+            self.assertEqual(result, [
+                ('a', 1), ('b', 2), ('c', 3), ('d', 4)
+            ])
+        finally:
+            await self.con.execute('DROP TABLE exmany')

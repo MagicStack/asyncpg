@@ -162,6 +162,37 @@ cdef class BaseProtocol(CoreProtocol):
 
         return await self._new_waiter(timeout)
 
+    async def bind_execute_many(self, PreparedStatementState state, args,
+                                str portal_name, timeout):
+
+        if self.cancel_waiter is not None:
+            await self.cancel_waiter
+        if self.cancel_sent_waiter is not None:
+            await self.cancel_sent_waiter
+            self.cancel_sent_waiter = None
+
+        self._ensure_clear_state()
+
+        # Make sure the argument sequence is encoded lazily with
+        # this generator expression to keep the memory pressure under
+        # control.
+        data_gen = (state._encode_bind_msg(b) for b in args)
+        arg_bufs = iter(data_gen)
+
+        waiter = self._new_waiter(timeout)
+
+        self._bind_execute_many(
+            portal_name,
+            state.name,
+            arg_bufs)
+
+        self.last_query = state.query
+        self.statement = state
+        self.return_extra = False
+        self.queries_count += 1
+
+        return await waiter
+
     async def bind(self, PreparedStatementState state, args,
                    str portal_name, timeout):
 
@@ -403,6 +434,9 @@ cdef class BaseProtocol(CoreProtocol):
                 self._on_result__prepare(waiter)
 
             elif self.state == PROTOCOL_BIND_EXECUTE:
+                self._on_result__bind_and_exec(waiter)
+
+            elif self.state == PROTOCOL_BIND_EXECUTE_MANY:
                 self._on_result__bind_and_exec(waiter)
 
             elif self.state == PROTOCOL_EXECUTE:
