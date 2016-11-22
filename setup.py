@@ -125,7 +125,7 @@ class build_ext(_build_ext.build_ext):
             r'''
             offsetof(__pyx_CoroutineObject, gi_weakreflist),
             __Pyx_Coroutine_await, /* tp_iter */
-            0,
+            (iternextfunc) __Pyx_Generator_Next, /* tp_iternext */
             __pyx_Coroutine_methods,
             __pyx_Coroutine_memberlist,
             __pyx_Coroutine_getsets,
