@@ -230,7 +230,7 @@ this connection (the default is no timeout).</li>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.cursor">
-<code class="descname">cursor</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>*</em>, <em>prefetch=None</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.cursor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.cursor" title="Permalink to this definition">¶</a></dt>
+<code class="descname">cursor</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>prefetch=None</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.cursor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.cursor" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a <em>cursor factory</em> for the specified query.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -253,7 +253,7 @@ will prefetch (defaults to <code class="docutils literal"><span class="pre">50</
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.execute">
-<em class="property">coroutine </em><code class="descname">execute</code><span class="sig-paren">(</span><em>query: str</em>, <em>*args</em>, <em>*</em>, <em>timeout: float = None</em><span class="sig-paren">)</span> &rarr; str<a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.execute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.execute" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">execute</code><span class="sig-paren">(</span><em>query: str</em>, <em>*args</em>, <em>timeout: float = None</em><span class="sig-paren">)</span> &rarr; str<a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.execute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.execute" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute an SQL command (or commands).</p>
 <p>This method can execute many SQL commands at once, when no arguments
 are provided.</p>
@@ -325,7 +325,7 @@ are provided.</p>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.fetch">
-<em class="property">coroutine </em><code class="descname">fetch</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span> &rarr; list<a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.fetch" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">fetch</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span> &rarr; list<a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.fetch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run a query and return the results as a list of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -347,7 +347,7 @@ are provided.</p>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.fetchrow">
-<em class="property">coroutine </em><code class="descname">fetchrow</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.fetchrow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.fetchrow" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">fetchrow</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.fetchrow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.fetchrow" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run a query and return the first row.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -369,7 +369,7 @@ are provided.</p>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.fetchval">
-<em class="property">coroutine </em><code class="descname">fetchval</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>*</em>, <em>column=0</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.fetchval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.fetchval" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">fetchval</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>column=0</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.fetchval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.fetchval" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run a query and return a value in the first row.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -568,7 +568,7 @@ or <code class="xref py py-meth docutils literal"><span class="pre">fetchval()</
 <dd><p>A representation of a prepared statement.</p>
 <dl class="method">
 <dt id="asyncpg.prepared_stmt.PreparedStatement.cursor">
-<code class="descname">cursor</code><span class="sig-paren">(</span><em>*args</em>, <em>*</em>, <em>prefetch=None</em>, <em>timeout=None</em><span class="sig-paren">)</span> &rarr; asyncpg.cursor.CursorFactory<a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.cursor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.cursor" title="Permalink to this definition">¶</a></dt>
+<code class="descname">cursor</code><span class="sig-paren">(</span><em>*args</em>, <em>prefetch=None</em>, <em>timeout=None</em><span class="sig-paren">)</span> &rarr; asyncpg.cursor.CursorFactory<a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.cursor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.cursor" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a <em>cursor factory</em> for the prepared statement.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -591,7 +591,7 @@ will prefetch (defaults to <code class="docutils literal"><span class="pre">50</
 
 <dl class="method">
 <dt id="asyncpg.prepared_stmt.PreparedStatement.explain">
-<em class="property">coroutine </em><code class="descname">explain</code><span class="sig-paren">(</span><em>*args</em>, <em>*</em>, <em>analyze=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.explain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.explain" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">explain</code><span class="sig-paren">(</span><em>*args</em>, <em>analyze=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.explain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.explain" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the execution plan of the statement.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -615,7 +615,7 @@ is actually a deserialized JSON output of the SQL
 
 <dl class="method">
 <dt id="asyncpg.prepared_stmt.PreparedStatement.fetch">
-<em class="property">coroutine </em><code class="descname">fetch</code><span class="sig-paren">(</span><em>*args</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetch" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">fetch</code><span class="sig-paren">(</span><em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute the statement and return a list of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> objects.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -637,7 +637,7 @@ is actually a deserialized JSON output of the SQL
 
 <dl class="method">
 <dt id="asyncpg.prepared_stmt.PreparedStatement.fetchrow">
-<em class="property">coroutine </em><code class="descname">fetchrow</code><span class="sig-paren">(</span><em>*args</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.fetchrow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetchrow" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">fetchrow</code><span class="sig-paren">(</span><em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.fetchrow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetchrow" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute the statement and return the first row.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -659,7 +659,7 @@ is actually a deserialized JSON output of the SQL
 
 <dl class="method">
 <dt id="asyncpg.prepared_stmt.PreparedStatement.fetchval">
-<em class="property">coroutine </em><code class="descname">fetchval</code><span class="sig-paren">(</span><em>*args</em>, <em>*</em>, <em>column=0</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.fetchval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetchval" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">fetchval</code><span class="sig-paren">(</span><em>*args</em>, <em>column=0</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.fetchval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetchval" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute the statement and return a value in the first row.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
