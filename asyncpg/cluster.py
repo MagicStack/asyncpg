@@ -16,6 +16,7 @@ import shutil
 import socket
 import subprocess
 import tempfile
+import textwrap
 import time
 
 import asyncpg
@@ -332,6 +333,20 @@ class Cluster:
         if status == 'running':
             self.reload()
 
+    def trust_local_replication_by(self, user):
+        if _system != 'Windows':
+            self.add_hba_entry(type='local', database='replication',
+                               user=user, auth_method='trust')
+        self.add_hba_entry(type='host', address='127.0.0.1/32',
+                           database='replication', user=user,
+                           auth_method='trust')
+        self.add_hba_entry(type='host', address='::1/128',
+                           database='replication', user=user,
+                           auth_method='trust')
+        status = self.get_status()
+        if status == 'running':
+            self.reload()
+
     def _init_env(self):
         self._pg_config = self._find_pg_config(self._pg_config_path)
         self._pg_config_data = self._run_pg_config(self._pg_config)
@@ -487,6 +502,55 @@ class TempCluster(Cluster):
                                           prefix=data_dir_prefix,
                                           dir=data_dir_parent)
         super().__init__(self._data_dir, pg_config_path=pg_config_path)
+
+
+class HotStandbyCluster(TempCluster):
+    def __init__(self, *,
+                 master, replication_user,
+                 data_dir_suffix=None, data_dir_prefix=None,
+                 data_dir_parent=None, pg_config_path=None):
+        self._master = master
+        self._repl_user = replication_user
+        super().__init__(
+            data_dir_suffix=data_dir_suffix,
+            data_dir_prefix=data_dir_prefix,
+            data_dir_parent=data_dir_parent,
+            pg_config_path=pg_config_path)
+
+    def _init_env(self):
+        super()._init_env()
+        self._pg_basebackup = self._find_pg_binary('pg_basebackup')
+
+    def init(self, **settings):
+        """Initialize cluster."""
+        if self.get_status() != 'not-initialized':
+            raise ClusterError(
+                'cluster in {!r} has already been initialized'.format(
+                    self._data_dir))
+
+        process = subprocess.run(
+            [self._pg_basebackup, '-h', self._master['host'],
+             '-p', self._master['port'], '-D', self._data_dir,
+             '-U', self._repl_user],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+        output = process.stdout
+
+        if process.returncode != 0:
+            raise ClusterError(
+                'pg_basebackup init exited with status {:d}:\n{}'.format(
+                    process.returncode, output.decode()))
+
+        with open(os.path.join(self._data_dir, 'recovery.conf'), 'w') as f:
+            f.write(textwrap.dedent("""\
+                standby_mode = 'on'
+                primary_conninfo = 'host={host} port={port} user={user}'
+            """.format(
+                host=self._master['host'],
+                port=self._master['port'],
+                user=self._repl_user)))
+
+        return output.decode()
 
 
 class RunningCluster(Cluster):

@@ -369,11 +369,19 @@ class Connection:
 
     async def reset(self):
         self._listeners = {}
+
         await self.execute('''
+            DO $$
+            BEGIN
+                PERFORM * FROM pg_listening_channels() LIMIT 1;
+                IF FOUND THEN
+                    UNLISTEN *;
+                END IF;
+            END;
+            $$;
             SET SESSION AUTHORIZATION DEFAULT;
             RESET ALL;
             CLOSE ALL;
-            UNLISTEN *;
             SELECT pg_advisory_unlock_all();
         ''')
 

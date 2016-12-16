@@ -70,17 +70,19 @@ class TestCaseMeta(type(unittest.TestCase)):
 
 class TestCase(unittest.TestCase, metaclass=TestCaseMeta):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         if os.environ.get('USE_UVLOOP'):
             import uvloop
             asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
-        self.loop = loop
+        cls.loop = loop
 
-    def tearDown(self):
-        self.loop.close()
+    @classmethod
+    def tearDownClass(cls):
+        cls.loop.close()
         asyncio.set_event_loop(None)
 
     @contextlib.contextmanager
@@ -97,7 +99,16 @@ class TestCase(unittest.TestCase, metaclass=TestCaseMeta):
 _default_cluster = None
 
 
-def _start_cluster(server_settings={}):
+def _start_cluster(ClusterCls, cluster_kwargs, server_settings):
+    cluster = ClusterCls(**cluster_kwargs)
+    cluster.init()
+    cluster.trust_local_connections()
+    cluster.start(port='dynamic', server_settings=server_settings)
+    atexit.register(_shutdown_cluster, cluster)
+    return cluster
+
+
+def _start_default_cluster(server_settings={}):
     global _default_cluster
 
     if _default_cluster is None:
@@ -106,12 +117,8 @@ def _start_cluster(server_settings={}):
             # Using existing cluster, assuming it is initialized and running
             _default_cluster = pg_cluster.RunningCluster()
         else:
-            _default_cluster = pg_cluster.TempCluster()
-            _default_cluster.init()
-            _default_cluster.trust_local_connections()
-            _default_cluster.start(port='dynamic',
-                                   server_settings=server_settings)
-            atexit.register(_shutdown_cluster, _default_cluster)
+            _default_cluster = _start_cluster(
+                pg_cluster.TempCluster, {}, server_settings)
 
     return _default_cluster
 
@@ -122,9 +129,10 @@ def _shutdown_cluster(cluster):
 
 
 class ClusterTestCase(TestCase):
-    def setUp(self):
-        super().setUp()
-        self.cluster = _start_cluster({
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.cluster = _start_default_cluster({
             'log_connections': 'on'
         })
 
@@ -132,6 +140,11 @@ class ClusterTestCase(TestCase):
         conn_spec = self.cluster.get_connection_spec()
         conn_spec.update(kwargs)
         return pg_pool.create_pool(loop=self.loop, **conn_spec)
+
+    @classmethod
+    def start_cluster(cls, ClusterCls, *,
+                      cluster_kwargs={}, server_settings={}):
+        return _start_cluster(ClusterCls, cluster_kwargs, server_settings)
 
 
 class ConnectedTestCase(ClusterTestCase):
