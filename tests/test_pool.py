@@ -9,7 +9,8 @@ import asyncio
 import platform
 
 from asyncpg import _testbase as tb
-
+from asyncpg import cluster as pg_cluster
+from asyncpg import pool as pg_pool
 
 _system = platform.uname().system
 
@@ -148,3 +149,72 @@ class TestPool(tb.ConnectedTestCase):
             # Reset cluster's pg_hba.conf since we've meddled with it
             self.cluster.trust_local_connections()
             self.cluster.reload()
+
+
+class TestHostStandby(tb.ConnectedTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+
+        cls.master_cluster = cls.start_cluster(
+            pg_cluster.TempCluster,
+            server_settings={
+                'max_wal_senders': 10,
+                'wal_level': 'hot_standby'
+            })
+
+        con = None
+
+        try:
+            con = cls.loop.run_until_complete(
+                cls.master_cluster.connect(database='postgres', loop=cls.loop))
+
+            cls.loop.run_until_complete(
+                con.execute('''
+                    CREATE ROLE replication WITH LOGIN REPLICATION
+                '''))
+
+            cls.master_cluster.trust_local_replication_by('replication')
+
+            conn_spec = cls.master_cluster.get_connection_spec()
+
+            cls.standby_cluster = cls.start_cluster(
+                pg_cluster.HotStandbyCluster,
+                cluster_kwargs={
+                    'master': conn_spec,
+                    'replication_user': 'replication'
+                },
+                server_settings={
+                    'hot_standby': True
+                })
+
+        finally:
+            if con is not None:
+                cls.loop.run_until_complete(con.close())
+
+    @classmethod
+    def tearDownMethod(cls):
+        cls.standby_cluster.stop()
+        cls.standby_cluster.destroy()
+        cls.master_cluster.stop()
+        cls.master_cluster.destroy()
+
+    def create_pool(self, **kwargs):
+        conn_spec = self.standby_cluster.get_connection_spec()
+        conn_spec.update(kwargs)
+        return pg_pool.create_pool(loop=self.loop, **conn_spec)
+
+    async def test_standby_pool_01(self):
+        for n in {1, 3, 5, 10, 20, 100}:
+            with self.subTest(tasksnum=n):
+                pool = await self.create_pool(database='postgres',
+                                              min_size=5, max_size=10)
+
+                async def worker():
+                    con = await pool.acquire()
+                    self.assertEqual(await con.fetchval('SELECT 1'), 1)
+                    await pool.release(con)
+
+                tasks = [worker() for _ in range(n)]
+                await asyncio.gather(*tasks, loop=self.loop)
+                await pool.close()
