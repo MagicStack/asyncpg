@@ -503,11 +503,19 @@
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">{}</span>
+
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">            DO $$</span>
+<span class="s1">            BEGIN</span>
+<span class="s1">                PERFORM * FROM pg_listening_channels() LIMIT 1;</span>
+<span class="s1">                IF FOUND THEN</span>
+<span class="s1">                    UNLISTEN *;</span>
+<span class="s1">                END IF;</span>
+<span class="s1">            END;</span>
+<span class="s1">            $$;</span>
 <span class="s1">            SET SESSION AUTHORIZATION DEFAULT;</span>
 <span class="s1">            RESET ALL;</span>
 <span class="s1">            CLOSE ALL;</span>
-<span class="s1">            UNLISTEN *;</span>
 <span class="s1">            SELECT pg_advisory_unlock_all();</span>
 <span class="s1">        &#39;&#39;&#39;</span><span class="p">)</span>
 
