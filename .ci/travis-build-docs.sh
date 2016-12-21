@@ -4,6 +4,11 @@
 
 set -e -x
 
+if [ "${BUILD}" != "docs" ]; then
+    echo "Skipping documentation build."
+    exit 0
+fi
+
 SOURCE_BRANCH="master"
 TARGET_BRANCH="gh-pages"
 DOC_BUILD_DIR="_build/html/"
@@ -17,12 +22,15 @@ pip install -r docs/requirements.txt
 make htmldocs
 
 if [ "${TRAVIS_PULL_REQUEST}" != "false" \
-        -o "${TRAVIS_BRANCH}" != "${SOURCE_BRANCH}" \
         -o "${TRAVIS_OS_NAME}" != "linux" ]; then
     echo "Skipping documentation deploy."
     exit 0
 fi
 
+if [ "${TRAVIS_BRANCH}" != "${SOURCE_BRANCH}" -a -z "${TRAVIS_TAG}" ]; then
+    echo "Skipping documentation deploy."
+    exit 0
+fi
 
 git config --global user.email "infra@magic.io"
 git config --global user.name "Travis CI"

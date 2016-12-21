@@ -1,4 +1,4 @@
-.PHONY: compile debug test clean all
+.PHONY: compile debug test quicktest clean all
 
 
 PYTHON ?= python
@@ -33,6 +33,10 @@ test:
 	USE_UVLOOP=1 $(PYTHON) -m unittest discover -s tests
 
 
+quicktest:
+	$(PYTHON) -m unittest discover -s tests
+
+
 sdist: clean compile test
 	$(PYTHON) setup.py sdist
 
@@ -41,5 +45,5 @@ release: clean compile test
 	$(PYTHON) setup.py sdist upload
 
 
-htmldocs:
+htmldocs: compile
 	$(MAKE) -C docs html

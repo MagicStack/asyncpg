@@ -1,11 +1,5 @@
 language: generic
 
-sudo: required
-
-services:
-    - postgresql
-    - docker
-
 env:
     global:
         - PYMODULE=asyncpg
@@ -14,21 +8,81 @@ env:
         - secure: "XEUUpzRZeesmMUfImKbCJm1D1LmWXkCW6ywtquuLEp6vRboH+URW8XtOhPehj47kn+/D4LpS9DR7GTBQ2DJR6kb07uqMu4b3WhTj8gewc8T5A0bxbdkkxHDfUCw7RF+EYLoN+n8xdqgBHImLLeuY/iRf+/IUJxGBARC4OZkejXhqJktNkXNO7aDcFfl9jcU0s1azaGbgeaShSAnnQPcdnJQ5tn7qHPPjTMWWly09A0K6CGqFK9bXUlD/hLGyC6NjOc8zMhv6vt4rI/zkjtSf219t4svivTjZsWWP6LMoWNWvwbOVfr8MThU4449lfplTWkmvEP6cQAJrvLjBOKOfwvV1MhqCMLGUMxeagYq7bHwSKQQ7t+r4a3jX94go+3Y1AQ0z9Yun+UW4qxrmHeIR5tLh2cePQylkIiTaWePZNPsVl3xF9HJtWcVgNgij4r+EU6WC9EqlV4DJyISjsptSa69CLBieWrzPYNxCPr6cTXYKKu6svRj3uho2q+c3Iavzjt4e5VEgppeduXIrvqMsaAa/E+j7b3QmC0HfZ4k8U5J2evtell5gh70Vf20A9LsOF06m+I0mSDwrpGasSFCNrWH4n3cUDTlGzc93Zqw5eAmg0yYxLKWk1sHNLOB3hNn+NLSIkS6Drcrsya+Fp5k93I4qDIXvC9n7ODLMirAJ76o="
 
 matrix:
+    fast_finish: true
+
     include:
         - os: osx
-          osx_image: xcode7.1  # OS X 10.10
           # Travis macOS env does not support Python yet,
           # so we have to set things up manually in install.sh.
           env: PYTHON_VERSION=3.5.2
                PIP_USER=1
 
         - os: linux
-          dist: trusty
+          dist: precise
+          sudo: false
           language: python
           python: "3.5"
-          services: [postgresql, docker]
+          services: postgresql
+          env: BUILD=quick PGVERSION=9.1
+          addons:
+              postgresql: '9.1'
+
+        - os: linux
+          dist: trusty
+          sudo: false
+          language: python
+          python: "3.5"
+          services: postgresql
+          env: BUILD=quick PGVERSION=9.2
+          addons:
+              postgresql: '9.2'
+
+        - os: linux
+          dist: trusty
+          sudo: false
+          language: python
+          python: "3.5"
+          services: postgresql
+          env: BUILD=quick PGVERSION=9.3
+          addons:
+              postgresql: '9.3'
+
+        - os: linux
+          dist: trusty
+          sudo: false
+          language: python
+          python: "3.5"
+          services: postgresql
+          env: BUILD=quick PGVERSION=9.4
           addons:
               postgresql: '9.4'
+
+        - os: linux
+          dist: trusty
+          sudo: false
+          language: python
+          python: "3.5"
+          services: postgresql
+          env: BUILD=quick PGVERSION=9.5
+          addons:
+              postgresql: '9.5'
+
+        - os: linux
+          dist: trusty
+          sudo: false
+          language: python
+          python: "3.5"
+          env: BUILD=docs
+
+        - os: linux
+          dist: trusty
+          sudo: required
+          language: python
+          python: "3.5"
+          env: BUILD=full PGVERSION=9.6
+          services: [postgresql, docker]
+          addons:
+              postgresql: '9.6'
 
 cache:
     directories:
@@ -57,3 +111,4 @@ deploy:
     on:
         tags: true
         all_branches: true
+        condition: '"${BUILD}" == "full"'

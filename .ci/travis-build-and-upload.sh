@@ -3,7 +3,7 @@
 set -e -x
 
 
-if [ -z "${TRAVIS_TAG}" ]; then
+if [ -z "${TRAVIS_TAG}" -o "${BUILD}" != "full" ]; then
     # Not a release
     exit 0
 fi
