@@ -1,3 +1,4 @@
 cython>=0.24
 uvloop>=0.5.0
+tinys3
 twine

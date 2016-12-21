@@ -7,6 +7,8 @@
 
 import asyncio
 import platform
+import os
+import unittest
 
 from asyncpg import _testbase as tb
 from asyncpg import cluster as pg_cluster
@@ -151,6 +153,7 @@ class TestPool(tb.ConnectedTestCase):
             self.cluster.reload()
 
 
+@unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
 class TestHostStandby(tb.ConnectedTestCase):
     @classmethod
     def setUpClass(cls):

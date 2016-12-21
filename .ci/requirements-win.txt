@@ -1,2 +1,2 @@
 cython>=0.24
-twine
+tinys3

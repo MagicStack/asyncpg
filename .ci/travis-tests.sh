@@ -17,5 +17,5 @@ if [ "${BUILD}" == "quick" ]; then
     make && make quicktest
 else
     make && make test
-    make debug && make test
+    make clean && make debug && make test
 fi

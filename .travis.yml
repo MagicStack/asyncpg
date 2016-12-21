@@ -3,9 +3,15 @@ language: generic
 env:
     global:
         - PYMODULE=asyncpg
-        - PYPI_USER=magicstack-ci
+        - RELEASE_PYTHON_VERSIONS="3.5"
+
+        - S3_UPLOAD_USERNAME=oss-ci-bot
+        - S3_UPLOAD_BUCKET=magicstack-oss-releases
+        - secure: "iU37gukuyeaYM69StkR/aUTNgolblBdw2is034evvrm/SG0bKyzVVSrcK/dts9jolkCxJi+01VfpzxIBu2PF11QnCN1exUILb+XfmR+dVxUnNY2M1qqjILHvQ92rFJ9f2TlbYa2AlwgKynZlY4+edVSACSWwD/+TbWGAQEp0WInalA8ohljir+EPueXaYyC8mmH55cNQIa5WdDA2Vpg5ahRDdhVyD2J+/fLg78syLV7FGlnpXtASo9XiQKmRpPyHIT23yQB444kVh9xcjvuiB3aUBP5bGC2H4unElGYhCvfQvb1GoWvDqyvfzZvTOjlHqnG4AvIPoSCgEu/9cu8Cm/9OxWtqtWy7dECM8ZUIlOi3oPcvwUYDpNYAdATbTr1T6FRCBEp2eOi3sKoeE+nUDgQaN4r+ple4BKYnjrsSllXhI5W8ZqDNoUSsoGu+z6GFn6Dszrj6jbq8JHV4mZT9RCfR1y6inXWYGmaNRlwzm8wPHTav2RbW2O6bbwkkATWwYpyRB2FRlwMX6BB06druZWNOzx09RS8pTHnqcKOXW2mENNMgrA03OJUEV30UG/ncLZELYTpBARSJwymxjmmTK7vEI/HfxHkPrKcLLPPn2GoWym7mF2Lkh+jp81FkCGYrLTquyKPaoeUsofYukWMbGwE99ePL5dLocVDqTzatAoU="
+        - secure: "uCcM67fmT3ODhaHrUKhuid/DJZzy9aMtaVdRCkAkjaF/X0Dgj1Dq9bV/PPLn+HjVIRiloHKK4fk6eMLmnI/PWPnTD7hVYse2ECLEeTxZGtoBmTdBPzdf1+aHpl18o8xbN/XfO02SVk6pTHDSjZIwR8ZeiZ2Q75aY462BW9WBgV0JOL9xK5yJd3TjODsDJpwcK0P4TMwi1j2qKIpXMUJaZkyUPafZIykil2CbcePd2Y5AUfDN2BAqaJZqM9vVCeRRs7ECzCamBPsj2WUmXqs621IH3Ml/sSONCzeQoUlgUsG2a7b+Jic92sVsFHyLVqG56G5urIAsXm+Jc/8Ly/dTk1M3ER/OdvsB0z21mhQfaVHwROixPk6HPCbvTl3PITEauaU+wLwCIduiEbb6fcpoB11n3oRzgiLY5e4+QDA86LBNySDhBE8WIq1VKphgTp7ojgM/mHJg4VBZX3m+89JruUOLi49VPx1cK/CiWEBj3gWHZMNDL9agS5N/fwl6UnD5DAklTZtqlA5M2FZ8/aPN8/FgW4jTEgBBU87Ko2rTvVRmKZeCVEkIBS2lYsRDTG3ZmlyJuh2AGGReUzCh524pNAsonIF2ydCOzLv4DlTZSthOwbdnX0EMBRYuPEa436dgkVUUVP6ds5859IPZeXcN6JKJWPWQkzFWFwzoK9ttQLc="
+        - TWINE_USERNAME: magicstack-ci
+        - secure: "jyc9xHK3VjGPxvBZKx8Mcf5nfVvfIyGn6b4atcrmwVdJsV1bBLdKoAjUX3RGjNGyAHpNYOEKOdNfeZs+Wziwg5NK7ucC5qybaBK3MOTEOInCzaO0QJpcxThaHBQkkDxVtn8Qu1Gk3S/hXcXWjT2UEYJvQ84diaXn/XYRxfzOYTZX8eUroAWOMnUCYxlPxGzXTAtmuQSiJkL7P7veZTsWsGCOHtCpdAx7dgGb113CD8QheeUoZlH9Ml6jd3fGFteYmuFp7cR6fa3VYVzxp5BFsdEJqSI4VqDvBOpUoLkbpRRKMjosHKtphfi0PAzbkJw6UdKcrqQ/Ca4nGmWk0PIf3LTsJrv44p4ZTPVI8b3lihXMm72QUE28e11yu9SIZRe0hMgmvWlivXEJw3C3YT1N5w+JM3Y5dIWp/YLoiRXVkIzNJQMN3YeWvKEFf/xO1AD2BO3jjU9oBZfKQpxCJ58gPsQrRt6qM3Y6zYuF8s4B+llpwM/ex2xnNwrTbNkp4ARyXyCujX+ixhjiBLtElfGoHPP1jOaIkJhGje9DxaptddfFBDLAdq0/3Q+LHOmwdQcH5+libUy3HnyP7jf51kjjWE3XEJGSchHI2ewEAn9UZRH8h0UNRXutBzUVvKgC6K1lUvqzEreKVxvrYe6zgbZc/DiUvLgIzJBiJgP9rdZYpDQ="
         - DOCS_PUSH_KEY_LABEL=0760b951e99c
-        - secure: "XEUUpzRZeesmMUfImKbCJm1D1LmWXkCW6ywtquuLEp6vRboH+URW8XtOhPehj47kn+/D4LpS9DR7GTBQ2DJR6kb07uqMu4b3WhTj8gewc8T5A0bxbdkkxHDfUCw7RF+EYLoN+n8xdqgBHImLLeuY/iRf+/IUJxGBARC4OZkejXhqJktNkXNO7aDcFfl9jcU0s1azaGbgeaShSAnnQPcdnJQ5tn7qHPPjTMWWly09A0K6CGqFK9bXUlD/hLGyC6NjOc8zMhv6vt4rI/zkjtSf219t4svivTjZsWWP6LMoWNWvwbOVfr8MThU4449lfplTWkmvEP6cQAJrvLjBOKOfwvV1MhqCMLGUMxeagYq7bHwSKQQ7t+r4a3jX94go+3Y1AQ0z9Yun+UW4qxrmHeIR5tLh2cePQylkIiTaWePZNPsVl3xF9HJtWcVgNgij4r+EU6WC9EqlV4DJyISjsptSa69CLBieWrzPYNxCPr6cTXYKKu6svRj3uho2q+c3Iavzjt4e5VEgppeduXIrvqMsaAa/E+j7b3QmC0HfZ4k8U5J2evtell5gh70Vf20A9LsOF06m+I0mSDwrpGasSFCNrWH4n3cUDTlGzc93Zqw5eAmg0yYxLKWk1sHNLOB3hNn+NLSIkS6Drcrsya+Fp5k93I4qDIXvC9n7ODLMirAJ76o="
 
 matrix:
     fast_finish: true
@@ -14,8 +20,7 @@ matrix:
         - os: osx
           # Travis macOS env does not support Python yet,
           # so we have to set things up manually in install.sh.
-          env: PYTHON_VERSION=3.5.2
-               PIP_USER=1
+          env: BUILD=full PYTHON_VERSION=3.5.2 PIP_USER=1
 
         - os: linux
           dist: precise
@@ -72,7 +77,7 @@ matrix:
           sudo: false
           language: python
           python: "3.5"
-          env: BUILD=docs
+          env: BUILD=docs RELEASE=1  # Use this config to publish releases
 
         - os: linux
           dist: trusty
@@ -107,18 +112,11 @@ install:
 script:
     - .ci/travis-tests.sh
     - .ci/travis-build-docs.sh
-
-before_deploy:
-    - .ci/travis-build-and-upload.sh
+    - .ci/travis-build-wheels.sh
 
 deploy:
-    skip_cleanup: true
-    provider: pypi
-    user: magicstack-ci
-    password:
-        secure: r8q6OnKwfMO3/obfBDLIjVHrk9VGwcKCrFAUefTvbVVO1oBxpT0gPbASorxgU27h5u2o6L0qp9YUitSyRJBfN4C7BM4aAzVp3FEVvC6KzUYxcxZguveq3Lc+6cBo+AFXE3Kuz7Zxmw3yNqIPkdHJrkKqdANLDVjrSs87uiPuK8s7oH7pxmVTq40ymdkA1Da5QsY6dONDohIJ3Z6HLlKEFzNYiFDY7NK+vDq/+U5UZZZlZb6MAQ07R4RvFoFnH0PNDnyJd6qGOJaJ1W1ge87lOOsdhsUeUiC1BuUGtlRPkwsNBdygJ5RDotn9O6gnvSdtra/d9z5Jpju8Vhbad2b3dKU32ZYnApmZuVGx9O/fQ9yaYc5KkJdjhAIHghfOL7UKOw9+IDzOcg8Glx7+uQ7vbwgY0TulJDCH2dWfwYXMfRdmzxOZlcTGVg1wtHB7s3bEvksG/N4YTn6YCqSPvJ4nbUQiZ0Ji4VCx8SX6S+vkEvVTUPPncmEBIoGAvmMtXBHs93FovwCFbNTugiDOeKB+rWnve9Hj45Ou6lmWNlIyWJss0k9waGmXltomYLKShMAZ5uqe+Oyk4889E2KFaGt34qEuXHAybpxXbjXJewVcMExBkHdRdRr0kVu7OO/7JVJ2kCkp2wRe9QKe0eBgCPs2eUIxKFVCOoDD1HMQ/ytbWIM=
-    distributions: sdist
+    provider: script
+    script: .ci/travis-release.sh
     on:
         tags: true
-        all_branches: true
-        condition: '"${BUILD}" == "full"'
+        condition: '-n "${RELEASE}"'

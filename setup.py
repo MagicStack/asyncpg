@@ -19,7 +19,7 @@ from setuptools.command import build_ext as _build_ext
 if sys.version_info < (3, 5):
     raise RuntimeError('asyncpg requires Python 3.5 or greater')
 
-
+VERSION = '0.8.1'
 CFLAGS = ['-O2']
 LDFLAGS = []
 
@@ -176,7 +176,7 @@ with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as f:
 
 setuptools.setup(
     name='asyncpg',
-    version='0.7.0',
+    version=VERSION,
     description='An asyncio PosgtreSQL driver',
     long_description=readme,
     classifiers=[
