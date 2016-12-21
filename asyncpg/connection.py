@@ -17,6 +17,7 @@ from . import cursor
 from . import introspection
 from . import prepared_stmt
 from . import protocol
+from . import serverversion
 from . import transaction
 
 
@@ -29,7 +30,8 @@ class Connection:
     __slots__ = ('_protocol', '_transport', '_loop', '_types_stmt',
                  '_type_by_name_stmt', '_top_xact', '_uid', '_aborted',
                  '_stmt_cache_max_size', '_stmt_cache', '_stmts_to_close',
-                 '_addr', '_opts', '_command_timeout', '_listeners')
+                 '_addr', '_opts', '_command_timeout', '_listeners',
+                 '_server_version', '_intro_query')
 
     def __init__(self, protocol, transport, loop, addr, opts, *,
                  statement_cache_size, command_timeout):
@@ -52,6 +54,15 @@ class Connection:
         self._command_timeout = command_timeout
 
         self._listeners = {}
+
+        ver_string = self._protocol.get_settings().server_version
+        self._server_version = \
+            serverversion.split_server_version_string(ver_string)
+
+        if self._server_version < (9, 2):
+            self._intro_query = introspection.INTRO_LOOKUP_TYPES_91
+        else:
+            self._intro_query = introspection.INTRO_LOOKUP_TYPES
 
     async def add_listener(self, channel, callback):
         """Add a listener for Postgres notifications.
@@ -83,6 +94,21 @@ class Connection:
     def get_server_pid(self):
         """Return the PID of the Postgres server the connection is bound to."""
         return self._protocol.get_server_pid()
+
+    def get_server_version(self):
+        """Return the version of the connected PostgreSQL server.
+
+        The returned value is a named tuple similar to that in
+        ``sys.version_info``:
+
+        .. code-block:: pycon
+
+            >>> con.get_server_version()
+            ServerVersion(major=9, minor=6, micro=1,
+                          releaselevel='final', serial=0)
+
+        """
+        return self._server_version
 
     def get_settings(self):
         """Return connection settings.
@@ -188,8 +214,7 @@ class Connection:
         ready = state._init_types()
         if ready is not True:
             if self._types_stmt is None:
-                self._types_stmt = await self.prepare(
-                    introspection.INTRO_LOOKUP_TYPES)
+                self._types_stmt = await self.prepare(self._intro_query)
 
             types = await self._types_stmt.fetch(list(ready))
             protocol.get_settings().register_data_types(types)

@@ -20,6 +20,7 @@ import textwrap
 import time
 
 import asyncpg
+from asyncpg import serverversion
 
 
 _system = platform.uname().system
@@ -171,8 +172,18 @@ class Cluster:
         extra_args = ['--{}={}'.format(k, v) for k, v in opts.items()]
         extra_args.append('--port={}'.format(port))
 
-        if 'unix_socket_directories' not in server_settings:
-            server_settings['unix_socket_directories'] = '/tmp'
+        sockdir = server_settings.get('unix_socket_directories')
+        if sockdir is None:
+            sockdir = server_settings.get('unix_socket_directory')
+        if sockdir is None:
+            sockdir = '/tmp'
+
+        if self._pg_version < (9, 3):
+            sockdir_opt = 'unix_socket_directory'
+        else:
+            sockdir_opt = 'unix_socket_directories'
+
+        server_settings[sockdir_opt] = sockdir
 
         for k, v in server_settings.items():
             extra_args.extend(['-c', '{}={}'.format(k, v)])
@@ -350,6 +361,7 @@ class Cluster:
     def _init_env(self):
         self._pg_config = self._find_pg_config(self._pg_config_path)
         self._pg_config_data = self._run_pg_config(self._pg_config)
+        self._pg_version = self._get_pg_version()
         self._pg_ctl = self._find_pg_binary('pg_ctl')
         self._postgres = self._find_pg_binary('postgres')
 
@@ -492,6 +504,13 @@ class Cluster:
                 '{!r} does not exist or is not a file'.format(bpath))
 
         return bpath
+
+    def _get_pg_version(self):
+        version_string = self._pg_config_data.get('version')
+        if not version_string:
+            raise ClusterError('could not determine PostgreSQL version')
+
+        return serverversion.split_server_version_string(version_string)
 
 
 class TempCluster(Cluster):

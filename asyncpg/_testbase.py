@@ -157,6 +157,7 @@ class ConnectedTestCase(ClusterTestCase):
         opts = self.getExtraConnectOptions()
         self.con = self.loop.run_until_complete(
             self.cluster.connect(database='postgres', loop=self.loop, **opts))
+        self.server_version = self.con.get_server_version()
 
     def tearDown(self):
         try:

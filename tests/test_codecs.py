@@ -11,6 +11,7 @@ import ipaddress
 import math
 import random
 import struct
+import unittest
 import uuid
 
 import asyncpg
@@ -209,11 +210,11 @@ type_samples = [
     ('json', 'json', [
         '[1, 2, 3, 4]',
         '{"a": [1, 2], "b": 0}'
-    ]),
+    ], (9, 2)),
     ('jsonb', 'jsonb', [
         '[1, 2, 3, 4]',
         '{"a": [1, 2], "b": 0}'
-    ]),
+    ], (9, 4)),
     ('oid[]', 'oid[]', [
         [1, 2, 3, 4],
         []
@@ -333,7 +334,7 @@ type_samples = [
     ]),
     ('line', 'line', [
         asyncpg.Line(1, 2, 3),
-    ]),
+    ], (9, 4)),
     ('lseg', 'lseg', [
         asyncpg.LineSegment((1, 2), (2, 2)),
     ]),
@@ -351,7 +352,10 @@ class TestCodecs(tb.ConnectedTestCase):
 
     async def test_standard_codecs(self):
         """Test encoding/decoding of standard data types and arrays thereof."""
-        for (typname, intname, sample_data) in type_samples:
+        for (typname, intname, sample_data, *metadata) in type_samples:
+            if metadata and self.server_version < metadata[0]:
+                continue
+
             st = await self.con.prepare(
                 "SELECT $1::" + typname
             )
@@ -548,7 +552,8 @@ class TestCodecs(tb.ConnectedTestCase):
                 "SELECT $1::int[]",
                 [[1], ['t'], [2]])
 
-        with self.assertRaisesRegex(TypeError, 'non-trivial iterable expected'):
+        with self.assertRaisesRegex(TypeError,
+                                    'non-trivial iterable expected'):
             await self.con.fetchval(
                 "SELECT $1::int[]",
                 1)
@@ -641,6 +646,11 @@ class TestCodecs(tb.ConnectedTestCase):
 
     async def test_range_types(self):
         """Test encoding/decoding of range types."""
+
+        if self.server_version < (9, 2):
+            raise unittest.SkipTest(
+                'PostgreSQL servers < 9.2 do not support range types.')
+
         cases = [
             ('int4range', [
                 [(1, 9), asyncpg.Range(1, 10)],

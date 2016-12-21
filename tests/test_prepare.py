@@ -8,6 +8,7 @@
 import asyncio
 import asyncpg
 import gc
+import unittest
 
 from asyncpg import _testbase as tb
 
@@ -397,6 +398,11 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual(await stmt.fetchval(5), 2)
 
     async def test_prepare_22_empty(self):
+        # Support for empty target list was added in PostgreSQL 9.4
+        if self.server_version < (9, 4):
+            raise unittest.SkipTest(
+                'PostgreSQL servers < 9.4 do not support empty target list.')
+
         result = await self.con.fetchrow('SELECT')
         self.assertEqual(result, ())
         self.assertEqual(repr(result), '<Record>')

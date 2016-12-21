@@ -10,7 +10,7 @@ import collections
 
 __all__ = (
     'Type', 'Attribute', 'Range', 'BitString', 'Point', 'Path', 'Polygon',
-    'Box', 'Line', 'LineSegment', 'Circle'
+    'Box', 'Line', 'LineSegment', 'Circle', 'ServerVersion'
 )
 
 
@@ -27,6 +27,11 @@ Attribute = collections.namedtuple('Attribute', ['name', 'type'])
 Attribute.__doc__ = 'Database relation attribute.'
 Attribute.name.__doc__ = 'Attribute name.'
 Attribute.type.__doc__ = 'Attribute data type :class:`asyncpg.types.Type`.'
+
+
+ServerVersion = collections.namedtuple(
+    'ServerVersion', ['major', 'minor', 'micro', 'releaselevel', 'serial'])
+ServerVersion.__doc__ = 'PostgreSQL server version tuple.'
 
 
 class Range:
