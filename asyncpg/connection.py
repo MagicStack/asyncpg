@@ -471,7 +471,8 @@ class Connection:
             except Exception as ex:
                 waiter.set_exception(ex)
             finally:
-                waiter.set_result(None)
+                if not waiter.done():  # Ensure set_exception wasn't called.
+                    waiter.set_result(None)
                 w.close()
 
         self._loop.create_task(cancel())
