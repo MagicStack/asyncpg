@@ -401,6 +401,19 @@ instance constructor.</li>
 </dd></dl>
 
 <dl class="method">
+<dt id="asyncpg.connection.Connection.get_server_version">
+<code class="descname">get_server_version</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.get_server_version"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.get_server_version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the version of the connected PostgreSQL server.</p>
+<p>The returned value is a named tuple similar to that in
+<code class="docutils literal"><span class="pre">sys.version_info</span></code>:</p>
+<div class="highlight-pycon"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">con</span><span class="o">.</span><span class="n">get_server_version</span><span class="p">()</span>
+<span class="go">ServerVersion(major=9, minor=6, micro=1,</span>
+<span class="go">              releaselevel=&#39;final&#39;, serial=0)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
 <dt id="asyncpg.connection.Connection.get_settings">
 <code class="descname">get_settings</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.get_settings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.get_settings" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return connection settings.</p>
