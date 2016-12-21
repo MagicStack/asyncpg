@@ -862,7 +862,7 @@ provided by asyncpg supports <em>asynchronous iteration</em> via the <code class
 statement, and also a way to read row chunks and skip forward over the
 result set.</p>
 <p>To iterate over a cursor using a connection object use
-<a class="reference internal" href="#asyncpg.connection.Connection.cursor" title="asyncpg.connection.Connection.cursor"><code class="xref py py-meth docutils literal"><span class="pre">Conection.cursor()</span></code></a>.
+<a class="reference internal" href="#asyncpg.connection.Connection.cursor" title="asyncpg.connection.Connection.cursor"><code class="xref py py-meth docutils literal"><span class="pre">Connection.cursor()</span></code></a>.
 To make the iteration efficient, the cursor will prefetch records to
 reduce the number of queries sent to the server:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="k">def</span> <span class="nf">iterate</span><span class="p">(</span><span class="n">con</span><span class="p">:</span> <span class="n">Connection</span><span class="p">):</span>
