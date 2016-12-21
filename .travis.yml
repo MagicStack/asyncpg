@@ -84,6 +84,16 @@ matrix:
           addons:
               postgresql: '9.6'
 
+        - os: linux
+          dist: trusty
+          sudo: required
+          language: python
+          python: "3.6-dev"
+          env: BUILD=full PGVERSION=9.6
+          services: [postgresql, docker]
+          addons:
+              postgresql: '9.6'
+
 cache:
     directories:
         - $HOME/.cache/pip

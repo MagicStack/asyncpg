@@ -263,7 +263,8 @@ class TestRecord(tb.ConnectedTestCase):
         self.assertGreater(r5, r7)
         self.assertGreater(r5, r4)
 
-        with self.assertRaisesRegex(TypeError, 'unorderable'):
+        with self.assertRaisesRegex(
+                TypeError, "unorderable|'<' not supported"):
             r1 < r8
 
         self.assertEqual(
