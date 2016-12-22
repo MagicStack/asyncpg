@@ -16,6 +16,9 @@ of PostgreSQL server binary protocol for use with Python's ``asyncio``
 framework.  You can read more about asyncpg in an introductory
 `blog post <http://magic.io/blog/asyncpg-1m-rows-from-postgres-to-python/>`_.
 
+asyncpg requires Python 3.5 or later and is supported for PostgreSQL
+versions 9.1 to 9.6.
+
 
 Documentation
 -------------
@@ -57,8 +60,8 @@ This enables asyncpg to have easy-to-use support for:
 Installation
 ------------
 
-asyncpg requires Python 3.5 and is available on PyPI.
-Use pip to install it::
+asyncpg is available on PyPI and has no dependencies.
+Use pip to install::
 
     $ pip install asyncpg
 
