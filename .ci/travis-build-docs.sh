@@ -13,21 +13,10 @@ SOURCE_BRANCH="master"
 TARGET_BRANCH="gh-pages"
 DOC_BUILD_DIR="_build/html/"
 
-if [ "${TRAVIS_OS_NAME}" != "linux" ]; then
-    echo "Skipping documentation build on non-linux."
-    exit 0
-fi
-
 pip install -r docs/requirements.txt
 make htmldocs
 
-if [ "${TRAVIS_PULL_REQUEST}" != "false" \
-        -o "${TRAVIS_OS_NAME}" != "linux" ]; then
-    echo "Skipping documentation deploy."
-    exit 0
-fi
-
-if [ "${TRAVIS_BRANCH}" != "${SOURCE_BRANCH}" -a -z "${TRAVIS_TAG}" ]; then
+if [ "${TRAVIS_PULL_REQUEST}" != "false" -o -z "${TRAVIS_TAG}" ]; then
     echo "Skipping documentation deploy."
     exit 0
 fi
