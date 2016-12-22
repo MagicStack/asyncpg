@@ -137,7 +137,7 @@ statement, and also a way to read row chunks and skip forward over the
 result set.
 
 To iterate over a cursor using a connection object use
-:meth:`Conection.cursor() <asyncpg.connection.Connection.cursor>`.
+:meth:`Connection.cursor() <asyncpg.connection.Connection.cursor>`.
 To make the iteration efficient, the cursor will prefetch records to
 reduce the number of queries sent to the server:
 

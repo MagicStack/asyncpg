@@ -30,6 +30,9 @@
   
 
   
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
     <link rel="top" title="asyncpg Documentation" href="../../index.html"/>
         <link rel="up" title="Module code" href="../index.html"/> 
 
@@ -59,7 +62,7 @@
             
             
               <div class="version">
-                0.5.3
+                0.8.1
               </div>
             
           
@@ -148,6 +151,7 @@
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">introspection</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">prepared_stmt</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">protocol</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">serverversion</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">transaction</span>
 
 
@@ -160,7 +164,8 @@
     <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_protocol&#39;</span><span class="p">,</span> <span class="s1">&#39;_transport&#39;</span><span class="p">,</span> <span class="s1">&#39;_loop&#39;</span><span class="p">,</span> <span class="s1">&#39;_types_stmt&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_type_by_name_stmt&#39;</span><span class="p">,</span> <span class="s1">&#39;_top_xact&#39;</span><span class="p">,</span> <span class="s1">&#39;_uid&#39;</span><span class="p">,</span> <span class="s1">&#39;_aborted&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_stmt_cache_max_size&#39;</span><span class="p">,</span> <span class="s1">&#39;_stmt_cache&#39;</span><span class="p">,</span> <span class="s1">&#39;_stmts_to_close&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;_addr&#39;</span><span class="p">,</span> <span class="s1">&#39;_opts&#39;</span><span class="p">,</span> <span class="s1">&#39;_command_timeout&#39;</span><span class="p">,</span> <span class="s1">&#39;_listeners&#39;</span><span class="p">)</span>
+                 <span class="s1">&#39;_addr&#39;</span><span class="p">,</span> <span class="s1">&#39;_opts&#39;</span><span class="p">,</span> <span class="s1">&#39;_command_timeout&#39;</span><span class="p">,</span> <span class="s1">&#39;_listeners&#39;</span><span class="p">,</span>
+                 <span class="s1">&#39;_server_version&#39;</span><span class="p">,</span> <span class="s1">&#39;_intro_query&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">protocol</span><span class="p">,</span> <span class="n">transport</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">opts</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                  <span class="n">statement_cache_size</span><span class="p">,</span> <span class="n">command_timeout</span><span class="p">):</span>
@@ -183,6 +188,15 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_command_timeout</span> <span class="o">=</span> <span class="n">command_timeout</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="n">ver_string</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">server_version</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_server_version</span> <span class="o">=</span> \
+            <span class="n">serverversion</span><span class="o">.</span><span class="n">split_server_version_string</span><span class="p">(</span><span class="n">ver_string</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_version</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span> <span class="o">=</span> <span class="n">introspection</span><span class="o">.</span><span class="n">INTRO_LOOKUP_TYPES_91</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span> <span class="o">=</span> <span class="n">introspection</span><span class="o">.</span><span class="n">INTRO_LOOKUP_TYPES</span>
 
 <div class="viewcode-block" id="Connection.add_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.add_listener">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">add_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Add a listener for Postgres notifications.</span>
@@ -214,6 +228,21 @@
 <div class="viewcode-block" id="Connection.get_server_pid"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.get_server_pid">[docs]</a>    <span class="k">def</span> <span class="nf">get_server_pid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return the PID of the Postgres server the connection is bound to.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_server_pid</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Connection.get_server_version"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.get_server_version">[docs]</a>    <span class="k">def</span> <span class="nf">get_server_version</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the version of the connected PostgreSQL server.</span>
+
+<span class="sd">        The returned value is a named tuple similar to that in</span>
+<span class="sd">        ``sys.version_info``:</span>
+
+<span class="sd">        .. code-block:: pycon</span>
+
+<span class="sd">            &gt;&gt;&gt; con.get_server_version()</span>
+<span class="sd">            ServerVersion(major=9, minor=6, micro=1,</span>
+<span class="sd">                          releaselevel=&#39;final&#39;, serial=0)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_version</span></div>
 
 <div class="viewcode-block" id="Connection.get_settings"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.get_settings">[docs]</a>    <span class="k">def</span> <span class="nf">get_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return connection settings.</span>
@@ -279,6 +308,27 @@
                                                          <span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">status</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span></div>
 
+<div class="viewcode-block" id="Connection.executemany"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.executemany">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">executemany</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Execute an SQL *command* for each sequence of arguments in *args*.</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">        .. code-block:: pycon</span>
+
+<span class="sd">            &gt;&gt;&gt; await con.executemany(&#39;&#39;&#39;</span>
+<span class="sd">            ...     INSERT INTO mytab (a) VALUES ($1, $2, $3);</span>
+<span class="sd">            ... &#39;&#39;&#39;, [(1, 2, 3), (4, 5, 6)])</span>
+
+<span class="sd">        :param command: Command to execute.</span>
+<span class="sd">        :args: An iterable containing sequences of arguments.</span>
+<span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
+<span class="sd">        :return None: This method discards the results of the operations.</span>
+
+<span class="sd">        .. versionadded:: 0.7.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">bind_execute_many</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_get_statement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
         <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache_max_size</span> <span class="o">&gt;</span> <span class="mi">0</span>
 
@@ -298,8 +348,7 @@
         <span class="n">ready</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">_init_types</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">ready</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">True</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_types_stmt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_types_stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span>
-                    <span class="n">introspection</span><span class="o">.</span><span class="n">INTRO_LOOKUP_TYPES</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_types_stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span><span class="p">)</span>
 
             <span class="n">types</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_types_stmt</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">ready</span><span class="p">))</span>
             <span class="n">protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">register_data_types</span><span class="p">(</span><span class="n">types</span><span class="p">)</span>
@@ -479,11 +528,19 @@
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">{}</span>
+
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">            DO $$</span>
+<span class="s1">            BEGIN</span>
+<span class="s1">                PERFORM * FROM pg_listening_channels() LIMIT 1;</span>
+<span class="s1">                IF FOUND THEN</span>
+<span class="s1">                    UNLISTEN *;</span>
+<span class="s1">                END IF;</span>
+<span class="s1">            END;</span>
+<span class="s1">            $$;</span>
 <span class="s1">            SET SESSION AUTHORIZATION DEFAULT;</span>
 <span class="s1">            RESET ALL;</span>
 <span class="s1">            CLOSE ALL;</span>
-<span class="s1">            UNLISTEN *;</span>
 <span class="s1">            SELECT pg_advisory_unlock_all();</span>
 <span class="s1">        &#39;&#39;&#39;</span><span class="p">)</span>
 
@@ -541,10 +598,15 @@
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">w</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
                 <span class="k">await</span> <span class="n">r</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>  <span class="c1"># Wait until EOF</span>
+            <span class="k">except</span> <span class="ne">ConnectionResetError</span><span class="p">:</span>
+                <span class="c1"># On some systems Postgres will reset the connection</span>
+                <span class="c1"># after processing the cancellation command.</span>
+                <span class="k">pass</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
                 <span class="n">waiter</span><span class="o">.</span><span class="n">set_exception</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span>
             <span class="k">finally</span><span class="p">:</span>
-                <span class="n">waiter</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">waiter</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>  <span class="c1"># Ensure set_exception wasn&#39;t called.</span>
+                    <span class="n">waiter</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
                 <span class="n">w</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">cancel</span><span class="p">())</span>
@@ -833,7 +895,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.5.3',
+            VERSION:'0.8.1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

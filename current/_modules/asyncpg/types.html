@@ -30,6 +30,9 @@
   
 
   
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
     <link rel="top" title="asyncpg Documentation" href="../../index.html"/>
         <link rel="up" title="Module code" href="../index.html"/> 
 
@@ -59,7 +62,7 @@
             
             
               <div class="version">
-                0.5.3
+                0.8.1
               </div>
             
           
@@ -141,7 +144,7 @@
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">(</span>
     <span class="s1">&#39;Type&#39;</span><span class="p">,</span> <span class="s1">&#39;Attribute&#39;</span><span class="p">,</span> <span class="s1">&#39;Range&#39;</span><span class="p">,</span> <span class="s1">&#39;BitString&#39;</span><span class="p">,</span> <span class="s1">&#39;Point&#39;</span><span class="p">,</span> <span class="s1">&#39;Path&#39;</span><span class="p">,</span> <span class="s1">&#39;Polygon&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;Box&#39;</span><span class="p">,</span> <span class="s1">&#39;Line&#39;</span><span class="p">,</span> <span class="s1">&#39;LineSegment&#39;</span><span class="p">,</span> <span class="s1">&#39;Circle&#39;</span>
+    <span class="s1">&#39;Box&#39;</span><span class="p">,</span> <span class="s1">&#39;Line&#39;</span><span class="p">,</span> <span class="s1">&#39;LineSegment&#39;</span><span class="p">,</span> <span class="s1">&#39;Circle&#39;</span><span class="p">,</span> <span class="s1">&#39;ServerVersion&#39;</span>
 <span class="p">)</span>
 
 
@@ -158,6 +161,11 @@
 <span class="n">Attribute</span><span class="o">.</span><span class="n">__doc__</span> <span class="o">=</span> <span class="s1">&#39;Database relation attribute.&#39;</span>
 <span class="n">Attribute</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">__doc__</span> <span class="o">=</span> <span class="s1">&#39;Attribute name.&#39;</span>
 <span class="n">Attribute</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">__doc__</span> <span class="o">=</span> <span class="s1">&#39;Attribute data type :class:`asyncpg.types.Type`.&#39;</span>
+
+
+<span class="n">ServerVersion</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span>
+    <span class="s1">&#39;ServerVersion&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;major&#39;</span><span class="p">,</span> <span class="s1">&#39;minor&#39;</span><span class="p">,</span> <span class="s1">&#39;micro&#39;</span><span class="p">,</span> <span class="s1">&#39;releaselevel&#39;</span><span class="p">,</span> <span class="s1">&#39;serial&#39;</span><span class="p">])</span>
+<span class="n">ServerVersion</span><span class="o">.</span><span class="n">__doc__</span> <span class="o">=</span> <span class="s1">&#39;PostgreSQL server version tuple.&#39;</span>
 
 
 <span class="k">class</span> <span class="nc">Range</span><span class="p">:</span>
@@ -453,7 +461,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">C</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
 
 
 <span class="k">class</span> <span class="nc">LineSegment</span><span class="p">(</span><span class="nb">tuple</span><span class="p">):</span>
@@ -573,7 +581,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.5.3',
+            VERSION:'0.8.1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true
