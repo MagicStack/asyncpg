@@ -170,10 +170,15 @@ class build_ext(_build_ext.build_ext):
             f.write(src)
 
 
+with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as f:
+    readme = f.read()
+
+
 setuptools.setup(
     name='asyncpg',
     version='0.7.0',
     description='An asyncio PosgtreSQL driver',
+    long_description=readme,
     classifiers=[
         'License :: OSI Approved :: Apache Software License',
         'Intended Audience :: Developers',
@@ -188,6 +193,7 @@ setuptools.setup(
     platforms=['POSIX'],
     author='MagicStack Inc',
     author_email='hello@magic.io',
+    url='https://github.com/MagicStack/asyncpg',
     license='Apache License, Version 2.0',
     packages=['asyncpg'],
     provides=['asyncpg'],
