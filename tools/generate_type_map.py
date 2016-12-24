@@ -70,8 +70,8 @@ async def runner(args):
 
     buf += '\n\nARRAY_TYPES = ({},)'.format(', '.join(array_types))
 
-    f_typemap = ('{}: {!r}'.format(dn, n) for dn, n in typemap.items())
-    buf += '\n\nTYPEMAP = {{\n    {}}}\n'.format(',\n    '.join(f_typemap))
+    f_typemap = ('{}: {!r}'.format(dn, n) for dn, n in sorted(typemap.items()))
+    buf += '\n\nTYPEMAP = {{\n    {}}}'.format(',\n    '.join(f_typemap))
 
     print(buf)
 
