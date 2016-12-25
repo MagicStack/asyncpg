@@ -152,8 +152,8 @@ cdef inline array_decode(ConnectionSettings settings, FastReadBuffer buf,
 
     if ndims > ARRAY_MAXDIM:
         raise RuntimeError(
-            'number of array dimensions exceed the maximum expected ({})'.
-            format(ARRAY_MAXDIM))
+            'number of array dimensions ({}) exceed the maximum expected ({})'.
+            format(ndims, ARRAY_MAXDIM))
 
     if decoder == NULL:
         # No decoder is known beforehand, look it up
