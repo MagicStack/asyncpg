@@ -916,3 +916,87 @@ class TestCodecs(tb.ConnectedTestCase):
             await self.con.execute('''
                 DROP TABLE tab;
             ''')
+
+    async def test_relacl_array_type(self):
+        await self.con.execute(r'''
+            CREATE USER """u1'";
+            CREATE USER "{u2";
+            CREATE USER ",u3";
+            CREATE USER "u4}";
+            CREATE USER "u5""";
+            CREATE USER "u6\""";
+            CREATE USER "u7\";
+            CREATE USER norm1;
+            CREATE USER norm2;
+            CREATE TABLE t0 (); GRANT SELECT ON t0 TO norm1;
+            CREATE TABLE t1 (); GRANT SELECT ON t1 TO """u1'";
+            CREATE TABLE t2 (); GRANT SELECT ON t2 TO "{u2";
+            CREATE TABLE t3 (); GRANT SELECT ON t3 TO ",u3";
+            CREATE TABLE t4 (); GRANT SELECT ON t4 TO "u4}";
+            CREATE TABLE t5 (); GRANT SELECT ON t5 TO "u5""";
+            CREATE TABLE t6 (); GRANT SELECT ON t6 TO "u6\""";
+            CREATE TABLE t7 (); GRANT SELECT ON t7 TO "u7\";
+
+            CREATE TABLE a1 ();
+                GRANT SELECT ON a1 TO """u1'";
+                GRANT SELECT ON a1 TO "{u2";
+                GRANT SELECT ON a1 TO ",u3";
+                GRANT SELECT ON a1 TO "norm1";
+                GRANT SELECT ON a1 TO "u4}";
+                GRANT SELECT ON a1 TO "u5""";
+                GRANT SELECT ON a1 TO "u6\""";
+                GRANT SELECT ON a1 TO "u7\";
+                GRANT SELECT ON a1 TO "norm2";
+
+            CREATE TABLE a2 ();
+                GRANT SELECT ON a2 TO """u1'" WITH GRANT OPTION;
+                GRANT SELECT ON a2 TO "{u2"   WITH GRANT OPTION;
+                GRANT SELECT ON a2 TO ",u3"   WITH GRANT OPTION;
+                GRANT SELECT ON a2 TO "norm1" WITH GRANT OPTION;
+                GRANT SELECT ON a2 TO "u4}"   WITH GRANT OPTION;
+                GRANT SELECT ON a2 TO "u5"""  WITH GRANT OPTION;
+                GRANT SELECT ON a2 TO "u6\""" WITH GRANT OPTION;
+                GRANT SELECT ON a2 TO "u7\"   WITH GRANT OPTION;
+
+            SET SESSION AUTHORIZATION """u1'"; GRANT SELECT ON a2 TO "norm2";
+            SET SESSION AUTHORIZATION "{u2";   GRANT SELECT ON a2 TO "norm2";
+            SET SESSION AUTHORIZATION ",u3";   GRANT SELECT ON a2 TO "norm2";
+            SET SESSION AUTHORIZATION "u4}";   GRANT SELECT ON a2 TO "norm2";
+            SET SESSION AUTHORIZATION "u5""";  GRANT SELECT ON a2 TO "norm2";
+            SET SESSION AUTHORIZATION "u6\"""; GRANT SELECT ON a2 TO "norm2";
+            SET SESSION AUTHORIZATION "u7\";   GRANT SELECT ON a2 TO "norm2";
+            RESET SESSION AUTHORIZATION;
+        ''')
+
+        try:
+            rows = await self.con.fetch('''
+                SELECT relacl, relacl::text[] AS chk, relacl::text[]::text AS text_
+                FROM pg_catalog.pg_class
+                WHERE relacl IS NOT NULL
+            ''')
+
+            for row in rows:
+                self.assertEqual(row['relacl'], row['chk'],)
+
+        finally:
+            await self.con.execute(r'''
+                DROP TABLE t0;
+                DROP TABLE t1;
+                DROP TABLE t2;
+                DROP TABLE t3;
+                DROP TABLE t4;
+                DROP TABLE t5;
+                DROP TABLE t6;
+                DROP TABLE t7;
+                DROP TABLE a1;
+                DROP TABLE a2;
+                DROP USER """u1'";
+                DROP USER "{u2";
+                DROP USER ",u3";
+                DROP USER "u4}";
+                DROP USER "u5""";
+                DROP USER "u6\""";
+                DROP USER "u7\";
+                DROP USER norm1;
+                DROP USER norm2;
+            ''')
