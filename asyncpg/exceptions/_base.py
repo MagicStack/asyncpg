@@ -9,7 +9,7 @@ import sys
 
 
 __all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError',
-           'InterfaceError')
+           'InterfaceError', 'PostgresNotice')
 
 
 def _is_asyncpg_class(cls):
@@ -151,3 +151,10 @@ class UnknownPostgresError(FatalPostgresError):
 
 class InterfaceError(Exception):
     """An error caused by improper use of asyncpg API."""
+
+
+class PostgresNotice(PostgresMessage):
+    sqlstate = '00000'
+
+    def __init__(self, message):
+        self.args = [message]

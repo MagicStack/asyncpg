@@ -170,5 +170,6 @@ cdef class CoreProtocol:
 
     cdef _on_result(self)
     cdef _on_notification(self, pid, channel, payload)
+    cdef _on_notice(self, parsed)
     cdef _set_server_parameter(self, name, val)
     cdef _on_connection_lost(self, exc)
