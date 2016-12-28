@@ -56,6 +56,10 @@ cdef class CoreProtocol:
                     # NotificationResponse
                     self._parse_msg_notification()
                     continue
+                elif mtype == b'N':
+                    # 'N' - NoticeResponse
+                    self._on_notice(self._parse_msg_error_response(False))
+                    continue
 
                 if state == PROTOCOL_AUTH:
                     self._process__auth(mtype)
@@ -302,10 +306,9 @@ cdef class CoreProtocol:
             self._push_result()
 
     cdef _process__simple_query(self, char mtype):
-        if mtype in {b'D', b'I', b'N', b'T'}:
+        if mtype in {b'D', b'I', b'T'}:
             # 'D' - DataRow
             # 'I' - EmptyQueryResponse
-            # 'N' - NoticeResponse
             # 'T' - RowDescription
             self.buffer.consume_message()
 
@@ -614,6 +617,8 @@ cdef class CoreProtocol:
         if is_error:
             self.result_type = RESULT_FAILED
             self.result = parsed
+        else:
+            return parsed
 
     cdef _push_result(self):
         try:
@@ -908,6 +913,9 @@ cdef class CoreProtocol:
         pass
 
     cdef _on_result(self):
+        pass
+
+    cdef _on_notice(self, parsed):
         pass
 
     cdef _on_notification(self, pid, channel, payload):

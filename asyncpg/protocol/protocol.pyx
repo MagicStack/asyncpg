@@ -731,6 +731,14 @@ cdef class BaseProtocol(CoreProtocol):
             self.last_query = None
             self.return_extra = False
 
+    cdef _on_notice(self, parsed):
+        # Check it here to avoid unnecessary object creation.
+        if self.connection._notice_callbacks:
+            message = apg_exc_base.PostgresMessage.new(
+                parsed, query=self.last_query)
+
+            self.connection._notice(message)
+
     cdef _on_notification(self, pid, channel, payload):
         self.connection._notify(pid, channel, payload)
 

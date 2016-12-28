@@ -41,7 +41,7 @@ class Connection(metaclass=ConnectionMeta):
                  '_stmt_cache', '_stmts_to_close', '_listeners',
                  '_server_version', '_server_caps', '_intro_query',
                  '_reset_query', '_proxy', '_stmt_exclusive_section',
-                 '_config', '_params', '_addr')
+                 '_config', '_params', '_addr', '_notice_callbacks')
 
     def __init__(self, protocol, transport, loop,
                  addr: (str, int) or str,
@@ -69,6 +69,7 @@ class Connection(metaclass=ConnectionMeta):
         self._stmts_to_close = set()
 
         self._listeners = {}
+        self._notice_callbacks = set()
 
         settings = self._protocol.get_settings()
         ver_string = settings.server_version
@@ -125,6 +126,26 @@ class Connection(metaclass=ConnectionMeta):
         if not self._listeners[channel]:
             del self._listeners[channel]
             await self.fetch('UNLISTEN {}'.format(channel))
+
+    def add_notice_callback(self, callback):
+        """Add a callback for Postgres notices (NOTICE, DEBUG, LOG etc.).
+
+        It will be called when asyncronous NoticeResponse is received
+        from the connection.  Possible message types are: WARNING, NOTICE, DEBUG,
+        INFO, or LOG.
+
+        :param callable callback:
+            A callable receiving the following arguments:
+            **connection**: a Connection the callback is registered with;
+            **message**: the `exceptions.PostgresNotice` message.
+        """
+        if self.is_closed():
+            raise exceptions.InterfaceError('connection is closed')
+        self._notice_callbacks.add(callback)
+
+    def remove_notice_callback(self, callback):
+        """Remove a callback for notices."""
+        self._notice_callbacks.discard(callback)
 
     def get_server_pid(self):
         """Return the PID of the Postgres server the connection is bound to."""
@@ -821,6 +842,7 @@ class Connection(metaclass=ConnectionMeta):
         self._listeners = {}
         self._aborted = True
         await self._protocol.close()
+        self._notice_callbacks = set()
 
     def terminate(self):
         """Terminate the connection without waiting for pending data."""
@@ -828,6 +850,7 @@ class Connection(metaclass=ConnectionMeta):
         self._listeners = {}
         self._aborted = True
         self._protocol.abort()
+        self._notice_callbacks = set()
 
     async def reset(self):
         self._check_open()
@@ -908,6 +931,26 @@ class Connection(metaclass=ConnectionMeta):
                 w.close()
 
         self._loop.create_task(cancel())
+
+    def _notice(self, message):
+        if self._proxy is None:
+            con_ref = self
+        else:
+            # See the comment in the `_notify` below.
+            con_ref = self._proxy
+
+        for cb in self._notice_callbacks:
+            self._loop.call_soon(self._call_notice_cb, cb, con_ref, message)
+
+    def _call_notice_cb(self, cb, con_ref, message):
+        try:
+            cb(con_ref, message)
+        except Exception as ex:
+            self._loop.call_exception_handler({
+                'message': 'Unhandled exception in asyncpg notice message '
+                           'callback {!r}'.format(cb),
+                'exception': ex
+            })
 
     def _notify(self, pid, channel, payload):
         if channel not in self._listeners:
