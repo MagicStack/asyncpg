@@ -21,6 +21,7 @@ class PostgresMessageMeta(type):
     _message_map = {}
     _field_map = {
         'S': 'severity',
+        'V': 'severity_en',
         'C': 'sqlstate',
         'M': 'message',
         'D': 'detail',
