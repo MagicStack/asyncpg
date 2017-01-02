@@ -22,4 +22,4 @@ cdef class ConnectionSettings:
         decoder, binary)
     cpdef inline set_builtin_type_codec(
         self, typeoid, typename, typeschema, typekind, alias_to)
-    cpdef inline Codec get_data_codec(self, uint32_t oid)
+    cpdef inline Codec get_data_codec(self, uint32_t oid, CodecFormat format=*)

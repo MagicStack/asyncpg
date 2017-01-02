@@ -5,7 +5,8 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-cdef void* codec_map[MAXSUPPORTEDOID + 1]
+cdef void* binary_codec_map[MAXSUPPORTEDOID + 1]
+cdef void* text_codec_map[MAXSUPPORTEDOID + 1]
 cdef dict TYPE_CODECS_CACHE = {}
 cdef dict EXTRA_CODECS = {}
 
@@ -22,7 +23,8 @@ cdef class Codec:
               encode_func c_encoder, decode_func c_decoder,
               object py_encoder, object py_decoder,
               Codec element_codec, tuple element_type_oids,
-              object element_names, list element_codecs):
+              object element_names, list element_codecs,
+              Py_UCS4 element_delimiter):
 
         self.name = name
         self.schema = schema
@@ -36,6 +38,7 @@ cdef class Codec:
         self.element_codec = element_codec
         self.element_type_oids = element_type_oids
         self.element_codecs = element_codecs
+        self.element_delimiter = element_delimiter
 
         if element_names is not None:
             self.element_names = record.ApgRecordDesc_New(
@@ -71,7 +74,7 @@ cdef class Codec:
                    self.py_encoder, self.py_decoder,
                    self.element_codec,
                    self.element_type_oids, self.element_names,
-                   self.element_codecs)
+                   self.element_codecs, self.element_delimiter)
 
         return codec
 
@@ -241,11 +244,13 @@ cdef class Codec:
     cdef Codec new_array_codec(uint32_t oid,
                                str name,
                                str schema,
-                               Codec element_codec):
+                               Codec element_codec,
+                               Py_UCS4 element_delimiter):
         cdef Codec codec
         codec = Codec(oid)
-        codec.init(name, schema, 'array', CODEC_ARRAY, PG_FORMAT_BINARY,
-                   NULL, NULL, None, None, element_codec, None, None, None)
+        codec.init(name, schema, 'array', CODEC_ARRAY, element_codec.format,
+                   NULL, NULL, None, None, element_codec, None, None, None,
+                   element_delimiter)
         return codec
 
     @staticmethod
@@ -256,7 +261,8 @@ cdef class Codec:
         cdef Codec codec
         codec = Codec(oid)
         codec.init(name, schema, 'range', CODEC_RANGE, PG_FORMAT_BINARY,
-                   NULL, NULL, None, None, element_codec, None, None, None)
+                   NULL, NULL, None, None, element_codec, None, None, None,
+                   0)
         return codec
 
     @staticmethod
@@ -270,7 +276,7 @@ cdef class Codec:
         codec = Codec(oid)
         codec.init(name, schema, 'composite', CODEC_COMPOSITE,
                    PG_FORMAT_BINARY, NULL, NULL, None, None, None,
-                   element_type_oids, element_names, element_codecs)
+                   element_type_oids, element_names, element_codecs, 0)
         return codec
 
     @staticmethod
@@ -284,7 +290,7 @@ cdef class Codec:
         cdef Codec codec
         codec = Codec(oid)
         codec.init(name, schema, kind, CODEC_PY, format, NULL, NULL,
-                   encoder, decoder, None, None, None, None)
+                   encoder, decoder, None, None, None, None, 0)
         return codec
 
 
@@ -313,11 +319,22 @@ cdef class DataCodecConfig:
         cdef:
             Codec elem_codec
             list comp_elem_codecs
+            CodecFormat format
+            CodecFormat elem_format
+            bint has_text_elements
+            Py_UCS4 elem_delim
 
         for ti in types:
             oid = ti['oid']
 
-            if self.get_codec(oid) is not None:
+            if not ti['has_bin_io']:
+                format = PG_FORMAT_TEXT
+            else:
+                format = PG_FORMAT_BINARY
+
+            has_text_elements = False
+
+            if self.get_codec(oid, format) is not None:
                 continue
 
             name = ti['name']
@@ -338,14 +355,21 @@ cdef class DataCodecConfig:
                     name = name[1:]
                 name = '{}[]'.format(name)
 
-                elem_codec = self.get_codec(array_element_oid)
+                if ti['elem_has_bin_io']:
+                    elem_format = PG_FORMAT_BINARY
+                else:
+                    elem_format = PG_FORMAT_TEXT
+                elem_codec = self.get_codec(array_element_oid, elem_format)
                 if elem_codec is None:
                     raise RuntimeError(
                         'no codec for array element type {}'.format(
                             array_element_oid))
 
-                self._type_codecs_cache[oid] = \
-                    Codec.new_array_codec(oid, name, schema, elem_codec)
+                elem_delim = <Py_UCS4>ti['elemdelim'][0]
+
+                self._type_codecs_cache[oid, elem_format] = \
+                    Codec.new_array_codec(
+                        oid, name, schema, elem_codec, elem_delim)
 
             elif ti['kind'] == b'c':
                 if not comp_type_attrs:
@@ -358,7 +382,10 @@ cdef class DataCodecConfig:
                 comp_elem_codecs = []
 
                 for typoid in comp_type_attrs:
-                    elem_codec = self.get_codec(typoid)
+                    elem_codec = self.get_codec(typoid, PG_FORMAT_BINARY)
+                    if elem_codec is None:
+                        elem_codec = self.get_codec(typoid, PG_FORMAT_TEXT)
+                        has_text_elements = True
                     if elem_codec is None:
                         raise RuntimeError(
                             'no codec for composite attribute type {}'.format(
@@ -369,7 +396,10 @@ cdef class DataCodecConfig:
                 for i, attrname in enumerate(ti['attrnames']):
                     element_names[attrname] = i
 
-                self._type_codecs_cache[oid] = \
+                if has_text_elements:
+                    format = PG_FORMAT_TEXT
+
+                self._type_codecs_cache[oid, format] = \
                     Codec.new_composite_codec(
                         oid, name, schema, comp_elem_codecs,
                         comp_type_attrs,
@@ -383,12 +413,12 @@ cdef class DataCodecConfig:
                         'type record missing base type for domain {}'.format(
                             oid))
 
-                elem_codec = self.get_codec(base_type)
+                elem_codec = self.get_codec(base_type, format)
                 if elem_codec is None:
                     raise RuntimeError(
                         'no codec for domain base type {}'.format(base_type))
 
-                self._type_codecs_cache[oid] = elem_codec
+                self._type_codecs_cache[oid, format] = elem_codec
 
             elif ti['kind'] == b'r':
                 # Range type
@@ -398,13 +428,17 @@ cdef class DataCodecConfig:
                         'type record missing base type for range {}'.format(
                             oid))
 
-                elem_codec = self.get_codec(range_subtype_oid)
+                if ti['elem_has_bin_io']:
+                    elem_format = PG_FORMAT_BINARY
+                else:
+                    elem_format = PG_FORMAT_TEXT
+                elem_codec = self.get_codec(range_subtype_oid, elem_format)
                 if elem_codec is None:
                     raise RuntimeError(
                         'no codec for range element type {}'.format(
                             range_subtype_oid))
 
-                self._type_codecs_cache[oid] = \
+                self._type_codecs_cache[oid, elem_format] = \
                     Codec.new_range_codec(oid, name, schema, elem_codec)
 
             else:
@@ -429,13 +463,13 @@ cdef class DataCodecConfig:
 
     def add_python_codec(self, typeoid, typename, typeschema, typekind,
                          encoder, decoder, binary):
-        if self.get_codec(typeoid) is not None:
+        format = PG_FORMAT_BINARY if binary else PG_FORMAT_TEXT
+
+        if self.get_codec(typeoid, format) is not None:
             raise ValueError('cannot override codec for type {}'.format(
                 typeoid))
 
-        format = PG_FORMAT_BINARY if binary else PG_FORMAT_TEXT
-
-        self._local_type_codecs[typeoid] = \
+        self._local_type_codecs[typeoid, format] = \
             Codec.new_python_codec(typeoid, typename, typeschema, typekind,
                                    encoder, decoder, format)
 
@@ -445,57 +479,65 @@ cdef class DataCodecConfig:
             Codec codec
             Codec target_codec
 
-        if self.get_codec(typeoid) is not None:
-            raise ValueError('cannot override codec for type {}'.format(
-                typeoid))
+        for format in (PG_FORMAT_BINARY, PG_FORMAT_TEXT):
+            if self.get_codec(typeoid, format) is not None:
+                raise ValueError('cannot override codec for type {}'.format(
+                    typeoid))
 
-        if isinstance(alias_to, int):
-            target_codec = self.get_codec(alias_to)
-        else:
-            target_codec = get_extra_codec(alias_to)
+            if isinstance(alias_to, int):
+                target_codec = self.get_codec(alias_to, format)
+            else:
+                target_codec = get_extra_codec(alias_to, format)
 
-        if target_codec is None:
+            if target_codec is None:
+                continue
+
+            codec = target_codec.copy()
+            codec.oid = typeoid
+            codec.name = typename
+            codec.schema = typeschema
+            codec.kind = typekind
+
+            self._local_type_codecs[typeoid, format] = codec
+
+        if ((typeoid, PG_FORMAT_BINARY) not in self._local_type_codecs and
+                (typeoid, PG_FORMAT_TEXT) not in self._local_type_codecs):
             raise ValueError('unknown alias target: {}'.format(alias_to))
-
-        codec = target_codec.copy()
-        codec.oid = typeoid
-        codec.name = typename
-        codec.schema = typeschema
-        codec.kind = typekind
-
-        self._local_type_codecs[typeoid] = codec
 
     def clear_type_cache(self):
         self._type_codecs_cache.clear()
 
-    cdef inline Codec get_codec(self, uint32_t oid):
+    cdef inline Codec get_codec(self, uint32_t oid, CodecFormat format):
         cdef Codec codec
 
-        codec = get_core_codec(oid)
+        codec = get_core_codec(oid, format)
         if codec is not None:
             return codec
 
         try:
-            return self._type_codecs_cache[oid]
+            return self._type_codecs_cache[oid, format]
         except KeyError:
             try:
-                return self._local_type_codecs[oid]
+                return self._local_type_codecs[oid, format]
             except KeyError:
                 return None
 
 
-cdef inline Codec get_core_codec(uint32_t oid):
+cdef inline Codec get_core_codec(uint32_t oid, CodecFormat format):
     cdef void *ptr
     if oid > MAXSUPPORTEDOID:
         return None
-    ptr = codec_map[oid]
+    if format == PG_FORMAT_BINARY:
+        ptr = binary_codec_map[oid]
+    else:
+        ptr = text_codec_map[oid]
     if ptr is NULL:
         return None
     return <Codec>ptr
 
 
 cdef inline int has_core_codec(uint32_t oid):
-    return codec_map[oid] != NULL
+    return binary_codec_map[oid] != NULL or text_codec_map[oid] != NULL
 
 
 cdef register_core_codec(uint32_t oid,
@@ -518,9 +560,13 @@ cdef register_core_codec(uint32_t oid,
 
     codec = Codec(oid)
     codec.init(name, 'pg_catalog', kind, CODEC_C, format, encode,
-               decode, None, None, None, None, None, None)
+               decode, None, None, None, None, None, None, 0)
     cpython.Py_INCREF(codec)  # immortalize
-    codec_map[oid] = <void*>codec
+
+    if format == PG_FORMAT_BINARY:
+        binary_codec_map[oid] = <void*>codec
+    else:
+        text_codec_map[oid] = <void*>codec
 
 
 cdef register_extra_codec(str name,
@@ -535,9 +581,9 @@ cdef register_extra_codec(str name,
 
     codec = Codec(INVALIDOID)
     codec.init(name, None, kind, CODEC_C, format, encode,
-               decode, None, None, None, None, None, None)
-    EXTRA_CODECS[name] = codec
+               decode, None, None, None, None, None, None, 0)
+    EXTRA_CODECS[name, format] = codec
 
 
-cdef inline Codec get_extra_codec(str name):
-    return EXTRA_CODECS.get(name)
+cdef inline Codec get_extra_codec(str name, CodecFormat format):
+    return EXTRA_CODECS.get((name, format))

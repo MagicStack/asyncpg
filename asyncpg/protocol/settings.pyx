@@ -42,8 +42,15 @@ cdef class ConnectionSettings:
         self._data_codecs.set_builtin_type_codec(typeoid, typename, typeschema,
                                           typekind, alias_to)
 
-    cpdef inline Codec get_data_codec(self, uint32_t oid):
-        return self._data_codecs.get_codec(oid)
+    cpdef inline Codec get_data_codec(self, uint32_t oid,
+                                      CodecFormat format=PG_FORMAT_ANY):
+        if format == PG_FORMAT_ANY:
+            codec = self._data_codecs.get_codec(oid, PG_FORMAT_BINARY)
+            if codec is None:
+                codec = self._data_codecs.get_codec(oid, PG_FORMAT_TEXT)
+            return codec
+        else:
+            return self._data_codecs.get_codec(oid, format)
 
     def __getattr__(self, name):
         if not name.startswith('_'):
