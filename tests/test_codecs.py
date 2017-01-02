@@ -917,7 +917,6 @@ class TestCodecs(tb.ConnectedTestCase):
                 DROP TABLE tab;
             ''')
 
-    @unittest.expectedFailure
     async def test_relacl_array_type(self):
         await self.con.execute(r'''
             CREATE USER """u1'";

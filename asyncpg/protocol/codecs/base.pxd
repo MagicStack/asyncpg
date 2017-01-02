@@ -94,6 +94,9 @@ cdef class Codec:
 
     cdef decode_array(self, ConnectionSettings settings, FastReadBuffer buf)
 
+    cdef decode_array_text(self, ConnectionSettings settings,
+                           FastReadBuffer buf)
+
     cdef decode_range(self, ConnectionSettings settings, FastReadBuffer buf)
 
     cdef decode_composite(self, ConnectionSettings settings,

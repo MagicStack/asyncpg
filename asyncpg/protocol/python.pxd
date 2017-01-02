@@ -20,3 +20,8 @@ cdef extern from "Python.h":
 
     char* PyUnicode_AsUTF8AndSize(object unicode, ssize_t *size) except NULL
     char* PyByteArray_AsString(object)
+    Py_UCS4* PyUnicode_AsUCS4Copy(object)
+    object PyUnicode_FromKindAndData(
+        int kind, const void *buffer, Py_ssize_t size)
+
+    int PyUnicode_4BYTE_KIND

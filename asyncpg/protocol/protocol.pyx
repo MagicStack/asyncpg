@@ -24,7 +24,8 @@ from asyncpg.protocol.python cimport (
                      PyMem_Malloc, PyMem_Realloc, PyMem_Calloc, PyMem_Free,
                      PyMemoryView_GET_BUFFER, PyMemoryView_Check,
                      PyUnicode_AsUTF8AndSize, PyByteArray_AsString,
-                     PyByteArray_Check)
+                     PyByteArray_Check, PyUnicode_AsUCS4Copy,
+                     PyUnicode_FromKindAndData, PyUnicode_4BYTE_KIND)
 
 from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
 
@@ -42,6 +43,7 @@ include "settings.pyx"
 include "buffer.pyx"
 
 include "codecs/base.pyx"
+include "codecs/textutils.pyx"
 
 # String types.  Need to go first, as other codecs may rely on
 # text decoding/encoding.
