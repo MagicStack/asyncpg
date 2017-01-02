@@ -26,7 +26,7 @@ release_platforms=(
     "win_amd64"
 )
 
-P="asyncpg-${PACKAGE_VERSION}"
+P="${PYMODULE}-${PACKAGE_VERSION}"
 expected_wheels=()
 
 for pyver in ${RELEASE_PYTHON_VERSIONS}; do
@@ -51,3 +51,5 @@ for distfile in "${expected_wheels[@]}"; do
 done
 
 python -m twine upload dist/*.whl dist/*.tar.*
+
+.ci/travis-publish-docs.sh

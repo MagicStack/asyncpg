@@ -14,6 +14,8 @@ environment:
     matrix:
         - PYTHON: "C:\\Python35\\python.exe"
         - PYTHON: "C:\\Python35-x64\\python.exe"
+        - PYTHON: "C:\\Python36\\python.exe"
+        - PYTHON: "C:\\Python36-x64\\python.exe"
 
 install:
     - "%PYTHON% -m pip install --upgrade pip wheel setuptools"

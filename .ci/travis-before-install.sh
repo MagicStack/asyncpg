@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ "${TRAVIS_OS_NAME}" == "linux" -a "${BUILD}" == "full" ]; then
+if [[ "${TRAVIS_OS_NAME}" == "linux" && "${BUILD}" == *wheels* ]]; then
     # Allow docker guests to connect to the database
     sudo service postgresql stop ${PGVERSION}
     echo "listen_addresses = '*'" | \
