@@ -51,7 +51,10 @@ cdef class Codec:
             self.decoder = <codec_decode_func>&self.decode_scalar
         elif type == CODEC_ARRAY:
             self.encoder = <codec_encode_func>&self.encode_array
-            self.decoder = <codec_decode_func>&self.decode_array
+            if format == PG_FORMAT_BINARY:
+                self.decoder = <codec_decode_func>&self.decode_array
+            else:
+                self.decoder = <codec_decode_func>&self.decode_array_text
         elif type == CODEC_RANGE:
             self.encoder = <codec_encode_func>&self.encode_range
             self.decoder = <codec_decode_func>&self.decode_range
@@ -136,6 +139,12 @@ cdef class Codec:
     cdef decode_array(self, ConnectionSettings settings, FastReadBuffer buf):
         return array_decode(settings, buf, codec_decode_func_ex,
                             <void*>(<cpython.PyObject>self.element_codec))
+
+    cdef decode_array_text(self, ConnectionSettings settings,
+                           FastReadBuffer buf):
+        return textarray_decode(settings, buf, codec_decode_func_ex,
+                                <void*>(<cpython.PyObject>self.element_codec),
+                                self.element_delimiter)
 
     cdef decode_range(self, ConnectionSettings settings, FastReadBuffer buf):
         return range_decode(settings, buf, codec_decode_func_ex,
