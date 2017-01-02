@@ -16,7 +16,7 @@ import asyncpg
 # Array types with builtin codecs, necessary for codec
 # bootstrap to work
 #
-_BUILTIN_ARRAYS = ('_text', '_oid')
+_BUILTIN_ARRAYS = ('_text', '_oid', '_aclitem')
 
 _INVALIDOID = 0
 
@@ -70,8 +70,8 @@ async def runner(args):
 
     buf += '\n\nARRAY_TYPES = ({},)'.format(', '.join(array_types))
 
-    f_typemap = ('{}: {!r}'.format(dn, n) for dn, n in typemap.items())
-    buf += '\n\nTYPEMAP = {{\n    {}}}\n'.format(',\n    '.join(f_typemap))
+    f_typemap = ('{}: {!r}'.format(dn, n) for dn, n in sorted(typemap.items()))
+    buf += '\n\nTYPEMAP = {{\n    {}}}'.format(',\n    '.join(f_typemap))
 
     print(buf)
 

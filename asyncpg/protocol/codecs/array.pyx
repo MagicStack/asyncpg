@@ -152,8 +152,8 @@ cdef inline array_decode(ConnectionSettings settings, FastReadBuffer buf,
 
     if ndims > ARRAY_MAXDIM:
         raise RuntimeError(
-            'number of array dimensions exceed the maximum expected ({})'.
-            format(ARRAY_MAXDIM))
+            'number of array dimensions ({}) exceed the maximum expected ({})'.
+            format(ndims, ARRAY_MAXDIM))
 
     if decoder == NULL:
         # No decoder is known beforehand, look it up
@@ -348,6 +348,104 @@ cdef arraytext_decode(ConnectionSettings settings, FastReadBuffer buf):
 cdef anyarray_decode(ConnectionSettings settings, FastReadBuffer buf):
     return array_decode(settings, buf, NULL, NULL)
 
+cdef arrayaclitemid_decode(ConnectionSettings settings, FastReadBuffer buf):
+
+    cdef:
+        # object array_text
+        unicode array_text
+        Py_ssize_t array_textlen
+        Py_ssize_t bgn_idx
+        Py_ssize_t cur_idx
+        list result
+        list escaped_parts
+        object elem
+
+    # Postgres does not have a function to send aclitems in binary mode
+    # (aclitem_send) and arrays also must be sent in a text mode.
+    # Parse it manually with the next convention (since it is system info):
+    # 1. Array's index must begin from 1;
+    # 2. Delimeter is ','.
+
+    array_text = text_decode(settings, buf)
+    if array_text is None:
+        cpython.Py_INCREF(array_text)
+        return array_text
+
+    result = cpython.PyList_New(0)
+
+    array_textlen = len(array_text)
+    if array_textlen == 0 or array_text[1] == '}':
+        return result
+
+    if array_text[0] == '[':
+        idx = array_text.find('=')
+        raise ValueError('invalid array bounds (must start with 1); got: {}.'
+                         .format(array_text[:idx]))
+
+    assert array_text[0] == '{'
+
+    cur_idx = 0
+    while True:
+        cur_chr = array_text[cur_idx]
+
+        if cur_chr == '}':
+            assert (cur_idx + 1) == array_textlen
+            break
+
+        assert cur_chr in '{,'
+        # Here should be a check for a delimeter after a delimeter. Usually
+        # it (empty string) means NULL, but for aclitem it is not possible.
+        # So do nothing and get the next char
+        cur_idx += 1
+
+        bgn_idx = cur_idx
+        cur_chr = array_text[cur_idx]
+
+        if cur_chr != '"':
+            # unquoted element
+            cur_idx += 1
+            while array_text[cur_idx] not in ',}':
+                cur_idx += 1
+            elem = array_text[bgn_idx:cur_idx]
+            cpython.Py_INCREF(elem)
+            cpython.PyList_Append(result, elem)
+            continue
+
+        # quoted element
+        escaped_parts = cpython.PyList_New(0)
+        cur_idx += 1
+        bgn_idx = cur_idx
+        while True:
+            while array_text[cur_idx] not in '\\"':
+                cur_idx += 1
+
+            if array_text[cur_idx] == '"':
+                # Closing quote symbol
+                elem = array_text[bgn_idx:cur_idx]
+                cpython.PyList_Append(escaped_parts, elem)
+                break
+
+            # Escape symbol '\'.
+            # Add previous non-empty block and be ready for the next one.
+            if bgn_idx != cur_idx:
+                elem = array_text[bgn_idx:cur_idx]
+                cpython.PyList_Append(escaped_parts, elem)
+
+            cur_idx += 1
+            bgn_idx = cur_idx # the next block begins from the escaped char
+
+            cur_idx += 1
+
+        elem = ''.join(escaped_parts)
+        cpython.Py_INCREF(elem)
+        cpython.PyList_Append(result, elem)
+        cur_idx += 1  # skip the last double quote symbol
+
+    return result
+
+cdef arrayaclitemid_encode(ConnectionSettings settings, WriteBuffer buf, items):
+    raise NotImplementedError("use postgresql's conversion "
+                              "from text[] to aclitem[]")
 
 cdef init_array_codecs():
     register_core_codec(ANYARRAYOID,
@@ -367,5 +465,10 @@ cdef init_array_codecs():
                         <encode_func>&arraytext_encode,
                         <decode_func>&arraytext_decode,
                         PG_FORMAT_BINARY)
+
+    register_core_codec(_ACLITEMOID,
+                        <encode_func>&arrayaclitemid_encode,
+                        <decode_func>&arrayaclitemid_decode,
+                        PG_FORMAT_TEXT)
 
 init_array_codecs()
