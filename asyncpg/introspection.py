@@ -7,8 +7,8 @@
 
 INTRO_LOOKUP_TYPES = '''\
 WITH RECURSIVE typeinfo_tree(
-    oid, ns, name, kind, basetype, elemtype, range_subtype,
-    elem_has_bin_input, elem_has_bin_output, attrtypoids, attrnames, depth)
+    oid, ns, name, kind, basetype, has_bin_io, elemtype, elemdelim,
+    range_subtype, elem_has_bin_io, attrtypoids, attrnames, depth)
 AS (
     WITH composite_attrs
     AS (
@@ -58,10 +58,23 @@ AS (
 
                ELSE NULL
             END)                            AS basetype,
+            t.typreceive::oid != 0 AND t.typsend::oid != 0
+                                            AS has_bin_io,
             t.typelem                       AS elemtype,
+            elem_t.typdelim                 AS elemdelim,
             range_t.rngsubtype              AS range_subtype,
-            elem_t.typreceive::oid != 0     AS elem_has_bin_input,
-            elem_t.typsend::oid != 0        AS elem_has_bin_output,
+            (CASE WHEN t.typtype = 'r' THEN
+                (SELECT
+                    range_elem_t.typreceive::oid != 0 AND
+                        range_elem_t.typsend::oid != 0
+                FROM
+                    pg_catalog.pg_type AS range_elem_t
+                WHERE
+                    range_elem_t.oid = range_t.rngsubtype)
+            ELSE
+                elem_t.typreceive::oid != 0 AND
+                    elem_t.typsend::oid != 0
+            END)                            AS elem_has_bin_io,
             (CASE WHEN t.typtype = 'c' THEN
                 (SELECT ca.typoids
                 FROM composite_attrs AS ca
@@ -91,8 +104,8 @@ AS (
     )
 
     SELECT
-        ti.oid, ti.ns, ti.name, ti.kind, ti.basetype, ti.elemtype,
-        ti.range_subtype, ti.elem_has_bin_input, ti.elem_has_bin_output,
+        ti.oid, ti.ns, ti.name, ti.kind, ti.basetype, ti.has_bin_io,
+        ti.elemtype, ti.elemdelim, ti.range_subtype, ti.elem_has_bin_io,
         ti.attrtypoids, ti.attrnames, 0
     FROM
         typeinfo AS ti
@@ -102,8 +115,8 @@ AS (
     UNION ALL
 
     SELECT
-        ti.oid, ti.ns, ti.name, ti.kind, ti.basetype, ti.elemtype,
-        ti.range_subtype, ti.elem_has_bin_input, ti.elem_has_bin_output,
+        ti.oid, ti.ns, ti.name, ti.kind, ti.basetype, ti.has_bin_io,
+        ti.elemtype, ti.elemdelim, ti.range_subtype, ti.elem_has_bin_io,
         ti.attrtypoids, ti.attrnames, tt.depth + 1
     FROM
         typeinfo ti,
@@ -126,8 +139,8 @@ ORDER BY
 # Prior to 9.2 PostgreSQL did not have range types.
 INTRO_LOOKUP_TYPES_91 = '''\
 WITH RECURSIVE typeinfo_tree(
-    oid, ns, name, kind, basetype, elemtype, range_subtype,
-    elem_has_bin_input, elem_has_bin_output, attrtypoids, attrnames, depth)
+    oid, ns, name, kind, basetype, has_bin_io, elemtype, elemdelim,
+    range_subtype, elem_has_bin_io, attrtypoids, attrnames, depth)
 AS (
     WITH composite_attrs
     AS (
@@ -177,10 +190,14 @@ AS (
 
                ELSE NULL
             END)                            AS basetype,
+            t.typreceive::oid != 0 AND t.typsend::oid != 0
+                                            AS has_bin_io,
             t.typelem                       AS elemtype,
+            elem_t.typdelim                 AS elemdelim,
             NULL::oid                       AS range_subtype,
-            elem_t.typreceive::oid != 0     AS elem_has_bin_input,
-            elem_t.typsend::oid != 0        AS elem_has_bin_output,
+            elem_t.typreceive::oid != 0 AND
+                elem_t.typsend::oid != 0
+                                            AS elem_has_bin_io,
             (CASE WHEN t.typtype = 'c' THEN
                 (SELECT ca.typoids
                 FROM composite_attrs AS ca
@@ -207,8 +224,8 @@ AS (
     )
 
     SELECT
-        ti.oid, ti.ns, ti.name, ti.kind, ti.basetype, ti.elemtype,
-        ti.range_subtype, ti.elem_has_bin_input, ti.elem_has_bin_output,
+        ti.oid, ti.ns, ti.name, ti.kind, ti.basetype, ti.has_bin_io,
+        ti.elemtype, ti.elemdelim, ti.range_subtype, ti.elem_has_bin_io,
         ti.attrtypoids, ti.attrnames, 0
     FROM
         typeinfo AS ti
@@ -218,8 +235,8 @@ AS (
     UNION ALL
 
     SELECT
-        ti.oid, ti.ns, ti.name, ti.kind, ti.basetype, ti.elemtype,
-        ti.range_subtype, ti.elem_has_bin_input, ti.elem_has_bin_output,
+        ti.oid, ti.ns, ti.name, ti.kind, ti.basetype, ti.has_bin_io,
+        ti.elemtype, ti.elemdelim, ti.range_subtype, ti.elem_has_bin_io,
         ti.attrtypoids, ti.attrnames, tt.depth + 1
     FROM
         typeinfo ti,

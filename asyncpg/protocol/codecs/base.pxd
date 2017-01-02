@@ -32,6 +32,7 @@ cdef enum CodecType:
 
 
 cdef enum CodecFormat:
+    PG_FORMAT_ANY = -1
     PG_FORMAT_TEXT = 0
     PG_FORMAT_BINARY = 1
 
@@ -55,6 +56,7 @@ cdef class Codec:
 
         # arrays
         Codec           element_codec
+        Py_UCS4         element_delimiter
 
         # composite types
         tuple           element_type_oids
@@ -70,7 +72,8 @@ cdef class Codec:
               encode_func c_encoder, decode_func c_decoder,
               object py_encoder, object py_decoder,
               Codec element_codec, tuple element_type_oids,
-              object element_names, list element_codecs)
+              object element_names, list element_codecs,
+              Py_UCS4 element_delimiter)
 
     cdef encode_scalar(self, ConnectionSettings settings, WriteBuffer buf,
                        object obj)
@@ -118,7 +121,8 @@ cdef class Codec:
     cdef Codec new_array_codec(uint32_t oid,
                                str name,
                                str schema,
-                               Codec element_codec)
+                               Codec element_codec,
+                               Py_UCS4 element_delimiter)
 
     @staticmethod
     cdef Codec new_range_codec(uint32_t oid,
@@ -149,4 +153,4 @@ cdef class DataCodecConfig:
         dict _type_codecs_cache
         dict _local_type_codecs
 
-    cdef inline Codec get_codec(self, uint32_t oid)
+    cdef inline Codec get_codec(self, uint32_t oid, CodecFormat format)

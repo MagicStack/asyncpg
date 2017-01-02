@@ -37,7 +37,8 @@ cdef anonymous_record_decode(ConnectionSettings settings, FastReadBuffer buf):
             elem_codec = settings.get_data_codec(elem_typ)
             if elem_codec is None or not elem_codec.has_decoder():
                 raise RuntimeError(
-                    'no decoder for type OID {}'.format(elem_typ))
+                    'no decoder for composite type element in '
+                    'position {} of type OID {}'.format(i, elem_typ))
             elem = elem_codec.decode(settings,
                                      elem_buf.slice_from(buf, elem_len))
 
