@@ -9,12 +9,12 @@ cdef class Memory:
     cdef:
         char* buf
         object owner
-        int length
+        ssize_t length
 
     cdef as_bytes(self)
 
     @staticmethod
-    cdef inline Memory new(char* buf, object owner, int length)
+    cdef inline Memory new(char* buf, object owner, ssize_t length)
 
 
 cdef class WriteBuffer:
@@ -26,10 +26,10 @@ cdef class WriteBuffer:
         char *_buf
 
         # Allocated size
-        size_t _size
+        ssize_t _size
 
         # Length of data in the buffer
-        size_t _length
+        ssize_t _length
 
         # Number of memoryviews attached to the buffer
         int _view_count
@@ -39,8 +39,8 @@ cdef class WriteBuffer:
 
     cdef inline _check_readonly(self)
     cdef inline len(self)
-    cdef inline _ensure_alloced(self, size_t extra_length)
-    cdef _reallocate(self, new_size)
+    cdef inline _ensure_alloced(self, ssize_t extra_length)
+    cdef _reallocate(self, ssize_t new_size)
     cdef inline start_message(self, char type)
     cdef inline end_message(self)
     cdef write_buffer(self, WriteBuffer buf)
@@ -81,31 +81,31 @@ cdef class ReadBuffer:
         int32_t _bufs_len
 
         # A read position in the first buffer in `_bufs`
-        int32_t _pos0
+        ssize_t _pos0
 
         # Length of the first buffer in `_bufs`
-        int32_t _len0
+        ssize_t _len0
 
         # A total number of buffered bytes in ReadBuffer
-        int32_t _length
+        ssize_t _length
 
         char _current_message_type
         int _current_message_len
-        int32_t _current_message_len_unread
+        ssize_t _current_message_len_unread
         bint _current_message_ready
 
     cdef feed_data(self, data)
     cdef inline _ensure_first_buf(self)
     cdef _switch_to_next_buf(self)
     cdef inline read_byte(self)
-    cdef inline char* _try_read_bytes(self, int nbytes)
-    cdef inline read(self, int nbytes)
+    cdef inline char* _try_read_bytes(self, ssize_t nbytes)
+    cdef inline read(self, ssize_t nbytes)
     cdef inline read_bytes(self, ssize_t n)
     cdef inline read_int32(self)
     cdef inline read_int16(self)
     cdef inline read_cstr(self)
     cdef int32_t has_message(self) except -1
-    cdef inline char* try_consume_message(self, int32_t* len)
+    cdef inline char* try_consume_message(self, ssize_t* len)
     cdef Memory consume_message(self)
     cdef discard_message(self)
     cdef inline _discard_message(self)
@@ -119,13 +119,13 @@ cdef class ReadBuffer:
 cdef class FastReadBuffer:
     cdef:
         const char* buf
-        size_t len
+        ssize_t len
 
-    cdef inline const char* read(self, size_t n) except NULL
+    cdef inline const char* read(self, ssize_t n) except NULL
     cdef inline const char* read_all(self)
     cdef inline FastReadBuffer slice_from(self, FastReadBuffer source,
-                                          size_t len)
-    cdef _raise_ins_err(self, size_t n, size_t len)
+                                          ssize_t len)
+    cdef _raise_ins_err(self, ssize_t n, ssize_t len)
 
     @staticmethod
     cdef FastReadBuffer new()

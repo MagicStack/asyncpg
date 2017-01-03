@@ -19,13 +19,13 @@ cdef bool_decode(ConnectionSettings settings, FastReadBuffer buf):
 
 
 cdef int2_encode(ConnectionSettings settings, WriteBuffer buf, obj):
-    cdef int32_t val = cpython.PyLong_AsLong(obj)
+    cdef long val = cpython.PyLong_AsLong(obj)
     if val < -32767 or val > 32767:
         raise ValueError(
             'integer too large to be encoded as INT2: {!r}'.format(val))
 
     buf.write_int32(2)
-    buf.write_int16(val)
+    buf.write_int16(<int16_t>val)
 
 
 cdef int2_decode(ConnectionSettings settings, FastReadBuffer buf):
@@ -33,7 +33,7 @@ cdef int2_decode(ConnectionSettings settings, FastReadBuffer buf):
 
 
 cdef int4_encode(ConnectionSettings settings, WriteBuffer buf, obj):
-    cdef int32_t val = cpython.PyLong_AsLong(obj)
+    cdef int32_t val = <int32_t>cpython.PyLong_AsLong(obj)
 
     buf.write_int32(4)
     buf.write_int32(val)

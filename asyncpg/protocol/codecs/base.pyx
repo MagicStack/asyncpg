@@ -95,20 +95,25 @@ cdef class Codec:
                           object obj):
         cdef:
             WriteBuffer elem_data
-            int32_t i
+            int i
             list elem_codecs = self.element_codecs
+            ssize_t count
+
+        count = len(obj)
+        if count > _MAXINT32:
+            raise ValueError('too many elements in composite type record')
 
         elem_data = WriteBuffer.new()
         i = 0
         for item in obj:
-            elem_data.write_int32(self.element_type_oids[i])
+            elem_data.write_int32(<int32_t>self.element_type_oids[i])
             if item is None:
                 elem_data.write_int32(-1)
             else:
                 (<Codec>elem_codecs[i]).encode(settings, elem_data, item)
             i += 1
 
-        record_encode_frame(settings, buf, elem_data, len(obj))
+        record_encode_frame(settings, buf, elem_data, <int32_t>count)
 
     cdef encode_in_python(self, ConnectionSettings settings, WriteBuffer buf,
                           object obj):
@@ -145,11 +150,11 @@ cdef class Codec:
             Codec elem_codec
             FastReadBuffer elem_buf = FastReadBuffer.new()
 
-        elem_count = hton.unpack_int32(buf.read(4))
+        elem_count = <uint32_t>hton.unpack_int32(buf.read(4))
         result = record.ApgRecord_New(self.element_names, elem_count)
         for i in range(elem_count):
             elem_typ = self.element_type_oids[i]
-            received_elem_typ = hton.unpack_int32(buf.read(4))
+            received_elem_typ = <uint32_t>hton.unpack_int32(buf.read(4))
 
             if received_elem_typ != elem_typ:
                 raise RuntimeError(

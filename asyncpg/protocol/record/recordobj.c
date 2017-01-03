@@ -138,16 +138,16 @@ record_hash(ApgRecordObject *v)
         if (y == -1) {
             return -1;
         }
-        x = (x ^ y) * mult;
+        x = (x ^ (Py_uhash_t)y) * mult;
         /* the cast might truncate len; that doesn't change hash stability */
-        mult += (Py_hash_t)(82520UL + len + len);
+        mult += (Py_uhash_t)(82520UL + (size_t)len + (size_t)len);
     }
     x += 97531UL;
     if (x == (Py_uhash_t)-1) {
-        x = -2;
+        x = (Py_uhash_t)-2;
     }
-    v->self_hash = x;
-    return x;
+    v->self_hash = (Py_hash_t)x;
+    return (Py_hash_t)x;
 }
 
 

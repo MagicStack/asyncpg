@@ -14,7 +14,7 @@ cdef bits_encode(ConnectionSettings settings, WriteBuffer wbuf, obj):
         bint pybuf_used = False
         char *buf
         ssize_t len
-        int32_t bitlen
+        ssize_t bitlen
 
     if cpython.PyBytes_CheckExact(obj):
         buf = cpython.PyBytes_AS_STRING(obj)
@@ -31,7 +31,9 @@ cdef bits_encode(ConnectionSettings settings, WriteBuffer wbuf, obj):
         bitlen = len * 8
 
     try:
-        wbuf.write_int32(4 + len)
+        if bitlen > _MAXINT32:
+            raise ValueError('bit value too long')
+        wbuf.write_int32(4 + <int32_t>len)
         wbuf.write_int32(<int32_t>bitlen)
         wbuf.write_cstr(buf, len)
     finally:
@@ -42,7 +44,7 @@ cdef bits_encode(ConnectionSettings settings, WriteBuffer wbuf, obj):
 cdef bits_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
         int32_t bitlen = hton.unpack_int32(buf.read(4))
-        size_t buf_len = buf.len
+        ssize_t buf_len = buf.len
 
     bytes_ = cpython.PyBytes_FromStringAndSize(buf.read_all(), buf_len)
     return BitString.frombytes(bytes_, bitlen)

@@ -38,21 +38,26 @@ cdef inline _is_sub_array(object obj):
 
 cdef _get_array_shape(object obj, int32_t *dims, int32_t *ndims):
     cdef:
-        int32_t mylen = len(obj)
-        int32_t elemlen = -2
+        ssize_t mylen = len(obj)
+        ssize_t elemlen = -2
         object it
+
+    if mylen > _MAXINT32:
+        raise ValueError('too many elements in array value')
 
     if ndims[0] > ARRAY_MAXDIM:
         raise ValueError(
             'number of array dimensions ({}) exceed the maximum expected ({})'.
                 format(ndims[0], ARRAY_MAXDIM))
 
-    dims[ndims[0] - 1] = mylen
+    dims[ndims[0] - 1] = <int32_t>mylen
 
     for elem in obj:
         if _is_sub_array(elem):
             if elemlen == -2:
                 elemlen = len(elem)
+                if elemlen > _MAXINT32:
+                    raise ValueError('too many elements in array value')
                 ndims[0] += 1
                 _get_array_shape(elem, dims, ndims)
             else:
@@ -123,7 +128,7 @@ cdef inline array_encode(ConnectionSettings settings, WriteBuffer buf,
     # flags
     buf.write_int32(0)
     # element type
-    buf.write_int32(elem_oid)
+    buf.write_int32(<int32_t>elem_oid)
     # upper / lower bounds
     for i in range(ndims):
         buf.write_int32(dims[i])
@@ -137,9 +142,9 @@ cdef inline array_decode(ConnectionSettings settings, FastReadBuffer buf,
     cdef:
         int32_t ndims = hton.unpack_int32(buf.read(4))
         int32_t flags = hton.unpack_int32(buf.read(4))
-        uint32_t elem_oid = hton.unpack_int32(buf.read(4))
+        uint32_t elem_oid = <uint32_t>hton.unpack_int32(buf.read(4))
         list result
-        uint32_t i
+        int i
         int32_t elem_len
         int64_t elem_count = 1
         FastReadBuffer elem_buf = FastReadBuffer.new()

@@ -21,7 +21,7 @@ cdef class Memory:
         return cpython.PyBytes_FromStringAndSize(self.buf, self.length)
 
     @staticmethod
-    cdef inline Memory new(char* buf, object owner, int length):
+    cdef inline Memory new(char* buf, object owner, ssize_t length):
         cdef Memory mem
         mem = Memory.__new__(Memory)
         mem.buf = buf
@@ -70,13 +70,13 @@ cdef class WriteBuffer:
     cdef inline len(self):
         return self._length
 
-    cdef inline _ensure_alloced(self, size_t extra_length):
-        cdef size_t new_size = extra_length + self._length
+    cdef inline _ensure_alloced(self, ssize_t extra_length):
+        cdef ssize_t new_size = extra_length + self._length
 
         if new_size > self._size:
             self._reallocate(new_size)
 
-    cdef _reallocate(self, new_size):
+    cdef _reallocate(self, ssize_t new_size):
         cdef char *new_buf
 
         if new_size < _BUFFER_MAX_GROW:
@@ -86,18 +86,18 @@ cdef class WriteBuffer:
             new_size += _BUFFER_INITIAL_SIZE
 
         if self._smallbuf_inuse:
-            new_buf = <char*>PyMem_Malloc(sizeof(char) * new_size)
+            new_buf = <char*>PyMem_Malloc(sizeof(char) * <size_t>new_size)
             if new_buf is NULL:
                 self._buf = NULL
                 self._size = 0
                 self._length = 0
                 raise MemoryError
-            memcpy(new_buf, self._buf, self._size)
+            memcpy(new_buf, self._buf, <size_t>self._size)
             self._size = new_size
             self._buf = new_buf
             self._smallbuf_inuse = False
         else:
-            new_buf = <char*>PyMem_Realloc(<void*>self._buf, new_size)
+            new_buf = <char*>PyMem_Realloc(<void*>self._buf, <size_t>new_size)
             if new_buf is NULL:
                 PyMem_Free(self._buf)
                 self._buf = NULL
@@ -117,7 +117,7 @@ cdef class WriteBuffer:
 
     cdef inline end_message(self):
         # "length-1" to exclude the message type byte
-        cdef size_t mlen = self._length - 1
+        cdef ssize_t mlen = self._length - 1
 
         self._check_readonly()
         if not self._message_mode:
@@ -125,8 +125,10 @@ cdef class WriteBuffer:
                 'end_message can only be called with start_message')
         if self._length < 5:
             raise BufferError('end_message: buffer is too small')
+        if mlen > _MAXINT32:
+            raise BufferError('end_message: message is too large')
 
-        hton.pack_int32(&self._buf[1], mlen)
+        hton.pack_int32(&self._buf[1], <int32_t>mlen)
         return self
 
     cdef write_buffer(self, WriteBuffer buf):
@@ -138,7 +140,7 @@ cdef class WriteBuffer:
         self._ensure_alloced(buf._length)
         memcpy(self._buf + self._length,
                <void*>buf._buf,
-               buf._length)
+               <size_t>buf._length)
         self._length += buf._length
 
     cdef write_byte(self, char b):
@@ -171,7 +173,7 @@ cdef class WriteBuffer:
         self._check_readonly()
         self._ensure_alloced(len)
 
-        memcpy(self._buf + self._length, <void*>data, len)
+        memcpy(self._buf + self._length, <void*>data, <size_t>len)
         self._length += len
 
     cdef write_int16(self, int16_t i):
@@ -246,7 +248,7 @@ cdef class ReadBuffer:
 
     cdef feed_data(self, data):
         cdef:
-            int32_t dlen
+            ssize_t dlen
             bytes data_bytes
 
         if not cpython.PyBytes_CheckExact(data):
@@ -293,7 +295,7 @@ cdef class ReadBuffer:
                 raise RuntimeError(
                     'debug: second buffer of ReadBuffer is empty')
 
-    cdef inline char* _try_read_bytes(self, int nbytes):
+    cdef inline char* _try_read_bytes(self, ssize_t nbytes):
         # Important: caller must call _ensure_first_buf() prior
         # to calling try_read_bytes, and must not overread
 
@@ -319,10 +321,10 @@ cdef class ReadBuffer:
         else:
             return NULL
 
-    cdef inline read(self, int nbytes):
+    cdef inline read(self, ssize_t nbytes):
         cdef:
             object result
-            int nread
+            ssize_t nread
             char *buf
 
         self._ensure_first_buf()
@@ -419,8 +421,8 @@ cdef class ReadBuffer:
                 'to be in the buffer')
 
         cdef:
-            int pos
-            int nread
+            ssize_t pos
+            ssize_t nread
             bytes result
             char* buf
             char* buf_start
@@ -504,8 +506,8 @@ cdef class ReadBuffer:
         self._current_message_ready = 1
         return 1
 
-    cdef inline char* try_consume_message(self, int32_t* len):
-        cdef int32_t buf_len
+    cdef inline char* try_consume_message(self, ssize_t* len):
+        cdef ssize_t buf_len
 
         if not self._current_message_ready:
             return NULL
@@ -579,7 +581,7 @@ cdef class ReadBuffer:
 @cython.freelist(_BUFFER_FREELIST_SIZE)
 cdef class FastReadBuffer:
 
-    cdef inline const char* read(self, size_t n) except NULL:
+    cdef inline const char* read(self, ssize_t n) except NULL:
         cdef const char *result
 
         if n > self.len:
@@ -599,12 +601,12 @@ cdef class FastReadBuffer:
         return result
 
     cdef inline FastReadBuffer slice_from(self, FastReadBuffer source,
-                                          size_t len):
+                                          ssize_t len):
         self.buf = source.read(len)
         self.len = len
         return self
 
-    cdef _raise_ins_err(self, size_t n, size_t len):
+    cdef _raise_ins_err(self, ssize_t n, ssize_t len):
         raise BufferError(
             'insufficient data in buffer: requested {}, remaining {}'.
                 format(n, self.len))

@@ -34,4 +34,4 @@ cdef class PreparedStatementState:
     cdef _ensure_args_encoder(self)
     cdef _set_row_desc(self, object desc)
     cdef _set_args_desc(self, object desc)
-    cdef _decode_row(self, const char* cbuf, int32_t buf_len)
+    cdef _decode_row(self, const char* cbuf, ssize_t buf_len)

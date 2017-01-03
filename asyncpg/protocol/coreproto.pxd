@@ -61,7 +61,7 @@ cdef enum TransactionStatus:
     PQTRANS_UNKNOWN = 4              # cannot determine status
 
 
-ctypedef object (*decode_row_method)(object, const char*, int32_t)
+ctypedef object (*decode_row_method)(object, const char*, ssize_t)
 
 
 cdef class CoreProtocol:
@@ -150,7 +150,7 @@ cdef class CoreProtocol:
     cdef _simple_query(self, str query)
     cdef _terminate(self)
 
-    cdef _decode_row(self, const char* buf, int32_t buf_len)
+    cdef _decode_row(self, const char* buf, ssize_t buf_len)
 
     cdef _on_result(self)
     cdef _on_notification(self, pid, channel, payload)

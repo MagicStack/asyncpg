@@ -33,7 +33,7 @@ cdef text_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
 
 cdef inline decode_pg_string(ConnectionSettings settings, const char* data,
-                             int32_t len):
+                             ssize_t len):
 
     if settings.is_encoding_utf8():
         # decode UTF-8 in strict mode
@@ -44,7 +44,7 @@ cdef inline decode_pg_string(ConnectionSettings settings, const char* data,
 
 
 cdef text_decode(ConnectionSettings settings, FastReadBuffer buf):
-    cdef size_t buf_len = buf.len
+    cdef ssize_t buf_len = buf.len
     return decode_pg_string(settings, buf.read_all(), buf_len)
 
 

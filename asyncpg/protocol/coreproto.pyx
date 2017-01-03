@@ -301,7 +301,7 @@ cdef class CoreProtocol:
     cdef _parse_msg_command_complete(self):
         cdef:
             char* cbuf
-            int32_t cbuf_len
+            ssize_t cbuf_len
 
         cbuf = self.buffer.try_consume_message(&cbuf_len)
         if cbuf != NULL and cbuf_len > 0:
@@ -317,7 +317,7 @@ cdef class CoreProtocol:
             decode_row_method decoder = <decode_row_method>self._decode_row
 
             char* cbuf
-            int32_t cbuf_len
+            ssize_t cbuf_len
             object row
             Memory mem
 
@@ -708,7 +708,7 @@ cdef class CoreProtocol:
         buf.end_message()
         self._write(buf)
 
-    cdef _decode_row(self, const char* buf, int32_t buf_len):
+    cdef _decode_row(self, const char* buf, ssize_t buf_len):
         pass
 
     cdef _set_server_parameter(self, name, val):

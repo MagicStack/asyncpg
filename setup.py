@@ -25,6 +25,8 @@ LDFLAGS = []
 
 if platform.uname().system == 'Windows':
     LDFLAGS.append('ws2_32.lib')
+else:
+    CFLAGS.extend(['-Wall', '-Wsign-compare', '-Wconversion'])
 
 
 def discover_tests():

@@ -199,7 +199,7 @@ cdef class PreparedStatementState:
         self.parameters_desc = _decode_parameters_desc(desc)
         self.args_num = <int16_t>(len(self.parameters_desc))
 
-    cdef _decode_row(self, const char* cbuf, int32_t buf_len):
+    cdef _decode_row(self, const char* cbuf, ssize_t buf_len):
         cdef:
             Codec codec
             int16_t fnum
@@ -209,7 +209,7 @@ cdef class PreparedStatementState:
             ConnectionSettings settings = self.settings
             int32_t i
             FastReadBuffer rbuf = self.buffer
-            size_t bl
+            ssize_t bl
 
         rbuf.buf = cbuf
         rbuf.len = buf_len

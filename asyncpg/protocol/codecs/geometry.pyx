@@ -97,8 +97,9 @@ cdef point_decode(ConnectionSettings settings, FastReadBuffer buf):
 
 cdef path_encode(ConnectionSettings settings, WriteBuffer wbuf, obj):
     cdef:
-        bint is_closed = 0
-        int32_t npts
+        int8_t is_closed = 0
+        ssize_t npts
+        ssize_t encoded_len
         int32_t i
 
     if cpython.PyTuple_Check(obj):
@@ -109,11 +110,13 @@ cdef path_encode(ConnectionSettings settings, WriteBuffer wbuf, obj):
         is_closed = obj.is_closed
 
     npts = len(obj)
+    encoded_len = 1 + 4 + 16 * npts
+    if encoded_len > _MAXINT32:
+        raise ValueError('path value too long')
 
-    wbuf.write_int32(1 + 4 + 16 * npts)
-
+    wbuf.write_int32(<int32_t>encoded_len)
     wbuf.write_byte(is_closed)
-    wbuf.write_int32(npts)
+    wbuf.write_int32(<int32_t>npts)
 
     _encode_points(wbuf, obj)
 
@@ -128,13 +131,17 @@ cdef path_decode(ConnectionSettings settings, FastReadBuffer buf):
 cdef poly_encode(ConnectionSettings settings, WriteBuffer wbuf, obj):
     cdef:
         bint is_closed
-        int32_t npts
+        ssize_t npts
+        ssize_t encoded_len
         int32_t i
 
     npts = len(obj)
+    encoded_len = 4 + 16 * npts
+    if encoded_len > _MAXINT32:
+        raise ValueError('polygon value too long')
 
-    wbuf.write_int32(4 + 16 * npts)
-    wbuf.write_int32(npts)
+    wbuf.write_int32(<int32_t>encoded_len)
+    wbuf.write_int32(<int32_t>npts)
     _encode_points(wbuf, obj)
 
 

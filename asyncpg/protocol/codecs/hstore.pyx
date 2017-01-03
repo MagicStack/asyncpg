@@ -9,12 +9,14 @@ cdef hstore_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     cdef:
         char *str
         ssize_t size
-        int32_t count
+        ssize_t count
         object items
         WriteBuffer item_buf = WriteBuffer.new()
 
-    count = cpython.PyLong_AsLong(len(obj))
-    item_buf.write_int32(count)
+    count = len(obj)
+    if count > _MAXINT32:
+        raise ValueError('hstore value is too large')
+    item_buf.write_int32(<int32_t>count)
 
     if hasattr(obj, 'items'):
         items = obj.items()
@@ -49,7 +51,7 @@ cdef hstore_decode(ConnectionSettings settings, FastReadBuffer buf):
 
     result = {}
 
-    elem_count = hton.unpack_int32(buf.read(4))
+    elem_count = <uint32_t>hton.unpack_int32(buf.read(4))
     if elem_count == 0:
         return result
 

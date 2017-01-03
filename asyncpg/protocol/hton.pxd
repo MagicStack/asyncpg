@@ -45,7 +45,7 @@ cdef inline void pack_int64(char* buf, int64_t x):
 
 cdef inline int64_t unpack_int64(const char* buf):
     cdef int64_t hh = unpack_int32(buf)
-    cdef uint32_t hl = unpack_int32(&buf[4])
+    cdef uint32_t hl = <uint32_t>unpack_int32(&buf[4])
 
     return (hh << 32) | hl
 
@@ -58,12 +58,12 @@ cdef union _floatconv:
 cdef inline int32_t pack_float(char* buf, float f):
     cdef _floatconv v
     v.f = f
-    pack_int32(buf, v.i)
+    pack_int32(buf, <int32_t>v.i)
 
 
 cdef inline float unpack_float(const char* buf):
     cdef _floatconv v
-    v.i = unpack_int32(buf)
+    v.i = <uint32_t>unpack_int32(buf)
     return v.f
 
 
@@ -75,10 +75,10 @@ cdef union _doubleconv:
 cdef inline int64_t pack_double(char* buf, double f):
     cdef _doubleconv v
     v.f = f
-    pack_int64(buf, v.i)
+    pack_int64(buf, <int64_t>v.i)
 
 
 cdef inline double unpack_double(const char* buf):
     cdef _doubleconv v
-    v.i = unpack_int64(buf)
+    v.i = <uint64_t>unpack_int64(buf)
     return v.f

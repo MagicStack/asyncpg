@@ -21,11 +21,11 @@ cdef enum _RangeArgumentType:
     _RANGE_ARGUMENT_RANGE = 2
 
 
-cdef inline bint _range_has_lbound(flags):
+cdef inline bint _range_has_lbound(uint8_t flags):
     return not (flags & (RANGE_EMPTY | RANGE_LB_INF))
 
 
-cdef inline bint _range_has_ubound(flags):
+cdef inline bint _range_has_ubound(uint8_t flags):
     return not (flags & (RANGE_EMPTY | RANGE_UB_INF))
 
 
@@ -104,7 +104,7 @@ cdef range_encode(ConnectionSettings settings, WriteBuffer buf,
         encoder(settings, bounds_data, upper, encoder_arg)
 
     buf.write_int32(1 + bounds_data.len())
-    buf.write_byte(flags)
+    buf.write_byte(<int8_t>flags)
     buf.write_buffer(bounds_data)
 
 

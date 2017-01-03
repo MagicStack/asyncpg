@@ -395,7 +395,7 @@ cdef class BaseProtocol(CoreProtocol):
     cdef _on_result__simple_query(self, object waiter):
         waiter.set_result(self.result_status_msg.decode(self.encoding))
 
-    cdef _decode_row(self, const char* buf, int32_t buf_len):
+    cdef _decode_row(self, const char* buf, ssize_t buf_len):
         if ASYNCPG_DEBUG:
             if self.statement is None:
                 raise RuntimeError(

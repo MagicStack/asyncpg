@@ -6,7 +6,7 @@
 
 
 cdef inline record_encode_frame(ConnectionSettings settings, WriteBuffer buf,
-                                WriteBuffer elem_data, uint32_t elem_count):
+                                WriteBuffer elem_data, int32_t elem_count):
     buf.write_int32(4 + elem_data.len())
     # attribute count
     buf.write_int32(elem_count)
@@ -24,11 +24,11 @@ cdef anonymous_record_decode(ConnectionSettings settings, FastReadBuffer buf):
         Codec elem_codec
         FastReadBuffer elem_buf = FastReadBuffer.new()
 
-    elem_count = hton.unpack_int32(buf.read(4))
+    elem_count = <uint32_t>hton.unpack_int32(buf.read(4))
     result = cpython.PyTuple_New(elem_count)
 
     for i in range(elem_count):
-        elem_typ = hton.unpack_int32(buf.read(4))
+        elem_typ = <uint32_t>hton.unpack_int32(buf.read(4))
         elem_len = hton.unpack_int32(buf.read(4))
 
         if elem_len == -1:

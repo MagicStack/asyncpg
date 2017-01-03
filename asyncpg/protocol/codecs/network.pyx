@@ -29,9 +29,9 @@ cdef inline _net_encode(WriteBuffer buf, int32_t version, uint8_t bits,
     family = PGSQL_AF_INET if version == 4 else PGSQL_AF_INET6
     cpython.PyBytes_AsStringAndSize(addr, &addrbytes, &addrlen)
 
-    buf.write_int32(4 + addrlen)
+    buf.write_int32(4 + <int32_t>addrlen)
     buf.write_byte(family)
-    buf.write_byte(bits)
+    buf.write_byte(<int8_t>bits)
     buf.write_byte(is_cidr)
     buf.write_byte(<int8_t>addrlen)
     buf.write_cstr(addrbytes, addrlen)

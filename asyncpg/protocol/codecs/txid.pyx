@@ -7,10 +7,10 @@
 
 cdef txid_snapshot_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     cdef:
-        int32_t nxip
+        ssize_t nxip
         int64_t xmin
         int64_t xmax
-        int32_t i
+        int i
         WriteBuffer xip_buf = WriteBuffer.new()
 
     if not (cpython.PyTuple_Check(obj) or cpython.PyList_Check(obj)):
@@ -22,6 +22,9 @@ cdef txid_snapshot_encode(ConnectionSettings settings, WriteBuffer buf, obj):
             'invalid number of elements in txid_snapshot tuple, expecting 4')
 
     nxip = len(obj[2])
+    if nxip > _MAXINT32:
+        raise ValueError('txid_snapshot value is too long')
+
     xmin = obj[0]
     xmax = obj[1]
 
@@ -30,7 +33,7 @@ cdef txid_snapshot_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
     buf.write_int32(20 + xip_buf.len())
 
-    buf.write_int32(nxip)
+    buf.write_int32(<int32_t>nxip)
     buf.write_int64(obj[0])
     buf.write_int64(obj[1])
     buf.write_buffer(xip_buf)

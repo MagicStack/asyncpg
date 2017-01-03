@@ -30,7 +30,7 @@ cdef bytea_encode(ConnectionSettings settings, WriteBuffer wbuf, obj):
 
 
 cdef bytea_decode(ConnectionSettings settings, FastReadBuffer buf):
-    cdef size_t buf_len = buf.len
+    cdef ssize_t buf_len = buf.len
     return cpython.PyBytes_FromStringAndSize(buf.read_all(), buf_len)
 
 
