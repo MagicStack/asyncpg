@@ -109,8 +109,21 @@ class TestAuthentication(tb.ConnectedTestCase):
         with self.assertRaisesRegex(
                 asyncpg.InvalidAuthorizationSpecificationError,
                 'pg_hba.conf rejects connection'):
-            await self.cluster.connect(
-                user='reject_user', database='postgres', loop=self.loop)
+            for tried in range(3):
+                try:
+                    await self.cluster.connect(
+                        user='reject_user', database='postgres',
+                        loop=self.loop)
+                except asyncpg.ConnectionDoesNotExistError:
+                    if _system == 'Windows':
+                        # On Windows the server sometimes just closes
+                        # the connection sooner than we receive the
+                        # actual error.
+                        continue
+                    else:
+                        raise
+                else:
+                    break
 
     async def test_auth_password_cleartext(self):
         conn = await self.cluster.connect(
