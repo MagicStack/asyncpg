@@ -41,7 +41,7 @@ class TestPool(tb.ConnectedTestCase):
                                             min_size=5, max_size=5) as pool:
 
                     async def worker():
-                        con = await pool.acquire(timeout=1)
+                        con = await pool.acquire(timeout=5)
                         self.assertEqual(await con.fetchval('SELECT 1'), 1)
                         await pool.release(con)
 
