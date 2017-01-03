@@ -11,12 +11,15 @@ import asyncpg
 from asyncpg import _testbase as tb
 
 
+MAX_RUNTIME = 0.5
+
+
 class TestTimeout(tb.ConnectedTestCase):
 
     async def test_timeout_01(self):
         for methname in {'fetch', 'fetchrow', 'fetchval', 'execute'}:
             with self.assertRaises(asyncio.TimeoutError), \
-                    self.assertRunUnder(0.1):
+                    self.assertRunUnder(MAX_RUNTIME):
                 meth = getattr(self.con, methname)
                 await meth('select pg_sleep(10)', timeout=0.02)
             self.assertEqual(await self.con.fetch('select 1'), [(1,)])
@@ -26,7 +29,7 @@ class TestTimeout(tb.ConnectedTestCase):
 
         for methname in {'fetch', 'fetchrow', 'fetchval'}:
             with self.assertRaises(asyncio.TimeoutError), \
-                    self.assertRunUnder(0.1):
+                    self.assertRunUnder(MAX_RUNTIME):
                 meth = getattr(st, methname)
                 await meth(timeout=0.02)
             self.assertEqual(await self.con.fetch('select 1'), [(1,)])
@@ -37,14 +40,14 @@ class TestTimeout(tb.ConnectedTestCase):
         await asyncio.sleep(0.05, loop=self.loop)
         task.cancel()
         with self.assertRaises(asyncio.CancelledError), \
-                self.assertRunUnder(0.1):
+                self.assertRunUnder(MAX_RUNTIME):
             await task
         self.assertEqual(await self.con.fetch('select 1'), [(1,)])
 
     async def test_timeout_04(self):
         st = await self.con.prepare('select pg_sleep(10)', timeout=0.1)
         with self.assertRaises(asyncio.TimeoutError), \
-                self.assertRunUnder(0.2):
+                self.assertRunUnder(MAX_RUNTIME):
             async with self.con.transaction():
                 async for _ in st.cursor(timeout=0.1):  # NOQA
                     pass
@@ -54,7 +57,7 @@ class TestTimeout(tb.ConnectedTestCase):
         async with self.con.transaction():
             cur = await st.cursor()
             with self.assertRaises(asyncio.TimeoutError), \
-                    self.assertRunUnder(0.2):
+                    self.assertRunUnder(MAX_RUNTIME):
                 await cur.fetch(1, timeout=0.1)
         self.assertEqual(await self.con.fetch('select 1'), [(1,)])
 
@@ -70,7 +73,7 @@ class TestTimeout(tb.ConnectedTestCase):
     async def test_timeout_06(self):
         async with self.con.transaction():
             with self.assertRaises(asyncio.TimeoutError), \
-                    self.assertRunUnder(0.2):
+                    self.assertRunUnder(MAX_RUNTIME):
                 async for _ in self.con.cursor(   # NOQA
                         'select pg_sleep(10)', timeout=0.1):
                     pass
@@ -79,25 +82,25 @@ class TestTimeout(tb.ConnectedTestCase):
         async with self.con.transaction():
             cur = await self.con.cursor('select pg_sleep(10)')
             with self.assertRaises(asyncio.TimeoutError), \
-                    self.assertRunUnder(0.2):
+                    self.assertRunUnder(MAX_RUNTIME):
                 await cur.fetch(1, timeout=0.1)
 
         async with self.con.transaction():
             cur = await self.con.cursor('select pg_sleep(10)')
             with self.assertRaises(asyncio.TimeoutError), \
-                    self.assertRunUnder(0.2):
+                    self.assertRunUnder(MAX_RUNTIME):
                 await cur.forward(1, timeout=1e-10)
 
         async with self.con.transaction():
             cur = await self.con.cursor('select pg_sleep(10)')
             with self.assertRaises(asyncio.TimeoutError), \
-                    self.assertRunUnder(0.2):
+                    self.assertRunUnder(MAX_RUNTIME):
                 await cur.fetchrow(timeout=0.1)
 
         async with self.con.transaction():
             cur = await self.con.cursor('select pg_sleep(10)')
             with self.assertRaises(asyncio.TimeoutError), \
-                    self.assertRunUnder(0.2):
+                    self.assertRunUnder(MAX_RUNTIME):
                 await cur.fetchrow(timeout=0.1)
 
             with self.assertRaises(asyncpg.InFailedSQLTransactionError):
@@ -116,7 +119,7 @@ class TestConnectionCommandTimeout(tb.ConnectedTestCase):
     async def test_command_timeout_01(self):
         for methname in {'fetch', 'fetchrow', 'fetchval', 'execute'}:
             with self.assertRaises(asyncio.TimeoutError), \
-                    self.assertRunUnder(0.1):
+                    self.assertRunUnder(MAX_RUNTIME):
                 meth = getattr(self.con, methname)
                 await meth('select pg_sleep(10)')
             self.assertEqual(await self.con.fetch('select 1'), [(1,)])
