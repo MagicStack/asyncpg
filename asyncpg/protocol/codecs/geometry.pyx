@@ -97,7 +97,7 @@ cdef point_decode(ConnectionSettings settings, FastReadBuffer buf):
 
 cdef path_encode(ConnectionSettings settings, WriteBuffer wbuf, obj):
     cdef:
-        bint is_closed
+        bint is_closed = 0
         int32_t npts
         int32_t i
 

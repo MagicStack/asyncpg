@@ -127,8 +127,8 @@ cdef timestamp_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
 cdef timestamp_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
-        int64_t seconds
-        uint32_t microseconds
+        int64_t seconds = 0
+        uint32_t microseconds = 0
         int32_t inf = _decode_time(buf, &seconds, &microseconds)
 
     if inf > 0:
@@ -163,8 +163,8 @@ cdef timestamptz_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
 cdef timestamptz_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
-        int64_t seconds
-        uint32_t microseconds
+        int64_t seconds = 0
+        uint32_t microseconds = 0
         int32_t inf = _decode_time(buf, &seconds, &microseconds)
 
     if inf > 0:
@@ -191,8 +191,8 @@ cdef time_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
 cdef time_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
-        int64_t seconds
-        uint32_t microseconds
+        int64_t seconds = 0
+        uint32_t microseconds = 0
 
     _decode_time(buf, &seconds, &microseconds)
 
@@ -243,8 +243,8 @@ cdef interval_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
         int32_t days
         int32_t months
-        int64_t seconds
-        uint32_t microseconds
+        int64_t seconds = 0
+        uint32_t microseconds = 0
 
     _decode_time(buf, &seconds, &microseconds)
     days = hton.unpack_int32(buf.read(4))
