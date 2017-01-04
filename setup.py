@@ -19,7 +19,7 @@ from setuptools.command import build_ext as _build_ext
 if sys.version_info < (3, 5):
     raise RuntimeError('asyncpg requires Python 3.5 or greater')
 
-VERSION = '0.8.2'
+VERSION = '0.8.3'
 CFLAGS = ['-O2']
 LDFLAGS = []
 
