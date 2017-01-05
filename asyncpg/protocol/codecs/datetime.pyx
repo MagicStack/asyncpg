@@ -25,9 +25,9 @@ cdef int32_t pg_date_offset_ord = \
 
 # Binary representations of infinity for datetimes.
 cdef int64_t pg_time64_infinity = 0x7fffffffffffffff
-cdef int64_t pg_time64_negative_infinity = -1
+cdef int64_t pg_time64_negative_infinity = <int64_t>0x8000000000000000
 cdef int32_t pg_date_infinity = 0x7fffffff
-cdef int32_t pg_date_negative_infinity = -1
+cdef int32_t pg_date_negative_infinity = <int32_t>0x80000000
 
 infinity_datetime = datetime.datetime(
     datetime.MAXYEAR, 12, 31, 23, 59, 59, 999999)

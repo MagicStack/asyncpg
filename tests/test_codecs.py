@@ -156,13 +156,17 @@ type_samples = [
         datetime.datetime(250, 1, 1, 5, 25, 10),
         infinity_datetime,
         negative_infinity_datetime,
+        {'textinput': 'infinity', 'output': infinity_datetime},
+        {'textinput': '-infinity', 'output': negative_infinity_datetime},
     ]),
     ('date', 'date', [
         datetime.date(3000, 5, 20),
         datetime.date(2000, 1, 1),
         datetime.date(500, 1, 1),
-        datetime.date(1, 1, 1),
         infinity_date,
+        negative_infinity_date,
+        {'textinput': 'infinity', 'output': infinity_date},
+        {'textinput': '-infinity', 'output': negative_infinity_date},
     ]),
     ('time', 'time', [
         datetime.time(12, 15, 20),
@@ -360,15 +364,24 @@ class TestCodecs(tb.ConnectedTestCase):
                 "SELECT $1::" + typname
             )
 
+            textst = await self.con.prepare(
+                "SELECT $1::text::" + typname
+            )
+
             for sample in sample_data:
                 with self.subTest(sample=sample, typname=typname):
+                    stmt = st
                     if isinstance(sample, dict):
-                        inputval = sample['input']
+                        if 'textinput' in sample:
+                            inputval = sample['textinput']
+                            stmt = textst
+                        else:
+                            inputval = sample['input']
                         outputval = sample['output']
                     else:
                         inputval = outputval = sample
 
-                    result = await st.fetchval(inputval)
+                    result = await stmt.fetchval(inputval)
                     err_msg = (
                         "unexpected result for {} when passing {!r}: "
                         "received {!r}, expected {!r}".format(
