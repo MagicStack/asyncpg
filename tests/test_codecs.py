@@ -258,7 +258,10 @@ type_samples = [
         math.e,
         math.inf,
         -math.inf,
-        math.nan
+        math.nan,
+        {'textinput': 'infinity', 'output': math.inf},
+        {'textinput': '-infinity', 'output': -math.inf},
+        {'textinput': 'NaN', 'output': math.nan},
     ]),
     ('float4', 'float4', [
         1.1,
@@ -272,7 +275,10 @@ type_samples = [
         math.e,
         math.inf,
         -math.inf,
-        math.nan
+        math.nan,
+        {'textinput': 'infinity', 'output': math.inf},
+        {'textinput': '-infinity', 'output': -math.inf},
+        {'textinput': 'NaN', 'output': math.nan},
     ]),
     ('cidr', 'cidr', [
         ipaddress.IPv4Network('255.255.255.255/32'),
