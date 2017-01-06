@@ -513,6 +513,10 @@ class TestCodecs(tb.ConnectedTestCase):
                 r"SELECT '{1, 2, NULL}'::int[]::anyarray",
                 [1, 2, None]
             ),
+            (
+                r"SELECT '{}'::int[]",
+                []
+            ),
         ]
 
         for sql, expected in cases:

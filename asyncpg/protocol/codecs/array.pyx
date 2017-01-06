@@ -192,116 +192,79 @@ cdef inline array_decode(ConnectionSettings settings, FastReadBuffer buf,
     return result
 
 
-cdef inline _nested_array_decode(ConnectionSettings settings,
-                                 FastReadBuffer buf,
-                                 decode_func_ex decoder,
-                                 const void *decoder_arg,
-                                 int32_t ndims, int32_t *dims,
-                                 FastReadBuffer elem_buf):
+cdef _nested_array_decode(ConnectionSettings settings,
+                          FastReadBuffer buf,
+                          decode_func_ex decoder,
+                          const void *decoder_arg,
+                          int32_t ndims, int32_t *dims,
+                          FastReadBuffer elem_buf):
 
     cdef:
         int32_t elem_len
-        int32_t d1, d2, d3, d4, d5, d6
-        list result
-        object elem
-        list stride1, stride2, stride3, stride4, stride5
+        int64_t i, j
+        int64_t array_len = 1
+        object elem, stride
+        # An array of pointers to lists for each current array level.
+        void *strides[ARRAY_MAXDIM]
+        # An array of current positions at each array level.
+        int32_t indexes[ARRAY_MAXDIM]
 
-    # Nested array.  The approach here is dumb, but fast: rely
-    # on the dimension limit and shape data using nested loops.
-    # Alas, Cython doesn't have preprocessor macros.
-    #
-    result = cpython.PyList_New(dims[0])
+    if ASYNCPG_DEBUG:
+        if ndims <= 0:
+            raise RuntimeError('unexpected ndims value: {}'.format(ndims))
 
-    for d1 in range(dims[0]):
-        stride1 = cpython.PyList_New(dims[1])
-        cpython.Py_INCREF(stride1)
-        cpython.PyList_SET_ITEM(result, d1, stride1)
+    for i in range(ndims):
+        array_len *= dims[i]
+        indexes[i] = 0
 
-        for d2 in range(dims[1]):
-            if ndims == 2:
-                elem_len = hton.unpack_int32(buf.read(4))
-                if elem_len == -1:
-                    elem = None
-                else:
-                    elem = decoder(settings,
-                                   elem_buf.slice_from(buf, elem_len),
-                                   decoder_arg)
+    for i in range(array_len):
+        # Decode the element.
+        elem_len = hton.unpack_int32(buf.read(4))
+        if elem_len == -1:
+            elem = None
+        else:
+            elem = decoder(settings,
+                           elem_buf.slice_from(buf, elem_len),
+                           decoder_arg)
 
-                cpython.Py_INCREF(elem)
-                cpython.PyList_SET_ITEM(stride1, d2, elem)
+        # Take an explicit reference for PyList_SET_ITEM in the below
+        # loop expects this.
+        cpython.Py_INCREF(elem)
 
+        # Iterate over array dimentions and put the element in
+        # the correctly nested sublist.
+        for j in reversed(range(ndims)):
+            if indexes[j] == 0:
+                # Allocate the list for this array level.
+                stride = cpython.PyList_New(dims[j])
+
+                strides[j] = <void*><cpython.PyObject>stride
+                # Take an explicit reference for PyList_SET_ITEM below
+                # expects this.
+                cpython.Py_INCREF(stride)
+
+            stride = <object><cpython.PyObject*>strides[j]
+            cpython.PyList_SET_ITEM(stride, indexes[j], elem)
+            indexes[j] += 1
+
+            if indexes[j] == dims[j] and j != 0:
+                # This array level is full, continue the
+                # ascent in the dimensions so that this level
+                # sublist will be appened to the parent list.
+                elem = stride
+                # Reset the index, this will cause the
+                # new list to be allocated on the next
+                # iteration on this array axis.
+                indexes[j] = 0
             else:
-                stride2 = cpython.PyList_New(dims[2])
-                cpython.Py_INCREF(stride2)
-                cpython.PyList_SET_ITEM(stride1, d2, stride2)
+                break
 
-                for d3 in range(dims[2]):
-                    if ndims == 3:
-                        elem_len = hton.unpack_int32(buf.read(4))
-                        if elem_len == -1:
-                            elem = None
-                        else:
-                            elem = decoder(settings,
-                                           elem_buf.slice_from(buf, elem_len),
-                                           decoder_arg)
-
-                        cpython.Py_INCREF(elem)
-                        cpython.PyList_SET_ITEM(stride2, d3, elem)
-
-                    else:
-                        stride3 = cpython.PyList_New(dims[3])
-                        cpython.Py_INCREF(stride3)
-                        cpython.PyList_SET_ITEM(stride2, d3, stride3)
-
-                        for d4 in range(dims[3]):
-                            if ndims == 4:
-                                elem_len = hton.unpack_int32(buf.read(4))
-                                if elem_len == -1:
-                                    elem = None
-                                else:
-                                    elem = decoder(settings,
-                                                   elem_buf.slice_from(buf, elem_len),
-                                                   decoder_arg)
-
-                                cpython.Py_INCREF(elem)
-                                cpython.PyList_SET_ITEM(stride3, d4, elem)
-
-                            else:
-                                stride4 = cpython.PyList_New(dims[4])
-                                cpython.Py_INCREF(stride4)
-                                cpython.PyList_SET_ITEM(stride3, d4, stride4)
-
-                                for d5 in range(dims[4]):
-                                    if ndims == 5:
-                                        elem_len = hton.unpack_int32(buf.read(4))
-                                        if elem_len == -1:
-                                            elem = None
-                                        else:
-                                            elem = decoder(settings,
-                                                           elem_buf.slice_from(buf, elem_len),
-                                                           decoder_arg)
-
-                                        cpython.Py_INCREF(elem)
-                                        cpython.PyList_SET_ITEM(stride4, d5, elem)
-
-                                    else:
-                                        stride5 = cpython.PyList_New(dims[5])
-                                        cpython.Py_INCREF(stride5)
-                                        cpython.PyList_SET_ITEM(stride4, d5, stride5)
-
-                                        for d6 in range(dims[5]):
-                                            elem_len = hton.unpack_int32(buf.read(4))
-                                            if elem_len == -1:
-                                                elem = None
-                                            else:
-                                                elem = decoder(settings,
-                                                               elem_buf.slice_from(buf, elem_len),
-                                                               decoder_arg)
-
-                                            cpython.Py_INCREF(elem)
-                                            cpython.PyList_SET_ITEM(stride5, d6, elem)
-
-    return result
+    stride = <object><cpython.PyObject*>strides[0]
+    # Since each element in strides has a refcount of 1,
+    # returning strides[0] will increment it to 2, so
+    # balance that.
+    cpython.Py_DECREF(stride)
+    return stride
 
 
 cdef textarray_decode(ConnectionSettings settings, FastReadBuffer buf,
