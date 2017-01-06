@@ -163,17 +163,6 @@ cdef inline array_decode(ConnectionSettings settings, FastReadBuffer buf,
             'number of array dimensions ({}) exceed the maximum expected ({})'.
             format(ndims, ARRAY_MAXDIM))
 
-    if decoder == NULL:
-        # No decoder is known beforehand, look it up
-
-        elem_codec = settings.get_data_codec(elem_oid)
-        if elem_codec is None or not elem_codec.has_decoder():
-            raise RuntimeError(
-                'no decoder for type OID {}'.format(elem_oid))
-
-        decoder = codec_decode_func_ex
-        decoder_arg = <void*>(<cpython.PyObject>elem_codec)
-
     for i in range(ndims):
         dims[i] = hton.unpack_int32(buf.read(4))
         # Ignore the lower bound information
@@ -764,7 +753,9 @@ cdef arraytext_decode(ConnectionSettings settings, FastReadBuffer buf):
 
 
 cdef anyarray_decode(ConnectionSettings settings, FastReadBuffer buf):
-    return array_decode(settings, buf, NULL, NULL)
+    # Instances of anyarray (or any other polymorphic pseudotype) are
+    # never supposed to be returned from actual queries.
+    raise RuntimeError('unexpected instance of \'anyarray\' type')
 
 
 cdef init_array_codecs():
