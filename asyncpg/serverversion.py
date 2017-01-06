@@ -16,14 +16,23 @@ def split_server_version_string(version_string):
     parts = version_string.strip().split('.')
     if not parts[-1].isdigit():
         # release level specified
-        level = parts[-1].rstrip('0123456789').lower()
-        serial = parts[-1][level:]
-        versions = [int(p) for p in parts[:-1]][:3]
+        lastitem = parts[-1]
+        levelpart = lastitem.rstrip('0123456789').lower()
+        if levelpart != lastitem:
+            serial = int(lastitem[len(levelpart):])
+        else:
+            serial = 0
+
+        level = levelpart.lstrip('0123456789')
+        if level != levelpart:
+            parts[-1] = levelpart[:-len(level)]
+        else:
+            parts[-1] = 0
     else:
         level = 'final'
         serial = 0
-        versions = [int(p) for p in parts][:3]
 
+    versions = [int(p) for p in parts][:3]
     if len(versions) < 3:
         versions += [0] * (3 - len(versions))
 

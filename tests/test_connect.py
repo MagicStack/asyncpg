@@ -14,6 +14,7 @@ import unittest
 import asyncpg
 from asyncpg import _testbase as tb
 from asyncpg.connection import _parse_connect_params
+from asyncpg.serverversion import split_server_version_string
 
 _system = platform.uname().system
 
@@ -24,6 +25,33 @@ class TestSettings(tb.ConnectedTestCase):
         self.assertEqual(
             self.con.get_settings().client_encoding,
             'UTF8')
+
+    async def test_server_version_01(self):
+        version = self.con.get_server_version()
+        version_num = await self.con.fetchval("SELECT current_setting($1)",
+                                              'server_version_num', column=0)
+        ver_maj = int(version_num[:-4])
+        ver_min = int(version_num[-4:-2])
+        ver_fix = int(version_num[-2:])
+
+        self.assertEqual(version[:3], (ver_maj, ver_min, ver_fix))
+
+    def test_server_version_02(self):
+        versions = [
+            ("9.2", (9, 2, 0, 'final', 0),),
+            ("9.2.1", (9, 2, 1, 'final', 0),),
+            ("9.4beta1", (9, 4, 0, 'beta', 1),),
+            ("10devel", (10, 0, 0, 'devel', 0),),
+            ("10beta2", (10, 0, 0, 'beta', 2),),
+
+            # Despite the fact after version 10 Postgre's second number
+            # means "micro", it is parsed "as is" to be
+            # less confusing in comparisons.
+            ("10.1", (10, 1, 0, 'final', 0),),
+        ]
+        for version, expected in versions:
+            result = split_server_version_string(version)
+            self.assertEqual(expected, result)
 
 
 class TestAuthentication(tb.ConnectedTestCase):
