@@ -1028,3 +1028,28 @@ class TestCodecs(tb.ConnectedTestCase):
                 DROP USER norm1;
                 DROP USER norm2;
             ''')
+
+    async def test_enum(self):
+        await self.con.execute('''
+            CREATE TYPE enum_t AS ENUM ('abc', 'def', 'ghi');
+            CREATE TABLE tab (
+                a text,
+                b enum_t
+            );
+            INSERT INTO tab (a, b) VALUES ('foo', 'abc');
+            INSERT INTO tab (a, b) VALUES ('bar', 'def');
+        ''')
+
+        try:
+            for i in range(10):
+                r = await self.con.fetch('''
+                    SELECT a, b FROM tab ORDER BY b
+                ''')
+
+                self.assertEqual(r, [('foo', 'abc'), ('bar', 'def')])
+
+        finally:
+            await self.con.execute('''
+                DROP TABLE tab;
+                DROP TYPE enum_t;
+            ''')
