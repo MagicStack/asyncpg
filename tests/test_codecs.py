@@ -1066,6 +1066,8 @@ class TestCodecs(tb.ConnectedTestCase):
         try:
             await self.con.execute('INSERT INTO tab (a) VALUES ($1);', "foo")
             await self.con.execute('INSERT INTO tab (a, b) VALUES ($1, $2);', "foo", "abc")
+            await self.con.execute('SELECT a FROM tab;")
+            await self.con.execute('SELECT a, b FROM tab;")
 
         finally:
             await self.con.execute('''
