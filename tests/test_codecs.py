@@ -900,6 +900,30 @@ class TestCodecs(tb.ConnectedTestCase):
                 DROP EXTENSION hstore
             ''')
 
+    async def test_custom_codec_override(self):
+        """Test overriding core codecs."""
+        import json
+
+        conn = await self.cluster.connect(database='postgres', loop=self.loop)
+        try:
+            def _encoder(value):
+                return json.dumps(value).encode('utf-8')
+
+            def _decoder(value):
+                return json.loads(value.decode('utf-8'))
+
+            await conn.set_type_codec(
+                'json', encoder=_encoder, decoder=_decoder,
+                schema='pg_catalog', binary=True
+            )
+
+            data = {'foo': 'bar', 'spam': 1}
+            res = await conn.fetchval('SELECT $1::json', data)
+            self.assertEqual(data, res)
+
+        finally:
+            await conn.close()
+
     async def test_composites_in_arrays(self):
         await self.con.execute('''
             CREATE TYPE t AS (a text, b int);
