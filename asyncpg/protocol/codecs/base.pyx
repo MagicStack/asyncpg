@@ -474,10 +474,6 @@ cdef class DataCodecConfig:
                          encoder, decoder, binary):
         format = PG_FORMAT_BINARY if binary else PG_FORMAT_TEXT
 
-        if self.get_codec(typeoid, format) is not None:
-            raise ValueError('cannot override codec for type {}'.format(
-                typeoid))
-
         self._local_type_codecs[typeoid, format] = \
             Codec.new_python_codec(typeoid, typename, typeschema, typekind,
                                    encoder, decoder, format)
@@ -519,17 +515,17 @@ cdef class DataCodecConfig:
     cdef inline Codec get_codec(self, uint32_t oid, CodecFormat format):
         cdef Codec codec
 
-        codec = get_core_codec(oid, format)
-        if codec is not None:
-            return codec
-
         try:
-            return self._type_codecs_cache[oid, format]
+            return self._local_type_codecs[oid, format]
         except KeyError:
-            try:
-                return self._local_type_codecs[oid, format]
-            except KeyError:
-                return None
+            codec = get_core_codec(oid, format)
+            if codec is not None:
+                return codec
+            else:
+                try:
+                    return self._type_codecs_cache[oid, format]
+                except KeyError:
+                    return None
 
 
 cdef inline Codec get_core_codec(uint32_t oid, CodecFormat format):
