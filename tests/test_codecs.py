@@ -1161,3 +1161,17 @@ class TestCodecs(tb.ConnectedTestCase):
             await self.con.execute(r'DROP TYPE citext_range')
             await self.con.execute(r'DROP TYPE citext_dom')
             await self.con.execute(r'DROP EXTENSION citext')
+
+    async def test_enum_in_array(self):
+        await self.con.execute('''
+            CREATE TYPE enum_t AS ENUM ('abc', 'def', 'ghi');
+        ''')
+        result = await self.con.fetchrow('''SELECT ARRAY[$1::enum_t];''',
+                                         'abc')
+
+        self.assertEqual(result, ['abc'])
+
+        await self.con.execute('''
+            DROP TYPE enum_t;
+        ''')
+
