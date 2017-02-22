@@ -134,7 +134,8 @@ class Connection:
         :param deferrable: Specifies whether or not this transaction is
                            deferrable.
 
-        .. _`PostgreSQL documentation`: https://www.postgresql.org/docs/current/static/sql-set-transaction.html
+        .. _`PostgreSQL documentation`: https://www.postgresql.org/docs/\
+                                        current/static/sql-set-transaction.html
         """
         return transaction.Transaction(self, isolation, readonly, deferrable)
 

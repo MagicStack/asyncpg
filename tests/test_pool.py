@@ -102,6 +102,33 @@ class TestPool(tb.ConnectedTestCase):
 
         self.assertIs(con, await fut)
 
+    async def test_pool_07(self):
+        cons = set()
+
+        async def setup(con):
+            if con not in cons:
+                raise RuntimeError('init was not called before setup')
+
+        async def init(con):
+            if con in cons:
+                raise RuntimeError('init was called more than once')
+            cons.add(con)
+
+        async def user(pool):
+            async with pool.acquire() as con:
+                if con not in cons:
+                    raise RuntimeError('init was not called')
+
+        async with self.create_pool(database='postgres',
+                                    min_size=2, max_size=5,
+                                    init=init,
+                                    setup=setup) as pool:
+            users = asyncio.gather(*[user(pool) for _ in range(10)],
+                                   loop=self.loop)
+            await users
+
+        self.assertEqual(len(cons), 5)
+
     async def test_pool_auth(self):
         if not self.cluster.is_managed():
             self.skipTest('unmanaged cluster')
