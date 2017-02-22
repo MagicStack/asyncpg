@@ -131,7 +131,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         if stmt_name is None:
             self.uid_counter += 1
-            stmt_name = 'stmt_{}'.format(self.uid_counter)
+            stmt_name = '__asyncpg_stmt_{}__'.format(self.uid_counter)
 
         self._prepare(stmt_name, query)
         self.last_query = query
