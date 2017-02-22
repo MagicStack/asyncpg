@@ -190,7 +190,7 @@ setuptools.setup(
         'Operating System :: POSIX',
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Microsoft :: Windows',
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
     ],
     platforms=['POSIX'],
     author='MagicStack Inc',
