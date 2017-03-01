@@ -124,9 +124,21 @@ class TestAuthentication(tb.ConnectedTestCase):
     async def test_auth_bad_user(self):
         with self.assertRaises(
                 asyncpg.InvalidAuthorizationSpecificationError):
-            await self.cluster.connect(user='__nonexistent__',
-                                       database='postgres',
-                                       loop=self.loop)
+            for tried in range(3):
+                try:
+                    await self.cluster.connect(user='__nonexistent__',
+                                               database='postgres',
+                                               loop=self.loop)
+                except asyncpg.ConnectionDoesNotExistError:
+                    if _system == 'Windows':
+                        # On Windows the server sometimes just closes
+                        # the connection sooner than we receive the
+                        # actual error.
+                        continue
+                    else:
+                        raise
+                else:
+                    break
 
     async def test_auth_trust(self):
         conn = await self.cluster.connect(
