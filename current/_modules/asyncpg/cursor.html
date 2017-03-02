@@ -43,6 +43,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -62,7 +63,7 @@
             
             
               <div class="version">
-                0.8.4
+                0.9.0
               </div>
             
           
@@ -99,8 +100,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="../../index.html">asyncpg</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">asyncpg</a>
+        
       </nav>
 
 
@@ -113,19 +116,36 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="../../index.html">Docs</a> &raquo;</li>
-      
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
           <li><a href="../index.html">Module code</a> &raquo;</li>
-      
-    <li>asyncpg.cursor</li>
+        
+      <li>asyncpg.cursor</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
+            
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -152,7 +172,7 @@
 <span class="sd">    results of a large query.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_state&#39;</span><span class="p">,</span> <span class="s1">&#39;_connection&#39;</span><span class="p">,</span> <span class="s1">&#39;_args&#39;</span><span class="p">,</span> <span class="s1">&#39;_prefetch&#39;</span><span class="p">,</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_state&#39;</span><span class="p">,</span> <span class="s1">&#39;_connection&#39;</span><span class="p">,</span> <span class="s1">&#39;_args&#39;</span><span class="p">,</span> <span class="s1">&#39;_prefetch&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_query&#39;</span><span class="p">,</span> <span class="s1">&#39;_timeout&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">prefetch</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
@@ -179,7 +199,7 @@
                 <span class="s1">&#39;prefetch argument can only be specified for iterable cursor&#39;</span><span class="p">)</span>
         <span class="n">cursor</span> <span class="o">=</span> <span class="n">Cursor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">_init</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span><span class="p">)</span><span class="o">.</span><span class="n">__await__</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">_init</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span><span class="p">)</span><span class="o">.</span><span class="fm">__await__</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -189,7 +209,7 @@
 
 <span class="k">class</span> <span class="nc">BaseCursor</span><span class="p">:</span>
 
-    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_state&#39;</span><span class="p">,</span> <span class="s1">&#39;_connection&#39;</span><span class="p">,</span> <span class="s1">&#39;_args&#39;</span><span class="p">,</span> <span class="s1">&#39;_portal_name&#39;</span><span class="p">,</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_state&#39;</span><span class="p">,</span> <span class="s1">&#39;_connection&#39;</span><span class="p">,</span> <span class="s1">&#39;_args&#39;</span><span class="p">,</span> <span class="s1">&#39;_portal_name&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_exhausted&#39;</span><span class="p">,</span> <span class="s1">&#39;_query&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
@@ -264,13 +284,13 @@
             <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;exhausted&#39;</span><span class="p">)</span>
         <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>  <span class="c1"># to separate from id</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__module__</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;asyncpg.&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__module__</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;asyncpg.&#39;</span><span class="p">):</span>
             <span class="n">mod</span> <span class="o">=</span> <span class="s1">&#39;asyncpg&#39;</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">mod</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__module__</span>
+            <span class="n">mod</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__module__</span>
 
         <span class="k">return</span> <span class="s1">&#39;&lt;</span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1"> &quot;</span><span class="si">{!s:.30}</span><span class="s1">&quot; </span><span class="si">{}{:#x}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-            <span class="n">mod</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span>
+            <span class="n">mod</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">query</span><span class="p">,</span>
             <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">attrs</span><span class="p">),</span> <span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
 
@@ -282,10 +302,10 @@
 
 <span class="k">class</span> <span class="nc">CursorIterator</span><span class="p">(</span><span class="n">BaseCursor</span><span class="p">):</span>
 
-    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_buffer&#39;</span><span class="p">,</span> <span class="s1">&#39;_prefetch&#39;</span><span class="p">,</span> <span class="s1">&#39;_timeout&#39;</span><span class="p">)</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_buffer&#39;</span><span class="p">,</span> <span class="s1">&#39;_prefetch&#39;</span><span class="p">,</span> <span class="s1">&#39;_timeout&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">prefetch</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">prefetch</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
@@ -322,7 +342,7 @@
 <div class="viewcode-block" id="Cursor"><a class="viewcode-back" href="../../api/index.html#asyncpg.cursor.Cursor">[docs]</a><span class="k">class</span> <span class="nc">Cursor</span><span class="p">(</span><span class="n">BaseCursor</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;An open *portal* into the results of a query.&quot;&quot;&quot;</span>
 
-    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">()</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -334,7 +354,7 @@
         <span class="k">return</span> <span class="bp">self</span>
 
 <div class="viewcode-block" id="Cursor.fetch"><a class="viewcode-back" href="../../api/index.html#asyncpg.cursor.Cursor.fetch">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">r&quot;&quot;&quot;Return the next *n* rows as a list of :class:`Record` objects.</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Return the next *n* rows as a list of :class:`Record` objects.</span>
 
 <span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 
@@ -351,7 +371,7 @@
         <span class="k">return</span> <span class="n">recs</span></div>
 
 <div class="viewcode-block" id="Cursor.fetchrow"><a class="viewcode-back" href="../../api/index.html#asyncpg.cursor.Cursor.fetchrow">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchrow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">r&quot;&quot;&quot;Return the next row.</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Return the next row.</span>
 
 <span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 
@@ -367,7 +387,7 @@
         <span class="k">return</span> <span class="n">recs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
 
 <div class="viewcode-block" id="Cursor.forward"><a class="viewcode-back" href="../../api/index.html#asyncpg.cursor.Cursor.forward">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="sd">r&quot;&quot;&quot;Skip over the next *n* rows.</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Skip over the next *n* rows.</span>
 
 <span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 
@@ -388,6 +408,9 @@
         <span class="k">return</span> <span class="n">advanced</span></div></div>
 </pre></div>
 
+           </div>
+           <div class="articleComments">
+            
            </div>
           </div>
           <footer>
@@ -418,10 +441,11 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.8.4',
+            VERSION:'0.9.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="../../_static/jquery.js"></script>

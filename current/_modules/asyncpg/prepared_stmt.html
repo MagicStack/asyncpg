@@ -43,6 +43,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -62,7 +63,7 @@
             
             
               <div class="version">
-                0.8.4
+                0.9.0
               </div>
             
           
@@ -99,8 +100,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="../../index.html">asyncpg</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">asyncpg</a>
+        
       </nav>
 
 
@@ -113,19 +116,36 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="../../index.html">Docs</a> &raquo;</li>
-      
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
           <li><a href="../index.html">Module code</a> &raquo;</li>
-      
-    <li>asyncpg.prepared_stmt</li>
+        
+      <li>asyncpg.prepared_stmt</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
+            
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -148,7 +168,7 @@
 <div class="viewcode-block" id="PreparedStatement"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement">[docs]</a><span class="k">class</span> <span class="nc">PreparedStatement</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;A representation of a prepared statement.&quot;&quot;&quot;</span>
 
-    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_connection&#39;</span><span class="p">,</span> <span class="s1">&#39;_state&#39;</span><span class="p">,</span> <span class="s1">&#39;_query&#39;</span><span class="p">,</span> <span class="s1">&#39;_last_status&#39;</span><span class="p">)</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_connection&#39;</span><span class="p">,</span> <span class="s1">&#39;_state&#39;</span><span class="p">,</span> <span class="s1">&#39;_query&#39;</span><span class="p">,</span> <span class="s1">&#39;_last_status&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="o">=</span> <span class="n">connection</span>
@@ -280,7 +300,7 @@
         <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="PreparedStatement.fetch"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.fetch">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">r&quot;&quot;&quot;Execute the statement and return a list of :class:`Record` objects.</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Execute the statement and return a list of :class:`Record` objects.</span>
 
 <span class="sd">        :param str query: Query text</span>
 <span class="sd">        :param args: Query arguments</span>
@@ -345,6 +365,9 @@
 </pre></div>
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
@@ -374,10 +397,11 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.8.4',
+            VERSION:'0.9.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="../../_static/jquery.js"></script>

@@ -43,6 +43,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -62,7 +63,7 @@
             
             
               <div class="version">
-                0.8.4
+                0.9.0
               </div>
             
           
@@ -99,8 +100,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="../../index.html">asyncpg</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">asyncpg</a>
+        
       </nav>
 
 
@@ -113,19 +116,36 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="../../index.html">Docs</a> &raquo;</li>
-      
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
           <li><a href="../index.html">Module code</a> &raquo;</li>
-      
-    <li>asyncpg.connection</li>
+        
+      <li>asyncpg.connection</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
+            
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -161,7 +181,7 @@
 <span class="sd">    Connections are created by calling :func:`~asyncpg.connection.connect`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_protocol&#39;</span><span class="p">,</span> <span class="s1">&#39;_transport&#39;</span><span class="p">,</span> <span class="s1">&#39;_loop&#39;</span><span class="p">,</span> <span class="s1">&#39;_types_stmt&#39;</span><span class="p">,</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_protocol&#39;</span><span class="p">,</span> <span class="s1">&#39;_transport&#39;</span><span class="p">,</span> <span class="s1">&#39;_loop&#39;</span><span class="p">,</span> <span class="s1">&#39;_types_stmt&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_type_by_name_stmt&#39;</span><span class="p">,</span> <span class="s1">&#39;_top_xact&#39;</span><span class="p">,</span> <span class="s1">&#39;_uid&#39;</span><span class="p">,</span> <span class="s1">&#39;_aborted&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_stmt_cache_max_size&#39;</span><span class="p">,</span> <span class="s1">&#39;_stmt_cache&#39;</span><span class="p">,</span> <span class="s1">&#39;_stmts_to_close&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_addr&#39;</span><span class="p">,</span> <span class="s1">&#39;_opts&#39;</span><span class="p">,</span> <span class="s1">&#39;_command_timeout&#39;</span><span class="p">,</span> <span class="s1">&#39;_listeners&#39;</span><span class="p">,</span>
@@ -268,7 +288,8 @@
 <span class="sd">        :param deferrable: Specifies whether or not this transaction is</span>
 <span class="sd">                           deferrable.</span>
 
-<span class="sd">        .. _`PostgreSQL documentation`: https://www.postgresql.org/docs/current/static/sql-set-transaction.html</span>
+<span class="sd">        .. _`PostgreSQL documentation`: https://www.postgresql.org/docs/\</span>
+<span class="sd">                                        current/static/sql-set-transaction.html</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">transaction</span><span class="o">.</span><span class="n">Transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">isolation</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">deferrable</span><span class="p">)</span></div>
 
@@ -466,7 +487,7 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;unknown type: </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
 
         <span class="n">oid</span> <span class="o">=</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;oid&#39;</span><span class="p">]</span>
-        <span class="k">if</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;kind&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">b</span><span class="s1">&#39;b&#39;</span> <span class="ow">or</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;elemtype&#39;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;kind&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="sa">b</span><span class="s1">&#39;b&#39;</span> <span class="ow">or</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;elemtype&#39;</span><span class="p">]:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s1">&#39;cannot use custom codec on non-scalar type </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
@@ -494,7 +515,7 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;unknown type: </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
 
         <span class="n">oid</span> <span class="o">=</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;oid&#39;</span><span class="p">]</span>
-        <span class="k">if</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;kind&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">b</span><span class="s1">&#39;b&#39;</span> <span class="ow">or</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;elemtype&#39;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;kind&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="sa">b</span><span class="s1">&#39;b&#39;</span> <span class="ow">or</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;elemtype&#39;</span><span class="p">]:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s1">&#39;cannot alias non-scalar type </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
@@ -866,6 +887,9 @@
 </pre></div>
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
@@ -895,10 +919,11 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.8.4',
+            VERSION:'0.9.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="../../_static/jquery.js"></script>
