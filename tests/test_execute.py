@@ -132,3 +132,23 @@ class TestExecuteScript(tb.ConnectedTestCase):
             ])
         finally:
             await self.con.execute('DROP TABLE exmany')
+
+    async def test_execute_many_2(self):
+        await self.con.execute('CREATE TEMP TABLE exmany (b int)')
+
+        try:
+            bad_data = ([1 / 0] for v in range(10))
+
+            with self.assertRaises(ZeroDivisionError):
+                async with self.con.transaction():
+                    await self.con.executemany('''
+                        INSERT INTO exmany VALUES($1)
+                    ''', bad_data)
+
+            good_data = ([v] for v in range(10))
+            async with self.con.transaction():
+                await self.con.executemany('''
+                    INSERT INTO exmany VALUES($1)
+                ''', good_data)
+        finally:
+            await self.con.execute('DROP TABLE exmany')
