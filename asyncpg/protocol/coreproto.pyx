@@ -235,6 +235,10 @@ cdef class CoreProtocol:
                     buf = <WriteBuffer>next(self._execute_iter)
                 except StopIteration:
                     self._push_result()
+                except Exception as e:
+                    self.result_type = RESULT_FAILED
+                    self.result = e
+                    self._push_result()
                 else:
                     # Next iteration over the executemany() arg sequence
                     self._send_bind_message(
@@ -642,6 +646,10 @@ cdef class CoreProtocol:
         try:
             buf = <WriteBuffer>next(bind_data)
         except StopIteration:
+            self._push_result()
+        except Exception as e:
+            self.result_type = RESULT_FAILED
+            self.result = e
             self._push_result()
         else:
             self._send_bind_message(portal_name, stmt_name, buf, 0)
