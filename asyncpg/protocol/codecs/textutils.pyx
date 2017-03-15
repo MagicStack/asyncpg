@@ -5,6 +5,12 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+cdef inline uint32_t _apg_tolower(uint32_t c):
+    if c >= <uint32_t><Py_UCS4>'A' and c <= <uint32_t><Py_UCS4>'Z':
+        return c + <uint32_t><Py_UCS4>'a' - <uint32_t><Py_UCS4>'A'
+    else:
+        return c
+
 
 cdef int apg_strcasecmp(const Py_UCS4 *s1, const Py_UCS4 *s2):
     cdef:
@@ -17,13 +23,34 @@ cdef int apg_strcasecmp(const Py_UCS4 *s1, const Py_UCS4 *s2):
         c2 = s2[i]
 
         if c1 != c2:
-            if c1 >= <uint32_t><Py_UCS4>'A' and c1 <= <uint32_t><Py_UCS4>'Z':
-                c1 += <uint32_t><Py_UCS4>'a' - <uint32_t><Py_UCS4>'A'
-            if c2 >= <uint32_t><Py_UCS4>'A' and c2 <= <uint32_t><Py_UCS4>'Z':
-                c2 += <uint32_t><Py_UCS4>'a' - <uint32_t><Py_UCS4>'A'
-
+            c1 = _apg_tolower(c1)
+            c2 = _apg_tolower(c2)
             if c1 != c2:
                 return <int32_t>c1 - <int32_t>c2
+
+        if c1 == 0 or c2 == 0:
+            break
+
+        i += 1
+
+    return 0
+
+
+cdef int apg_strcasecmp_char(const char *s1, const char *s2):
+    cdef:
+        uint8_t c1
+        uint8_t c2
+        int i = 0
+
+    while True:
+        c1 = <uint8_t>s1[i]
+        c2 = <uint8_t>s2[i]
+
+        if c1 != c2:
+            c1 = <uint8_t>_apg_tolower(c1)
+            c2 = <uint8_t>_apg_tolower(c2)
+            if c1 != c2:
+                return <int8_t>c1 - <int8_t>c2
 
         if c1 == 0 or c2 == 0:
             break

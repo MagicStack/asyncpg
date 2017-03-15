@@ -140,6 +140,127 @@ cdef inline array_encode(ConnectionSettings settings, WriteBuffer buf,
     buf.write_buffer(elem_data)
 
 
+cdef _write_textarray_data(ConnectionSettings settings, object obj,
+                           int32_t ndims, int32_t dim, WriteBuffer array_data,
+                           encode_func_ex encoder, const void *encoder_arg,
+                           Py_UCS4 typdelim):
+    cdef:
+        ssize_t i = 0
+        int8_t delim = <int8_t>typdelim
+        WriteBuffer elem_data
+        Py_buffer pybuf
+        const char *elem_str
+        char ch
+        ssize_t elem_len
+        ssize_t quoted_elem_len
+        bint need_quoting
+
+    array_data.write_byte(b'{')
+
+    if dim < ndims - 1:
+        for item in obj:
+            if i > 0:
+                array_data.write_byte(delim)
+                array_data.write_byte(b' ')
+            _write_textarray_data(settings, item, ndims, dim + 1, array_data,
+                                  encoder, encoder_arg, typdelim)
+            i += 1
+    else:
+        for item in obj:
+            elem_data = WriteBuffer.new()
+
+            if i > 0:
+                array_data.write_byte(delim)
+                array_data.write_byte(b' ')
+
+            if item is None:
+                array_data.write_bytes(b'NULL')
+                i += 1
+                continue
+            else:
+                try:
+                    encoder(settings, elem_data, item, encoder_arg)
+                except TypeError as e:
+                    raise ValueError(
+                        'invalid array element: {}'.format(
+                            e.args[0])) from None
+
+            # element string length (first four bytes are the encoded length.)
+            elem_len = elem_data.len() - 4
+
+            if elem_len == 0:
+                # Empty string
+                array_data.write_bytes(b'""')
+            else:
+                cpython.PyObject_GetBuffer(
+                    elem_data, &pybuf, cpython.PyBUF_SIMPLE)
+
+                elem_str = <const char*>(pybuf.buf) + 4
+
+                try:
+                    if not apg_strcasecmp_char(elem_str, b'NULL'):
+                        array_data.write_bytes(b'"NULL"')
+                    else:
+                        quoted_elem_len = elem_len
+                        need_quoting = False
+
+                        for i in range(elem_len):
+                            ch = elem_str[i]
+                            if ch == b'"' or ch == b'\\':
+                                # Quotes and backslashes need escaping.
+                                quoted_elem_len += 1
+                                need_quoting = True
+                            elif (ch == b'{' or ch == b'}' or ch == delim or
+                                    apg_ascii_isspace(<uint32_t>ch)):
+                                need_quoting = True
+
+                        if need_quoting:
+                            array_data.write_byte(b'"')
+
+                            if quoted_elem_len == elem_len:
+                                array_data.write_cstr(elem_str, elem_len)
+                            else:
+                                # Escaping required.
+                                for i in range(elem_len):
+                                    ch = elem_str[i]
+                                    if ch == b'"' or ch == b'\\':
+                                        array_data.write_byte(b'\\')
+                                    array_data.write_byte(ch)
+
+                            array_data.write_byte(b'"')
+                        else:
+                            array_data.write_cstr(elem_str, elem_len)
+                finally:
+                    cpython.PyBuffer_Release(&pybuf)
+
+            i += 1
+
+    array_data.write_byte(b'}')
+
+
+cdef inline textarray_encode(ConnectionSettings settings, WriteBuffer buf,
+                             object obj, encode_func_ex encoder,
+                             const void *encoder_arg, Py_UCS4 typdelim):
+    cdef:
+        WriteBuffer array_data
+        int32_t dims[ARRAY_MAXDIM]
+        int32_t ndims = 1
+        int32_t i
+
+    if not _is_container(obj):
+        raise TypeError(
+            'a non-trivial iterable expected (got type {!r})'.format(
+                type(obj).__name__))
+
+    _get_array_shape(obj, dims, &ndims)
+
+    array_data = WriteBuffer.new()
+    _write_textarray_data(settings, obj, ndims, 0, array_data,
+                          encoder, encoder_arg, typdelim)
+    buf.write_int32(array_data.len())
+    buf.write_buffer(array_data)
+
+
 cdef inline array_decode(ConnectionSettings settings, FastReadBuffer buf,
                          decode_func_ex decoder, const void *decoder_arg):
     cdef:

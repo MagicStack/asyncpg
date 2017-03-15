@@ -169,7 +169,7 @@ cdef class WriteBuffer:
     cdef write_str(self, str string, str encoding):
         self.write_bytestring(string.encode(encoding))
 
-    cdef write_cstr(self, char *data, ssize_t len):
+    cdef write_cstr(self, const char *data, ssize_t len):
         self._check_readonly()
         self._ensure_alloced(len)
 
