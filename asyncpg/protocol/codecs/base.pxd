@@ -81,6 +81,9 @@ cdef class Codec:
     cdef encode_array(self, ConnectionSettings settings, WriteBuffer buf,
                       object obj)
 
+    cdef encode_array_text(self, ConnectionSettings settings, WriteBuffer buf,
+                           object obj)
+
     cdef encode_range(self, ConnectionSettings settings, WriteBuffer buf,
                       object obj)
 
@@ -137,6 +140,7 @@ cdef class Codec:
     cdef Codec new_composite_codec(uint32_t oid,
                                    str name,
                                    str schema,
+                                   CodecFormat format,
                                    list element_codecs,
                                    tuple element_type_oids,
                                    object element_names)

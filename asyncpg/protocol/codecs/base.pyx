@@ -50,15 +50,24 @@ cdef class Codec:
             self.encoder = <codec_encode_func>&self.encode_scalar
             self.decoder = <codec_decode_func>&self.decode_scalar
         elif type == CODEC_ARRAY:
-            self.encoder = <codec_encode_func>&self.encode_array
             if format == PG_FORMAT_BINARY:
+                self.encoder = <codec_encode_func>&self.encode_array
                 self.decoder = <codec_decode_func>&self.decode_array
             else:
+                self.encoder = <codec_encode_func>&self.encode_array_text
                 self.decoder = <codec_decode_func>&self.decode_array_text
         elif type == CODEC_RANGE:
+            if format != PG_FORMAT_BINARY:
+                raise RuntimeError(
+                    'cannot encode type "{}"."{}": text encoding of '
+                    'range types is not supported'.format(schema, name))
             self.encoder = <codec_encode_func>&self.encode_range
             self.decoder = <codec_decode_func>&self.decode_range
         elif type == CODEC_COMPOSITE:
+            if format != PG_FORMAT_BINARY:
+                raise RuntimeError(
+                    'cannot encode type "{}"."{}": text encoding of '
+                    'composite types is not supported'.format(schema, name))
             self.encoder = <codec_encode_func>&self.encode_composite
             self.decoder = <codec_decode_func>&self.decode_composite
         elif type == CODEC_PY:
@@ -90,6 +99,13 @@ cdef class Codec:
         array_encode(settings, buf, obj, self.element_codec.oid,
                      codec_encode_func_ex,
                      <void*>(<cpython.PyObject>self.element_codec))
+
+    cdef encode_array_text(self, ConnectionSettings settings, WriteBuffer buf,
+                           object obj):
+        return textarray_encode(settings, buf, obj,
+                                codec_encode_func_ex,
+                                <void*>(<cpython.PyObject>self.element_codec),
+                                self.element_delimiter)
 
     cdef encode_range(self, ConnectionSettings settings, WriteBuffer buf,
                       object obj):
@@ -269,22 +285,22 @@ cdef class Codec:
                                Codec element_codec):
         cdef Codec codec
         codec = Codec(oid)
-        codec.init(name, schema, 'range', CODEC_RANGE, PG_FORMAT_BINARY,
-                   NULL, NULL, None, None, element_codec, None, None, None,
-                   0)
+        codec.init(name, schema, 'range', CODEC_RANGE, element_codec.format,
+                   NULL, NULL, None, None, element_codec, None, None, None, 0)
         return codec
 
     @staticmethod
     cdef Codec new_composite_codec(uint32_t oid,
                                    str name,
                                    str schema,
+                                   CodecFormat format,
                                    list element_codecs,
                                    tuple element_type_oids,
                                    object element_names):
         cdef Codec codec
         codec = Codec(oid)
         codec.init(name, schema, 'composite', CODEC_COMPOSITE,
-                   PG_FORMAT_BINARY, NULL, NULL, None, None, None,
+                   format, NULL, NULL, None, None, None,
                    element_type_oids, element_names, element_codecs, 0)
         return codec
 
@@ -368,11 +384,12 @@ cdef class DataCodecConfig:
                     elem_format = PG_FORMAT_BINARY
                 else:
                     elem_format = PG_FORMAT_TEXT
+
                 elem_codec = self.get_codec(array_element_oid, elem_format)
                 if elem_codec is None:
-                    raise RuntimeError(
-                        'no codec for array element type {}'.format(
-                            array_element_oid))
+                    elem_format = PG_FORMAT_TEXT
+                    elem_codec = self.declare_fallback_codec(
+                        array_element_oid, name, schema)
 
                 elem_delim = <Py_UCS4>ti['elemdelim'][0]
 
@@ -410,9 +427,8 @@ cdef class DataCodecConfig:
 
                 self._type_codecs_cache[oid, format] = \
                     Codec.new_composite_codec(
-                        oid, name, schema, comp_elem_codecs,
-                        comp_type_attrs,
-                        element_names)
+                        oid, name, schema, format, comp_elem_codecs,
+                        comp_type_attrs, element_names)
 
             elif ti['kind'] == b'd':
                 # Domain type
@@ -424,8 +440,9 @@ cdef class DataCodecConfig:
 
                 elem_codec = self.get_codec(base_type, format)
                 if elem_codec is None:
-                    raise RuntimeError(
-                        'no codec for domain base type {}'.format(base_type))
+                    format = PG_FORMAT_TEXT
+                    elem_codec = self.declare_fallback_codec(
+                        base_type, name, schema)
 
                 self._type_codecs_cache[oid, format] = elem_codec
 
@@ -441,34 +458,18 @@ cdef class DataCodecConfig:
                     elem_format = PG_FORMAT_BINARY
                 else:
                     elem_format = PG_FORMAT_TEXT
+
                 elem_codec = self.get_codec(range_subtype_oid, elem_format)
                 if elem_codec is None:
-                    raise RuntimeError(
-                        'no codec for range element type {}'.format(
-                            range_subtype_oid))
+                    elem_format = PG_FORMAT_TEXT
+                    elem_codec = self.declare_fallback_codec(
+                        range_subtype_oid, name, schema)
 
                 self._type_codecs_cache[oid, elem_format] = \
                     Codec.new_range_codec(oid, name, schema, elem_codec)
 
             else:
-                if oid <= MAXBUILTINOID:
-                    # This is a non-BKI type, for which ayncpg has no
-                    # defined codec.  This should only happen for newly
-                    # added builtin types, for which this version of
-                    # asyncpg is lacking support.
-                    #
-                    raise NotImplementedError(
-                        'unhandled standard data type {!r} (OID {})'.format(
-                            name, oid))
-                else:
-                    # This is a non-BKI type, and as such, has no
-                    # stable OID, so no possibility of a builtin codec.
-                    # In this case, fallback to text format.  Applications
-                    # can avoid this by specifying a codec for this type
-                    # using Connection.set_type_codec().
-                    #
-                    self.set_builtin_type_codec(oid, name, schema, 'scalar',
-                                                UNKNOWNOID)
+                self.declare_fallback_codec(oid, name, schema)
 
     def add_python_codec(self, typeoid, typename, typeschema, typekind,
                          encoder, decoder, binary):
@@ -478,13 +479,20 @@ cdef class DataCodecConfig:
             Codec.new_python_codec(typeoid, typename, typeschema, typekind,
                                    encoder, decoder, format)
 
+        self.clear_type_cache()
+
     def set_builtin_type_codec(self, typeoid, typename, typeschema, typekind,
-                               alias_to):
+                               alias_to, format=PG_FORMAT_ANY):
         cdef:
             Codec codec
             Codec target_codec
 
-        for format in (PG_FORMAT_BINARY, PG_FORMAT_TEXT):
+        if format == PG_FORMAT_ANY:
+            formats = (PG_FORMAT_BINARY, PG_FORMAT_TEXT)
+        else:
+            formats = (format,)
+
+        for format in formats:
             if self.get_codec(typeoid, format) is not None:
                 raise ValueError('cannot override codec for type {}'.format(
                     typeoid))
@@ -509,8 +517,40 @@ cdef class DataCodecConfig:
                 (typeoid, PG_FORMAT_TEXT) not in self._local_type_codecs):
             raise ValueError('unknown alias target: {}'.format(alias_to))
 
+        self.clear_type_cache()
+
     def clear_type_cache(self):
         self._type_codecs_cache.clear()
+
+    def declare_fallback_codec(self, uint32_t oid, str name, str schema):
+        cdef Codec codec
+
+        codec = self.get_codec(oid, PG_FORMAT_TEXT)
+        if codec is not None:
+            return codec
+
+        if oid <= MAXBUILTINOID:
+            # This is a BKI type, for which ayncpg has no
+            # defined codec.  This should only happen for newly
+            # added builtin types, for which this version of
+            # asyncpg is lacking support.
+            #
+            raise NotImplementedError(
+                'unhandled standard data type {!r} (OID {})'.format(
+                    name, oid))
+        else:
+            # This is a non-BKI type, and as such, has no
+            # stable OID, so no possibility of a builtin codec.
+            # In this case, fallback to text format.  Applications
+            # can avoid this by specifying a codec for this type
+            # using Connection.set_type_codec().
+            #
+            self.set_builtin_type_codec(oid, name, schema, 'scalar',
+                                        TEXTOID, PG_FORMAT_TEXT)
+
+            codec = self.get_codec(oid, PG_FORMAT_TEXT)
+
+        return codec
 
     cdef inline Codec get_codec(self, uint32_t oid, CodecFormat format):
         cdef Codec codec

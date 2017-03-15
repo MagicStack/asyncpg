@@ -63,5 +63,9 @@ cdef init_text_codecs():
                             <decode_func>&text_decode,
                             PG_FORMAT_BINARY)
 
+        register_core_codec(oid,
+                            <encode_func>&text_encode,
+                            <decode_func>&text_decode,
+                            PG_FORMAT_TEXT)
 
 init_text_codecs()

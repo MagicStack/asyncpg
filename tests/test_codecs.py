@@ -1077,3 +1077,87 @@ class TestCodecs(tb.ConnectedTestCase):
                 DROP TABLE tab;
                 DROP TYPE enum_t;
             ''')
+
+    async def test_unknown_type_text_fallback(self):
+        await self.con.execute(r'CREATE EXTENSION citext')
+        await self.con.execute(r'''
+            CREATE DOMAIN citext_dom AS citext
+        ''')
+        await self.con.execute(r'''
+            CREATE TYPE citext_range AS RANGE (SUBTYPE = citext)
+        ''')
+        await self.con.execute(r'''
+            CREATE TYPE citext_comp AS (t citext)
+        ''')
+
+        try:
+            # Check that plain fallback works.
+            result = await self.con.fetchval('''
+                SELECT $1::citext
+            ''', 'citext')
+
+            self.assertEqual(result, 'citext')
+
+            # Check that domain fallback works.
+            result = await self.con.fetchval('''
+                SELECT $1::citext_dom
+            ''', 'citext')
+
+            self.assertEqual(result, 'citext')
+
+            # Check that array fallback works.
+            cases = [
+                ['a', 'b'],
+                [None, 'b'],
+                [],
+                ['  a', '  b'],
+                ['"a', r'\""'],
+                [['"a', r'\""'], [',', '",']],
+            ]
+
+            for case in cases:
+                result = await self.con.fetchval('''
+                    SELECT
+                        $1::citext[]
+                ''', case)
+
+                self.assertEqual(result, case)
+
+            # Text encoding of ranges and composite types
+            # is not supported yet.
+            with self.assertRaisesRegex(
+                    RuntimeError,
+                    'text encoding of range types is not supported'):
+
+                await self.con.fetchval('''
+                    SELECT
+                        $1::citext_range
+                ''', ['a', 'z'])
+
+            with self.assertRaisesRegex(
+                    RuntimeError,
+                    'text encoding of composite types is not supported'):
+
+                await self.con.fetchval('''
+                    SELECT
+                        $1::citext_comp
+                ''', ('a',))
+
+            # Check that setting a custom codec clears the codec
+            # cache properly and that subsequent queries work
+            # as expected.
+            await self.con.set_type_codec(
+                'citext', encoder=lambda d: d, decoder=lambda d: 'CI: ' + d)
+
+            result = await self.con.fetchval('''
+                SELECT
+                    $1::citext[]
+            ''', ['a', 'b'])
+
+            self.assertEqual(result, ['CI: a', 'CI: b'])
+
+        finally:
+            await self.con.execute(r'DROP TYPE citext_comp')
+            await self.con.execute(r'DROP TYPE citext_range')
+            await self.con.execute(r'DROP TYPE citext_dom')
+            await self.con.execute(r'DROP EXTENSION citext')
