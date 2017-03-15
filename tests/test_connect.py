@@ -121,12 +121,25 @@ class TestAuthentication(tb.ConnectedTestCase):
 
         super().tearDown()
 
+    async def _try_connect(self, **kwargs):
+        # On Windows the server sometimes just closes
+        # the connection sooner than we receive the
+        # actual error.
+        if _system == 'Windows':
+            for tried in range(3):
+                try:
+                    return await self.cluster.connect(**kwargs)
+                except asyncpg.ConnectionDoesNotExistError:
+                    pass
+
+        return await self.cluster.connect(**kwargs)
+
     async def test_auth_bad_user(self):
         with self.assertRaises(
                 asyncpg.InvalidAuthorizationSpecificationError):
-            await self.cluster.connect(user='__nonexistent__',
-                                       database='postgres',
-                                       loop=self.loop)
+            await self._try_connect(user='__nonexistent__',
+                                    database='postgres',
+                                    loop=self.loop)
 
     async def test_auth_trust(self):
         conn = await self.cluster.connect(
@@ -137,21 +150,9 @@ class TestAuthentication(tb.ConnectedTestCase):
         with self.assertRaisesRegex(
                 asyncpg.InvalidAuthorizationSpecificationError,
                 'pg_hba.conf rejects connection'):
-            for tried in range(3):
-                try:
-                    await self.cluster.connect(
-                        user='reject_user', database='postgres',
-                        loop=self.loop)
-                except asyncpg.ConnectionDoesNotExistError:
-                    if _system == 'Windows':
-                        # On Windows the server sometimes just closes
-                        # the connection sooner than we receive the
-                        # actual error.
-                        continue
-                    else:
-                        raise
-                else:
-                    break
+            await self._try_connect(
+                user='reject_user', database='postgres',
+                loop=self.loop)
 
     async def test_auth_password_cleartext(self):
         conn = await self.cluster.connect(
@@ -162,7 +163,7 @@ class TestAuthentication(tb.ConnectedTestCase):
         with self.assertRaisesRegex(
                 asyncpg.InvalidPasswordError,
                 'password authentication failed for user "password_user"'):
-            await self.cluster.connect(
+            await self._try_connect(
                 user='password_user', database='postgres',
                 password='wrongpassword', loop=self.loop)
 
@@ -175,7 +176,7 @@ class TestAuthentication(tb.ConnectedTestCase):
         with self.assertRaisesRegex(
                 asyncpg.InvalidPasswordError,
                 'password authentication failed for user "md5_user"'):
-            await self.cluster.connect(
+            await self._try_connect(
                 user='md5_user', database='postgres', password='wrongpassword',
                 loop=self.loop)
 
