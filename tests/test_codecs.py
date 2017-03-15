@@ -1077,3 +1077,24 @@ class TestCodecs(tb.ConnectedTestCase):
                 DROP TABLE tab;
                 DROP TYPE enum_t;
             ''')
+            
+    async def test_enum_2(self):
+        await self.con.execute('''
+            CREATE TYPE enum_t AS ENUM ('abc', 'def', 'ghi');
+            CREATE TABLE tab (
+                a text,
+                b enum_t
+            );
+        ''')
+
+        try:
+            await self.con.execute('INSERT INTO tab (a) VALUES ($1);', "foo")
+            await self.con.execute('INSERT INTO tab (a, b) VALUES ($1, $2);', "foo", "abc")
+            await self.con.execute("SELECT a FROM tab;")
+            await self.con.execute("SELECT a, b FROM tab;")
+
+        finally:
+            await self.con.execute('''
+                DROP TABLE tab;
+                DROP TYPE enum_t;
+            ''')
