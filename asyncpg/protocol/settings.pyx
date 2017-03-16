@@ -60,3 +60,6 @@ cdef class ConnectionSettings:
                 raise AttributeError(name) from None
 
         return object.__getattr__(self, name)
+
+    def __repr__(self):
+        return '<ConnectionSettings {!r}>'.format(self._settings)
