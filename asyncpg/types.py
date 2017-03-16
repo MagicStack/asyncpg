@@ -10,7 +10,7 @@ import collections
 
 __all__ = (
     'Type', 'Attribute', 'Range', 'BitString', 'Point', 'Path', 'Polygon',
-    'Box', 'Line', 'LineSegment', 'Circle', 'ServerVersion'
+    'Box', 'Line', 'LineSegment', 'Circle', 'ServerVersion',
 )
 
 
