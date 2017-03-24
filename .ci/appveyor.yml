@@ -17,6 +17,13 @@ environment:
         - PYTHON: "C:\\Python36\\python.exe"
         - PYTHON: "C:\\Python36-x64\\python.exe"
 
+branches:
+    # Avoid building PR branches.
+    only:
+        - master
+        - ci
+        - releases
+
 install:
     - "%PYTHON% -m pip install --upgrade pip wheel setuptools"
     - "%PYTHON% -m pip install -r .ci/requirements-win.txt"
