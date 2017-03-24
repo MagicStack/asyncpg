@@ -5,9 +5,12 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+cimport cpython
+
+
 cdef extern from "record/recordobj.h":
 
-	int ApgRecord_InitTypes() except -1
+	cpython.PyTypeObject *ApgRecord_InitTypes() except NULL
 
 	int ApgRecord_CheckExact(object)
 	object ApgRecord_New(object, int)

@@ -11,6 +11,7 @@ import gc
 import pickle
 import sys
 
+import asyncpg
 from asyncpg import _testbase as tb
 from asyncpg.protocol.protocol import _create_record as Record
 
@@ -297,3 +298,14 @@ class TestRecord(tb.ConnectedTestCase):
         self.assertEqual(r['a'], 2)
         self.assertEqual(r[0], 1)
         self.assertEqual(repr(r), '<Record a=1 a=2>')
+
+    async def test_record_isinstance(self):
+        """Test that Record works with isinstance."""
+        r = await self.con.fetchrow('SELECT 1 as a, 2 as b')
+        self.assertTrue(isinstance(r, asyncpg.Record))
+
+    async def test_record_no_new(self):
+        """Instances of Record cannot be directly created."""
+        with self.assertRaisesRegex(
+                TypeError, "cannot create 'asyncpg.Record' instances"):
+            asyncpg.Record()

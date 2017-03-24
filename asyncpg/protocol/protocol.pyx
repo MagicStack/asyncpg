@@ -529,4 +529,4 @@ def _create_record(object mapping, tuple elems):
     return rec
 
 
-record.ApgRecord_InitTypes()
+Record = <object>record.ApgRecord_InitTypes()
