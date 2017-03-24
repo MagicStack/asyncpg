@@ -17,6 +17,13 @@ from asyncpg import pool as pg_pool
 _system = platform.uname().system
 
 
+if os.environ.get('TRAVIS_OS_NAME') == 'osx':
+    # Travis' macOS is _slow_.
+    POOL_NOMINAL_TIMEOUT = 0.5
+else:
+    POOL_NOMINAL_TIMEOUT = 0.1
+
+
 class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_01(self):
@@ -63,14 +70,14 @@ class TestPool(tb.ConnectedTestCase):
         pool = await self.create_pool(database='postgres',
                                       min_size=1, max_size=1)
 
-        con = await pool.acquire(timeout=0.1)
+        con = await pool.acquire(timeout=POOL_NOMINAL_TIMEOUT)
         con.terminate()
         await pool.release(con)
 
-        async with pool.acquire(timeout=0.1):
+        async with pool.acquire(timeout=POOL_NOMINAL_TIMEOUT):
             con.terminate()
 
-        con = await pool.acquire(timeout=0.1)
+        con = await pool.acquire(timeout=POOL_NOMINAL_TIMEOUT)
         self.assertEqual(await con.fetchval('SELECT 1'), 1)
 
         await pool.close()
