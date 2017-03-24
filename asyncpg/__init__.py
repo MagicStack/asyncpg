@@ -8,7 +8,8 @@
 from .connection import connect  # NOQA
 from .exceptions import *  # NOQA
 from .pool import create_pool  # NOQA
+from .protocol import Record  # NOQA
 from .types import *  # NOQA
 
 
-__all__ = ('connect', 'create_pool') + exceptions.__all__  # NOQA
+__all__ = ('connect', 'create_pool', 'Record') + exceptions.__all__  # NOQA

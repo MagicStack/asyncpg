@@ -249,9 +249,9 @@ Record Objects
 ==============
 
 Each row (or composite type value) returned by calls to ``fetch*`` methods
-is represented by an instance of the ``Record`` object.  ``Record`` objects
-are similar to instances of ``collections.namedtuple`` and allow addressing
-of values either by a numeric index or by a field name:
+is represented by an instance of the :class:`~asyncpg.Record` object.
+``Record`` objects are a tuple-/dict-like hybrid, and allow addressing of
+items either by a numeric index or by a field name:
 
 .. code-block:: pycon
 
@@ -267,7 +267,14 @@ of values either by a numeric index or by a field name:
     16388
     >>> r[0]
     16388
+    >>> dict(r)
+    {'oid': 16388, 'rolname': 'elvis', 'rolsuper': True}
+    >>> tuple(r)
+    (16388, 'elvis', True)
 
+.. note::
+
+   ``Record`` objects currently cannot be created from Python code.
 
 .. class:: Record()
 

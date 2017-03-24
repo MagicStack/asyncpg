@@ -512,7 +512,7 @@ static PyMethodDef record_methods[] = {
 
 PyTypeObject ApgRecord_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "Record",                                        /* tp_name */
+    "asyncpg.Record",                                /* tp_name */
     sizeof(ApgRecordObject) - sizeof(PyObject *),    /* tp_basic_size */
     sizeof(PyObject *),                              /* tp_itemsize */
     (destructor)record_dealloc,                      /* tp_dealloc */
@@ -849,25 +849,26 @@ record_new_items_iter(PyObject *seq)
 }
 
 
-int ApgRecord_InitTypes(void)
+PyTypeObject *
+ApgRecord_InitTypes(void)
 {
     if (PyType_Ready(&ApgRecord_Type) < 0) {
-        return -1;
+        return NULL;
     }
 
     if (PyType_Ready(&ApgRecordDesc_Type) < 0) {
-        return -1;
+        return NULL;
     }
 
     if (PyType_Ready(&ApgRecordIter_Type) < 0) {
-        return -1;
+        return NULL;
     }
 
     if (PyType_Ready(&ApgRecordItems_Type) < 0) {
-        return -1;
+        return NULL;
     }
 
-    return 0;
+    return &ApgRecord_Type;
 }
 
 
