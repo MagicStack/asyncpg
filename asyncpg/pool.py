@@ -12,7 +12,7 @@ from . import connection
 from . import exceptions
 
 
-class PooledConnectionProxyMeta(type):
+class PoolConnectionProxyMeta(type):
 
     def __new__(mcls, name, bases, dct, *, wrap=False):
         if wrap:
@@ -20,7 +20,7 @@ class PooledConnectionProxyMeta(type):
                 meth = getattr(connection.Connection, methname)
 
                 def wrapper(self, *args, **kwargs):
-                    return self._dispatch(meth, args, kwargs)
+                    return self._dispatch_method_call(meth, args, kwargs)
 
                 return wrapper
 
@@ -42,27 +42,27 @@ class PooledConnectionProxyMeta(type):
         super().__init__(name, bases, dct)
 
 
-class PooledConnectionProxy(connection._ConnectionProxy,
-                            metaclass=PooledConnectionProxyMeta,
-                            wrap=True):
+class PoolConnectionProxy(connection._ConnectionProxy,
+                          metaclass=PoolConnectionProxyMeta,
+                          wrap=True):
 
-    __slots__ = ('_con', '_owner')
+    __slots__ = ('_con', '_holder')
 
-    def __init__(self, owner: 'Pool', con: connection.Connection):
+    def __init__(self, holder: 'PoolConnectionHolder',
+                 con: connection.Connection):
         self._con = con
-        self._owner = owner
+        self._holder = holder
         con._set_proxy(self)
 
-    def _unwrap(self) -> connection.Connection:
+    def _detach(self):
         if self._con is None:
             raise exceptions.InterfaceError(
-                'internal asyncpg error: cannot unwrap pooled connection')
+                'cannot detach PoolConnectionProxy: already detached')
 
         con, self._con = self._con, None
         con._set_proxy(None)
-        return con
 
-    def _dispatch(self, meth, args, kwargs):
+    def _dispatch_method_call(self, meth, args, kwargs):
         if self._con is None:
             raise exceptions.InterfaceError(
                 'cannot call Connection.{}(): '
@@ -80,6 +80,130 @@ class PooledConnectionProxy(connection._ConnectionProxy,
                 classname=self.__class__.__name__, con=self._con, id=id(self))
 
 
+class PoolConnectionHolder:
+
+    __slots__ = ('_con', '_pool', '_loop',
+                 '_connect_args', '_connect_kwargs',
+                 '_max_queries', '_setup', '_init')
+
+    def __init__(self, pool, *, connect_args, connect_kwargs,
+                 max_queries, setup, init):
+
+        self._pool = pool
+        self._con = None
+
+        self._connect_args = connect_args
+        self._connect_kwargs = connect_kwargs
+        self._max_queries = max_queries
+        self._setup = setup
+        self._init = init
+
+    async def connect(self):
+        assert self._con is None
+
+        if self._pool._working_addr is None:
+            # First connection attempt on this pool.
+            con = await self._pool._connect(*self._connect_args,
+                                            loop=self._pool._loop,
+                                            **self._connect_kwargs)
+            self._pool._working_addr = con._addr
+            self._pool._working_opts = con._opts
+
+        else:
+            # We've connected before and have a resolved address
+            # and parsed options in `pool._working_addr` and
+            # `pool._working_opts`.
+            if isinstance(self._pool._working_addr, str):
+                host = self._pool._working_addr
+                port = 0
+            else:
+                host, port = self._pool._working_addr
+
+            con = await self._pool._connect(host=host, port=port,
+                                            loop=self._pool._loop,
+                                            **self._pool._working_opts)
+
+        if self._init is not None:
+            await self._init(con)
+
+        self._con = con
+
+    async def acquire(self) -> PoolConnectionProxy:
+        if self._con is None:
+            await self.connect()
+
+        proxy = PoolConnectionProxy(self, self._con)
+
+        if self._setup is not None:
+            try:
+                await self._setup(proxy)
+            except Exception as ex:
+                # If a user-defined `setup` function fails, we don't
+                # know if the connection is safe for re-use, hence
+                # we close it.  A new connection will be created
+                # when `acquire` is called again.
+                try:
+                    proxy._detach()
+                    # Use `close` to close the connection gracefully.
+                    # An exception in `setup` isn't necessarily caused
+                    # by an IO or a protocol error.
+                    await self._con.close()
+                finally:
+                    self._con = None
+                    raise ex
+
+        return proxy
+
+    async def release(self):
+        if self._con.is_closed():
+            self._con = None
+
+        elif self._con._protocol.queries_count >= self._max_queries:
+            try:
+                await self._con.close()
+            finally:
+                self._con = None
+
+        else:
+            try:
+                await self._con.reset()
+            except Exception as ex:
+                # If the `reset` call failed, terminate the connection.
+                # A new one will be created when `acquire` is called
+                # again.
+                try:
+                    # An exception in `reset` is most likely caused by
+                    # an IO error, so terminate the connection.
+                    self._con.terminate()
+                finally:
+                    self._con = None
+                    raise ex
+
+    async def close(self):
+        if self._con is None:
+            return
+        if self._con.is_closed():
+            self._con = None
+            return
+
+        try:
+            await self._con.close()
+        finally:
+            self._con = None
+
+    def terminate(self):
+        if self._con is None:
+            return
+        if self._con.is_closed():
+            self._con = None
+            return
+
+        try:
+            self._con.terminate()
+        finally:
+            self._con = None
+
+
 class Pool:
     """A connection pool.
 
@@ -92,10 +216,8 @@ class Pool:
     """
 
     __slots__ = ('_queue', '_loop', '_minsize', '_maxsize',
-                 '_connect_args', '_connect_kwargs',
                  '_working_addr', '_working_opts',
-                 '_con_count', '_max_queries', '_connections',
-                 '_initialized', '_closed', '_setup', '_init')
+                 '_holders', '_initialized', '_closed')
 
     def __init__(self, *connect_args,
                  min_size,
@@ -113,8 +235,9 @@ class Pool:
         if max_size <= 0:
             raise ValueError('max_size is expected to be greater than zero')
 
-        if min_size <= 0:
-            raise ValueError('min_size is expected to be greater than zero')
+        if min_size < 0:
+            raise ValueError(
+                'min_size is expected to be greater or equal to zero')
 
         if min_size > max_size:
             raise ValueError('min_size is greater than max_size')
@@ -124,63 +247,59 @@ class Pool:
 
         self._minsize = min_size
         self._maxsize = max_size
-        self._max_queries = max_queries
 
-        self._setup = setup
-        self._init = init
-
-        self._connect_args = connect_args
-        self._connect_kwargs = connect_kwargs
+        self._holders = []
+        self._initialized = False
+        self._queue = asyncio.LifoQueue(maxsize=self._maxsize, loop=self._loop)
 
         self._working_addr = None
         self._working_opts = None
 
-        self._reset()
-
         self._closed = False
 
+        for _ in range(max_size):
+            ch = PoolConnectionHolder(
+                self,
+                connect_args=connect_args,
+                connect_kwargs=connect_kwargs,
+                max_queries=max_queries,
+                setup=setup,
+                init=init)
+
+            self._holders.append(ch)
+            self._queue.put_nowait(ch)
+
     async def _connect(self, *args, **kwargs):
+        # Used by PoolConnectionHolder.
         return await connection.connect(*args, **kwargs)
 
-    async def _new_connection(self):
-        if self._working_addr is None:
-            con = await self._connect(*self._connect_args,
-                                      loop=self._loop,
-                                      **self._connect_kwargs)
-            self._working_addr = con._addr
-            self._working_opts = con._opts
-
-        else:
-            if isinstance(self._working_addr, str):
-                host = self._working_addr
-                port = 0
-            else:
-                host, port = self._working_addr
-
-            con = await self._connect(host=host, port=port,
-                                      loop=self._loop,
-                                      **self._working_opts)
-
-        if self._init is not None:
-            await self._init(con)
-
-        self._connections.add(con)
-        return con
-
-    async def _initialize(self):
+    async def _async__init__(self):
         if self._initialized:
             return
         if self._closed:
             raise exceptions.InterfaceError('pool is closed')
 
-        for _ in range(self._minsize):
-            self._con_count += 1
-            try:
-                con = await self._new_connection()
-            except:
-                self._con_count -= 1
-                raise
-            self._queue.put_nowait(con)
+        if self._minsize:
+            # Since we use a LIFO queue, the first items in the queue will be
+            # the last ones in `self._holders`.  We want to pre-connect the
+            # first few connections in the queue, therefore we want to walk
+            # `self._holders` in reverse.
+
+            # Connect the first connection holder in the queue so that it
+            # can record `_working_addr` and `_working_opts`, which will
+            # speed up successive connection attempts.
+            first_ch = self._holders[-1]  # type: PoolConnectionHolder
+            await first_ch.connect()
+
+            if self._minsize > 1:
+                connect_tasks = []
+                for i, ch in enumerate(reversed(self._holders[:-1])):
+                    # `minsize - 1` because we already have first_ch
+                    if i >= self._minsize - 1:
+                        break
+                    connect_tasks.append(ch.connect())
+
+                await asyncio.gather(*connect_tasks, loop=self._loop)
 
         self._initialized = True
         return self
@@ -211,48 +330,35 @@ class Pool:
         return PoolAcquireContext(self, timeout)
 
     async def _acquire(self, timeout):
-        if timeout is None:
-            return await self._acquire_impl()
-        else:
-            return await asyncio.wait_for(self._acquire_impl(),
-                                          timeout=timeout,
-                                          loop=self._loop)
-
-    async def _acquire_impl(self):
-        self._check_init()
-
-        try:
-            con = self._queue.get_nowait()
-        except asyncio.QueueEmpty:
-            con = None
-
-        if con is None:
-            if self._con_count < self._maxsize:
-                self._con_count += 1
-                try:
-                    con = await self._new_connection()
-                except:
-                    self._con_count -= 1
-                    raise
-            else:
-                con = await self._queue.get()
-
-        con = PooledConnectionProxy(self, con)
-
-        if self._setup is not None:
+        async def _acquire_impl():
+            ch = await self._queue.get()  # type: PoolConnectionHolder
             try:
-                await self._setup(con)
-            except:
-                await self.release(con)
+                proxy = await ch.acquire()  # type: PoolConnectionProxy
+            except Exception:
+                self._queue.put_nowait(ch)
                 raise
+            else:
+                return proxy
 
-        return con
+        self._check_init()
+        if timeout is None:
+            return await _acquire_impl()
+        else:
+            return await asyncio.wait_for(
+                _acquire_impl(), timeout=timeout, loop=self._loop)
 
     async def release(self, connection):
         """Release a database connection back to the pool."""
+        async def _release_impl(ch: PoolConnectionHolder):
+            try:
+                await ch.release()
+            finally:
+                self._queue.put_nowait(ch)
 
-        if (connection.__class__ is not PooledConnectionProxy or
-                connection._owner is not self):
+        self._check_init()
+
+        if (type(connection) is not PoolConnectionProxy or
+                connection._holder._pool is not self):
             raise exceptions.InterfaceError(
                 'Pool.release() received invalid connection: '
                 '{connection!r} is not a member of this pool'.format(
@@ -262,26 +368,13 @@ class Pool:
             # Already released, do nothing.
             return
 
-        connection = connection._unwrap()
+        connection._detach()
 
         # Use asyncio.shield() to guarantee that task cancellation
         # does not prevent the connection from being returned to the
         # pool properly.
-        return await asyncio.shield(self._release_impl(connection),
+        return await asyncio.shield(_release_impl(connection._holder),
                                     loop=self._loop)
-
-    async def _release_impl(self, connection):
-        self._check_init()
-        if connection.is_closed():
-            self._con_count -= 1
-            self._connections.remove(connection)
-        elif connection._protocol.queries_count >= self._max_queries:
-            self._con_count -= 1
-            self._connections.remove(connection)
-            await connection.close()
-        else:
-            await connection.reset()
-            self._queue.put_nowait(connection)
 
     async def close(self):
         """Gracefully close all connections in the pool."""
@@ -289,11 +382,8 @@ class Pool:
             return
         self._check_init()
         self._closed = True
-        coros = []
-        for con in self._connections:
-            coros.append(con.close())
+        coros = [ch.close() for ch in self._holders]
         await asyncio.gather(*coros, loop=self._loop)
-        self._reset()
 
     def terminate(self):
         """Terminate all connections in the pool."""
@@ -301,9 +391,8 @@ class Pool:
             return
         self._check_init()
         self._closed = True
-        for con in self._connections:
-            con.terminate()
-        self._reset()
+        for ch in self._holders:
+            ch.terminate()
 
     def _check_init(self):
         if not self._initialized:
@@ -311,17 +400,11 @@ class Pool:
         if self._closed:
             raise exceptions.InterfaceError('pool is closed')
 
-    def _reset(self):
-        self._connections = set()
-        self._con_count = 0
-        self._initialized = False
-        self._queue = asyncio.Queue(maxsize=self._maxsize, loop=self._loop)
-
     def __await__(self):
-        return self._initialize().__await__()
+        return self._async__init__().__await__()
 
     async def __aenter__(self):
-        await self._initialize()
+        await self._async__init__()
         return self
 
     async def __aexit__(self, *exc):

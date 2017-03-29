@@ -43,7 +43,7 @@ class SlowResetConnectionPool(pg_pool.Pool):
 class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_01(self):
-        for n in {1, 3, 5, 10, 20, 100}:
+        for n in {1, 5, 10, 20, 100}:
             with self.subTest(tasksnum=n):
                 pool = await self.create_pool(database='postgres',
                                               min_size=5, max_size=10)
@@ -225,6 +225,44 @@ class TestPool(tb.ConnectedTestCase):
 
         await pool.close()
 
+    async def test_pool_exception_in_setup_and_init(self):
+        class Error(Exception):
+            pass
+
+        async def setup(con):
+            nonlocal setup_calls
+            setup_calls += 1
+            if setup_calls > 1:
+                cons.append(con)
+            else:
+                cons.append('error')
+                raise Error
+
+        with self.subTest(method='setup'):
+            setup_calls = 0
+            cons = []
+            async with self.create_pool(database='postgres',
+                                        min_size=1, max_size=1,
+                                        setup=setup) as pool:
+                with self.assertRaises(Error):
+                    await pool.acquire()
+
+                con = await pool.acquire()
+                self.assertEqual(cons, ['error', con])
+
+        with self.subTest(method='init'):
+            setup_calls = 0
+            cons = []
+            async with self.create_pool(database='postgres',
+                                        min_size=0, max_size=1,
+                                        init=setup) as pool:
+                with self.assertRaises(Error):
+                    await pool.acquire()
+
+                con = await pool.acquire()
+                self.assertEqual(await con.fetchval('select 1::int'), 1)
+                self.assertEqual(cons, ['error', con._con])
+
     async def test_pool_auth(self):
         if not self.cluster.is_managed():
             self.skipTest('unmanaged cluster')
@@ -295,6 +333,21 @@ class TestPool(tb.ConnectedTestCase):
         await asyncio.sleep(0.4, loop=self.loop)
         # Check that the connection has been returned to the pool.
         self.assertEqual(pool._queue.qsize(), 1)
+
+    async def test_pool_no_acquire_deadlock(self):
+        async with self.create_pool(database='postgres',
+                                    min_size=1, max_size=1,
+                                    max_queries=1) as pool:
+
+            async def sleep_and_release():
+                async with pool.acquire() as con:
+                    await con.execute('SELECT pg_sleep(1)')
+
+            asyncio.ensure_future(sleep_and_release(), loop=self.loop)
+            await asyncio.sleep(0.5, loop=self.loop)
+
+            async with pool.acquire() as con:
+                await con.fetchval('SELECT 1')
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
