@@ -6,9 +6,78 @@
 
 
 import asyncio
+import functools
 
 from . import connection
 from . import exceptions
+
+
+class PooledConnectionProxyMeta(type):
+
+    def __new__(mcls, name, bases, dct, *, wrap=False):
+        if wrap:
+            def get_wrapper(methname):
+                meth = getattr(connection.Connection, methname)
+
+                def wrapper(self, *args, **kwargs):
+                    return self._dispatch(meth, args, kwargs)
+
+                return wrapper
+
+            for attrname in dir(connection.Connection):
+                if attrname.startswith('_') or attrname in dct:
+                    continue
+                wrapper = get_wrapper(attrname)
+                wrapper = functools.update_wrapper(
+                    wrapper, getattr(connection.Connection, attrname))
+                dct[attrname] = wrapper
+
+            if '__doc__' not in dct:
+                dct['__doc__'] = connection.Connection.__doc__
+
+        return super().__new__(mcls, name, bases, dct)
+
+    def __init__(cls, name, bases, dct, *, wrap=False):
+        # Needed for Python 3.5 to handle `wrap` class keyword argument.
+        super().__init__(name, bases, dct)
+
+
+class PooledConnectionProxy(connection._ConnectionProxy,
+                            metaclass=PooledConnectionProxyMeta,
+                            wrap=True):
+
+    __slots__ = ('_con', '_owner')
+
+    def __init__(self, owner: 'Pool', con: connection.Connection):
+        self._con = con
+        self._owner = owner
+        con._set_proxy(self)
+
+    def _unwrap(self) -> connection.Connection:
+        if self._con is None:
+            raise exceptions.InterfaceError(
+                'internal asyncpg error: cannot unwrap pooled connection')
+
+        con, self._con = self._con, None
+        con._set_proxy(None)
+        return con
+
+    def _dispatch(self, meth, args, kwargs):
+        if self._con is None:
+            raise exceptions.InterfaceError(
+                'cannot call Connection.{}(): '
+                'connection has been released back to the pool'.format(
+                    meth.__name__))
+
+        return meth(self._con, *args, **kwargs)
+
+    def __repr__(self):
+        if self._con is None:
+            return '<{classname} [released] {id:#x}>'.format(
+                classname=self.__class__.__name__, id=id(self))
+        else:
+            return '<{classname} {con!r} {id:#x}>'.format(
+                classname=self.__class__.__name__, con=self._con, id=id(self))
 
 
 class Pool:
@@ -168,6 +237,8 @@ class Pool:
             else:
                 con = await self._queue.get()
 
+        con = PooledConnectionProxy(self, con)
+
         if self._setup is not None:
             try:
                 await self._setup(con)
@@ -179,6 +250,20 @@ class Pool:
 
     async def release(self, connection):
         """Release a database connection back to the pool."""
+
+        if (connection.__class__ is not PooledConnectionProxy or
+                connection._owner is not self):
+            raise exceptions.InterfaceError(
+                'Pool.release() received invalid connection: '
+                '{connection!r} is not a member of this pool'.format(
+                    connection=connection))
+
+        if connection._con is None:
+            # Already released, do nothing.
+            return
+
+        connection = connection._unwrap()
+
         # Use asyncio.shield() to guarantee that task cancellation
         # does not prevent the connection from being returned to the
         # pool properly.
@@ -325,6 +410,10 @@ def create_pool(dsn=None, *,
     :param loop: An asyncio event loop instance.  If ``None``, the default
                  event loop will be used.
     :return: An instance of :class:`~asyncpg.pool.Pool`.
+
+    .. versionchanged:: 0.10.0
+       An :exc:`~asyncpg.exceptions.InterfaceError` will be raised on any
+       attempted operation on a released connection.
     """
     return Pool(dsn,
                 min_size=min_size, max_size=max_size,

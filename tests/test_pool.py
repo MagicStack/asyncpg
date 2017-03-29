@@ -6,6 +6,8 @@
 
 
 import asyncio
+import asyncpg
+import inspect
 import platform
 import os
 import unittest
@@ -35,7 +37,7 @@ class SlowResetConnection(pg_connection.Connection):
 class SlowResetConnectionPool(pg_pool.Pool):
     async def _connect(self, *args, **kwargs):
         return await pg_connection.connect(
-            *args, connection_class=SlowResetConnection, **kwargs)
+            *args, __connection_class__=SlowResetConnection, **kwargs)
 
 
 class TestPool(tb.ConnectedTestCase):
@@ -88,7 +90,7 @@ class TestPool(tb.ConnectedTestCase):
         con.terminate()
         await pool.release(con)
 
-        async with pool.acquire(timeout=POOL_NOMINAL_TIMEOUT):
+        async with pool.acquire(timeout=POOL_NOMINAL_TIMEOUT) as con:
             con.terminate()
 
         con = await pool.acquire(timeout=POOL_NOMINAL_TIMEOUT)
@@ -127,7 +129,7 @@ class TestPool(tb.ConnectedTestCase):
         cons = set()
 
         async def setup(con):
-            if con not in cons:
+            if con._con not in cons:  # `con` is `PooledConnectionProxy`.
                 raise RuntimeError('init was not called before setup')
 
         async def init(con):
@@ -137,7 +139,7 @@ class TestPool(tb.ConnectedTestCase):
 
         async def user(pool):
             async with pool.acquire() as con:
-                if con not in cons:
+                if con._con not in cons:  # `con` is `PooledConnectionProxy`.
                     raise RuntimeError('init was not called')
 
         async with self.create_pool(database='postgres',
@@ -149,6 +151,79 @@ class TestPool(tb.ConnectedTestCase):
             await users
 
         self.assertEqual(len(cons), 5)
+
+    async def test_pool_08(self):
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
+
+        con = await pool.acquire(timeout=POOL_NOMINAL_TIMEOUT)
+        with self.assertRaisesRegex(asyncpg.InterfaceError, 'is not a member'):
+            await pool.release(con._con)
+
+    async def test_pool_09(self):
+        pool1 = await self.create_pool(database='postgres',
+                                       min_size=1, max_size=1)
+
+        pool2 = await self.create_pool(database='postgres',
+                                       min_size=1, max_size=1)
+
+        con = await pool1.acquire(timeout=POOL_NOMINAL_TIMEOUT)
+        with self.assertRaisesRegex(asyncpg.InterfaceError, 'is not a member'):
+            await pool2.release(con)
+
+        await pool1.close()
+        await pool2.close()
+
+    async def test_pool_10(self):
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
+
+        con = await pool.acquire()
+        await pool.release(con)
+        await pool.release(con)
+
+        await pool.close()
+
+    async def test_pool_11(self):
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
+
+        async with pool.acquire() as con:
+            self.assertIn(repr(con._con), repr(con))  # Test __repr__.
+
+        self.assertIn('[released]', repr(con))
+
+        with self.assertRaisesRegex(
+                asyncpg.InterfaceError,
+                r'cannot call Connection\.execute.*released back to the pool'):
+
+            con.execute('select 1')
+
+        await pool.close()
+
+    async def test_pool_12(self):
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
+
+        async with pool.acquire() as con:
+            self.assertTrue(isinstance(con, pg_connection.Connection))
+            self.assertFalse(isinstance(con, list))
+
+        await pool.close()
+
+    async def test_pool_13(self):
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
+
+        async with pool.acquire() as con:
+            self.assertIn('Execute an SQL command', con.execute.__doc__)
+            self.assertEqual(con.execute.__name__, 'execute')
+
+            self.assertIn(
+                str(inspect.signature(con.execute))[1:],
+                str(inspect.signature(pg_connection.Connection.execute)))
+
+        await pool.close()
 
     async def test_pool_auth(self):
         if not self.cluster.is_managed():

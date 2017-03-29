@@ -14,6 +14,7 @@ import struct
 import urllib.parse
 
 from . import cursor
+from . import exceptions
 from . import introspection
 from . import prepared_stmt
 from . import protocol
@@ -21,7 +22,14 @@ from . import serverversion
 from . import transaction
 
 
-class Connection:
+class ConnectionMeta(type):
+
+    def __instancecheck__(cls, instance):
+        mro = type(instance).__mro__
+        return Connection in mro or _ConnectionProxy in mro
+
+
+class Connection(metaclass=ConnectionMeta):
     """A representation of a database session.
 
     Connections are created by calling :func:`~asyncpg.connection.connect`.
@@ -32,7 +40,7 @@ class Connection:
                  '_stmt_cache_max_size', '_stmt_cache', '_stmts_to_close',
                  '_addr', '_opts', '_command_timeout', '_listeners',
                  '_server_version', '_server_caps', '_intro_query',
-                 '_reset_query')
+                 '_reset_query', '_proxy')
 
     def __init__(self, protocol, transport, loop, addr, opts, *,
                  statement_cache_size, command_timeout):
@@ -70,6 +78,7 @@ class Connection:
             self._intro_query = introspection.INTRO_LOOKUP_TYPES
 
         self._reset_query = None
+        self._proxy = None
 
     async def add_listener(self, channel, callback):
         """Add a listener for Postgres notifications.
@@ -478,9 +487,18 @@ class Connection:
         if channel not in self._listeners:
             return
 
+        if self._proxy is None:
+            con_ref = self
+        else:
+            # `_proxy` is not None when the connection is a member
+            # of a connection pool.  Which means that the user is working
+            # with a PooledConnectionProxy instance, and expects to see it
+            # (and not the actual Connection) in their event callbacks.
+            con_ref = self._proxy
+
         for cb in self._listeners[channel]:
             try:
-                cb(self, pid, channel, payload)
+                cb(con_ref, pid, channel, payload)
             except Exception as ex:
                 self._loop.call_exception_handler({
                     'message': 'Unhandled exception in asyncpg notification '
@@ -517,6 +535,14 @@ class Connection:
 
         return _reset_query
 
+    def _set_proxy(self, proxy):
+        if self._proxy is not None and proxy is not None:
+            # Should not happen unless there is a bug in `Pool`.
+            raise exceptions.InterfaceError(
+                'internal asyncpg error: connection is already proxied')
+
+        self._proxy = proxy
+
 
 async def connect(dsn=None, *,
                   host=None, port=None,
@@ -526,7 +552,7 @@ async def connect(dsn=None, *,
                   timeout=60,
                   statement_cache_size=100,
                   command_timeout=None,
-                  connection_class=Connection,
+                  __connection_class__=Connection,
                   **opts):
     """A coroutine to establish a connection to a PostgreSQL server.
 
@@ -564,11 +590,7 @@ async def connect(dsn=None, *,
     :param float command_timeout: the default timeout for operations on
                           this connection (the default is no timeout).
 
-    :param builtins.type connection_class: A class used to represent
-                the connection.
-                Defaults to :class:`~asyncpg.connection.Connection`.
-
-    :return: A *connection_class* instance.
+    :return: A :class:`~asyncpg.connection.Connection` instance.
 
     Example:
 
@@ -582,10 +604,6 @@ async def connect(dsn=None, *,
         ...     print(types)
         >>> asyncio.get_event_loop().run_until_complete(run())
         [<Record typname='bool' typnamespace=11 ...
-
-
-    .. versionadded:: 0.10.0
-       *connection_class* argument.
     """
     if loop is None:
         loop = asyncio.get_event_loop()
@@ -629,11 +647,16 @@ async def connect(dsn=None, *,
         tr.close()
         raise
 
-    con = connection_class(pr, tr, loop, addr, opts,
-                           statement_cache_size=statement_cache_size,
-                           command_timeout=command_timeout)
+    con = __connection_class__(pr, tr, loop, addr, opts,
+                               statement_cache_size=statement_cache_size,
+                               command_timeout=command_timeout)
     pr.set_connection(con)
     return con
+
+
+class _ConnectionProxy:
+    # Base class to enable `isinstance(Connection)` check.
+    __slots__ = ()
 
 
 def _parse_connect_params(*, dsn, host, port, user,

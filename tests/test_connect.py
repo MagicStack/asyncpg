@@ -13,7 +13,7 @@ import unittest
 
 import asyncpg
 from asyncpg import _testbase as tb
-from asyncpg.connection import _parse_connect_params
+from asyncpg import connection
 from asyncpg.serverversion import split_server_version_string
 
 _system = platform.uname().system
@@ -355,7 +355,7 @@ class TestConnectParams(unittest.TestCase):
             if expected_error:
                 es.enter_context(self.assertRaisesRegex(*expected_error))
 
-            result = _parse_connect_params(
+            result = connection._parse_connect_params(
                 dsn=dsn, host=host, port=port, user=user, password=password,
                 database=database, opts=opts)
 
@@ -411,3 +411,11 @@ class TestConnectParams(unittest.TestCase):
     def test_connect_params(self):
         for testcase in self.TESTS:
             self.run_testcase(testcase)
+
+
+class TestConnection(tb.ConnectedTestCase):
+
+    async def test_connection_isinstance(self):
+        self.assertTrue(isinstance(self.con, connection.Connection))
+        self.assertTrue(isinstance(self.con, object))
+        self.assertFalse(isinstance(self.con, list))
