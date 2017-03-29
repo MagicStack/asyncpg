@@ -526,6 +526,7 @@ async def connect(dsn=None, *,
                   timeout=60,
                   statement_cache_size=100,
                   command_timeout=None,
+                  connection_class=Connection,
                   **opts):
     """A coroutine to establish a connection to a PostgreSQL server.
 
@@ -558,12 +559,16 @@ async def connect(dsn=None, *,
 
     :param float timeout: connection timeout in seconds.
 
+    :param int statement_cache_size: the size of prepared statement LRU cache.
+
     :param float command_timeout: the default timeout for operations on
                           this connection (the default is no timeout).
 
-    :param int statement_cache_size: the size of prepared statement LRU cache.
+    :param builtins.type connection_class: A class used to represent
+                the connection.
+                Defaults to :class:`~asyncpg.connection.Connection`.
 
-    :return: A :class:`~asyncpg.connection.Connection` instance.
+    :return: A *connection_class* instance.
 
     Example:
 
@@ -577,6 +582,10 @@ async def connect(dsn=None, *,
         ...     print(types)
         >>> asyncio.get_event_loop().run_until_complete(run())
         [<Record typname='bool' typnamespace=11 ...
+
+
+    .. versionadded:: 0.10.0
+       *connection_class* argument.
     """
     if loop is None:
         loop = asyncio.get_event_loop()
@@ -620,9 +629,9 @@ async def connect(dsn=None, *,
         tr.close()
         raise
 
-    con = Connection(pr, tr, loop, addr, opts,
-                     statement_cache_size=statement_cache_size,
-                     command_timeout=command_timeout)
+    con = connection_class(pr, tr, loop, addr, opts,
+                           statement_cache_size=statement_cache_size,
+                           command_timeout=command_timeout)
     pr.set_connection(con)
     return con
 

@@ -128,6 +128,22 @@ def _shutdown_cluster(cluster):
     cluster.destroy()
 
 
+def create_pool(dsn=None, *,
+                min_size=10,
+                max_size=10,
+                max_queries=50000,
+                setup=None,
+                init=None,
+                loop=None,
+                pool_class=pg_pool.Pool,
+                **connect_kwargs):
+    return pool_class(
+        dsn,
+        min_size=min_size, max_size=max_size,
+        max_queries=max_queries, loop=loop, setup=setup, init=init,
+        **connect_kwargs)
+
+
 class ClusterTestCase(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -136,10 +152,10 @@ class ClusterTestCase(TestCase):
             'log_connections': 'on'
         })
 
-    def create_pool(self, **kwargs):
+    def create_pool(self, pool_class=pg_pool.Pool, **kwargs):
         conn_spec = self.cluster.get_connection_spec()
         conn_spec.update(kwargs)
-        return pg_pool.create_pool(loop=self.loop, **conn_spec)
+        return create_pool(loop=self.loop, pool_class=pool_class, **conn_spec)
 
     @classmethod
     def start_cluster(cls, ClusterCls, *,
