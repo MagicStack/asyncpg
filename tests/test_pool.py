@@ -11,6 +11,7 @@ import os
 import unittest
 
 from asyncpg import _testbase as tb
+from asyncpg import connection as pg_connection
 from asyncpg import cluster as pg_cluster
 from asyncpg import pool as pg_pool
 
@@ -22,6 +23,19 @@ if os.environ.get('TRAVIS_OS_NAME') == 'osx':
     POOL_NOMINAL_TIMEOUT = 0.5
 else:
     POOL_NOMINAL_TIMEOUT = 0.1
+
+
+class SlowResetConnection(pg_connection.Connection):
+    """Connection class to simulate races with Connection.reset()."""
+    async def reset(self):
+        await asyncio.sleep(0.2, loop=self._loop)
+        return await super().reset()
+
+
+class SlowResetConnectionPool(pg_pool.Pool):
+    async def _connect(self, *args, **kwargs):
+        return await pg_connection.connect(
+            *args, connection_class=SlowResetConnection, **kwargs)
 
 
 class TestPool(tb.ConnectedTestCase):
@@ -185,6 +199,27 @@ class TestPool(tb.ConnectedTestCase):
             # Reset cluster's pg_hba.conf since we've meddled with it
             self.cluster.trust_local_connections()
             self.cluster.reload()
+
+    async def test_pool_handles_cancel_in_release(self):
+        # Use SlowResetConnectionPool to simulate
+        # the Task.cancel() and __aexit__ race.
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1,
+                                      pool_class=SlowResetConnectionPool)
+
+        async def worker():
+            async with pool.acquire():
+                pass
+
+        task = self.loop.create_task(worker())
+        # Let the worker() run.
+        await asyncio.sleep(0.1, loop=self.loop)
+        # Cancel the worker.
+        task.cancel()
+        # Wait to make sure the cleanup has completed.
+        await asyncio.sleep(0.4, loop=self.loop)
+        # Check that the connection has been returned to the pool.
+        self.assertEqual(pool._queue.qsize(), 1)
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')

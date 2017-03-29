@@ -70,12 +70,14 @@ class Pool:
 
         self._closed = False
 
+    async def _connect(self, *args, **kwargs):
+        return await connection.connect(*args, **kwargs)
+
     async def _new_connection(self):
         if self._working_addr is None:
-            con = await connection.connect(*self._connect_args,
-                                           loop=self._loop,
-                                           **self._connect_kwargs)
-
+            con = await self._connect(*self._connect_args,
+                                      loop=self._loop,
+                                      **self._connect_kwargs)
             self._working_addr = con._addr
             self._working_opts = con._opts
 
@@ -86,9 +88,9 @@ class Pool:
             else:
                 host, port = self._working_addr
 
-            con = await connection.connect(host=host, port=port,
-                                           loop=self._loop,
-                                           **self._working_opts)
+            con = await self._connect(host=host, port=port,
+                                      loop=self._loop,
+                                      **self._working_opts)
 
         if self._init is not None:
             await self._init(con)
@@ -177,6 +179,13 @@ class Pool:
 
     async def release(self, connection):
         """Release a database connection back to the pool."""
+        # Use asyncio.shield() to guarantee that task cancellation
+        # does not prevent the connection from being returned to the
+        # pool properly.
+        return await asyncio.shield(self._release_impl(connection),
+                                    loop=self._loop)
+
+    async def _release_impl(self, connection):
         self._check_init()
         if connection.is_closed():
             self._con_count -= 1
