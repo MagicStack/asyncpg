@@ -11,6 +11,7 @@ import getpass
 import os
 import socket
 import struct
+import time
 import urllib.parse
 
 from . import cursor
@@ -59,6 +60,22 @@ class Connection(metaclass=ConnectionMeta):
         self._stmt_cache_max_size = statement_cache_size
         self._stmt_cache = collections.OrderedDict()
         self._stmts_to_close = set()
+
+        if command_timeout is not None:
+            try:
+                if isinstance(command_timeout, bool):
+                    raise ValueError
+
+                command_timeout = float(command_timeout)
+
+                if command_timeout < 0:
+                    raise ValueError
+
+            except ValueError:
+                raise ValueError(
+                    'invalid command_timeout value: '
+                    'expected non-negative float (got {!r})'.format(
+                        command_timeout)) from None
 
         self._command_timeout = command_timeout
 
@@ -187,7 +204,7 @@ class Connection(metaclass=ConnectionMeta):
         if not args:
             return await self._protocol.query(query, timeout)
 
-        _, status, _ = await self._do_execute(query, args, 0, timeout, True)
+        _, status, _ = await self._execute(query, args, 0, timeout, True)
         return status.decode()
 
     async def executemany(self, command: str, args, timeout: float=None):
@@ -208,8 +225,7 @@ class Connection(metaclass=ConnectionMeta):
 
         .. versionadded:: 0.7.0
         """
-        stmt = await self._get_statement(command, timeout)
-        return await self._protocol.bind_execute_many(stmt, args, '', timeout)
+        return await self._executemany(command, args, timeout)
 
     async def _get_statement(self, query, timeout):
         cache = self._stmt_cache_max_size > 0
@@ -281,7 +297,7 @@ class Connection(metaclass=ConnectionMeta):
 
         :return list: A list of :class:`Record` instances.
         """
-        return await self._do_execute(query, args, 0, timeout)
+        return await self._execute(query, args, 0, timeout)
 
     async def fetchval(self, query, *args, column=0, timeout=None):
         """Run a query and return a value in the first row.
@@ -297,7 +313,7 @@ class Connection(metaclass=ConnectionMeta):
 
         :return: The value of the specified column of the first record.
         """
-        data = await self._do_execute(query, args, 1, timeout)
+        data = await self._execute(query, args, 1, timeout)
         if not data:
             return None
         return data[0][column]
@@ -311,7 +327,7 @@ class Connection(metaclass=ConnectionMeta):
 
         :return: The first row as a :class:`Record` instance.
         """
-        data = await self._do_execute(query, args, 1, timeout)
+        data = await self._execute(query, args, 1, timeout)
         if not data:
             return None
         return data[0]
@@ -430,7 +446,9 @@ class Connection(metaclass=ConnectionMeta):
         to_close = self._stmts_to_close
         self._stmts_to_close = set()
         for stmt in to_close:
-            await self._protocol.close_statement(stmt, False)
+            # It is imperative that statements are cleaned properly,
+            # so we ignore the timeout.
+            await self._protocol.close_statement(stmt, protocol.NO_TIMEOUT)
 
     def _request_portal_name(self):
         return self._get_unique_id()
@@ -554,13 +572,37 @@ class Connection(metaclass=ConnectionMeta):
         else:
             self._drop_local_statement_cache()
 
-    async def _do_execute(self, query, args, limit, timeout,
-                          return_status=False):
-        stmt = await self._get_statement(query, timeout)
+    def _execute(self, query, args, limit, timeout, return_status=False):
+        executor = lambda stmt, timeout: self._protocol.bind_execute(
+            stmt, args, '', limit, return_status, timeout)
+        timeout = self._protocol._get_timeout(timeout)
+        return self._do_execute(query, executor, timeout)
+
+    def _executemany(self, query, args, timeout):
+        executor = lambda stmt, timeout: self._protocol.bind_execute_many(
+            stmt, args, '', timeout)
+        timeout = self._protocol._get_timeout(timeout)
+        return self._do_execute(query, executor, timeout)
+
+    async def _do_execute(self, query, executor, timeout, retry=True):
+        if timeout is None:
+            stmt = await self._get_statement(query, None)
+        else:
+            before = time.monotonic()
+            stmt = await self._get_statement(query, timeout)
+            after = time.monotonic()
+            timeout -= after - before
+            before = after
 
         try:
-            result = await self._protocol.bind_execute(
-                stmt, args, '', limit, return_status, timeout)
+            if timeout is None:
+                result = await executor(stmt, None)
+            else:
+                try:
+                    result = await executor(stmt, timeout)
+                finally:
+                    after = time.monotonic()
+                    timeout -= after - before
 
         except exceptions.InvalidCachedStatementError as e:
             # PostgreSQL will raise an exception when it detects
@@ -586,13 +628,11 @@ class Connection(metaclass=ConnectionMeta):
             # for discussion.
             #
             self._drop_global_statement_cache()
-
-            if self._protocol.is_in_transaction():
+            if self._protocol.is_in_transaction() or not retry:
                 raise
             else:
-                stmt = await self._get_statement(query, timeout)
-                result = await self._protocol.bind_execute(
-                    stmt, args, '', limit, return_status, timeout)
+                result = await self._do_execute(
+                    query, executor, timeout, retry=False)
 
         return result
 

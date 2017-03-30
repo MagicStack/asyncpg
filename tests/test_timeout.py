@@ -6,8 +6,9 @@
 
 
 import asyncio
-import asyncpg
 
+import asyncpg
+from asyncpg import connection as pg_connection
 from asyncpg import _testbase as tb
 
 
@@ -108,12 +109,28 @@ class TestTimeout(tb.ConnectedTestCase):
 
         self.assertEqual(await self.con.fetch('select 1'), [(1,)])
 
+    async def test_invalid_timeout(self):
+        for command_timeout in ('a', False, -1):
+            with self.subTest(command_timeout=command_timeout):
+                with self.assertRaisesRegex(ValueError,
+                                            'invalid command_timeout'):
+                    await self.cluster.connect(
+                        database='postgres', loop=self.loop,
+                        command_timeout=command_timeout)
+
+        # Note: negative timeouts are OK for method calls.
+        for methname in {'fetch', 'fetchrow', 'fetchval', 'execute'}:
+            for timeout in ('a', False):
+                with self.subTest(timeout=timeout):
+                    with self.assertRaisesRegex(ValueError, 'invalid timeout'):
+                        await self.con.execute('SELECT 1', timeout=timeout)
+
 
 class TestConnectionCommandTimeout(tb.ConnectedTestCase):
 
     def getExtraConnectOptions(self):
         return {
-            'command_timeout': 0.02
+            'command_timeout': 0.2
         }
 
     async def test_command_timeout_01(self):
@@ -123,3 +140,25 @@ class TestConnectionCommandTimeout(tb.ConnectedTestCase):
                 meth = getattr(self.con, methname)
                 await meth('select pg_sleep(10)')
             self.assertEqual(await self.con.fetch('select 1'), [(1,)])
+
+
+class SlowPrepareConnection(pg_connection.Connection):
+    """Connection class to test timeouts."""
+    async def _get_statement(self, query, timeout):
+        await asyncio.sleep(0.15, loop=self._loop)
+        return await super()._get_statement(query, timeout)
+
+
+class TestTimeoutCoversPrepare(tb.ConnectedTestCase):
+
+    def getExtraConnectOptions(self):
+        return {
+            '__connection_class__': SlowPrepareConnection,
+            'command_timeout': 0.3
+        }
+
+    async def test_timeout_covers_prepare_01(self):
+        for methname in {'fetch', 'fetchrow', 'fetchval', 'execute'}:
+            with self.assertRaises(asyncio.TimeoutError):
+                meth = getattr(self.con, methname)
+                await meth('select pg_sleep($1)', 0.2)
