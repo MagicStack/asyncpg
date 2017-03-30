@@ -7,6 +7,7 @@
 
 import asyncio
 import functools
+import inspect
 
 from . import connection
 from . import exceptions
@@ -16,20 +17,23 @@ class PoolConnectionProxyMeta(type):
 
     def __new__(mcls, name, bases, dct, *, wrap=False):
         if wrap:
-            def get_wrapper(methname):
-                meth = getattr(connection.Connection, methname)
-
+            def get_wrapper(meth):
                 def wrapper(self, *args, **kwargs):
                     return self._dispatch_method_call(meth, args, kwargs)
-
                 return wrapper
 
             for attrname in dir(connection.Connection):
                 if attrname.startswith('_') or attrname in dct:
                     continue
-                wrapper = get_wrapper(attrname)
+
+                meth = getattr(connection.Connection, attrname)
+                if not inspect.isfunction(meth):
+                    continue
+
+                wrapper = get_wrapper(meth)
                 wrapper = functools.update_wrapper(
                     wrapper, getattr(connection.Connection, attrname))
+
                 dct[attrname] = wrapper
 
             if '__doc__' not in dct:
