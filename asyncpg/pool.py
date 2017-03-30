@@ -31,9 +31,7 @@ class PoolConnectionProxyMeta(type):
                     continue
 
                 wrapper = get_wrapper(meth)
-                wrapper = functools.update_wrapper(
-                    wrapper, getattr(connection.Connection, attrname))
-
+                wrapper = functools.update_wrapper(wrapper, meth)
                 dct[attrname] = wrapper
 
             if '__doc__' not in dct:
