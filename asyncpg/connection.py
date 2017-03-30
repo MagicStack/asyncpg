@@ -187,9 +187,7 @@ class Connection(metaclass=ConnectionMeta):
         if not args:
             return await self._protocol.query(query, timeout)
 
-        stmt = await self._get_statement(query, timeout)
-        _, status, _ = await self._protocol.bind_execute(stmt, args, '', 0,
-                                                         True, timeout)
+        _, status, _ = await self._do_execute(query, args, 0, timeout, True)
         return status.decode()
 
     async def executemany(self, command: str, args, timeout: float=None):
@@ -283,10 +281,7 @@ class Connection(metaclass=ConnectionMeta):
 
         :return list: A list of :class:`Record` instances.
         """
-        stmt = await self._get_statement(query, timeout)
-        data = await self._protocol.bind_execute(stmt, args, '', 0,
-                                                 False, timeout)
-        return data
+        return await self._do_execute(query, args, 0, timeout)
 
     async def fetchval(self, query, *args, column=0, timeout=None):
         """Run a query and return a value in the first row.
@@ -302,9 +297,7 @@ class Connection(metaclass=ConnectionMeta):
 
         :return: The value of the specified column of the first record.
         """
-        stmt = await self._get_statement(query, timeout)
-        data = await self._protocol.bind_execute(stmt, args, '', 1,
-                                                 False, timeout)
+        data = await self._do_execute(query, args, 1, timeout)
         if not data:
             return None
         return data[0][column]
@@ -318,9 +311,7 @@ class Connection(metaclass=ConnectionMeta):
 
         :return: The first row as a :class:`Record` instance.
         """
-        stmt = await self._get_statement(query, timeout)
-        data = await self._protocol.bind_execute(stmt, args, '', 1,
-                                                 False, timeout)
+        data = await self._do_execute(query, args, 1, timeout)
         if not data:
             return None
         return data[0]
@@ -550,6 +541,60 @@ class Connection(metaclass=ConnectionMeta):
                 'internal asyncpg error: connection is already proxied')
 
         self._proxy = proxy
+
+    def _drop_local_statement_cache(self):
+        self._stmt_cache.clear()
+
+    def _drop_global_statement_cache(self):
+        if self._proxy is not None:
+            # This connection is a member of a pool, so we delegate
+            # the cache drop to the pool.
+            pool = self._proxy._holder._pool
+            pool._drop_statement_cache()
+        else:
+            self._drop_local_statement_cache()
+
+    async def _do_execute(self, query, args, limit, timeout,
+                          return_status=False):
+        stmt = await self._get_statement(query, timeout)
+
+        try:
+            result = await self._protocol.bind_execute(
+                stmt, args, '', limit, return_status, timeout)
+
+        except exceptions.InvalidCachedStatementError as e:
+            # PostgreSQL will raise an exception when it detects
+            # that the result type of the query has changed from
+            # when the statement was prepared.  This may happen,
+            # for example, after an ALTER TABLE or SET search_path.
+            #
+            # When this happens, and there is no transaction running,
+            # we can simply re-prepare the statement and try once
+            # again.  We deliberately retry only once as this is
+            # supposed to be a rare occurrence.
+            #
+            # If the transaction _is_ running, this error will put it
+            # into an error state, and we have no choice but to
+            # re-raise the exception.
+            #
+            # In either case we clear the statement cache for this
+            # connection and all other connections of the pool this
+            # connection belongs to (if any).
+            #
+            # See https://github.com/MagicStack/asyncpg/issues/72
+            # and https://github.com/MagicStack/asyncpg/issues/76
+            # for discussion.
+            #
+            self._drop_global_statement_cache()
+
+            if self._protocol.is_in_transaction():
+                raise
+            else:
+                stmt = await self._get_statement(query, timeout)
+                result = await self._protocol.bind_execute(
+                    stmt, args, '', limit, return_status, timeout)
+
+        return result
 
 
 async def connect(dsn=None, *,

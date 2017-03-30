@@ -29,6 +29,13 @@ _namemap = {
 }
 
 
+_subclassmap = {
+    # Special subclass of FeatureNotSupportedError
+    # raised by Postgres in RevalidateCachedQuery.
+    '0A000': ['InvalidCachedStatementError']
+}
+
+
 def _get_error_name(sqlstatename, msgtype, sqlstate):
     if sqlstate in _namemap:
         return _namemap[sqlstate]
@@ -73,7 +80,7 @@ def main():
 
     tpl = """\
 class {clsname}({base}):
-    {docstring}sqlstate = '{sqlstate}'"""
+    {docstring}{sqlstate}"""
 
     new_section = True
     section_class = None
@@ -84,6 +91,24 @@ class {clsname}({base}):
 
     classes = []
     clsnames = set()
+
+    def _add_class(clsname, base, sqlstate, docstring):
+        if sqlstate:
+            sqlstate = "sqlstate = '{}'".format(sqlstate)
+        else:
+            sqlstate = ''
+
+        txt = tpl.format(clsname=clsname, base=base, sqlstate=sqlstate,
+                         docstring=docstring)
+
+        if not sqlstate and not docstring:
+            txt += 'pass'
+
+        if len(txt.splitlines()[0]) > 79:
+            txt = txt.replace('(', '(\n        ', 1)
+
+        classes.append(txt)
+        clsnames.add(clsname)
 
     for line in errcodes.splitlines():
         if not line.strip() or line.startswith('#'):
@@ -108,8 +133,8 @@ class {clsname}({base}):
             continue
 
         if clsname in clsnames:
-            raise ValueError('dupliate exception class name: {}'.format(
-                clsname))
+            raise ValueError(
+                'duplicate exception class name: {}'.format(clsname))
 
         if new_section:
             section_class = clsname
@@ -134,14 +159,19 @@ class {clsname}({base}):
         else:
             docstring = ''
 
-        txt = tpl.format(clsname=clsname, base=base, sqlstate=sqlstate,
-                         docstring=docstring)
+        _add_class(clsname=clsname, base=base, sqlstate=sqlstate,
+                   docstring=docstring)
 
-        if len(txt.splitlines()[0]) > 79:
-            txt = txt.replace('(', '(\n        ', 1)
+        subclasses = _subclassmap.get(sqlstate, [])
+        for subclass in subclasses:
+            existing = getattr(apg_exc, subclass, None)
+            if existing and existing.__doc__:
+                docstring = '"""{}"""\n\n    '.format(existing.__doc__)
+            else:
+                docstring = ''
 
-        classes.append(txt)
-        clsnames.add(clsname)
+            _add_class(clsname=subclass, base=clsname, sqlstate=None,
+                       docstring=docstring)
 
     buf += '\n\n\n'.join(classes)
 

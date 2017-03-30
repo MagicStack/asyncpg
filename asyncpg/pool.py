@@ -402,6 +402,12 @@ class Pool:
         if self._closed:
             raise exceptions.InterfaceError('pool is closed')
 
+    def _drop_statement_cache(self):
+        # Drop statement cache for all connections in the pool.
+        for ch in self._holders:
+            if ch._con is not None:
+                ch._con._drop_local_statement_cache()
+
     def __await__(self):
         return self._async__init__().__await__()
 

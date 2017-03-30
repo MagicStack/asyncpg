@@ -1,10 +1,3 @@
-# Copyright (C) 2016-present the ayncpg authors and contributors
-# <see AUTHORS file>
-#
-# This module is part of asyncpg and is released under
-# the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
-
-
 # GENERATED FROM postgresql/src/backend/utils/errcodes.txt
 # DO NOT MODIFY, use tools/generate_exceptions.py to update
 
@@ -90,6 +83,10 @@ class TriggeredActionError(_base.PostgresError):
 
 class FeatureNotSupportedError(_base.PostgresError):
     sqlstate = '0A000'
+
+
+class InvalidCachedStatementError(FeatureNotSupportedError):
+    pass
 
 
 class InvalidTransactionInitiationError(_base.PostgresError):
@@ -1025,15 +1022,16 @@ __all__ = _base.__all__ + (
     'InvalidArgumentForPowerFunctionError',
     'InvalidArgumentForWidthBucketFunctionError',
     'InvalidAuthorizationSpecificationError',
-    'InvalidBinaryRepresentationError', 'InvalidCatalogNameError',
-    'InvalidCharacterValueForCastError', 'InvalidColumnDefinitionError',
-    'InvalidColumnReferenceError', 'InvalidCursorDefinitionError',
-    'InvalidCursorNameError', 'InvalidCursorStateError',
-    'InvalidDatabaseDefinitionError', 'InvalidDatetimeFormatError',
-    'InvalidEscapeCharacterError', 'InvalidEscapeOctetError',
-    'InvalidEscapeSequenceError', 'InvalidForeignKeyError',
-    'InvalidFunctionDefinitionError', 'InvalidGrantOperationError',
-    'InvalidGrantorError', 'InvalidIndicatorParameterValueError',
+    'InvalidBinaryRepresentationError', 'InvalidCachedStatementError',
+    'InvalidCatalogNameError', 'InvalidCharacterValueForCastError',
+    'InvalidColumnDefinitionError', 'InvalidColumnReferenceError',
+    'InvalidCursorDefinitionError', 'InvalidCursorNameError',
+    'InvalidCursorStateError', 'InvalidDatabaseDefinitionError',
+    'InvalidDatetimeFormatError', 'InvalidEscapeCharacterError',
+    'InvalidEscapeOctetError', 'InvalidEscapeSequenceError',
+    'InvalidForeignKeyError', 'InvalidFunctionDefinitionError',
+    'InvalidGrantOperationError', 'InvalidGrantorError',
+    'InvalidIndicatorParameterValueError',
     'InvalidLocatorSpecificationError', 'InvalidNameError',
     'InvalidObjectDefinitionError', 'InvalidParameterValueError',
     'InvalidPasswordError', 'InvalidPreparedStatementDefinitionError',
