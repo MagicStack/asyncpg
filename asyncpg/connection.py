@@ -513,7 +513,7 @@ class Connection(metaclass=ConnectionMeta):
             _reset_query.append('ROLLBACK;')
         if caps.advisory_locks:
             _reset_query.append('SELECT pg_advisory_unlock_all();')
-        if caps.cursors:
+        if caps.sql_close_all:
             _reset_query.append('CLOSE ALL;')
         if caps.notifications and caps.plpgsql:
             _reset_query.append('''
@@ -844,30 +844,38 @@ def _create_future(loop):
 
 ServerCapabilities = collections.namedtuple(
     'ServerCapabilities',
-    ['advisory_locks', 'cursors', 'notifications', 'plpgsql', 'sql_reset'])
+    ['advisory_locks', 'notifications', 'plpgsql', 'sql_reset',
+     'sql_close_all'])
 ServerCapabilities.__doc__ = 'PostgreSQL server capabilities.'
 
 
 def _detect_server_capabilities(server_version, connection_settings):
-    if hasattr(connection_settings, 'crdb_version'):
+    if hasattr(connection_settings, 'padb_revision'):
+        # Amazon Redshift detected.
+        advisory_locks = False
+        notifications = False
+        plpgsql = False
+        sql_reset = True
+        sql_close_all = False
+    elif hasattr(connection_settings, 'crdb_version'):
         # CocroachDB detected.
         advisory_locks = False
-        cursors = False
         notifications = False
         plpgsql = False
         sql_reset = False
+        sql_close_all = False
     else:
         # Standard PostgreSQL server assumed.
         advisory_locks = True
-        cursors = True
         notifications = True
         plpgsql = True
         sql_reset = True
+        sql_close_all = True
 
     return ServerCapabilities(
         advisory_locks=advisory_locks,
-        cursors=cursors,
         notifications=notifications,
         plpgsql=plpgsql,
-        sql_reset=sql_reset
+        sql_reset=sql_reset,
+        sql_close_all=sql_close_all
     )
