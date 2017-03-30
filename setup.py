@@ -10,7 +10,6 @@ import os.path
 import platform
 import re
 import sys
-import unittest
 
 import setuptools
 from setuptools.command import build_ext as _build_ext
@@ -29,12 +28,6 @@ else:
     CFLAGS.extend(['-Wall', '-Wsign-compare', '-Wconversion'])
 
 
-def discover_tests():
-    test_loader = unittest.TestLoader()
-    test_suite = test_loader.discover('tests', pattern='test_*.py')
-    return test_suite
-
-
 class build_ext(_build_ext.build_ext):
     user_options = _build_ext.build_ext.user_options + [
         ('cython-always', None,
@@ -46,12 +39,24 @@ class build_ext(_build_ext.build_ext):
     ]
 
     def initialize_options(self):
+        # initialize_options() may be called multiple times on the
+        # same command object, so make sure not to override previously
+        # set options.
+        if getattr(self, '_initialized', False):
+            return
+
         super(build_ext, self).initialize_options()
         self.cython_always = False
         self.cython_annotate = None
         self.cython_directives = None
 
     def finalize_options(self):
+        # finalize_options() may be called multiple times on the
+        # same command object, so make sure not to override previously
+        # set options.
+        if getattr(self, '_initialized', False):
+            return
+
         need_cythonize = self.cython_always
         cfiles = {}
 
@@ -209,5 +214,5 @@ setuptools.setup(
             extra_link_args=LDFLAGS)
     ],
     cmdclass={'build_ext': build_ext},
-    test_suite='setup.discover_tests',
+    test_suite='tests.suite',
 )

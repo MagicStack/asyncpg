@@ -28,21 +28,13 @@ debug:
 
 
 test:
-	PYTHONASYNCIODEBUG=1 $(PYTHON) -m unittest discover -s tests
-	$(PYTHON) -m unittest discover -s tests
-	USE_UVLOOP=1 $(PYTHON) -m unittest discover -s tests
+	PYTHONASYNCIODEBUG=1 $(PYTHON) setup.py test
+	$(PYTHON) setup.py test
+	USE_UVLOOP=1 $(PYTHON) setup.py test
 
 
 quicktest:
-	$(PYTHON) -m unittest discover -s tests
-
-
-sdist: clean compile test
-	$(PYTHON) setup.py sdist
-
-
-release: clean compile test
-	$(PYTHON) setup.py sdist upload
+	$(PYTHON) setup.py test
 
 
 htmldocs: compile
