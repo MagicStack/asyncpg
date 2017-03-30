@@ -512,13 +512,20 @@ class Connection(metaclass=ConnectionMeta):
 
         caps = self._server_caps
 
-        _reset_query = ''
+        _reset_query = []
+        if self._protocol.is_in_transaction() or self._top_xact is not None:
+            self._loop.call_exception_handler({
+                'message': 'Resetting connection with an '
+                           'active transaction {!r}'.format(self)
+            })
+            self._top_xact = None
+            _reset_query.append('ROLLBACK;')
         if caps.advisory_locks:
-            _reset_query += 'SELECT pg_advisory_unlock_all();\n'
+            _reset_query.append('SELECT pg_advisory_unlock_all();')
         if caps.cursors:
-            _reset_query += 'CLOSE ALL;\n'
+            _reset_query.append('CLOSE ALL;')
         if caps.notifications and caps.plpgsql:
-            _reset_query += '''
+            _reset_query.append('''
                 DO $$
                 BEGIN
                     PERFORM * FROM pg_listening_channels() LIMIT 1;
@@ -527,10 +534,11 @@ class Connection(metaclass=ConnectionMeta):
                     END IF;
                 END;
                 $$;
-            '''
+            ''')
         if caps.sql_reset:
-            _reset_query += 'RESET ALL;\n'
+            _reset_query.append('RESET ALL;')
 
+        _reset_query = '\n'.join(_reset_query)
         self._reset_query = _reset_query
 
         return _reset_query

@@ -139,3 +139,21 @@ class TestTransaction(tb.ConnectedTestCase):
             async with tr:
                 async with tr:
                     pass
+
+    async def test_transaction_within_manual_transaction(self):
+        self.assertIsNone(self.con._top_xact)
+
+        await self.con.execute('BEGIN')
+
+        tr = self.con.transaction()
+        self.assertIsNone(self.con._top_xact)
+
+        with self.assertRaisesRegex(asyncpg.InterfaceError,
+                                    'cannot use Connection.transaction'):
+            await tr.start()
+
+        with self.assertLoopErrorHandlerCalled(
+                'Resetting connection with an active transaction'):
+            await self.con.reset()
+
+        self.assertIsNone(self.con._top_xact)

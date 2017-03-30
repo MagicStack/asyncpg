@@ -33,3 +33,14 @@ class TestTests(unittest.TestCase):
         suite.run(result)
 
         self.assertIn('ZeroDivisionError', result.errors[0][1])
+
+
+class TestHelpers(tb.TestCase):
+
+    async def test_tests_assertLoopErrorHandlerCalled_01(self):
+        with self.assertRaisesRegex(AssertionError, r'no message.*was logged'):
+            with self.assertLoopErrorHandlerCalled('aa'):
+                self.loop.call_exception_handler({'message': 'bb a bb'})
+
+        with self.assertLoopErrorHandlerCalled('aa'):
+            self.loop.call_exception_handler({'message': 'bbaabb'})

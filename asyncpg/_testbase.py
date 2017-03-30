@@ -12,6 +12,7 @@ import functools
 import inspect
 import logging
 import os
+import re
 import time
 import unittest
 
@@ -94,6 +95,30 @@ class TestCase(unittest.TestCase, metaclass=TestCaseMeta):
             if time.monotonic() - st > delta:
                 raise AssertionError(
                     'running block took longer than {}'.format(delta))
+
+    @contextlib.contextmanager
+    def assertLoopErrorHandlerCalled(self, msg_re: str):
+        contexts = []
+
+        def handler(loop, ctx):
+            contexts.append(ctx)
+
+        old_handler = self.loop.get_exception_handler()
+        self.loop.set_exception_handler(handler)
+        try:
+            yield
+
+            for ctx in contexts:
+                msg = ctx.get('message')
+                if msg and re.search(msg_re, msg):
+                    return
+
+            raise AssertionError(
+                'no message matching {!r} was logged with '
+                'loop.call_exception_handler()'.format(msg_re))
+
+        finally:
+            self.loop.set_exception_handler(old_handler)
 
 
 _default_cluster = None

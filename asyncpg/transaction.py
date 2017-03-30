@@ -84,6 +84,10 @@ class Transaction:
         con = self._connection
 
         if con._top_xact is None:
+            if con._protocol.is_in_transaction():
+                raise apg_errors.InterfaceError(
+                    'cannot use Connection.transaction() in '
+                    'a manually started transaction')
             con._top_xact = self
         else:
             # Nested transaction block

@@ -349,6 +349,35 @@ class TestPool(tb.ConnectedTestCase):
             async with pool.acquire() as con:
                 await con.fetchval('SELECT 1')
 
+    async def test_pool_release_in_xact(self):
+        """Test that Connection.reset() closes any open transaction."""
+        async with self.create_pool(database='postgres',
+                                    min_size=1, max_size=1) as pool:
+            async def get_xact_id(con):
+                return await con.fetchval('select txid_current()')
+
+            with self.assertLoopErrorHandlerCalled('an active transaction'):
+                async with pool.acquire() as con:
+                    real_con = con._con  # unwrap PoolConnectionProxy
+
+                    id1 = await get_xact_id(con)
+
+                    tr = con.transaction()
+                    self.assertIsNone(con._con._top_xact)
+                    await tr.start()
+                    self.assertIs(real_con._top_xact, tr)
+
+                    id2 = await get_xact_id(con)
+                    self.assertNotEqual(id1, id2)
+
+            self.assertIsNone(real_con._top_xact)
+
+            async with pool.acquire() as con:
+                self.assertIs(con._con, real_con)
+                self.assertIsNone(con._con._top_xact)
+                id3 = await get_xact_id(con)
+                self.assertNotEqual(id2, id3)
+
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
 class TestHostStandby(tb.ConnectedTestCase):

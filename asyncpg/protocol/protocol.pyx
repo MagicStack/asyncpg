@@ -120,6 +120,9 @@ cdef class BaseProtocol(CoreProtocol):
     def get_settings(self):
         return self.settings
 
+    def is_in_transaction(self):
+        return self.xact_status == PQTRANS_INTRANS
+
     async def prepare(self, stmt_name, query, timeout):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
