@@ -23,12 +23,28 @@ class TestExceptions(tb.ConnectedTestCase):
         self.assertIsNone(asyncpg.PostgresError.schema_name)
 
     async def test_exceptions_unpacking(self):
-        with self.assertRaises(asyncpg.UndefinedTableError):
-            try:
-                await self.con.execute('SELECT * FROM _nonexistent_')
-            except asyncpg.UndefinedTableError as e:
-                self.assertEqual(e.sqlstate, '42P01')
-                self.assertEqual(e.position, '15')
-                self.assertEqual(e.query, 'SELECT * FROM _nonexistent_')
-                self.assertIsNotNone(e.severity)
-                raise
+        try:
+            await self.con.execute('SELECT * FROM _nonexistent_')
+        except asyncpg.UndefinedTableError as e:
+            self.assertEqual(e.sqlstate, '42P01')
+            self.assertEqual(e.position, '15')
+            self.assertEqual(e.query, 'SELECT * FROM _nonexistent_')
+            self.assertIsNotNone(e.severity)
+        else:
+            self.fail('UndefinedTableError not raised')
+
+    async def test_exceptions_str(self):
+        try:
+            await self.con.execute('''
+                 CREATE FUNCTION foo() RETURNS bool AS $$ $$ LANGUAGE SQL;
+            ''')
+        except asyncpg.InvalidFunctionDefinitionError as e:
+            self.assertEqual(
+                e.detail,
+                "Function's final statement must be SELECT or "
+                "INSERT/UPDATE/DELETE RETURNING.")
+            self.assertIn(
+                'DETAIL:  Function', str(e)
+            )
+        else:
+            self.fail('InvalidFunctionDefinitionError not raised')
