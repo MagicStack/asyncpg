@@ -79,6 +79,9 @@ include "coreproto.pyx"
 include "prepared_stmt.pyx"
 
 
+NO_TIMEOUT = object()
+
+
 cdef class BaseProtocol(CoreProtocol):
     def __init__(self, addr, connected_fut, con_args, loop):
         CoreProtocol.__init__(self, con_args)
@@ -132,7 +135,8 @@ cdef class BaseProtocol(CoreProtocol):
             await self.cancel_sent_waiter
             self.cancel_sent_waiter = None
 
-        self._ensure_clear_state()
+        self._check_state()
+        timeout = self._get_timeout_impl(timeout)
 
         if stmt_name is None:
             self.uid_counter += 1
@@ -154,7 +158,8 @@ cdef class BaseProtocol(CoreProtocol):
             await self.cancel_sent_waiter
             self.cancel_sent_waiter = None
 
-        self._ensure_clear_state()
+        self._check_state()
+        timeout = self._get_timeout_impl(timeout)
 
         self._bind_execute(
             portal_name,
@@ -178,7 +183,8 @@ cdef class BaseProtocol(CoreProtocol):
             await self.cancel_sent_waiter
             self.cancel_sent_waiter = None
 
-        self._ensure_clear_state()
+        self._check_state()
+        timeout = self._get_timeout_impl(timeout)
 
         # Make sure the argument sequence is encoded lazily with
         # this generator expression to keep the memory pressure under
@@ -209,7 +215,8 @@ cdef class BaseProtocol(CoreProtocol):
             await self.cancel_sent_waiter
             self.cancel_sent_waiter = None
 
-        self._ensure_clear_state()
+        self._check_state()
+        timeout = self._get_timeout_impl(timeout)
 
         self._bind(
             portal_name,
@@ -231,7 +238,8 @@ cdef class BaseProtocol(CoreProtocol):
             await self.cancel_sent_waiter
             self.cancel_sent_waiter = None
 
-        self._ensure_clear_state()
+        self._check_state()
+        timeout = self._get_timeout_impl(timeout)
 
         self._execute(
             portal_name,
@@ -251,7 +259,11 @@ cdef class BaseProtocol(CoreProtocol):
             await self.cancel_sent_waiter
             self.cancel_sent_waiter = None
 
-        self._ensure_clear_state()
+        self._check_state()
+        # query() needs to call _get_timeout instead of _get_timeout_impl
+        # for consistent validation, as it is called differently from
+        # prepare/bind/execute methods.
+        timeout = self._get_timeout(timeout)
 
         self._simple_query(query)
         self.last_query = query
@@ -266,7 +278,8 @@ cdef class BaseProtocol(CoreProtocol):
             await self.cancel_sent_waiter
             self.cancel_sent_waiter = None
 
-        self._ensure_clear_state()
+        self._check_state()
+        timeout = self._get_timeout_impl(timeout)
 
         if state.refs != 0:
             raise RuntimeError(
@@ -348,7 +361,32 @@ cdef class BaseProtocol(CoreProtocol):
     cdef _set_server_parameter(self, name, val):
         self.settings.add_setting(name, val)
 
-    cdef _ensure_clear_state(self):
+    def _get_timeout(self, timeout):
+        if timeout is not None:
+            try:
+                if type(timeout) is bool:
+                    raise ValueError
+                timeout = float(timeout)
+            except ValueError:
+                raise ValueError(
+                    'invalid timeout value: expected non-negative float '
+                    '(got {!r})'.format(timeout)) from None
+
+        return self._get_timeout_impl(timeout)
+
+    cdef inline _get_timeout_impl(self, timeout):
+        if timeout is None:
+            timeout = self.connection._command_timeout
+        elif timeout is NO_TIMEOUT:
+            timeout = None
+        else:
+            timeout = float(timeout)
+
+        if timeout is not None and timeout <= 0:
+            raise asyncio.TimeoutError()
+        return timeout
+
+    cdef _check_state(self):
         if self.cancel_waiter is not None:
             raise apg_exc.InterfaceError(
                 'cannot perform operation: another operation is cancelling')
@@ -361,11 +399,9 @@ cdef class BaseProtocol(CoreProtocol):
 
     cdef _new_waiter(self, timeout):
         self.waiter = self.create_future()
-        if timeout is not False:
-            timeout = timeout or self.connection._command_timeout
-            if timeout is not None and timeout > 0:
-                self.timeout_handle = self.connection._loop.call_later(
-                    timeout, self.timeout_callback, self.waiter)
+        if timeout is not None:
+            self.timeout_handle = self.connection._loop.call_later(
+                timeout, self.timeout_callback, self.waiter)
         self.waiter.add_done_callback(self.completed_callback)
         return self.waiter
 

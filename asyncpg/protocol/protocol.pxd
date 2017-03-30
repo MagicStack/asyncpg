@@ -47,7 +47,8 @@ cdef class BaseProtocol(CoreProtocol):
 
         PreparedStatementState statement
 
-    cdef _ensure_clear_state(self)
+    cdef _get_timeout_impl(self, timeout)
+    cdef _check_state(self)
     cdef _new_waiter(self, timeout)
 
     cdef _on_result__connect(self, object waiter)
