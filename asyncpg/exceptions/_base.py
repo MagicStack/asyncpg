@@ -65,7 +65,7 @@ class PostgresMessageMeta(type):
 
 class PostgresMessage(metaclass=PostgresMessageMeta):
     def __str__(self):
-        msg = self.message
+        msg = self.args[0]
         if self.detail:
             msg += '\nDETAIL:  {}'.format(self.detail)
         if self.hint:
@@ -87,13 +87,13 @@ class PostgresMessage(metaclass=PostgresMessageMeta):
             if field:
                 mapped[field] = v
 
-        e = exccls(mapped.get('message'))
+        e = exccls(mapped.get('message', ''))
         e.__dict__.update(mapped)
 
         return e
 
 
-class PostgresError(Exception, PostgresMessage):
+class PostgresError(PostgresMessage, Exception):
     """Base class for all Postgres errors."""
 
 
