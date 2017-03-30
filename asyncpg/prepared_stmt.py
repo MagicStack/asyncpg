@@ -154,11 +154,7 @@ class PreparedStatement:
 
         :return: A list of :class:`Record` instances.
         """
-        self.__check_open()
-        protocol = self._connection._protocol
-        data, status, _ = await protocol.bind_execute(
-            self._state, args, '', 0, True, timeout)
-        self._last_status = status
+        data = await self.__bind_execute(args, 0, timeout)
         return data
 
     async def fetchval(self, *args, column=0, timeout=None):
@@ -174,11 +170,7 @@ class PreparedStatement:
 
         :return: The value of the specified column of the first record.
         """
-        self.__check_open()
-        protocol = self._connection._protocol
-        data, status, _ = await protocol.bind_execute(
-            self._state, args, '', 1, True, timeout)
-        self._last_status = status
+        data = await self.__bind_execute(args, 1, timeout)
         if not data:
             return None
         return data[0][column]
@@ -192,14 +184,18 @@ class PreparedStatement:
 
         :return: The first row as a :class:`Record` instance.
         """
-        self.__check_open()
-        protocol = self._connection._protocol
-        data, status, _ = await protocol.bind_execute(
-            self._state, args, '', 1, True, timeout)
-        self._last_status = status
+        data = await self.__bind_execute(args, 1, timeout)
         if not data:
             return None
         return data[0]
+
+    async def __bind_execute(self, args, limit, timeout):
+        self.__check_open()
+        protocol = self._connection._protocol
+        data, status, _ = await protocol.bind_execute(
+            self._state, args, '', limit, True, timeout)
+        self._last_status = status
+        return data
 
     def __check_open(self):
         if self._state.closed:

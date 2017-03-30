@@ -406,3 +406,21 @@ class TestPrepare(tb.ConnectedTestCase):
         result = await self.con.fetchrow('SELECT')
         self.assertEqual(result, ())
         self.assertEqual(repr(result), '<Record>')
+
+    async def test_prepare_statement_invalid(self):
+        await self.con.execute('CREATE TABLE tab1(a int, b int)')
+
+        try:
+            await self.con.execute('INSERT INTO tab1 VALUES (1, 2)')
+
+            stmt = await self.con.prepare('SELECT * FROM tab1')
+
+            await self.con.execute(
+                'ALTER TABLE tab1 ALTER COLUMN b SET DATA TYPE text')
+
+            with self.assertRaisesRegex(asyncpg.InvalidCachedStatementError,
+                                        'cached statement plan is invalid'):
+                await stmt.fetchrow()
+
+        finally:
+            await self.con.execute('DROP TABLE tab1')

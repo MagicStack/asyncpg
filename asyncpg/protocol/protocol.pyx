@@ -121,7 +121,9 @@ cdef class BaseProtocol(CoreProtocol):
         return self.settings
 
     def is_in_transaction(self):
-        return self.xact_status == PQTRANS_INTRANS
+        # PQTRANS_INTRANS = idle, within transaction block
+        # PQTRANS_INERROR = idle, within failed transaction
+        return self.xact_status in (PQTRANS_INTRANS, PQTRANS_INERROR)
 
     async def prepare(self, stmt_name, query, timeout):
         if self.cancel_waiter is not None:

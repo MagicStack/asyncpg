@@ -12,6 +12,11 @@ __all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError',
            'InterfaceError')
 
 
+def _is_asyncpg_class(cls):
+    modname = cls.__module__
+    return modname == 'asyncpg' or modname.startswith('asyncpg.')
+
+
 class PostgresMessageMeta(type):
     _message_map = {}
     _field_map = {
@@ -40,8 +45,7 @@ class PostgresMessageMeta(type):
             for f in mcls._field_map.values():
                 setattr(cls, f, None)
 
-        if (cls.__module__ == 'asyncpg' or
-                cls.__module__.startswith('asyncpg.')):
+        if _is_asyncpg_class(cls):
             mod = sys.modules[cls.__module__]
             if hasattr(mod, name):
                 raise RuntimeError('exception class redefinition: {}'.format(
@@ -74,21 +78,51 @@ class PostgresMessage(metaclass=PostgresMessageMeta):
         return msg
 
     @classmethod
-    def new(cls, fields, query=None):
+    def _get_error_template(cls, fields, query):
         errcode = fields.get('C')
         mcls = cls.__class__
         exccls = mcls.get_message_class_for_sqlstate(errcode)
-        mapped = {
+        dct = {
             'query': query
         }
 
         for k, v in fields.items():
             field = mcls._field_map.get(k)
             if field:
-                mapped[field] = v
+                dct[field] = v
 
-        e = exccls(mapped.get('message', ''))
-        e.__dict__.update(mapped)
+        return exccls, dct
+
+    @classmethod
+    def new(cls, fields, query=None):
+        exccls, dct = cls._get_error_template(fields, query)
+
+        message = dct.get('message', '')
+
+        # PostgreSQL will raise an exception when it detects
+        # that the result type of the query has changed from
+        # when the statement was prepared.
+        #
+        # The original error is somewhat cryptic and unspecific,
+        # so we raise a custom subclass that is easier to handle
+        # and identify.
+        #
+        # Note that we specifically do not rely on the error
+        # message, as it is localizable.
+        is_icse = (
+            exccls.__name__ == 'FeatureNotSupportedError' and
+            _is_asyncpg_class(exccls) and
+            dct.get('server_source_function') == 'RevalidateCachedQuery'
+        )
+
+        if is_icse:
+            exceptions = sys.modules[exccls.__module__]
+            exccls = exceptions.InvalidCachedStatementError
+            message = ('cached statement plan is invalid due to a database '
+                       'schema or configuration change')
+
+        e = exccls(message)
+        e.__dict__.update(dct)
 
         return e
 
