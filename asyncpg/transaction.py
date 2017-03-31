@@ -100,7 +100,7 @@ class Transaction:
             self._nested = True
 
         if self._nested:
-            self._id = con._get_unique_id()
+            self._id = con._get_unique_id('savepoint')
             query = 'SAVEPOINT {};'.format(self._id)
         else:
             if self._isolation == 'read_committed':

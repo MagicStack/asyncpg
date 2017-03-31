@@ -41,7 +41,7 @@ class Connection(metaclass=ConnectionMeta):
                  '_stmt_cache_max_size', '_stmt_cache', '_stmts_to_close',
                  '_addr', '_opts', '_command_timeout', '_listeners',
                  '_server_version', '_server_caps', '_intro_query',
-                 '_reset_query', '_proxy')
+                 '_reset_query', '_proxy', '_stmt_exclusive_section')
 
     def __init__(self, protocol, transport, loop, addr, opts, *,
                  statement_cache_size, command_timeout):
@@ -96,6 +96,15 @@ class Connection(metaclass=ConnectionMeta):
 
         self._reset_query = None
         self._proxy = None
+
+        # Used to serialize operations that might involve anonymous
+        # statements.  Specifically, we want to make the following
+        # operation atomic:
+        #    ("prepare an anonymous statement", "use the statement")
+        #
+        # Used for `con.fetchval()`, `con.fetch()`, `con.fetchrow()`,
+        # `con.execute()`, and `con.executemany()`.
+        self._stmt_exclusive_section = _Atomic()
 
     async def add_listener(self, channel, callback):
         """Add a listener for Postgres notifications.
@@ -227,10 +236,9 @@ class Connection(metaclass=ConnectionMeta):
         """
         return await self._executemany(command, args, timeout)
 
-    async def _get_statement(self, query, timeout):
-        cache = self._stmt_cache_max_size > 0
-
-        if cache:
+    async def _get_statement(self, query, timeout, *, named: bool=False):
+        use_cache = self._stmt_cache_max_size > 0
+        if use_cache:
             try:
                 state = self._stmt_cache[query]
             except KeyError:
@@ -241,7 +249,13 @@ class Connection(metaclass=ConnectionMeta):
                     return state
 
         protocol = self._protocol
-        state = await protocol.prepare(None, query, timeout)
+
+        if use_cache or named:
+            stmt_name = self._get_unique_id('stmt')
+        else:
+            stmt_name = ''
+
+        state = await protocol.prepare(stmt_name, query, timeout)
 
         ready = state._init_types()
         if ready is not True:
@@ -251,7 +265,7 @@ class Connection(metaclass=ConnectionMeta):
             types = await self._types_stmt.fetch(list(ready))
             protocol.get_settings().register_data_types(types)
 
-        if cache:
+        if use_cache:
             if len(self._stmt_cache) > self._stmt_cache_max_size - 1:
                 old_query, old_state = self._stmt_cache.popitem(last=False)
                 self._maybe_gc_stmt(old_state)
@@ -285,7 +299,7 @@ class Connection(metaclass=ConnectionMeta):
 
         :return: A :class:`~prepared_stmt.PreparedStatement` instance.
         """
-        stmt = await self._get_statement(query, timeout)
+        stmt = await self._get_statement(query, timeout, named=True)
         return prepared_stmt.PreparedStatement(self, query, stmt)
 
     async def fetch(self, query, *args, timeout=None) -> list:
@@ -423,9 +437,9 @@ class Connection(metaclass=ConnectionMeta):
         if reset_query:
             await self.execute(reset_query)
 
-    def _get_unique_id(self):
+    def _get_unique_id(self, prefix):
         self._uid += 1
-        return 'id{}'.format(self._uid)
+        return '__asyncpg_{}_{}__'.format(prefix, self._uid)
 
     def _close_stmts(self):
         for stmt in self._stmt_cache.values():
@@ -449,9 +463,6 @@ class Connection(metaclass=ConnectionMeta):
             # It is imperative that statements are cleaned properly,
             # so we ignore the timeout.
             await self._protocol.close_statement(stmt, protocol.NO_TIMEOUT)
-
-    def _request_portal_name(self):
-        return self._get_unique_id()
 
     def _cancel_current_command(self, waiter):
         async def cancel():
@@ -572,17 +583,19 @@ class Connection(metaclass=ConnectionMeta):
         else:
             self._drop_local_statement_cache()
 
-    def _execute(self, query, args, limit, timeout, return_status=False):
+    async def _execute(self, query, args, limit, timeout, return_status=False):
         executor = lambda stmt, timeout: self._protocol.bind_execute(
             stmt, args, '', limit, return_status, timeout)
         timeout = self._protocol._get_timeout(timeout)
-        return self._do_execute(query, executor, timeout)
+        with self._stmt_exclusive_section:
+            return await self._do_execute(query, executor, timeout)
 
-    def _executemany(self, query, args, timeout):
+    async def _executemany(self, query, args, timeout):
         executor = lambda stmt, timeout: self._protocol.bind_execute_many(
             stmt, args, '', timeout)
         timeout = self._protocol._get_timeout(timeout)
-        return self._do_execute(query, executor, timeout)
+        with self._stmt_exclusive_section:
+            return await self._do_execute(query, executor, timeout)
 
     async def _do_execute(self, query, executor, timeout, retry=True):
         if timeout is None:
@@ -745,6 +758,22 @@ async def connect(dsn=None, *,
                                command_timeout=command_timeout)
     pr.set_connection(con)
     return con
+
+
+class _Atomic:
+    __slots__ = ('_acquired',)
+
+    def __init__(self):
+        self._acquired = 0
+
+    def __enter__(self):
+        if self._acquired:
+            raise exceptions.InterfaceError(
+                'cannot perform operation: another operation is in progress')
+        self._acquired = 1
+
+    def __exit__(self, t, e, tb):
+        self._acquired = 0
 
 
 class _ConnectionProxy:

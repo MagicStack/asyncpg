@@ -424,3 +424,35 @@ class TestPrepare(tb.ConnectedTestCase):
 
         finally:
             await self.con.execute('DROP TABLE tab1')
+
+    async def test_prepare_23_no_stmt_cache_seq(self):
+        # Disable cache, which will force connections to use
+        # anonymous prepared statements.
+        self.con._stmt_cache_max_size = 0
+
+        async def check_simple():
+            # Run a simple query a few times.
+            self.assertEqual(await self.con.fetchval('SELECT 1'), 1)
+            self.assertEqual(await self.con.fetchval('SELECT 2'), 2)
+            self.assertEqual(await self.con.fetchval('SELECT 1'), 1)
+
+        await check_simple()
+
+        # Run a query that timeouts.
+        with self.assertRaises(asyncio.TimeoutError):
+            await self.con.fetchrow('select pg_sleep(10)', timeout=0.02)
+
+        # Check that we can run new queries after a timeout.
+        await check_simple()
+
+        # Try a cursor/timeout combination. Cursors should always use
+        # named prepared statements.
+        async with self.con.transaction():
+            with self.assertRaises(asyncio.TimeoutError):
+                async for _ in self.con.cursor(   # NOQA
+                        'select pg_sleep(10)', timeout=0.1):
+                    pass
+
+        # Check that we can run queries after a failed cursor
+        # operation.
+        await check_simple()

@@ -91,7 +91,7 @@ class BaseCursor:
         con = self._connection
         protocol = con._protocol
 
-        self._portal_name = con._request_portal_name()
+        self._portal_name = con._get_unique_id('portal')
         buffer, _, self._exhausted = await protocol.bind_execute(
             self._state, self._args, self._portal_name, n, True, timeout)
         return buffer
@@ -106,7 +106,7 @@ class BaseCursor:
         con = self._connection
         protocol = con._protocol
 
-        self._portal_name = con._request_portal_name()
+        self._portal_name = con._get_unique_id('portal')
         buffer = await protocol.bind(self._state, self._args,
                                      self._portal_name,
                                      timeout)
@@ -168,7 +168,7 @@ class CursorIterator(BaseCursor):
     async def __anext__(self):
         if self._state is None:
             self._state = await self._connection._get_statement(
-                self._query, self._timeout)
+                self._query, self._timeout, named=True)
             self._state.attach()
 
         if not self._portal_name:
@@ -193,7 +193,7 @@ class Cursor(BaseCursor):
     async def _init(self, timeout):
         if self._state is None:
             self._state = await self._connection._get_statement(
-                self._query, timeout)
+                self._query, timeout, named=True)
             self._state.attach()
         self._check_ready()
         await self._bind(timeout)

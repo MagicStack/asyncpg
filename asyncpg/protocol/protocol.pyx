@@ -95,7 +95,6 @@ cdef class BaseProtocol(CoreProtocol):
         self.settings = ConnectionSettings(
             (self.address, con_args.get('database')))
 
-        self.uid_counter = 0
         self.statement = None
         self.return_extra = False
 
@@ -137,10 +136,6 @@ cdef class BaseProtocol(CoreProtocol):
 
         self._check_state()
         timeout = self._get_timeout_impl(timeout)
-
-        if stmt_name is None:
-            self.uid_counter += 1
-            stmt_name = '__asyncpg_stmt_{}__'.format(self.uid_counter)
 
         self._prepare(stmt_name, query)
         self.last_query = query

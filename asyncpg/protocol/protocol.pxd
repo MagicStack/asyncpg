@@ -40,7 +40,6 @@ cdef class BaseProtocol(CoreProtocol):
 
         str last_query
 
-        int uid_counter
         bint closing
 
         readonly uint64_t queries_count
