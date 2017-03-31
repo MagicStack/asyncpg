@@ -419,3 +419,34 @@ class TestConnection(tb.ConnectedTestCase):
         self.assertTrue(isinstance(self.con, connection.Connection))
         self.assertTrue(isinstance(self.con, object))
         self.assertFalse(isinstance(self.con, list))
+
+    async def test_connection_use_after_close(self):
+        def check():
+            return self.assertRaisesRegex(asyncpg.InterfaceError,
+                                          'connection is closed')
+
+        await self.con.close()
+
+        with check():
+            await self.con.add_listener('aaa', lambda: None)
+
+        with check():
+            self.con.transaction()
+
+        with check():
+            await self.con.executemany('SELECT 1', [])
+
+        with check():
+            await self.con.set_type_codec('aaa', encoder=None, decoder=None)
+
+        with check():
+            await self.con.set_builtin_type_codec('aaa', codec_name='aaa')
+
+        for meth in ('execute', 'fetch', 'fetchval', 'fetchrow',
+                     'prepare', 'cursor'):
+
+            with check():
+                await getattr(self.con, meth)('SELECT 1')
+
+        with check():
+            await self.con.reset()
