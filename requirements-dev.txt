@@ -1,0 +1,4 @@
+pytest>=3.0.7
+pytest-warnings>=0.2.0
+Cython>=0.25.2
+uvloop>=0.8.0
