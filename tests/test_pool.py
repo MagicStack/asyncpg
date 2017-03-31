@@ -11,6 +11,7 @@ import inspect
 import os
 import platform
 import random
+import time
 import unittest
 
 from asyncpg import _testbase as tb
@@ -456,6 +457,99 @@ class TestPool(tb.ConnectedTestCase):
 
             finally:
                 await pool.execute('DROP TABLE exmany')
+
+    async def test_pool_max_inactive_time_01(self):
+        async with self.create_pool(
+                database='postgres', min_size=1, max_size=1,
+                max_inactive_connection_lifetime=0.1) as pool:
+
+            # Test that it's OK if a query takes longer time to execute
+            # than `max_inactive_connection_lifetime`.
+
+            con = pool._holders[0]._con
+
+            for _ in range(3):
+                await pool.execute('SELECT pg_sleep(0.5)')
+                self.assertIs(pool._holders[0]._con, con)
+
+                self.assertEqual(
+                    await pool.execute('SELECT 1::int'),
+                    'SELECT 1')
+                self.assertIs(pool._holders[0]._con, con)
+
+    async def test_pool_max_inactive_time_02(self):
+        async with self.create_pool(
+                database='postgres', min_size=1, max_size=1,
+                max_inactive_connection_lifetime=0.5) as pool:
+
+            # Test that we have a new connection after pool not
+            # being used longer than `max_inactive_connection_lifetime`.
+
+            con = pool._holders[0]._con
+
+            self.assertEqual(
+                await pool.execute('SELECT 1::int'),
+                'SELECT 1')
+            self.assertIs(pool._holders[0]._con, con)
+
+            await asyncio.sleep(1, loop=self.loop)
+            self.assertIs(pool._holders[0]._con, None)
+
+            self.assertEqual(
+                await pool.execute('SELECT 1::int'),
+                'SELECT 1')
+            self.assertIsNot(pool._holders[0]._con, con)
+
+    async def test_pool_max_inactive_time_03(self):
+        async with self.create_pool(
+                database='postgres', min_size=1, max_size=1,
+                max_inactive_connection_lifetime=1) as pool:
+
+            # Test that we start counting inactive time *after*
+            # the connection is being released back to the pool.
+
+            con = pool._holders[0]._con
+
+            await pool.execute('SELECT pg_sleep(0.5)')
+            await asyncio.sleep(0.6, loop=self.loop)
+
+            self.assertIs(pool._holders[0]._con, con)
+
+            self.assertEqual(
+                await pool.execute('SELECT 1::int'),
+                'SELECT 1')
+            self.assertIs(pool._holders[0]._con, con)
+
+    async def test_pool_max_inactive_time_04(self):
+        # Chaos test for max_inactive_connection_lifetime.
+        DURATION = 2.0
+        START = time.monotonic()
+        N = 0
+
+        async def worker(pool):
+            nonlocal N
+            await asyncio.sleep(random.random() / 10 + 0.1, loop=self.loop)
+            async with pool.acquire() as con:
+                if random.random() > 0.5:
+                    await con.execute('SELECT pg_sleep({:.2f})'.format(
+                        random.random() / 10))
+                self.assertEqual(
+                    await con.fetchval('SELECT 42::int'),
+                    42)
+
+            if time.monotonic() - START < DURATION:
+                await worker(pool)
+
+            N += 1
+
+        async with self.create_pool(
+                database='postgres', min_size=10, max_size=30,
+                max_inactive_connection_lifetime=0.1) as pool:
+
+            workers = [worker(pool) for _ in range(50)]
+            await asyncio.gather(*workers, loop=self.loop)
+
+        self.assertGreater(N, 50)
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')

@@ -157,6 +157,7 @@ def create_pool(dsn=None, *,
                 min_size=10,
                 max_size=10,
                 max_queries=50000,
+                max_inactive_connection_lifetime=60.0,
                 setup=None,
                 init=None,
                 loop=None,
@@ -166,6 +167,7 @@ def create_pool(dsn=None, *,
         dsn,
         min_size=min_size, max_size=max_size,
         max_queries=max_queries, loop=loop, setup=setup, init=init,
+        max_inactive_connection_lifetime=max_inactive_connection_lifetime,
         **connect_kwargs)
 
 

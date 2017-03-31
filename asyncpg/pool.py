@@ -86,10 +86,12 @@ class PoolConnectionHolder:
 
     __slots__ = ('_con', '_pool', '_loop',
                  '_connect_args', '_connect_kwargs',
-                 '_max_queries', '_setup', '_init')
+                 '_max_queries', '_setup', '_init',
+                 '_max_inactive_time', '_in_use',
+                 '_inactive_callback')
 
     def __init__(self, pool, *, connect_args, connect_kwargs,
-                 max_queries, setup, init):
+                 max_queries, setup, init, max_inactive_time):
 
         self._pool = pool
         self._con = None
@@ -97,8 +99,11 @@ class PoolConnectionHolder:
         self._connect_args = connect_args
         self._connect_kwargs = connect_kwargs
         self._max_queries = max_queries
+        self._max_inactive_time = max_inactive_time
         self._setup = setup
         self._init = init
+        self._inactive_callback = None
+        self._in_use = False
 
     async def connect(self):
         assert self._con is None
@@ -134,6 +139,8 @@ class PoolConnectionHolder:
         if self._con is None:
             await self.connect()
 
+        self._maybe_cancel_inactive_callback()
+
         proxy = PoolConnectionProxy(self, self._con)
 
         if self._setup is not None:
@@ -154,9 +161,13 @@ class PoolConnectionHolder:
                     self._con = None
                     raise ex
 
+        self._in_use = True
         return proxy
 
     async def release(self):
+        assert self._in_use
+        self._in_use = False
+
         if self._con.is_closed():
             self._con = None
 
@@ -181,7 +192,13 @@ class PoolConnectionHolder:
                     self._con = None
                     raise ex
 
+        assert self._inactive_callback is None
+        if self._max_inactive_time and self._con is not None:
+            self._inactive_callback = self._pool._loop.call_later(
+                self._max_inactive_time, self._deactivate_connection)
+
     async def close(self):
+        self._maybe_cancel_inactive_callback()
         if self._con is None:
             return
         if self._con.is_closed():
@@ -194,6 +211,7 @@ class PoolConnectionHolder:
             self._con = None
 
     def terminate(self):
+        self._maybe_cancel_inactive_callback()
         if self._con is None:
             return
         if self._con.is_closed():
@@ -204,6 +222,18 @@ class PoolConnectionHolder:
             self._con.terminate()
         finally:
             self._con = None
+
+    def _maybe_cancel_inactive_callback(self):
+        if self._inactive_callback is not None:
+            self._inactive_callback.cancel()
+            self._inactive_callback = None
+
+    def _deactivate_connection(self):
+        assert not self._in_use
+        if self._con is None or self._con.is_closed():
+            return
+        self._con.terminate()
+        self._con = None
 
 
 class Pool:
@@ -225,6 +255,7 @@ class Pool:
                  min_size,
                  max_size,
                  max_queries,
+                 max_inactive_connection_lifetime,
                  setup,
                  init,
                  loop,
@@ -247,6 +278,11 @@ class Pool:
         if max_queries <= 0:
             raise ValueError('max_queries is expected to be greater than zero')
 
+        if max_inactive_connection_lifetime < 0:
+            raise ValueError(
+                'max_inactive_connection_lifetime is expected to be greater '
+                'or equal to zero')
+
         self._minsize = min_size
         self._maxsize = max_size
 
@@ -265,6 +301,7 @@ class Pool:
                 connect_args=connect_args,
                 connect_kwargs=connect_kwargs,
                 max_queries=max_queries,
+                max_inactive_time=max_inactive_connection_lifetime,
                 setup=setup,
                 init=init)
 
@@ -511,6 +548,7 @@ def create_pool(dsn=None, *,
                 min_size=10,
                 max_size=10,
                 max_queries=50000,
+                max_inactive_connection_lifetime=300.0,
                 setup=None,
                 init=None,
                 loop=None,
@@ -548,6 +586,9 @@ def create_pool(dsn=None, *,
     :param int max_size: Max number of connections in the pool.
     :param int max_queries: Number of queries after a connection is closed
                             and replaced with a new connection.
+    :param float max_inactive_connection_lifetime:
+        Number of seconds after which inactive connections in the
+        pool will be closed.  Pass ``0`` to disable this mechanism.
     :param coroutine setup: A coroutine to prepare a connection right before
                             it is returned from :meth:`~pool.Pool.acquire`.
                             An example use case would be to automatically
@@ -567,7 +608,9 @@ def create_pool(dsn=None, *,
        An :exc:`~asyncpg.exceptions.InterfaceError` will be raised on any
        attempted operation on a released connection.
     """
-    return Pool(dsn,
-                min_size=min_size, max_size=max_size,
-                max_queries=max_queries, loop=loop, setup=setup, init=init,
-                **connect_kwargs)
+    return Pool(
+        dsn,
+        min_size=min_size, max_size=max_size,
+        max_queries=max_queries, loop=loop, setup=setup, init=init,
+        max_inactive_connection_lifetime=max_inactive_connection_lifetime,
+        **connect_kwargs)
