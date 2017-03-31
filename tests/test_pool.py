@@ -8,8 +8,9 @@
 import asyncio
 import asyncpg
 import inspect
-import platform
 import os
+import platform
+import random
 import unittest
 
 from asyncpg import _testbase as tb
@@ -377,6 +378,84 @@ class TestPool(tb.ConnectedTestCase):
                 self.assertIsNone(con._con._top_xact)
                 id3 = await get_xact_id(con)
                 self.assertNotEqual(id2, id3)
+
+    async def test_pool_connection_methods(self):
+        async def test_fetch(pool):
+            i = random.randint(0, 20)
+            await asyncio.sleep(random.random() / 100)
+            r = await pool.fetch('SELECT {}::int'.format(i))
+            self.assertEqual(r, [(i,)])
+            return 1
+
+        async def test_fetchrow(pool):
+            i = random.randint(0, 20)
+            await asyncio.sleep(random.random() / 100)
+            r = await pool.fetchrow('SELECT {}::int'.format(i))
+            self.assertEqual(r, (i,))
+            return 1
+
+        async def test_fetchval(pool):
+            i = random.randint(0, 20)
+            await asyncio.sleep(random.random() / 100)
+            r = await pool.fetchval('SELECT {}::int'.format(i))
+            self.assertEqual(r, i)
+            return 1
+
+        async def test_execute(pool):
+            await asyncio.sleep(random.random() / 100)
+            r = await pool.execute('SELECT generate_series(0, 10)')
+            self.assertEqual(r, 'SELECT {}'.format(11))
+            return 1
+
+        async def test_execute_with_arg(pool):
+            i = random.randint(0, 20)
+            await asyncio.sleep(random.random() / 100)
+            r = await pool.execute('SELECT generate_series(0, $1)', i)
+            self.assertEqual(r, 'SELECT {}'.format(i + 1))
+            return 1
+
+        async def run(N, meth):
+            async with self.create_pool(database='postgres',
+                                        min_size=5, max_size=10) as pool:
+
+                coros = [meth(pool) for _ in range(N)]
+                res = await asyncio.gather(*coros, loop=self.loop)
+                self.assertEqual(res, [1] * N)
+
+        methods = [test_fetch, test_fetchrow, test_fetchval,
+                   test_execute, test_execute_with_arg]
+
+        for method in methods:
+            with self.subTest(method=method.__name__):
+                await run(200, method)
+
+    async def test_pool_connection_execute_many(self):
+        async def worker(pool):
+            await asyncio.sleep(random.random() / 100)
+            await pool.executemany('''
+                INSERT INTO exmany VALUES($1, $2)
+            ''', [
+                ('a', 1), ('b', 2), ('c', 3), ('d', 4)
+            ])
+            return 1
+
+        N = 200
+
+        async with self.create_pool(database='postgres',
+                                    min_size=5, max_size=10) as pool:
+
+            await pool.execute('CREATE TABLE exmany (a text, b int)')
+            try:
+
+                coros = [worker(pool) for _ in range(N)]
+                res = await asyncio.gather(*coros, loop=self.loop)
+                self.assertEqual(res, [1] * N)
+
+                n_rows = await pool.fetchval('SELECT count(*) FROM exmany')
+                self.assertEqual(n_rows, N * 4)
+
+            finally:
+                await pool.execute('DROP TABLE exmany')
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')

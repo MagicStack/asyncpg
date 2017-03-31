@@ -306,6 +306,67 @@ class Pool:
         self._initialized = True
         return self
 
+    async def execute(self, query: str, *args, timeout: float=None) -> str:
+        """Execute an SQL command (or commands).
+
+        Pool performs this operation using one of its connections.  Other than
+        that, it behaves identically to
+        :meth:`Connection.execute() <connection.Connection.execute>`.
+
+        .. versionadded:: 0.10.0
+        """
+        async with self.acquire() as con:
+            return await con.execute(query, *args, timeout=timeout)
+
+    async def executemany(self, command: str, args, *, timeout: float=None):
+        """Execute an SQL *command* for each sequence of arguments in *args*.
+
+        Pool performs this operation using one of its connections.  Other than
+        that, it behaves identically to
+        :meth:`Connection.executemany() <connection.Connection.executemany>`.
+
+        .. versionadded:: 0.10.0
+        """
+        async with self.acquire() as con:
+            return await con.executemany(command, args, timeout=timeout)
+
+    async def fetch(self, query, *args, timeout=None) -> list:
+        """Run a query and return the results as a list of :class:`Record`.
+
+        Pool performs this operation using one of its connections.  Other than
+        that, it behaves identically to
+        :meth:`Connection.fetch() <connection.Connection.fetch>`.
+
+        .. versionadded:: 0.10.0
+        """
+        async with self.acquire() as con:
+            return await con.fetch(query, *args, timeout=timeout)
+
+    async def fetchval(self, query, *args, column=0, timeout=None):
+        """Run a query and return a value in the first row.
+
+        Pool performs this operation using one of its connections.  Other than
+        that, it behaves identically to
+        :meth:`Connection.fetchval() <connection.Connection.fetchval>`.
+
+        .. versionadded:: 0.10.0
+        """
+        async with self.acquire() as con:
+            return await con.fetchval(
+                query, *args, column=column, timeout=timeout)
+
+    async def fetchrow(self, query, *args, timeout=None):
+        """Run a query and return the first row.
+
+        Pool performs this operation using one of its connections.  Other than
+        that, it behaves identically to
+        :meth:`Connection.fetchrow() <connection.Connection.fetchrow>`.
+
+        .. versionadded:: 0.10.0
+        """
+        async with self.acquire() as con:
+            return await con.fetchrow(query, *args, timeout=timeout)
+
     def acquire(self, *, timeout=None):
         """Acquire a database connection from the pool.
 
