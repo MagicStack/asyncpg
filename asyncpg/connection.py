@@ -13,6 +13,7 @@ import socket
 import struct
 import time
 import urllib.parse
+import warnings
 
 from . import cursor
 from . import exceptions
@@ -216,7 +217,12 @@ class Connection(metaclass=ConnectionMeta):
         _, status, _ = await self._execute(query, args, 0, timeout, True)
         return status.decode()
 
-    async def executemany(self, command: str, args, timeout: float=None):
+    async def executemany(self, command: str, args,
+                          _timeout: float=None, **kw):
+        # The real signature of this method is:
+        #
+        #     executemany(self, command: str, args, *, timeout: float=None)
+        #
         """Execute an SQL *command* for each sequence of arguments in *args*.
 
         Example:
@@ -234,6 +240,23 @@ class Connection(metaclass=ConnectionMeta):
 
         .. versionadded:: 0.7.0
         """
+        if 'timeout' in kw:
+            timeout = kw.pop('timeout')
+        else:
+            timeout = _timeout
+            if timeout is not None:
+                warnings.warn(
+                    "Passing 'timeout' as a positional argument to "
+                    "executemany() is deprecated and will be removed in "
+                    "asyncpg 0.11.0.  Pass it as a keyword argument instead: "
+                    "`executemany(..., timeout=...)`.",
+                    DeprecationWarning, stacklevel=2)
+        if kw:
+            first_kwarg = next(iter(kw))
+            raise TypeError(
+                'executemany() got an unexpected keyword argument {!r}'.format(
+                    first_kwarg))
+
         return await self._executemany(command, args, timeout)
 
     async def _get_statement(self, query, timeout, *, named: bool=False):
@@ -948,3 +971,21 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_reset=sql_reset,
         sql_close_all=sql_close_all
     )
+
+
+def _patch_executemany_signature():
+    # Patch Connection.executemany() signature to remove '**kw' parameter
+    # and change '_timeout' keyword arg to 'timeout' keyword-only arg.
+    # TODO Remove in 0.11.0.
+    import inspect
+    sig = inspect.signature(Connection.executemany)
+    params = sig.parameters.copy()
+    params.pop('kw')
+    timeout = params.pop('_timeout')
+    timeout = timeout.replace(name='timeout', kind=timeout.KEYWORD_ONLY)
+    params['timeout'] = timeout
+    Connection.executemany.__signature__ = sig.replace(
+        parameters=params.values())
+
+
+_patch_executemany_signature()

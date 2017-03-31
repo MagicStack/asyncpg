@@ -7,6 +7,8 @@
 
 import asyncio
 import asyncpg
+import inspect
+import warnings
 
 from asyncpg import _testbase as tb
 
@@ -152,3 +154,29 @@ class TestExecuteScript(tb.ConnectedTestCase):
                 ''', good_data)
         finally:
             await self.con.execute('DROP TABLE exmany')
+
+    async def test_execute_many_3_kwonly_timeout(self):
+        with self.assertWarnsRegex(DeprecationWarning,
+                                   "Passing 'timeout' as a positional"):
+            await self.con.executemany(
+                '''SELECT $1::int''',
+                [(1,), (2,)],
+                1)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+
+            # Test that passing timeout as a kwarg doesn't trigger a warning.
+            await self.con.executemany(
+                '''SELECT $1::int''',
+                [(1,), (2,)],
+                timeout=1)
+
+            # Test that not passing timeout is fine too.
+            await self.con.executemany(
+                '''SELECT $1::int''',
+                [(1,), (2,)])
+
+        self.assertEqual(
+            str(inspect.signature(self.con.executemany)),
+            '(command:str, args, *, timeout:float=None)')
