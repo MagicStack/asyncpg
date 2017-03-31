@@ -382,34 +382,34 @@ class TestPool(tb.ConnectedTestCase):
     async def test_pool_connection_methods(self):
         async def test_fetch(pool):
             i = random.randint(0, 20)
-            await asyncio.sleep(random.random() / 100)
+            await asyncio.sleep(random.random() / 100, loop=self.loop)
             r = await pool.fetch('SELECT {}::int'.format(i))
             self.assertEqual(r, [(i,)])
             return 1
 
         async def test_fetchrow(pool):
             i = random.randint(0, 20)
-            await asyncio.sleep(random.random() / 100)
+            await asyncio.sleep(random.random() / 100, loop=self.loop)
             r = await pool.fetchrow('SELECT {}::int'.format(i))
             self.assertEqual(r, (i,))
             return 1
 
         async def test_fetchval(pool):
             i = random.randint(0, 20)
-            await asyncio.sleep(random.random() / 100)
+            await asyncio.sleep(random.random() / 100, loop=self.loop)
             r = await pool.fetchval('SELECT {}::int'.format(i))
             self.assertEqual(r, i)
             return 1
 
         async def test_execute(pool):
-            await asyncio.sleep(random.random() / 100)
+            await asyncio.sleep(random.random() / 100, loop=self.loop)
             r = await pool.execute('SELECT generate_series(0, 10)')
             self.assertEqual(r, 'SELECT {}'.format(11))
             return 1
 
         async def test_execute_with_arg(pool):
             i = random.randint(0, 20)
-            await asyncio.sleep(random.random() / 100)
+            await asyncio.sleep(random.random() / 100, loop=self.loop)
             r = await pool.execute('SELECT generate_series(0, $1)', i)
             self.assertEqual(r, 'SELECT {}'.format(i + 1))
             return 1
@@ -431,7 +431,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_connection_execute_many(self):
         async def worker(pool):
-            await asyncio.sleep(random.random() / 100)
+            await asyncio.sleep(random.random() / 100, loop=self.loop)
             await pool.executemany('''
                 INSERT INTO exmany VALUES($1, $2)
             ''', [
