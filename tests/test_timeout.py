@@ -128,11 +128,7 @@ class TestTimeout(tb.ConnectedTestCase):
 
 class TestConnectionCommandTimeout(tb.ConnectedTestCase):
 
-    def getExtraConnectOptions(self):
-        return {
-            'command_timeout': 0.2
-        }
-
+    @tb.with_connection_options(command_timeout=0.2)
     async def test_command_timeout_01(self):
         for methname in {'fetch', 'fetchrow', 'fetchval', 'execute'}:
             with self.assertRaises(asyncio.TimeoutError), \
@@ -151,12 +147,8 @@ class SlowPrepareConnection(pg_connection.Connection):
 
 class TestTimeoutCoversPrepare(tb.ConnectedTestCase):
 
-    def getExtraConnectOptions(self):
-        return {
-            '__connection_class__': SlowPrepareConnection,
-            'command_timeout': 0.3
-        }
-
+    @tb.with_connection_options(__connection_class__=SlowPrepareConnection,
+                                command_timeout=0.3)
     async def test_timeout_covers_prepare_01(self):
         for methname in {'fetch', 'fetchrow', 'fetchval', 'execute'}:
             with self.assertRaises(asyncio.TimeoutError):

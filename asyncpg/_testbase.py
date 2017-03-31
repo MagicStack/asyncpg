@@ -190,6 +190,17 @@ class ClusterTestCase(TestCase):
         return _start_cluster(ClusterCls, cluster_kwargs, server_settings)
 
 
+def with_connection_options(**options):
+    if not options:
+        raise ValueError('no connection options were specified')
+
+    def wrap(func):
+        func.__connect_options__ = options
+        return func
+
+    return wrap
+
+
 class ConnectedTestCase(ClusterTestCase):
 
     def getExtraConnectOptions(self):
@@ -197,9 +208,14 @@ class ConnectedTestCase(ClusterTestCase):
 
     def setUp(self):
         super().setUp()
-        opts = self.getExtraConnectOptions()
+
+        # Extract options set up with `with_connection_options`.
+        test_func = getattr(self, self._testMethodName).__func__
+        opts = getattr(test_func, '__connect_options__', {})
+
         self.con = self.loop.run_until_complete(
             self.cluster.connect(database='postgres', loop=self.loop, **opts))
+
         self.server_version = self.con.get_server_version()
 
     def tearDown(self):

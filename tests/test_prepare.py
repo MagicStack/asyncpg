@@ -142,12 +142,14 @@ class TestPrepare(tb.ConnectedTestCase):
                 await stmt.fetchval()
 
     async def test_prepare_10_stmt_lru(self):
+        cache = self.con._stmt_cache
+
         query = 'select {}'
-        cache_max = self.con._stmt_cache_max_size
+        cache_max = cache.get_max_size()
         iter_max = cache_max * 2 + 11
 
         # First, we have no cached statements.
-        self.assertEqual(len(self.con._stmt_cache), 0)
+        self.assertEqual(len(cache), 0)
 
         stmts = []
         for i in range(iter_max):
@@ -156,9 +158,8 @@ class TestPrepare(tb.ConnectedTestCase):
             stmts.append(s)
 
         # At this point our cache should be full.
-        self.assertEqual(len(self.con._stmt_cache), cache_max)
-        self.assertTrue(
-            all(not s.closed for s in self.con._stmt_cache.values()))
+        self.assertEqual(len(cache), cache_max)
+        self.assertTrue(all(not s.closed for s in cache.iter_statements()))
 
         # Since there are references to the statements (`stmts` list),
         # no statements are scheduled to be closed.
@@ -173,22 +174,20 @@ class TestPrepare(tb.ConnectedTestCase):
         # scheduled to be closed.
         self.assertEqual(len(self.con._stmts_to_close), iter_max - cache_max)
         self.assertTrue(all(s.closed for s in self.con._stmts_to_close))
-        self.assertTrue(
-            all(not s.closed for s in self.con._stmt_cache.values()))
+        self.assertTrue(all(not s.closed for s in cache.iter_statements()))
 
         zero = await self.con.prepare(query.format(0))
         # Hence, all stale statements should be closed now.
         self.assertEqual(len(self.con._stmts_to_close), 0)
 
         # The number of cached statements will stay the same though.
-        self.assertEqual(len(self.con._stmt_cache), cache_max)
-        self.assertTrue(
-            all(not s.closed for s in self.con._stmt_cache.values()))
+        self.assertEqual(len(cache), cache_max)
+        self.assertTrue(all(not s.closed for s in cache.iter_statements()))
 
         # After closing all statements will be closed.
         await self.con.close()
         self.assertEqual(len(self.con._stmts_to_close), 0)
-        self.assertEqual(len(self.con._stmt_cache), 0)
+        self.assertEqual(len(cache), 0)
 
         # An attempt to perform an operation on a closed statement
         # will trigger an error.
@@ -199,8 +198,10 @@ class TestPrepare(tb.ConnectedTestCase):
         # Test that prepared statements should stay in the cache after
         # they are GCed.
 
+        cache = self.con._stmt_cache
+
         # First, we have no cached statements.
-        self.assertEqual(len(self.con._stmt_cache), 0)
+        self.assertEqual(len(cache), 0)
         self.assertEqual(len(self.con._stmts_to_close), 0)
 
         # The prepared statement that we'll create will be GCed
@@ -209,33 +210,34 @@ class TestPrepare(tb.ConnectedTestCase):
         await self.con.prepare('select 1')
         gc.collect()
 
-        self.assertEqual(len(self.con._stmt_cache), 1)
+        self.assertEqual(len(cache), 1)
         self.assertEqual(len(self.con._stmts_to_close), 0)
 
     async def test_prepare_12_stmt_gc(self):
         # Test that prepared statements are closed when there is no space
         # for them in the LRU cache and there are no references to them.
 
+        cache = self.con._stmt_cache
+        cache_max = cache.get_max_size()
+
         # First, we have no cached statements.
-        self.assertEqual(len(self.con._stmt_cache), 0)
+        self.assertEqual(len(cache), 0)
         self.assertEqual(len(self.con._stmts_to_close), 0)
 
-        cache_max = self.con._stmt_cache_max_size
-
         stmt = await self.con.prepare('select 100000000')
-        self.assertEqual(len(self.con._stmt_cache), 1)
+        self.assertEqual(len(cache), 1)
         self.assertEqual(len(self.con._stmts_to_close), 0)
 
         for i in range(cache_max):
             await self.con.prepare('select {}'.format(i))
 
-        self.assertEqual(len(self.con._stmt_cache), cache_max)
+        self.assertEqual(len(cache), cache_max)
         self.assertEqual(len(self.con._stmts_to_close), 0)
 
         del stmt
         gc.collect()
 
-        self.assertEqual(len(self.con._stmt_cache), cache_max)
+        self.assertEqual(len(cache), cache_max)
         self.assertEqual(len(self.con._stmts_to_close), 1)
 
     async def test_prepare_13_connect(self):
@@ -283,25 +285,28 @@ class TestPrepare(tb.ConnectedTestCase):
         # Test that even if the statements cache is off, we're still
         # cleaning up GCed statements.
 
-        self.assertEqual(len(self.con._stmt_cache), 0)
+        cache = self.con._stmt_cache
+
+        self.assertEqual(len(cache), 0)
         self.assertEqual(len(self.con._stmts_to_close), 0)
+
         # Disable cache
-        self.con._stmt_cache_max_size = 0
+        cache.set_max_size(0)
 
         stmt = await self.con.prepare('select 100000000')
-        self.assertEqual(len(self.con._stmt_cache), 0)
+        self.assertEqual(len(cache), 0)
         self.assertEqual(len(self.con._stmts_to_close), 0)
 
         del stmt
         gc.collect()
 
         # After GC, _stmts_to_close should contain stmt's state
-        self.assertEqual(len(self.con._stmt_cache), 0)
+        self.assertEqual(len(cache), 0)
         self.assertEqual(len(self.con._stmts_to_close), 1)
 
         # Next "prepare" call will trigger a cleanup
         stmt = await self.con.prepare('select 1')
-        self.assertEqual(len(self.con._stmt_cache), 0)
+        self.assertEqual(len(cache), 0)
         self.assertEqual(len(self.con._stmts_to_close), 0)
 
         del stmt
@@ -425,10 +430,9 @@ class TestPrepare(tb.ConnectedTestCase):
         finally:
             await self.con.execute('DROP TABLE tab1')
 
+    @tb.with_connection_options(statement_cache_size=0)
     async def test_prepare_23_no_stmt_cache_seq(self):
-        # Disable cache, which will force connections to use
-        # anonymous prepared statements.
-        self.con._stmt_cache_max_size = 0
+        self.assertEqual(self.con._stmt_cache.get_max_size(), 0)
 
         async def check_simple():
             # Run a simple query a few times.
@@ -456,3 +460,56 @@ class TestPrepare(tb.ConnectedTestCase):
         # Check that we can run queries after a failed cursor
         # operation.
         await check_simple()
+
+    @tb.with_connection_options(max_cached_statement_lifetime=142)
+    async def test_prepare_24_max_lifetime(self):
+        cache = self.con._stmt_cache
+
+        self.assertEqual(cache.get_max_lifetime(), 142)
+        cache.set_max_lifetime(1)
+
+        s = await self.con.prepare('SELECT 1')
+        state = s._state
+
+        s = await self.con.prepare('SELECT 1')
+        self.assertIs(s._state, state)
+
+        s = await self.con.prepare('SELECT 1')
+        self.assertIs(s._state, state)
+
+        await asyncio.sleep(1, loop=self.loop)
+
+        s = await self.con.prepare('SELECT 1')
+        self.assertIsNot(s._state, state)
+
+    @tb.with_connection_options(max_cached_statement_lifetime=0.5)
+    async def test_prepare_25_max_lifetime_reset(self):
+        cache = self.con._stmt_cache
+
+        s = await self.con.prepare('SELECT 1')
+        state = s._state
+
+        # Disable max_lifetime
+        cache.set_max_lifetime(0)
+
+        await asyncio.sleep(1, loop=self.loop)
+
+        # The statement should still be cached (as we disabled the timeout).
+        s = await self.con.prepare('SELECT 1')
+        self.assertIs(s._state, state)
+
+    @tb.with_connection_options(max_cached_statement_lifetime=0.5)
+    async def test_prepare_26_max_lifetime_max_size(self):
+        cache = self.con._stmt_cache
+
+        s = await self.con.prepare('SELECT 1')
+        state = s._state
+
+        # Disable max_lifetime
+        cache.set_max_size(0)
+
+        s = await self.con.prepare('SELECT 1')
+        self.assertIsNot(s._state, state)
+
+        # Check that nothing crashes after the initial timeout
+        await asyncio.sleep(1, loop=self.loop)
