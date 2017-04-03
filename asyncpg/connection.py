@@ -118,7 +118,7 @@ class Connection(metaclass=ConnectionMeta):
                 **channel**: name of the channel the notification was sent to;
                 **payload**: the payload.
         """
-        self.__check_open()
+        self._check_open()
         if channel not in self._listeners:
             await self.fetch('LISTEN {}'.format(channel))
             self._listeners[channel] = set()
@@ -182,7 +182,7 @@ class Connection(metaclass=ConnectionMeta):
         .. _`PostgreSQL documentation`: https://www.postgresql.org/docs/\
                                         current/static/sql-set-transaction.html
         """
-        self.__check_open()
+        self._check_open()
         return transaction.Transaction(self, isolation, readonly, deferrable)
 
     async def execute(self, query: str, *args, timeout: float=None) -> str:
@@ -213,7 +213,7 @@ class Connection(metaclass=ConnectionMeta):
         .. versionchanged:: 0.5.4
            Made it possible to pass query arguments.
         """
-        self.__check_open()
+        self._check_open()
 
         if not args:
             return await self._protocol.query(query, timeout)
@@ -244,7 +244,7 @@ class Connection(metaclass=ConnectionMeta):
 
         .. versionadded:: 0.7.0
         """
-        self.__check_open()
+        self._check_open()
 
         if 'timeout' in kw:
             timeout = kw.pop('timeout')
@@ -317,7 +317,7 @@ class Connection(metaclass=ConnectionMeta):
 
         :return: A :class:`~cursor.CursorFactory` object.
         """
-        self.__check_open()
+        self._check_open()
         return cursor.CursorFactory(self, query, None, args,
                                     prefetch, timeout)
 
@@ -329,7 +329,7 @@ class Connection(metaclass=ConnectionMeta):
 
         :return: A :class:`~prepared_stmt.PreparedStatement` instance.
         """
-        self.__check_open()
+        self._check_open()
         stmt = await self._get_statement(query, timeout, named=True)
         return prepared_stmt.PreparedStatement(self, query, stmt)
 
@@ -342,7 +342,7 @@ class Connection(metaclass=ConnectionMeta):
 
         :return list: A list of :class:`Record` instances.
         """
-        self.__check_open()
+        self._check_open()
         return await self._execute(query, args, 0, timeout)
 
     async def fetchval(self, query, *args, column=0, timeout=None):
@@ -359,7 +359,7 @@ class Connection(metaclass=ConnectionMeta):
 
         :return: The value of the specified column of the first record.
         """
-        self.__check_open()
+        self._check_open()
         data = await self._execute(query, args, 1, timeout)
         if not data:
             return None
@@ -374,7 +374,7 @@ class Connection(metaclass=ConnectionMeta):
 
         :return: The first row as a :class:`Record` instance.
         """
-        self.__check_open()
+        self._check_open()
         data = await self._execute(query, args, 1, timeout)
         if not data:
             return None
@@ -395,7 +395,7 @@ class Connection(metaclass=ConnectionMeta):
                         data.  If ``False`` (the default), the data is
                         expected to be encoded/decoded in text.
         """
-        self.__check_open()
+        self._check_open()
 
         if self._type_by_name_stmt is None:
             self._type_by_name_stmt = await self.prepare(
@@ -425,7 +425,7 @@ class Connection(metaclass=ConnectionMeta):
                         (defaults to 'public')
         :param codec_name:  The name of the builtin codec.
         """
-        self.__check_open()
+        self._check_open()
 
         if self._type_by_name_stmt is None:
             self._type_by_name_stmt = await self.prepare(
@@ -470,13 +470,13 @@ class Connection(metaclass=ConnectionMeta):
         self._protocol.abort()
 
     async def reset(self):
-        self.__check_open()
+        self._check_open()
         self._listeners.clear()
         reset_query = self._get_reset_query()
         if reset_query:
             await self.execute(reset_query)
 
-    def __check_open(self):
+    def _check_open(self):
         if self.is_closed():
             raise exceptions.InterfaceError('connection is closed')
 

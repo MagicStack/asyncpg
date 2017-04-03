@@ -60,7 +60,7 @@ class PreparedStatement:
             #   (Type(oid=23, name='int4', kind='scalar', schema='pg_catalog'),
             #    Type(oid=25, name='text', kind='scalar', schema='pg_catalog'))
         """
-        self.__check_open()
+        self._check_open()
         return self._state._get_parameters()
 
     def get_attributes(self):
@@ -85,7 +85,7 @@ class PreparedStatement:
             #       type=Type(oid=26, name='oid', kind='scalar',
             #                 schema='pg_catalog')))
         """
-        self.__check_open()
+        self._check_open()
         return self._state._get_attributes()
 
     def cursor(self, *args, prefetch=None,
@@ -99,7 +99,7 @@ class PreparedStatement:
 
         :return: A :class:`~cursor.CursorFactory` object.
         """
-        self.__check_open()
+        self._check_open()
         return cursor.CursorFactory(self._connection, self._query,
                                     self._state, args, prefetch,
                                     timeout)
@@ -190,14 +190,14 @@ class PreparedStatement:
         return data[0]
 
     async def __bind_execute(self, args, limit, timeout):
-        self.__check_open()
+        self._check_open()
         protocol = self._connection._protocol
         data, status, _ = await protocol.bind_execute(
             self._state, args, '', limit, True, timeout)
         self._last_status = status
         return data
 
-    def __check_open(self):
+    def _check_open(self):
         if self._state.closed:
             raise exceptions.InterfaceError('prepared statement is closed')
 
