@@ -173,11 +173,15 @@ def create_pool(dsn=None, *,
 
 class ClusterTestCase(TestCase):
     @classmethod
+    def get_server_settings(cls):
+        return {
+            'log_connections': 'on'
+        }
+
+    @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.cluster = _start_default_cluster({
-            'log_connections': 'on'
-        })
+        cls.cluster = _start_default_cluster(cls.get_server_settings())
 
     def create_pool(self, pool_class=pg_pool.Pool, **kwargs):
         conn_spec = self.cluster.get_connection_spec()

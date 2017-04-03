@@ -450,3 +450,66 @@ class TestConnection(tb.ConnectedTestCase):
 
         with check():
             await self.con.reset()
+
+
+CERTS = os.path.join(os.path.dirname(__file__), 'certs')
+SSL_CERT_FILE = os.path.join(CERTS, 'server.cert.pem')
+SSL_KEY_FILE = os.path.join(CERTS, 'server.key.pem')
+
+
+class TestSSLConnection(tb.ConnectedTestCase):
+    @classmethod
+    def get_server_settings(cls):
+        conf = super().get_server_settings()
+        conf.update({
+            'ssl': 'on',
+            'ssl_cert_file': SSL_CERT_FILE,
+            'ssl_key_file': SSL_KEY_FILE,
+        })
+
+        return conf
+
+    def setUp(self):
+        super().setUp()
+
+        if not self.cluster.is_managed():
+            self.skipTest('unmanaged cluster')
+
+        self.cluster.reset_hba()
+
+        create_script = []
+        create_script.append('CREATE ROLE ssl_user WITH LOGIN;')
+
+        self.cluster.add_hba_entry(
+            type='hostssl', address=ipaddress.ip_network('127.0.0.0/24'),
+            database='postgres', user='ssl_user',
+            auth_method='trust')
+
+        self.cluster.add_hba_entry(
+            type='hostssl', address=ipaddress.ip_network('::1/128'),
+            database='postgres', user='ssl_user',
+            auth_method='trust')
+
+        # Put hba changes into effect
+        self.cluster.reload()
+
+        create_script = '\n'.join(create_script)
+        self.loop.run_until_complete(self.con.execute(create_script))
+
+    def tearDown(self):
+        # Reset cluster's pg_hba.conf since we've meddled with it
+        self.cluster.trust_local_connections()
+
+        drop_script = []
+        drop_script.append('DROP ROLE ssl_user;')
+        drop_script = '\n'.join(drop_script)
+        self.loop.run_until_complete(self.con.execute(drop_script))
+
+        super().tearDown()
+
+    @unittest.expectedFailure
+    async def test_ssl_connection(self):
+        conn = await self.cluster.connect(
+            host='localhost',
+            user='ssl_user', database='postgres', loop=self.loop)
+        await conn.close()
