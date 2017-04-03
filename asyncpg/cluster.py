@@ -178,6 +178,15 @@ class Cluster:
         if sockdir is None:
             sockdir = '/tmp'
 
+        ssl_key = server_settings.get('ssl_key_file')
+        if ssl_key:
+            # Make sure server certificate key file has correct permissions.
+            keyfile = os.path.join(self._data_dir, 'srvkey.pem')
+            shutil.copy(ssl_key, keyfile)
+            os.chmod(keyfile, 0o400)
+            server_settings = server_settings.copy()
+            server_settings['ssl_key_file'] = keyfile
+
         if self._pg_version < (9, 3):
             sockdir_opt = 'unix_socket_directory'
         else:
