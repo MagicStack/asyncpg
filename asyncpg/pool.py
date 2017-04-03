@@ -575,33 +575,47 @@ def create_pool(dsn=None, *,
         finally:
             await pool.release(con)
 
-    :param str dsn: Connection arguments specified using as a single string in
-                    the following format:
-                    ``postgres://user:pass@host:port/database?option=value``.
+    :param str dsn:
+        Connection arguments specified using as a single string in
+        the following format:
+        ``postgres://user:pass@host:port/database?option=value``.
 
-    :param \*\*connect_kwargs: Keyword arguments for the
-                               :func:`~asyncpg.connection.connect` function.
-    :param int min_size: Number of connection the pool will be initialized
-                         with.
-    :param int max_size: Max number of connections in the pool.
-    :param int max_queries: Number of queries after a connection is closed
-                            and replaced with a new connection.
+    :param \*\*connect_kwargs:
+        Keyword arguments for the :func:`~asyncpg.connection.connect`
+        function.
+
+    :param int min_size:
+        Number of connection the pool will be initialized with.
+
+    :param int max_size:
+        Max number of connections in the pool.
+
+    :param int max_queries:
+        Number of queries after a connection is closed and replaced
+        with a new connection.
+
     :param float max_inactive_connection_lifetime:
         Number of seconds after which inactive connections in the
         pool will be closed.  Pass ``0`` to disable this mechanism.
-    :param coroutine setup: A coroutine to prepare a connection right before
-                            it is returned from :meth:`~pool.Pool.acquire`.
-                            An example use case would be to automatically
-                            set up notifications listeners for all connections
-                            of a pool.
-    :param coroutine init:  A coroutine to initialize a connection when it
-                            is created. An example use case would be to setup
-                            type codecs with
-                            :meth:`~asyncpg.connection.Connection.\
-                            set_builtin_type_codec` or :meth:`~asyncpg.\
-                            connection.Connection.set_type_codec`.
-    :param loop: An asyncio event loop instance.  If ``None``, the default
-                 event loop will be used.
+
+    :param coroutine setup:
+        A coroutine to prepare a connection right before it is returned
+        from :meth:`Pool.acquire() <pool.Pool.acquire>`.  An example use
+        case would be to automatically set up notifications listeners for
+        all connections of a pool.
+
+    :param coroutine init:
+        A coroutine to initialize a connection when it is created.
+        An example use case would be to setup type codecs with
+        :meth:`Connection.set_builtin_type_codec() <\
+        asyncpg.connection.Connection.set_builtin_type_codec>`
+        or :meth:`Connection.set_type_codec() <\
+        asyncpg.connection.Connection.set_type_codec>`.
+
+    :param loop:
+        An asyncio event loop instance.  If ``None``, the default
+        event loop will be used.
+
     :return: An instance of :class:`~asyncpg.pool.Pool`.
 
     .. versionchanged:: 0.10.0

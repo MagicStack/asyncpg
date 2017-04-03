@@ -116,12 +116,13 @@ class Connection(metaclass=ConnectionMeta):
         """Add a listener for Postgres notifications.
 
         :param str channel: Channel to listen on.
+
         :param callable callback:
-                A callable receiving the following arguments:
-                **connection**: a Connection the callback is registered with;
-                **pid**: PID of the Postgres server that sent the notification;
-                **channel**: name of the channel the notification was sent to;
-                **payload**: the payload.
+            A callable receiving the following arguments:
+            **connection**: a Connection the callback is registered with;
+            **pid**: PID of the Postgres server that sent the notification;
+            **channel**: name of the channel the notification was sent to;
+            **payload**: the payload.
         """
         self._check_open()
         if channel not in self._listeners:
@@ -245,7 +246,7 @@ class Connection(metaclass=ConnectionMeta):
             ... ''', [(1, 2, 3), (4, 5, 6)])
 
         :param command: Command to execute.
-        :args: An iterable containing sequences of arguments.
+        :param args: An iterable containing sequences of arguments.
         :param float timeout: Optional timeout value in seconds.
         :return None: This method discards the results of the operations.
 
@@ -713,43 +714,52 @@ async def connect(dsn=None, *,
 
     Returns a new :class:`~asyncpg.connection.Connection` object.
 
-    :param dsn: Connection arguments specified using as a single string in the
-                following format:
-                ``postgres://user:pass@host:port/database?option=value``
+    :param dsn:
+        Connection arguments specified using as a single string in the
+        following format:
+        ``postgres://user:pass@host:port/database?option=value``
 
-    :param host: database host address or a path to the directory containing
-                 database server UNIX socket (defaults to the default UNIX
-                 socket, or the value of the ``PGHOST`` environment variable,
-                 if set).
+    :param host:
+        database host address or a path to the directory containing
+        database server UNIX socket (defaults to the default UNIX socket,
+        or the value of the ``PGHOST`` environment variable, if set).
 
-    :param port: connection port number (defaults to ``5432``, or the value of
-                 the ``PGPORT`` environment variable, if set)
+    :param port:
+        connection port number (defaults to ``5432``, or the value of
+        the ``PGPORT`` environment variable, if set)
 
-    :param user: the name of the database role used for authentication
-                 (defaults to the name of the effective user of the process
-                 making the connection, or the value of ``PGUSER`` environment
-                 variable, if set)
+    :param user:
+        the name of the database role used for authentication
+        (defaults to the name of the effective user of the process
+        making the connection, or the value of ``PGUSER`` environment
+        variable, if set)
 
-    :param database: the name of the database (defaults to the value of
-                     ``PGDATABASE`` environment variable, if set.)
+    :param database:
+        the name of the database (defaults to the value of ``PGDATABASE``
+        environment variable, if set.)
 
-    :param password: password used for authentication
+    :param password:
+        password used for authentication
 
-    :param loop: An asyncio event loop instance.  If ``None``, the default
-                 event loop will be used.
+    :param loop:
+        An asyncio event loop instance.  If ``None``, the default
+        event loop will be used.
 
-    :param float timeout: connection timeout in seconds.
+    :param float timeout:
+        connection timeout in seconds.
 
-    :param int statement_cache_size: the size of prepared statement LRU cache.
-                                     Pass ``0`` to disable the cache.
+    :param int statement_cache_size:
+        the size of prepared statement LRU cache.  Pass ``0`` to
+        disable the cache.
 
     :param int max_cached_statement_lifetime:
         the maximum time in seconds a prepared statement will stay
         in the cache.  Pass ``0`` to allow statements be cached
         indefinitely.
 
-    :param float command_timeout: the default timeout for operations on
-                          this connection (the default is no timeout).
+    :param float command_timeout:
+        the default timeout for operations on this connection
+        (the default is no timeout).
 
     :return: A :class:`~asyncpg.connection.Connection` instance.
 
