@@ -460,6 +460,7 @@ class TestConnection(tb.ConnectedTestCase):
         with check():
             await self.con.reset()
 
+    @unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
     async def test_connection_ssl_to_no_ssl_server(self):
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
         ssl_context.load_verify_locations(SSL_CA_CERT_FILE)
