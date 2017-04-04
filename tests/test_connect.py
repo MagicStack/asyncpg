@@ -5,18 +5,27 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+import asyncio
 import contextlib
 import ipaddress
 import os
 import platform
+import ssl
 import unittest
 
 import asyncpg
 from asyncpg import _testbase as tb
 from asyncpg import connection
+from asyncpg import cluster as pg_cluster
 from asyncpg.serverversion import split_server_version_string
 
 _system = platform.uname().system
+
+
+CERTS = os.path.join(os.path.dirname(__file__), 'certs')
+SSL_CA_CERT_FILE = os.path.join(CERTS, 'ca.cert.pem')
+SSL_CERT_FILE = os.path.join(CERTS, 'server.cert.pem')
+SSL_KEY_FILE = os.path.join(CERTS, 'server.key.pem')
 
 
 class TestSettings(tb.ConnectedTestCase):
@@ -195,7 +204,7 @@ class TestConnectParams(unittest.TestCase):
                 'PGHOST': 'host',
                 'PGPORT': '123'
             },
-            'result': (['host'], 123, {
+            'result': ([('host', 123)], {
                 'user': 'user',
                 'password': 'passw',
                 'database': 'testdb'})
@@ -216,7 +225,7 @@ class TestConnectParams(unittest.TestCase):
             'password': 'passw2',
             'database': 'db2',
 
-            'result': (['host2'], 456, {
+            'result': ([('host2', 456)], {
                 'user': 'user2',
                 'password': 'passw2',
                 'database': 'db2'})
@@ -239,7 +248,7 @@ class TestConnectParams(unittest.TestCase):
             'password': 'passw2',
             'database': 'db2',
 
-            'result': (['host2'], 456, {
+            'result': ([('host2', 456)], {
                 'user': 'user2',
                 'password': 'passw2',
                 'database': 'db2'})
@@ -256,7 +265,7 @@ class TestConnectParams(unittest.TestCase):
 
             'dsn': 'postgres://user3:123123@localhost:5555/abcdef',
 
-            'result': (['localhost'], 5555, {
+            'result': ([('localhost', 5555)], {
                 'user': 'user3',
                 'password': '123123',
                 'database': 'abcdef'})
@@ -264,7 +273,7 @@ class TestConnectParams(unittest.TestCase):
 
         {
             'dsn': 'postgres://user3:123123@localhost:5555/abcdef',
-            'result': (['localhost'], 5555, {
+            'result': ([('localhost', 5555)], {
                 'user': 'user3',
                 'password': '123123',
                 'database': 'abcdef'})
@@ -279,7 +288,7 @@ class TestConnectParams(unittest.TestCase):
             'user': 'me',
             'password': 'ask',
             'database': 'db',
-            'result': (['127.0.0.1'], 888, {
+            'result': ([('127.0.0.1', 888)], {
                 'param': '123',
                 'user': 'me',
                 'password': 'ask',
@@ -288,7 +297,7 @@ class TestConnectParams(unittest.TestCase):
 
         {
             'dsn': 'postgresql:///dbname?host=/unix_sock/test&user=spam',
-            'result': (['/unix_sock/test'], 5432, {
+            'result': ([os.path.join('/unix_sock/test', '.s.PGSQL.5432')], {
                 'user': 'spam',
                 'database': 'dbname'})
         },
@@ -396,7 +405,7 @@ class TestConnectParams(unittest.TestCase):
                     'PGUSER': '__test__'
                 },
                 'host': 'abc',
-                'result': (['abc'], 5432, {'user': '__test__'})
+                'result': ([('abc', 5432)], {'user': '__test__'})
             })
 
         with self.assertRaises(AssertionError):
@@ -405,7 +414,7 @@ class TestConnectParams(unittest.TestCase):
                     'PGUSER': '__test__'
                 },
                 'host': 'abc',
-                'result': (['abc'], 5432, {'user': 'wrong_user'})
+                'result': ([('abc', 5432)], {'user': 'wrong_user'})
             })
 
     def test_connect_params(self):
@@ -451,10 +460,28 @@ class TestConnection(tb.ConnectedTestCase):
         with check():
             await self.con.reset()
 
+    async def test_connection_ssl_to_no_ssl_server(self):
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        ssl_context.load_verify_locations(SSL_CA_CERT_FILE)
 
-CERTS = os.path.join(os.path.dirname(__file__), 'certs')
-SSL_CERT_FILE = os.path.join(CERTS, 'server.cert.pem')
-SSL_KEY_FILE = os.path.join(CERTS, 'server.key.pem')
+        with self.assertRaisesRegex(ConnectionError, 'rejected SSL'):
+            await self.cluster.connect(
+                host='localhost',
+                user='ssl_user',
+                database='postgres',
+                loop=self.loop,
+                ssl=ssl_context)
+
+    async def test_connection_ssl_unix(self):
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        ssl_context.load_verify_locations(SSL_CA_CERT_FILE)
+
+        with self.assertRaisesRegex(asyncpg.InterfaceError,
+                                    'can only be enabled for TCP addresses'):
+            await self.cluster.connect(
+                host=['localhost', '/tmp'],
+                loop=self.loop,
+                ssl=ssl_context)
 
 
 class TestSSLConnection(tb.ConnectedTestCase):
@@ -468,6 +495,11 @@ class TestSSLConnection(tb.ConnectedTestCase):
         })
 
         return conf
+
+    @classmethod
+    def setup_cluster(cls):
+        cls.cluster = cls.start_cluster(
+            pg_cluster.TempCluster, server_settings=cls.get_server_settings())
 
     def setUp(self):
         super().setUp()
@@ -507,9 +539,32 @@ class TestSSLConnection(tb.ConnectedTestCase):
 
         super().tearDown()
 
-    @unittest.expectedFailure
-    async def test_ssl_connection(self):
-        conn = await self.cluster.connect(
+    async def test_ssl_connection_custom_context(self):
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        ssl_context.load_verify_locations(SSL_CA_CERT_FILE)
+
+        con = await self.cluster.connect(
             host='localhost',
-            user='ssl_user', database='postgres', loop=self.loop)
-        await conn.close()
+            user='ssl_user',
+            database='postgres',
+            loop=self.loop,
+            ssl=ssl_context)
+
+        try:
+            self.assertEqual(await con.fetchval('SELECT 42'), 42)
+
+            with self.assertRaises(asyncio.TimeoutError):
+                await con.execute('SELECT pg_sleep(5)', timeout=0.5)
+
+            self.assertEqual(await con.fetchval('SELECT 43'), 43)
+        finally:
+            await con.close()
+
+    async def test_ssl_connection_default_context(self):
+        with self.assertRaisesRegex(ssl.SSLError, 'verify failed'):
+            await self.cluster.connect(
+                host='localhost',
+                user='ssl_user',
+                database='postgres',
+                loop=self.loop,
+                ssl=True)

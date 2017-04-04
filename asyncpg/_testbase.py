@@ -179,9 +179,13 @@ class ClusterTestCase(TestCase):
         }
 
     @classmethod
+    def setup_cluster(cls):
+        cls.cluster = _start_default_cluster(cls.get_server_settings())
+
+    @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.cluster = _start_default_cluster(cls.get_server_settings())
+        cls.setup_cluster()
 
     def create_pool(self, pool_class=pg_pool.Pool, **kwargs):
         conn_spec = self.cluster.get_connection_spec()
