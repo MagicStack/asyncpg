@@ -13,6 +13,8 @@
 
   
   
+  
+  
 
   
 
@@ -63,7 +65,7 @@
             
             
               <div class="version">
-                0.9.0
+                0.10.0
               </div>
             
           
@@ -84,7 +86,10 @@
           
             
             
-                <ul class="current">
+              
+            
+            
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples.html">Usage Examples</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
@@ -164,7 +169,7 @@
 <span id="asyncpg-api-connection"></span><h2>Connection<a class="headerlink" href="#connection" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="asyncpg.connection.connect">
-<code class="descname">connect</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>host=None</em>, <em>port=None</em>, <em>user=None</em>, <em>password=None</em>, <em>database=None</em>, <em>loop=None</em>, <em>timeout=60</em>, <em>statement_cache_size=100</em>, <em>command_timeout=None</em>, <em>**opts</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.connect" title="Permalink to this definition">¶</a></dt>
+<code class="descname">connect</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>host=None</em>, <em>port=None</em>, <em>user=None</em>, <em>password=None</em>, <em>database=None</em>, <em>loop=None</em>, <em>timeout=60</em>, <em>statement_cache_size=100</em>, <em>max_cached_statement_lifetime=300</em>, <em>command_timeout=None</em>, <em>ssl=None</em>, <em>__connection_class__=&lt;class 'asyncpg.connection.Connection'&gt;</em>, <em>**opts</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.connect" title="Permalink to this definition">¶</a></dt>
 <dd><p>A coroutine to establish a connection to a PostgreSQL server.</p>
 <p>Returns a new <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal"><span class="pre">Connection</span></code></a> object.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -176,24 +181,31 @@
 following format:
 <code class="docutils literal"><span class="pre">postgres://user:pass&#64;host:port/database?option=value</span></code></li>
 <li><strong>host</strong> &#8211; database host address or a path to the directory containing
-database server UNIX socket (defaults to the default UNIX
-socket, or the value of the <code class="docutils literal"><span class="pre">PGHOST</span></code> environment variable,
-if set).</li>
+database server UNIX socket (defaults to the default UNIX socket,
+or the value of the <code class="docutils literal"><span class="pre">PGHOST</span></code> environment variable, if set).</li>
 <li><strong>port</strong> &#8211; connection port number (defaults to <code class="docutils literal"><span class="pre">5432</span></code>, or the value of
 the <code class="docutils literal"><span class="pre">PGPORT</span></code> environment variable, if set)</li>
 <li><strong>user</strong> &#8211; the name of the database role used for authentication
 (defaults to the name of the effective user of the process
 making the connection, or the value of <code class="docutils literal"><span class="pre">PGUSER</span></code> environment
 variable, if set)</li>
-<li><strong>database</strong> &#8211; the name of the database (defaults to the value of
-<code class="docutils literal"><span class="pre">PGDATABASE</span></code> environment variable, if set.)</li>
+<li><strong>database</strong> &#8211; the name of the database (defaults to the value of <code class="docutils literal"><span class="pre">PGDATABASE</span></code>
+environment variable, if set.)</li>
 <li><strong>password</strong> &#8211; password used for authentication</li>
 <li><strong>loop</strong> &#8211; An asyncio event loop instance.  If <code class="docutils literal"><span class="pre">None</span></code>, the default
 event loop will be used.</li>
 <li><strong>timeout</strong> (<em>float</em>) &#8211; connection timeout in seconds.</li>
-<li><strong>command_timeout</strong> (<em>float</em>) &#8211; the default timeout for operations on
-this connection (the default is no timeout).</li>
-<li><strong>statement_cache_size</strong> (<em>int</em>) &#8211; the size of prepared statement LRU cache.</li>
+<li><strong>statement_cache_size</strong> (<em>int</em>) &#8211; the size of prepared statement LRU cache.  Pass <code class="docutils literal"><span class="pre">0</span></code> to
+disable the cache.</li>
+<li><strong>max_cached_statement_lifetime</strong> (<em>int</em>) &#8211; the maximum time in seconds a prepared statement will stay
+in the cache.  Pass <code class="docutils literal"><span class="pre">0</span></code> to allow statements be cached
+indefinitely.</li>
+<li><strong>command_timeout</strong> (<em>float</em>) &#8211; the default timeout for operations on this connection
+(the default is no timeout).</li>
+<li><strong>ssl</strong> &#8211; pass <code class="docutils literal"><span class="pre">True</span></code> or an <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.SSLContext">ssl.SSLContext</a> instance to
+require an SSL connection.  If <code class="docutils literal"><span class="pre">True</span></code>, a default SSL context
+returned by <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.create_default_context">ssl.create_default_context()</a>
+will be used.</li>
 </ul>
 </td>
 </tr>
@@ -213,11 +225,14 @@ this connection (the default is no timeout).</li>
 <span class="go">[&lt;Record typname=&#39;bool&#39; typnamespace=11 ...</span>
 </pre></div>
 </div>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.10.0: </span>Added <code class="docutils literal"><span class="pre">max_cached_statement_use_count</span></code> parameter.</p>
+</div>
 </dd></dl>
 
 <dl class="class">
 <dt id="asyncpg.connection.Connection">
-<em class="property">class </em><code class="descname">Connection</code><span class="sig-paren">(</span><em>protocol</em>, <em>transport</em>, <em>loop</em>, <em>addr</em>, <em>opts</em>, <em>*</em>, <em>statement_cache_size</em>, <em>command_timeout</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Connection</code><span class="sig-paren">(</span><em>protocol</em>, <em>transport</em>, <em>loop</em>, <em>addr</em>, <em>opts</em>, <em>*</em>, <em>statement_cache_size</em>, <em>command_timeout</em>, <em>max_cached_statement_lifetime</em>, <em>ssl_context</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection" title="Permalink to this definition">¶</a></dt>
 <dd><p>A representation of a database session.</p>
 <p>Connections are created by calling <a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal"><span class="pre">connect()</span></code></a>.</p>
 <dl class="method">
@@ -312,7 +327,7 @@ are provided.</p>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.executemany">
-<em class="property">coroutine </em><code class="descname">executemany</code><span class="sig-paren">(</span><em>command: str</em>, <em>args</em>, <em>timeout: float = None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.executemany"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.executemany" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">executemany</code><span class="sig-paren">(</span><em>command: str</em>, <em>args</em>, <em>*</em>, <em>timeout: float = None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.executemany"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.executemany" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute an SQL <em>command</em> for each sequence of arguments in <em>args</em>.</p>
 <p>Example:</p>
 <div class="highlight-pycon"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">executemany</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
@@ -326,14 +341,12 @@ are provided.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>command</strong> &#8211; Command to execute.</li>
+<li><strong>args</strong> &#8211; An iterable containing sequences of arguments.</li>
 <li><strong>timeout</strong> (<em>float</em>) &#8211; Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Args:</th><td class="field-body"><p class="first">An iterable containing sequences of arguments.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return None:</th><td class="field-body"><p class="first last">This method discards the results of the operations.</p>
+<tr class="field-even field"><th class="field-name">Return None:</th><td class="field-body"><p class="first last">This method discards the results of the operations.</p>
 </td>
 </tr>
 </tbody>
@@ -430,6 +443,9 @@ instance constructor.</li>
 <span class="go">ServerVersion(major=9, minor=6, micro=1,</span>
 <span class="go">              releaselevel=&#39;final&#39;, serial=0)</span>
 </pre></div>
+</div>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.8.0.</span></p>
 </div>
 </dd></dl>
 
@@ -1030,7 +1046,7 @@ fetch subsets of the query results.</p>
 <span id="asyncpg-api-pool"></span><h2>Connection Pool<a class="headerlink" href="#connection-pool" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="asyncpg.pool.create_pool">
-<code class="descname">create_pool</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>min_size=10</em>, <em>max_size=10</em>, <em>max_queries=50000</em>, <em>setup=None</em>, <em>init=None</em>, <em>loop=None</em>, <em>**connect_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#create_pool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.create_pool" title="Permalink to this definition">¶</a></dt>
+<code class="descname">create_pool</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>min_size=10</em>, <em>max_size=10</em>, <em>max_queries=50000</em>, <em>max_inactive_connection_lifetime=300.0</em>, <em>setup=None</em>, <em>init=None</em>, <em>loop=None</em>, <em>**connect_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#create_pool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.create_pool" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a connection pool.</p>
 <p>Can be used either with an <code class="docutils literal"><span class="pre">async</span> <span class="pre">with</span></code> block:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="k">with</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">create_pool</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">,</span>
@@ -1056,22 +1072,22 @@ fetch subsets of the query results.</p>
 <li><strong>dsn</strong> (<em>str</em>) &#8211; Connection arguments specified using as a single string in
 the following format:
 <code class="docutils literal"><span class="pre">postgres://user:pass&#64;host:port/database?option=value</span></code>.</li>
-<li><strong>**connect_kwargs</strong> &#8211; Keyword arguments for the
-<a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal"><span class="pre">connect()</span></code></a> function.</li>
-<li><strong>min_size</strong> (<em>int</em>) &#8211; Number of connection the pool will be initialized
-with.</li>
+<li><strong>**connect_kwargs</strong> &#8211; Keyword arguments for the <a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal"><span class="pre">connect()</span></code></a>
+function.</li>
+<li><strong>min_size</strong> (<em>int</em>) &#8211; Number of connection the pool will be initialized with.</li>
 <li><strong>max_size</strong> (<em>int</em>) &#8211; Max number of connections in the pool.</li>
-<li><strong>max_queries</strong> (<em>int</em>) &#8211; Number of queries after a connection is closed
-and replaced with a new connection.</li>
-<li><strong>setup</strong> (<em>coroutine</em>) &#8211; A coroutine to prepare a connection right before
-it is returned from <a class="reference internal" href="#asyncpg.pool.Pool.acquire" title="asyncpg.pool.Pool.acquire"><code class="xref py py-meth docutils literal"><span class="pre">acquire()</span></code></a>.
-An example use case would be to automatically
-set up notifications listeners for all connections
-of a pool.</li>
-<li><strong>init</strong> (<em>coroutine</em>) &#8211; A coroutine to initialize a connection when it
-is created. An example use case would be to setup
-type codecs with
-<a class="reference internal" href="#asyncpg.connection.Connection.set_builtin_type_codec" title="asyncpg.connection.Connection.set_builtin_type_codec"><code class="xref py py-meth docutils literal"><span class="pre">set_builtin_type_codec()</span></code></a> or <a class="reference internal" href="#asyncpg.connection.Connection.set_type_codec" title="asyncpg.connection.Connection.set_type_codec"><code class="xref py py-meth docutils literal"><span class="pre">set_type_codec()</span></code></a>.</li>
+<li><strong>max_queries</strong> (<em>int</em>) &#8211; Number of queries after a connection is closed and replaced
+with a new connection.</li>
+<li><strong>max_inactive_connection_lifetime</strong> (<em>float</em>) &#8211; Number of seconds after which inactive connections in the
+pool will be closed.  Pass <code class="docutils literal"><span class="pre">0</span></code> to disable this mechanism.</li>
+<li><strong>setup</strong> (<em>coroutine</em>) &#8211; A coroutine to prepare a connection right before it is returned
+from <a class="reference internal" href="#asyncpg.pool.Pool.acquire" title="asyncpg.pool.Pool.acquire"><code class="xref py py-meth docutils literal"><span class="pre">Pool.acquire()</span></code></a>.  An example use
+case would be to automatically set up notifications listeners for
+all connections of a pool.</li>
+<li><strong>init</strong> (<em>coroutine</em>) &#8211; A coroutine to initialize a connection when it is created.
+An example use case would be to setup type codecs with
+<a class="reference internal" href="#asyncpg.connection.Connection.set_builtin_type_codec" title="asyncpg.connection.Connection.set_builtin_type_codec"><code class="xref py py-meth docutils literal"><span class="pre">Connection.set_builtin_type_codec()</span></code></a>
+or <a class="reference internal" href="#asyncpg.connection.Connection.set_type_codec" title="asyncpg.connection.Connection.set_type_codec"><code class="xref py py-meth docutils literal"><span class="pre">Connection.set_type_codec()</span></code></a>.</li>
 <li><strong>loop</strong> &#8211; An asyncio event loop instance.  If <code class="docutils literal"><span class="pre">None</span></code>, the default
 event loop will be used.</li>
 </ul>
@@ -1082,6 +1098,10 @@ event loop will be used.</li>
 </tr>
 </tbody>
 </table>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.10.0: </span>An <code class="xref py py-exc docutils literal"><span class="pre">InterfaceError</span></code> will be raised on any
+attempted operation on a released connection.</p>
+</div>
 </dd></dl>
 
 <dl class="class">
@@ -1129,6 +1149,66 @@ open cursors and other resources <em>except</em> prepared statements.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="asyncpg.pool.Pool.execute">
+<em class="property">coroutine </em><code class="descname">execute</code><span class="sig-paren">(</span><em>query: str</em>, <em>*args</em>, <em>timeout: float = None</em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.execute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.execute" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute an SQL command (or commands).</p>
+<p>Pool performs this operation using one of its connections.  Other than
+that, it behaves identically to
+<a class="reference internal" href="#asyncpg.connection.Connection.execute" title="asyncpg.connection.Connection.execute"><code class="xref py py-meth docutils literal"><span class="pre">Connection.execute()</span></code></a>.</p>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.10.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.pool.Pool.executemany">
+<em class="property">coroutine </em><code class="descname">executemany</code><span class="sig-paren">(</span><em>command: str</em>, <em>args</em>, <em>*</em>, <em>timeout: float = None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.executemany"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.executemany" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute an SQL <em>command</em> for each sequence of arguments in <em>args</em>.</p>
+<p>Pool performs this operation using one of its connections.  Other than
+that, it behaves identically to
+<a class="reference internal" href="#asyncpg.connection.Connection.executemany" title="asyncpg.connection.Connection.executemany"><code class="xref py py-meth docutils literal"><span class="pre">Connection.executemany()</span></code></a>.</p>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.10.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.pool.Pool.fetch">
+<em class="property">coroutine </em><code class="descname">fetch</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.fetch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a query and return the results as a list of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a>.</p>
+<p>Pool performs this operation using one of its connections.  Other than
+that, it behaves identically to
+<a class="reference internal" href="#asyncpg.connection.Connection.fetch" title="asyncpg.connection.Connection.fetch"><code class="xref py py-meth docutils literal"><span class="pre">Connection.fetch()</span></code></a>.</p>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.10.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.pool.Pool.fetchrow">
+<em class="property">coroutine </em><code class="descname">fetchrow</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.fetchrow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.fetchrow" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a query and return the first row.</p>
+<p>Pool performs this operation using one of its connections.  Other than
+that, it behaves identically to
+<a class="reference internal" href="#asyncpg.connection.Connection.fetchrow" title="asyncpg.connection.Connection.fetchrow"><code class="xref py py-meth docutils literal"><span class="pre">Connection.fetchrow()</span></code></a>.</p>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.10.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.pool.Pool.fetchval">
+<em class="property">coroutine </em><code class="descname">fetchval</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>column=0</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.fetchval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.fetchval" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a query and return a value in the first row.</p>
+<p>Pool performs this operation using one of its connections.  Other than
+that, it behaves identically to
+<a class="reference internal" href="#asyncpg.connection.Connection.fetchval" title="asyncpg.connection.Connection.fetchval"><code class="xref py py-meth docutils literal"><span class="pre">Connection.fetchval()</span></code></a>.</p>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.10.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="method">
 <dt id="asyncpg.pool.Pool.release">
 <em class="property">coroutine </em><code class="descname">release</code><span class="sig-paren">(</span><em>connection</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.release"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.release" title="Permalink to this definition">¶</a></dt>
 <dd><p>Release a database connection back to the pool.</p>
@@ -1146,9 +1226,9 @@ open cursors and other resources <em>except</em> prepared statements.</p>
 <div class="section" id="record-objects">
 <span id="asyncpg-api-record"></span><h2>Record Objects<a class="headerlink" href="#record-objects" title="Permalink to this headline">¶</a></h2>
 <p>Each row (or composite type value) returned by calls to <code class="docutils literal"><span class="pre">fetch*</span></code> methods
-is represented by an instance of the <code class="docutils literal"><span class="pre">Record</span></code> object.  <code class="docutils literal"><span class="pre">Record</span></code> objects
-are similar to instances of <code class="docutils literal"><span class="pre">collections.namedtuple</span></code> and allow addressing
-of values either by a numeric index or by a field name:</p>
+is represented by an instance of the <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> object.
+<code class="docutils literal"><span class="pre">Record</span></code> objects are a tuple-/dict-like hybrid, and allow addressing of
+items either by a numeric index or by a field name:</p>
 <div class="highlight-pycon"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncpg</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncio</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
@@ -1161,7 +1241,15 @@ of values either by a numeric index or by a field name:</p>
 <span class="go">16388</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 <span class="go">16388</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">dict</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+<span class="go">{&#39;oid&#39;: 16388, &#39;rolname&#39;: &#39;elvis&#39;, &#39;rolsuper&#39;: True}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">tuple</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+<span class="go">(16388, &#39;elvis&#39;, True)</span>
 </pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last"><code class="docutils literal"><span class="pre">Record</span></code> objects currently cannot be created from Python code.</p>
 </div>
 <dl class="class">
 <dt id="asyncpg.Record">
@@ -1294,7 +1382,7 @@ of values either by a numeric index or by a field name:</p>
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
       
-        <a href="../examples.html" class="btn btn-neutral" title="Usage Examples" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="../examples.html" class="btn btn-neutral" title="Usage Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -1324,7 +1412,7 @@ of values either by a numeric index or by a field name:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.9.0',
+            VERSION:'0.10.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

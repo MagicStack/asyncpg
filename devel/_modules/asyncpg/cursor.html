@@ -13,6 +13,8 @@
 
   
   
+  
+  
 
   
 
@@ -34,7 +36,7 @@
               href="../../genindex.html"/>
         <link rel="search" title="Search" href="../../search.html"/>
     <link rel="top" title="asyncpg Documentation" href="../../index.html"/>
-        <link rel="up" title="Module code" href="../index.html"/> 
+        <link rel="up" title="asyncpg" href="../asyncpg.html"/> 
 
   
   <script src="../../_static/js/modernizr.min.js"></script>
@@ -63,7 +65,7 @@
             
             
               <div class="version">
-                0.9.0
+                0.10.0
               </div>
             
           
@@ -84,7 +86,10 @@
           
             
             
-                <ul>
+              
+            
+            
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../examples.html">Usage Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Reference</a></li>
@@ -133,6 +138,8 @@
       <li><a href="../../index.html">Docs</a> &raquo;</li>
         
           <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../asyncpg.html">asyncpg</a> &raquo;</li>
         
       <li>asyncpg.cursor</li>
     
@@ -245,7 +252,7 @@
         <span class="n">con</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span>
         <span class="n">protocol</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_protocol</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_request_portal_name</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">(</span><span class="s1">&#39;portal&#39;</span><span class="p">)</span>
         <span class="n">buffer</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exhausted</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">buffer</span>
@@ -260,7 +267,7 @@
         <span class="n">con</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span>
         <span class="n">protocol</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_protocol</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_request_portal_name</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">(</span><span class="s1">&#39;portal&#39;</span><span class="p">)</span>
         <span class="n">buffer</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">,</span>
                                      <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span><span class="p">,</span>
                                      <span class="n">timeout</span><span class="p">)</span>
@@ -322,7 +329,7 @@
     <span class="k">async</span> <span class="k">def</span> <span class="nf">__anext__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span><span class="p">,</span> <span class="n">named</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">attach</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span><span class="p">:</span>
@@ -347,7 +354,7 @@
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">named</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">attach</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_ready</span><span class="p">()</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bind</span><span class="p">(</span><span class="n">timeout</span><span class="p">)</span>
@@ -441,7 +448,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.9.0',
+            VERSION:'0.10.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

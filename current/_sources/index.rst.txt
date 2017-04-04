@@ -14,9 +14,8 @@ PostgreSQL and Python/asyncio.  asyncpg is an efficient, clean implementation
 of PostgreSQL server binary protocol for use with Python's ``asyncio``
 framework.
 
-**asyncpg** is a C extension and it is only currently compatible with
-CPython 3.5.
-
+**asyncpg** requires Python 3.5 or later and is supported for PostgreSQL
+versions 9.1 to 9.6.
 
 Contents
 --------

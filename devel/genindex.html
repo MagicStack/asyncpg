@@ -14,6 +14,8 @@
 
   
   
+  
+  
 
   
 
@@ -63,7 +65,7 @@
             
             
               <div class="version">
-                0.9.0
+                0.10.0
               </div>
             
           
@@ -84,7 +86,10 @@
           
             
             
-                <ul>
+              
+            
+            
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Usage Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
@@ -223,11 +228,19 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/index.html#asyncpg.connection.Connection.execute">execute() (Connection method)</a>
+
+      <ul>
+        <li><a href="api/index.html#asyncpg.pool.Pool.execute">(Pool method)</a>
 </li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/index.html#asyncpg.connection.Connection.executemany">executemany() (Connection method)</a>
+
+      <ul>
+        <li><a href="api/index.html#asyncpg.pool.Pool.executemany">(Pool method)</a>
 </li>
+      </ul></li>
       <li><a href="api/index.html#asyncpg.prepared_stmt.PreparedStatement.explain">explain() (PreparedStatement method)</a>
 </li>
   </ul></td>
@@ -241,6 +254,8 @@
       <ul>
         <li><a href="api/index.html#asyncpg.cursor.Cursor.fetch">(Cursor method)</a>
 </li>
+        <li><a href="api/index.html#asyncpg.pool.Pool.fetch">(Pool method)</a>
+</li>
         <li><a href="api/index.html#asyncpg.prepared_stmt.PreparedStatement.fetch">(PreparedStatement method)</a>
 </li>
       </ul></li>
@@ -248,6 +263,8 @@
 
       <ul>
         <li><a href="api/index.html#asyncpg.cursor.Cursor.fetchrow">(Cursor method)</a>
+</li>
+        <li><a href="api/index.html#asyncpg.pool.Pool.fetchrow">(Pool method)</a>
 </li>
         <li><a href="api/index.html#asyncpg.prepared_stmt.PreparedStatement.fetchrow">(PreparedStatement method)</a>
 </li>
@@ -257,6 +274,8 @@
       <li><a href="api/index.html#asyncpg.connection.Connection.fetchval">fetchval() (Connection method)</a>
 
       <ul>
+        <li><a href="api/index.html#asyncpg.pool.Pool.fetchval">(Pool method)</a>
+</li>
         <li><a href="api/index.html#asyncpg.prepared_stmt.PreparedStatement.fetchval">(PreparedStatement method)</a>
 </li>
       </ul></li>
@@ -442,7 +461,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.9.0',
+            VERSION:'0.10.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

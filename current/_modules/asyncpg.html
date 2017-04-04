@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Overview: module code &mdash; asyncpg Documentation</title>
+  <title>asyncpg &mdash; asyncpg Documentation</title>
   
 
   
@@ -35,7 +35,8 @@
         <link rel="index" title="Index"
               href="../genindex.html"/>
         <link rel="search" title="Search" href="../search.html"/>
-    <link rel="top" title="asyncpg Documentation" href="../index.html"/> 
+    <link rel="top" title="asyncpg Documentation" href="../index.html"/>
+        <link rel="up" title="Module code" href="index.html"/> 
 
   
   <script src="../_static/js/modernizr.min.js"></script>
@@ -136,7 +137,9 @@
     
       <li><a href="../index.html">Docs</a> &raquo;</li>
         
-      <li>Overview: module code</li>
+          <li><a href="index.html">Module code</a> &raquo;</li>
+        
+      <li>asyncpg</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -153,15 +156,23 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <h1>All modules for which code is available</h1>
-<ul><li><a href="asyncpg.html">asyncpg</a></li>
-<ul><li><a href="asyncpg/connection.html">asyncpg.connection</a></li>
-<li><a href="asyncpg/cursor.html">asyncpg.cursor</a></li>
-<li><a href="asyncpg/pool.html">asyncpg.pool</a></li>
-<li><a href="asyncpg/prepared_stmt.html">asyncpg.prepared_stmt</a></li>
-<li><a href="asyncpg/transaction.html">asyncpg.transaction</a></li>
-<li><a href="asyncpg/types.html">asyncpg.types</a></li>
-</ul></ul>
+  <h1>Source code for asyncpg</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright (C) 2016-present the ayncpg authors and contributors</span>
+<span class="c1"># &lt;see AUTHORS file&gt;</span>
+<span class="c1">#</span>
+<span class="c1"># This module is part of asyncpg and is released under</span>
+<span class="c1"># the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0</span>
+
+
+<span class="kn">from</span> <span class="nn">.connection</span> <span class="k">import</span> <span class="n">connect</span>  <span class="c1"># NOQA</span>
+<span class="kn">from</span> <span class="nn">.exceptions</span> <span class="k">import</span> <span class="o">*</span>  <span class="c1"># NOQA</span>
+<span class="kn">from</span> <span class="nn">.pool</span> <span class="k">import</span> <span class="n">create_pool</span>  <span class="c1"># NOQA</span>
+<span class="kn">from</span> <span class="nn">.protocol</span> <span class="k">import</span> <span class="n">Record</span>  <span class="c1"># NOQA</span>
+<span class="kn">from</span> <span class="nn">.types</span> <span class="k">import</span> <span class="o">*</span>  <span class="c1"># NOQA</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;connect&#39;</span><span class="p">,</span> <span class="s1">&#39;create_pool&#39;</span><span class="p">,</span> <span class="s1">&#39;Record&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">__all__</span>  <span class="c1"># NOQA</span>
+</pre></div>
 
            </div>
            <div class="articleComments">

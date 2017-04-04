@@ -13,6 +13,8 @@
 
   
   
+  
+  
 
   
 
@@ -34,7 +36,7 @@
               href="../../genindex.html"/>
         <link rel="search" title="Search" href="../../search.html"/>
     <link rel="top" title="asyncpg Documentation" href="../../index.html"/>
-        <link rel="up" title="Module code" href="../index.html"/> 
+        <link rel="up" title="asyncpg" href="../asyncpg.html"/> 
 
   
   <script src="../../_static/js/modernizr.min.js"></script>
@@ -63,7 +65,7 @@
             
             
               <div class="version">
-                0.9.0
+                0.10.0
               </div>
             
           
@@ -84,7 +86,10 @@
           
             
             
-                <ul>
+              
+            
+            
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../examples.html">Usage Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Reference</a></li>
@@ -134,6 +139,8 @@
         
           <li><a href="../index.html">Module code</a> &raquo;</li>
         
+          <li><a href="../asyncpg.html">asyncpg</a> &raquo;</li>
+        
       <li>asyncpg.connection</li>
     
     
@@ -165,9 +172,12 @@
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">socket</span>
 <span class="kn">import</span> <span class="nn">struct</span>
+<span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">urllib.parse</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
 
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">cursor</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">exceptions</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">introspection</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">prepared_stmt</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">protocol</span>
@@ -175,7 +185,14 @@
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">transaction</span>
 
 
-<div class="viewcode-block" id="Connection"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection">[docs]</a><span class="k">class</span> <span class="nc">Connection</span><span class="p">:</span>
+<span class="k">class</span> <span class="nc">ConnectionMeta</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__instancecheck__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">instance</span><span class="p">):</span>
+        <span class="n">mro</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">instance</span><span class="p">)</span><span class="o">.</span><span class="vm">__mro__</span>
+        <span class="k">return</span> <span class="n">Connection</span> <span class="ow">in</span> <span class="n">mro</span> <span class="ow">or</span> <span class="n">_ConnectionProxy</span> <span class="ow">in</span> <span class="n">mro</span>
+
+
+<div class="viewcode-block" id="Connection"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection">[docs]</a><span class="k">class</span> <span class="nc">Connection</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">ConnectionMeta</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;A representation of a database session.</span>
 
 <span class="sd">    Connections are created by calling :func:`~asyncpg.connection.connect`.</span>
@@ -183,12 +200,15 @@
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_protocol&#39;</span><span class="p">,</span> <span class="s1">&#39;_transport&#39;</span><span class="p">,</span> <span class="s1">&#39;_loop&#39;</span><span class="p">,</span> <span class="s1">&#39;_types_stmt&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_type_by_name_stmt&#39;</span><span class="p">,</span> <span class="s1">&#39;_top_xact&#39;</span><span class="p">,</span> <span class="s1">&#39;_uid&#39;</span><span class="p">,</span> <span class="s1">&#39;_aborted&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;_stmt_cache_max_size&#39;</span><span class="p">,</span> <span class="s1">&#39;_stmt_cache&#39;</span><span class="p">,</span> <span class="s1">&#39;_stmts_to_close&#39;</span><span class="p">,</span>
+                 <span class="s1">&#39;_stmt_cache&#39;</span><span class="p">,</span> <span class="s1">&#39;_stmts_to_close&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_addr&#39;</span><span class="p">,</span> <span class="s1">&#39;_opts&#39;</span><span class="p">,</span> <span class="s1">&#39;_command_timeout&#39;</span><span class="p">,</span> <span class="s1">&#39;_listeners&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;_server_version&#39;</span><span class="p">,</span> <span class="s1">&#39;_intro_query&#39;</span><span class="p">)</span>
+                 <span class="s1">&#39;_server_version&#39;</span><span class="p">,</span> <span class="s1">&#39;_server_caps&#39;</span><span class="p">,</span> <span class="s1">&#39;_intro_query&#39;</span><span class="p">,</span>
+                 <span class="s1">&#39;_reset_query&#39;</span><span class="p">,</span> <span class="s1">&#39;_proxy&#39;</span><span class="p">,</span> <span class="s1">&#39;_stmt_exclusive_section&#39;</span><span class="p">,</span>
+                 <span class="s1">&#39;_ssl_context&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">protocol</span><span class="p">,</span> <span class="n">transport</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">opts</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
-                 <span class="n">statement_cache_size</span><span class="p">,</span> <span class="n">command_timeout</span><span class="p">):</span>
+                 <span class="n">statement_cache_size</span><span class="p">,</span> <span class="n">command_timeout</span><span class="p">,</span>
+                 <span class="n">max_cached_statement_lifetime</span><span class="p">,</span> <span class="n">ssl_context</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span> <span class="o">=</span> <span class="n">protocol</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_transport</span> <span class="o">=</span> <span class="n">transport</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span> <span class="o">=</span> <span class="n">loop</span>
@@ -200,35 +220,74 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_addr</span> <span class="o">=</span> <span class="n">addr</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_opts</span> <span class="o">=</span> <span class="n">opts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ssl_context</span> <span class="o">=</span> <span class="n">ssl_context</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache_max_size</span> <span class="o">=</span> <span class="n">statement_cache_size</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span> <span class="o">=</span> <span class="n">_StatementCache</span><span class="p">(</span>
+            <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">,</span>
+            <span class="n">max_size</span><span class="o">=</span><span class="n">statement_cache_size</span><span class="p">,</span>
+            <span class="n">on_remove</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_maybe_gc_stmt</span><span class="p">,</span>
+            <span class="n">max_lifetime</span><span class="o">=</span><span class="n">max_cached_statement_lifetime</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_stmts_to_close</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">command_timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command_timeout</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span>
+
+                <span class="n">command_timeout</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">command_timeout</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">command_timeout</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span>
+
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s1">&#39;invalid command_timeout value: &#39;</span>
+                    <span class="s1">&#39;expected non-negative float (got </span><span class="si">{!r}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="n">command_timeout</span><span class="p">))</span> <span class="kn">from</span> <span class="nn">None</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_command_timeout</span> <span class="o">=</span> <span class="n">command_timeout</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">{}</span>
 
-        <span class="n">ver_string</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">server_version</span>
+        <span class="n">settings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
+        <span class="n">ver_string</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">server_version</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_server_version</span> <span class="o">=</span> \
             <span class="n">serverversion</span><span class="o">.</span><span class="n">split_server_version_string</span><span class="p">(</span><span class="n">ver_string</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_server_caps</span> <span class="o">=</span> <span class="n">_detect_server_capabilities</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_server_version</span><span class="p">,</span> <span class="n">settings</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_version</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span> <span class="o">=</span> <span class="n">introspection</span><span class="o">.</span><span class="n">INTRO_LOOKUP_TYPES_91</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span> <span class="o">=</span> <span class="n">introspection</span><span class="o">.</span><span class="n">INTRO_LOOKUP_TYPES</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reset_query</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Used to serialize operations that might involve anonymous</span>
+        <span class="c1"># statements.  Specifically, we want to make the following</span>
+        <span class="c1"># operation atomic:</span>
+        <span class="c1">#    (&quot;prepare an anonymous statement&quot;, &quot;use the statement&quot;)</span>
+        <span class="c1">#</span>
+        <span class="c1"># Used for `con.fetchval()`, `con.fetch()`, `con.fetchrow()`,</span>
+        <span class="c1"># `con.execute()`, and `con.executemany()`.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_exclusive_section</span> <span class="o">=</span> <span class="n">_Atomic</span><span class="p">()</span>
+
 <div class="viewcode-block" id="Connection.add_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.add_listener">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">add_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Add a listener for Postgres notifications.</span>
 
 <span class="sd">        :param str channel: Channel to listen on.</span>
+
 <span class="sd">        :param callable callback:</span>
-<span class="sd">                A callable receiving the following arguments:</span>
-<span class="sd">                **connection**: a Connection the callback is registered with;</span>
-<span class="sd">                **pid**: PID of the Postgres server that sent the notification;</span>
-<span class="sd">                **channel**: name of the channel the notification was sent to;</span>
-<span class="sd">                **payload**: the payload.</span>
+<span class="sd">            A callable receiving the following arguments:</span>
+<span class="sd">            **connection**: a Connection the callback is registered with;</span>
+<span class="sd">            **pid**: PID of the Postgres server that sent the notification;</span>
+<span class="sd">            **channel**: name of the channel the notification was sent to;</span>
+<span class="sd">            **payload**: the payload.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">channel</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">:</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;LISTEN </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">channel</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
@@ -236,6 +295,8 @@
 
 <div class="viewcode-block" id="Connection.remove_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.remove_listener">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">remove_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Remove a listening callback on the specified channel.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
+            <span class="k">return</span>
         <span class="k">if</span> <span class="n">channel</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">:</span>
             <span class="k">return</span>
         <span class="k">if</span> <span class="n">callback</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]:</span>
@@ -261,6 +322,7 @@
 <span class="sd">            ServerVersion(major=9, minor=6, micro=1,</span>
 <span class="sd">                          releaselevel=&#39;final&#39;, serial=0)</span>
 
+<span class="sd">        .. versionadded:: 0.8.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_version</span></div>
 
@@ -291,6 +353,7 @@
 <span class="sd">        .. _`PostgreSQL documentation`: https://www.postgresql.org/docs/\</span>
 <span class="sd">                                        current/static/sql-set-transaction.html</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">transaction</span><span class="o">.</span><span class="n">Transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">isolation</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">deferrable</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Connection.execute"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.execute">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -321,15 +384,20 @@
 <span class="sd">        .. versionchanged:: 0.5.4</span>
 <span class="sd">           Made it possible to pass query arguments.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
+
         <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="p">:</span>
             <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
 
-        <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
-                                                         <span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">status</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="Connection.executemany"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.executemany">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">executemany</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="Connection.executemany"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.executemany">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">executemany</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span>
+                          <span class="n">_timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="c1"># The real signature of this method is:</span>
+        <span class="c1">#</span>
+        <span class="c1">#     executemany(self, command: str, args, *, timeout: float=None)</span>
+        <span class="c1">#</span>
         <span class="sd">&quot;&quot;&quot;Execute an SQL *command* for each sequence of arguments in *args*.</span>
 
 <span class="sd">        Example:</span>
@@ -341,51 +409,61 @@
 <span class="sd">            ... &#39;&#39;&#39;, [(1, 2, 3), (4, 5, 6)])</span>
 
 <span class="sd">        :param command: Command to execute.</span>
-<span class="sd">        :args: An iterable containing sequences of arguments.</span>
+<span class="sd">        :param args: An iterable containing sequences of arguments.</span>
 <span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 <span class="sd">        :return None: This method discards the results of the operations.</span>
 
 <span class="sd">        .. versionadded:: 0.7.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">bind_execute_many</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">_get_statement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
-        <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache_max_size</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="s1">&#39;timeout&#39;</span> <span class="ow">in</span> <span class="n">kw</span><span class="p">:</span>
+            <span class="n">timeout</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;timeout&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">timeout</span> <span class="o">=</span> <span class="n">_timeout</span>
+            <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="s2">&quot;Passing &#39;timeout&#39; as a positional argument to &quot;</span>
+                    <span class="s2">&quot;executemany() is deprecated and will be removed in &quot;</span>
+                    <span class="s2">&quot;asyncpg 0.11.0.  Pass it as a keyword argument instead: &quot;</span>
+                    <span class="s2">&quot;`executemany(..., timeout=...)`.&quot;</span><span class="p">,</span>
+                    <span class="ne">DeprecationWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">kw</span><span class="p">:</span>
+            <span class="n">first_kwarg</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">kw</span><span class="p">))</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s1">&#39;executemany() got an unexpected keyword argument </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">first_kwarg</span><span class="p">))</span>
 
-        <span class="k">if</span> <span class="n">cache</span><span class="p">:</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="p">[</span><span class="n">query</span><span class="p">]</span>
-            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-                <span class="k">pass</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">move_to_end</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">last</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">state</span><span class="o">.</span><span class="n">closed</span><span class="p">:</span>
-                    <span class="k">return</span> <span class="n">state</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_executemany</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
 
-        <span class="n">protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span>
-        <span class="n">state</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_get_statement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">named</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">statement</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">statement</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">statement</span>
 
-        <span class="n">ready</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">_init_types</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">get_max_size</span><span class="p">()</span> <span class="ow">or</span> <span class="n">named</span><span class="p">:</span>
+            <span class="n">stmt_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">(</span><span class="s1">&#39;stmt&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">stmt_name</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+        <span class="n">statement</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="n">stmt_name</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+
+        <span class="n">ready</span> <span class="o">=</span> <span class="n">statement</span><span class="o">.</span><span class="n">_init_types</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">ready</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">True</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_types_stmt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_types_stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span><span class="p">)</span>
 
             <span class="n">types</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_types_stmt</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">ready</span><span class="p">))</span>
-            <span class="n">protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">register_data_types</span><span class="p">(</span><span class="n">types</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">register_data_types</span><span class="p">(</span><span class="n">types</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">cache</span><span class="p">:</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache_max_size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="n">old_query</span><span class="p">,</span> <span class="n">old_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">popitem</span><span class="p">(</span><span class="n">last</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_gc_stmt</span><span class="p">(</span><span class="n">old_state</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="p">[</span><span class="n">query</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">statement</span><span class="p">)</span>
 
         <span class="c1"># If we&#39;ve just created a new statement object, check if there</span>
         <span class="c1"># are any statements for GC.</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmts_to_close</span><span class="p">:</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_stmts</span><span class="p">()</span>
 
-        <span class="k">return</span> <span class="n">state</span>
+        <span class="k">return</span> <span class="n">statement</span>
 
 <div class="viewcode-block" id="Connection.cursor"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.cursor">[docs]</a>    <span class="k">def</span> <span class="nf">cursor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">prefetch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return a *cursor factory* for the specified query.</span>
@@ -397,6 +475,7 @@
 
 <span class="sd">        :return: A :class:`~cursor.CursorFactory` object.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">CursorFactory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span>
                                     <span class="n">prefetch</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
 
@@ -408,7 +487,8 @@
 
 <span class="sd">        :return: A :class:`~prepared_stmt.PreparedStatement` instance.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
+        <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">named</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">prepared_stmt</span><span class="o">.</span><span class="n">PreparedStatement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">stmt</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Connection.fetch"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.fetch">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
@@ -420,10 +500,8 @@
 
 <span class="sd">        :return list: A list of :class:`Record` instances.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
-                                                 <span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">data</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Connection.fetchval"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.fetchval">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Run a query and return a value in the first row.</span>
@@ -439,9 +517,8 @@
 
 <span class="sd">        :return: The value of the specified column of the first record.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span>
-                                                 <span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">column</span><span class="p">]</span></div>
@@ -455,9 +532,8 @@
 
 <span class="sd">        :return: The first row as a :class:`Record` instance.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span>
-                                                 <span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
@@ -477,6 +553,8 @@
 <span class="sd">                        data.  If ``False`` (the default), the data is</span>
 <span class="sd">                        expected to be encoded/decoded in text.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_type_by_name_stmt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_type_by_name_stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span>
                 <span class="n">introspection</span><span class="o">.</span><span class="n">TYPE_BY_NAME</span><span class="p">)</span>
@@ -505,6 +583,8 @@
 <span class="sd">                        (defaults to &#39;public&#39;)</span>
 <span class="sd">        :param codec_name:  The name of the builtin codec.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_type_by_name_stmt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_type_by_name_stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span>
                 <span class="n">introspection</span><span class="o">.</span><span class="n">TYPE_BY_NAME</span><span class="p">)</span>
@@ -535,42 +615,35 @@
         <span class="sd">&quot;&quot;&quot;Close the connection gracefully.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
             <span class="k">return</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_close_stmts</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mark_stmts_as_closed</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_aborted</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Connection.terminate"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.terminate">[docs]</a>    <span class="k">def</span> <span class="nf">terminate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Terminate the connection without waiting for pending data.&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_close_stmts</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mark_stmts_as_closed</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_aborted</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span></div>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="n">reset_query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_reset_query</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">reset_query</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">reset_query</span><span class="p">)</span>
 
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
-<span class="s1">            DO $$</span>
-<span class="s1">            BEGIN</span>
-<span class="s1">                PERFORM * FROM pg_listening_channels() LIMIT 1;</span>
-<span class="s1">                IF FOUND THEN</span>
-<span class="s1">                    UNLISTEN *;</span>
-<span class="s1">                END IF;</span>
-<span class="s1">            END;</span>
-<span class="s1">            $$;</span>
-<span class="s1">            SET SESSION AUTHORIZATION DEFAULT;</span>
-<span class="s1">            RESET ALL;</span>
-<span class="s1">            CLOSE ALL;</span>
-<span class="s1">            SELECT pg_advisory_unlock_all();</span>
-<span class="s1">        &#39;&#39;&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_check_open</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span><span class="s1">&#39;connection is closed&#39;</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_get_unique_id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_get_unique_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_uid</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="k">return</span> <span class="s1">&#39;id</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_uid</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s1">&#39;__asyncpg_</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">__&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uid</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_close_stmts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">for</span> <span class="n">stmt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">_mark_stmts_as_closed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">stmt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">iter_statements</span><span class="p">():</span>
             <span class="n">stmt</span><span class="o">.</span><span class="n">mark_closed</span><span class="p">()</span>
 
         <span class="k">for</span> <span class="n">stmt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmts_to_close</span><span class="p">:</span>
@@ -580,18 +653,28 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_stmts_to_close</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">_maybe_gc_stmt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stmt</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">stmt</span><span class="o">.</span><span class="n">refs</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">stmt</span><span class="o">.</span><span class="n">query</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">stmt</span><span class="o">.</span><span class="n">refs</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">has</span><span class="p">(</span><span class="n">stmt</span><span class="o">.</span><span class="n">query</span><span class="p">):</span>
+            <span class="c1"># If low-level `stmt` isn&#39;t referenced from any high-level</span>
+            <span class="c1"># `PreparedStatament` object and is not in the `_stmt_cache`:</span>
+            <span class="c1">#</span>
+            <span class="c1">#  * mark it as closed, which will make it non-usable</span>
+            <span class="c1">#    for any `PreparedStatament` or for methods like</span>
+            <span class="c1">#    `Connection.fetch()`.</span>
+            <span class="c1">#</span>
+            <span class="c1"># * schedule it to be formally closed on the server.</span>
             <span class="n">stmt</span><span class="o">.</span><span class="n">mark_closed</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_stmts_to_close</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">stmt</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_cleanup_stmts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Called whenever we create a new prepared statement in</span>
+        <span class="c1"># `Connection._get_statement()` and `_stmts_to_close` is</span>
+        <span class="c1"># not empty.</span>
         <span class="n">to_close</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmts_to_close</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stmts_to_close</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">stmt</span> <span class="ow">in</span> <span class="n">to_close</span><span class="p">:</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">close_statement</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_request_portal_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">()</span>
+            <span class="c1"># It is imperative that statements are cleaned properly,</span>
+            <span class="c1"># so we ignore the timeout.</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">close_statement</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">protocol</span><span class="o">.</span><span class="n">NO_TIMEOUT</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_cancel_current_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">waiter</span><span class="p">):</span>
         <span class="k">async</span> <span class="k">def</span> <span class="nf">cancel</span><span class="p">():</span>
@@ -601,12 +684,24 @@
                     <span class="n">r</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">open_unix_connection</span><span class="p">(</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">_addr</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">r</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">open_connection</span><span class="p">(</span>
-                        <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_addr</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ssl_context</span><span class="p">:</span>
+                        <span class="n">sock</span> <span class="o">=</span> <span class="k">await</span> <span class="n">_get_ssl_ready_socket</span><span class="p">(</span>
+                            <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_addr</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span>
 
-                    <span class="n">sock</span> <span class="o">=</span> <span class="n">w</span><span class="o">.</span><span class="n">transport</span><span class="o">.</span><span class="n">get_extra_info</span><span class="p">(</span><span class="s1">&#39;socket&#39;</span><span class="p">)</span>
-                    <span class="n">sock</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">IPPROTO_TCP</span><span class="p">,</span>
-                                    <span class="n">socket</span><span class="o">.</span><span class="n">TCP_NODELAY</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">r</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">open_connection</span><span class="p">(</span>
+                                <span class="n">sock</span><span class="o">=</span><span class="n">sock</span><span class="p">,</span>
+                                <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">,</span>
+                                <span class="n">ssl</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ssl_context</span><span class="p">,</span>
+                                <span class="n">server_hostname</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_addr</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                            <span class="n">sock</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                            <span class="k">raise</span>
+
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">r</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">open_connection</span><span class="p">(</span>
+                            <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_addr</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span>
+                        <span class="n">_set_nodelay</span><span class="p">(</span><span class="n">_get_socket</span><span class="p">(</span><span class="n">w</span><span class="o">.</span><span class="n">transport</span><span class="p">))</span>
 
                 <span class="c1"># Pack CancelRequest message</span>
                 <span class="n">msg</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s1">&#39;!llll&#39;</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">80877102</span><span class="p">,</span>
@@ -636,15 +731,147 @@
         <span class="k">if</span> <span class="n">channel</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">:</span>
             <span class="k">return</span>
 
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">con_ref</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># `_proxy` is not None when the connection is a member</span>
+            <span class="c1"># of a connection pool.  Which means that the user is working</span>
+            <span class="c1"># with a PooledConnectionProxy instance, and expects to see it</span>
+            <span class="c1"># (and not the actual Connection) in their event callbacks.</span>
+            <span class="n">con_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span>
+
         <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]:</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">cb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
+                <span class="n">cb</span><span class="p">(</span><span class="n">con_ref</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_exception_handler</span><span class="p">({</span>
                     <span class="s1">&#39;message&#39;</span><span class="p">:</span> <span class="s1">&#39;Unhandled exception in asyncpg notification &#39;</span>
                                <span class="s1">&#39;listener callback </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cb</span><span class="p">),</span>
                     <span class="s1">&#39;exception&#39;</span><span class="p">:</span> <span class="n">ex</span>
-                <span class="p">})</span></div>
+                <span class="p">})</span>
+
+    <span class="k">def</span> <span class="nf">_get_reset_query</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_query</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_query</span>
+
+        <span class="n">caps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_caps</span>
+
+        <span class="n">_reset_query</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">is_in_transaction</span><span class="p">()</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_top_xact</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_exception_handler</span><span class="p">({</span>
+                <span class="s1">&#39;message&#39;</span><span class="p">:</span> <span class="s1">&#39;Resetting connection with an &#39;</span>
+                           <span class="s1">&#39;active transaction </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="p">})</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_top_xact</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">_reset_query</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;ROLLBACK;&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">caps</span><span class="o">.</span><span class="n">advisory_locks</span><span class="p">:</span>
+            <span class="n">_reset_query</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;SELECT pg_advisory_unlock_all();&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">caps</span><span class="o">.</span><span class="n">sql_close_all</span><span class="p">:</span>
+            <span class="n">_reset_query</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;CLOSE ALL;&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">caps</span><span class="o">.</span><span class="n">notifications</span> <span class="ow">and</span> <span class="n">caps</span><span class="o">.</span><span class="n">plpgsql</span><span class="p">:</span>
+            <span class="n">_reset_query</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">                DO $$</span>
+<span class="s1">                BEGIN</span>
+<span class="s1">                    PERFORM * FROM pg_listening_channels() LIMIT 1;</span>
+<span class="s1">                    IF FOUND THEN</span>
+<span class="s1">                        UNLISTEN *;</span>
+<span class="s1">                    END IF;</span>
+<span class="s1">                END;</span>
+<span class="s1">                $$;</span>
+<span class="s1">            &#39;&#39;&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">caps</span><span class="o">.</span><span class="n">sql_reset</span><span class="p">:</span>
+            <span class="n">_reset_query</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;RESET ALL;&#39;</span><span class="p">)</span>
+
+        <span class="n">_reset_query</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_reset_query</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reset_query</span> <span class="o">=</span> <span class="n">_reset_query</span>
+
+        <span class="k">return</span> <span class="n">_reset_query</span>
+
+    <span class="k">def</span> <span class="nf">_set_proxy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">proxy</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">proxy</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Should not happen unless there is a bug in `Pool`.</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                <span class="s1">&#39;internal asyncpg error: connection is already proxied&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span> <span class="o">=</span> <span class="n">proxy</span>
+
+    <span class="k">def</span> <span class="nf">_drop_local_statement_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_drop_global_statement_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># This connection is a member of a pool, so we delegate</span>
+            <span class="c1"># the cache drop to the pool.</span>
+            <span class="n">pool</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span><span class="o">.</span><span class="n">_holder</span><span class="o">.</span><span class="n">_pool</span>
+            <span class="n">pool</span><span class="o">.</span><span class="n">_drop_statement_cache</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_statement_cache</span><span class="p">()</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">return_status</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">executor</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">stmt</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span>
+            <span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">return_status</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="n">timeout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">_get_timeout</span><span class="p">(</span><span class="n">timeout</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_exclusive_section</span><span class="p">:</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_do_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">executor</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_executemany</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
+        <span class="n">executor</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">stmt</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">bind_execute_many</span><span class="p">(</span>
+            <span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="n">timeout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">_get_timeout</span><span class="p">(</span><span class="n">timeout</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_exclusive_section</span><span class="p">:</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_do_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">executor</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_do_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">executor</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">retry</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">before</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+            <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+            <span class="n">after</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+            <span class="n">timeout</span> <span class="o">-=</span> <span class="n">after</span> <span class="o">-</span> <span class="n">before</span>
+            <span class="n">before</span> <span class="o">=</span> <span class="n">after</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">executor</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">executor</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+                <span class="k">finally</span><span class="p">:</span>
+                    <span class="n">after</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+                    <span class="n">timeout</span> <span class="o">-=</span> <span class="n">after</span> <span class="o">-</span> <span class="n">before</span>
+
+        <span class="k">except</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InvalidCachedStatementError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># PostgreSQL will raise an exception when it detects</span>
+            <span class="c1"># that the result type of the query has changed from</span>
+            <span class="c1"># when the statement was prepared.  This may happen,</span>
+            <span class="c1"># for example, after an ALTER TABLE or SET search_path.</span>
+            <span class="c1">#</span>
+            <span class="c1"># When this happens, and there is no transaction running,</span>
+            <span class="c1"># we can simply re-prepare the statement and try once</span>
+            <span class="c1"># again.  We deliberately retry only once as this is</span>
+            <span class="c1"># supposed to be a rare occurrence.</span>
+            <span class="c1">#</span>
+            <span class="c1"># If the transaction _is_ running, this error will put it</span>
+            <span class="c1"># into an error state, and we have no choice but to</span>
+            <span class="c1"># re-raise the exception.</span>
+            <span class="c1">#</span>
+            <span class="c1"># In either case we clear the statement cache for this</span>
+            <span class="c1"># connection and all other connections of the pool this</span>
+            <span class="c1"># connection belongs to (if any).</span>
+            <span class="c1">#</span>
+            <span class="c1"># See https://github.com/MagicStack/asyncpg/issues/72</span>
+            <span class="c1"># and https://github.com/MagicStack/asyncpg/issues/76</span>
+            <span class="c1"># for discussion.</span>
+            <span class="c1">#</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_drop_global_statement_cache</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">is_in_transaction</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">retry</span><span class="p">:</span>
+                <span class="k">raise</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_do_execute</span><span class="p">(</span>
+                    <span class="n">query</span><span class="p">,</span> <span class="n">executor</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">retry</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result</span></div>
 
 
 <div class="viewcode-block" id="connect"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.connect">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="n">dsn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
@@ -654,43 +881,67 @@
                   <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                   <span class="n">timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
                   <span class="n">statement_cache_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                  <span class="n">max_cached_statement_lifetime</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
                   <span class="n">command_timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">ssl</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">__connection_class__</span><span class="o">=</span><span class="n">Connection</span><span class="p">,</span>
                   <span class="o">**</span><span class="n">opts</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;A coroutine to establish a connection to a PostgreSQL server.</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;A coroutine to establish a connection to a PostgreSQL server.</span>
 
 <span class="sd">    Returns a new :class:`~asyncpg.connection.Connection` object.</span>
 
-<span class="sd">    :param dsn: Connection arguments specified using as a single string in the</span>
-<span class="sd">                following format:</span>
-<span class="sd">                ``postgres://user:pass@host:port/database?option=value``</span>
+<span class="sd">    :param dsn:</span>
+<span class="sd">        Connection arguments specified using as a single string in the</span>
+<span class="sd">        following format:</span>
+<span class="sd">        ``postgres://user:pass@host:port/database?option=value``</span>
 
-<span class="sd">    :param host: database host address or a path to the directory containing</span>
-<span class="sd">                 database server UNIX socket (defaults to the default UNIX</span>
-<span class="sd">                 socket, or the value of the ``PGHOST`` environment variable,</span>
-<span class="sd">                 if set).</span>
+<span class="sd">    :param host:</span>
+<span class="sd">        database host address or a path to the directory containing</span>
+<span class="sd">        database server UNIX socket (defaults to the default UNIX socket,</span>
+<span class="sd">        or the value of the ``PGHOST`` environment variable, if set).</span>
 
-<span class="sd">    :param port: connection port number (defaults to ``5432``, or the value of</span>
-<span class="sd">                 the ``PGPORT`` environment variable, if set)</span>
+<span class="sd">    :param port:</span>
+<span class="sd">        connection port number (defaults to ``5432``, or the value of</span>
+<span class="sd">        the ``PGPORT`` environment variable, if set)</span>
 
-<span class="sd">    :param user: the name of the database role used for authentication</span>
-<span class="sd">                 (defaults to the name of the effective user of the process</span>
-<span class="sd">                 making the connection, or the value of ``PGUSER`` environment</span>
-<span class="sd">                 variable, if set)</span>
+<span class="sd">    :param user:</span>
+<span class="sd">        the name of the database role used for authentication</span>
+<span class="sd">        (defaults to the name of the effective user of the process</span>
+<span class="sd">        making the connection, or the value of ``PGUSER`` environment</span>
+<span class="sd">        variable, if set)</span>
 
-<span class="sd">    :param database: the name of the database (defaults to the value of</span>
-<span class="sd">                     ``PGDATABASE`` environment variable, if set.)</span>
+<span class="sd">    :param database:</span>
+<span class="sd">        the name of the database (defaults to the value of ``PGDATABASE``</span>
+<span class="sd">        environment variable, if set.)</span>
 
-<span class="sd">    :param password: password used for authentication</span>
+<span class="sd">    :param password:</span>
+<span class="sd">        password used for authentication</span>
 
-<span class="sd">    :param loop: An asyncio event loop instance.  If ``None``, the default</span>
-<span class="sd">                 event loop will be used.</span>
+<span class="sd">    :param loop:</span>
+<span class="sd">        An asyncio event loop instance.  If ``None``, the default</span>
+<span class="sd">        event loop will be used.</span>
 
-<span class="sd">    :param float timeout: connection timeout in seconds.</span>
+<span class="sd">    :param float timeout:</span>
+<span class="sd">        connection timeout in seconds.</span>
 
-<span class="sd">    :param float command_timeout: the default timeout for operations on</span>
-<span class="sd">                          this connection (the default is no timeout).</span>
+<span class="sd">    :param int statement_cache_size:</span>
+<span class="sd">        the size of prepared statement LRU cache.  Pass ``0`` to</span>
+<span class="sd">        disable the cache.</span>
 
-<span class="sd">    :param int statement_cache_size: the size of prepared statement LRU cache.</span>
+<span class="sd">    :param int max_cached_statement_lifetime:</span>
+<span class="sd">        the maximum time in seconds a prepared statement will stay</span>
+<span class="sd">        in the cache.  Pass ``0`` to allow statements be cached</span>
+<span class="sd">        indefinitely.</span>
+
+<span class="sd">    :param float command_timeout:</span>
+<span class="sd">        the default timeout for operations on this connection</span>
+<span class="sd">        (the default is no timeout).</span>
+
+<span class="sd">    :param ssl:</span>
+<span class="sd">        pass ``True`` or an `ssl.SSLContext &lt;SSLContext_&gt;`_ instance to</span>
+<span class="sd">        require an SSL connection.  If ``True``, a default SSL context</span>
+<span class="sd">        returned by `ssl.create_default_context() &lt;create_default_context_&gt;`_</span>
+<span class="sd">        will be used.</span>
 
 <span class="sd">    :return: A :class:`~asyncpg.connection.Connection` instance.</span>
 
@@ -706,42 +957,54 @@
 <span class="sd">        ...     print(types)</span>
 <span class="sd">        &gt;&gt;&gt; asyncio.get_event_loop().run_until_complete(run())</span>
 <span class="sd">        [&lt;Record typname=&#39;bool&#39; typnamespace=11 ...</span>
+
+<span class="sd">    .. versionchanged:: 0.10.0</span>
+<span class="sd">       Added ``max_cached_statement_use_count`` parameter.</span>
+
+<span class="sd">    .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext</span>
+<span class="sd">    .. _create_default_context: https://docs.python.org/3/library/ssl.html#\</span>
+<span class="sd">                                ssl.create_default_context</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">loop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
 
-    <span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">opts</span> <span class="o">=</span> <span class="n">_parse_connect_params</span><span class="p">(</span>
+    <span class="n">addrs</span><span class="p">,</span> <span class="n">opts</span> <span class="o">=</span> <span class="n">_parse_connect_params</span><span class="p">(</span>
         <span class="n">dsn</span><span class="o">=</span><span class="n">dsn</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="n">user</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="n">password</span><span class="p">,</span>
         <span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">,</span> <span class="n">opts</span><span class="o">=</span><span class="n">opts</span><span class="p">)</span>
 
-    <span class="n">last_ex</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">addr</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">host</span><span class="p">:</span>
-        <span class="n">connected</span> <span class="o">=</span> <span class="n">_create_future</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span>
-        <span class="n">unix</span> <span class="o">=</span> <span class="n">h</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ssl</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">addrs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="c1"># UNIX socket</span>
+                <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                    <span class="s1">&#39;`ssl` parameter can only be enabled for TCP addresses, &#39;</span>
+                    <span class="s1">&#39;got a UNIX socket path: </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">addr</span><span class="p">))</span>
 
-        <span class="k">if</span> <span class="n">unix</span><span class="p">:</span>
-            <span class="c1"># UNIX socket name</span>
-            <span class="n">addr</span> <span class="o">=</span> <span class="n">h</span>
-            <span class="k">if</span> <span class="s1">&#39;.s.PGSQL.&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">addr</span><span class="p">:</span>
-                <span class="n">addr</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="s1">&#39;.s.PGSQL.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">port</span><span class="p">))</span>
-            <span class="n">conn</span> <span class="o">=</span> <span class="n">loop</span><span class="o">.</span><span class="n">create_unix_connection</span><span class="p">(</span>
-                <span class="k">lambda</span><span class="p">:</span> <span class="n">protocol</span><span class="o">.</span><span class="n">Protocol</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">connected</span><span class="p">,</span> <span class="n">opts</span><span class="p">,</span> <span class="n">loop</span><span class="p">),</span>
-                <span class="n">addr</span><span class="p">)</span>
+    <span class="n">last_error</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">addr</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">addrs</span><span class="p">:</span>
+        <span class="n">connected</span> <span class="o">=</span> <span class="n">_create_future</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span>
+        <span class="n">proto_factory</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">protocol</span><span class="o">.</span><span class="n">Protocol</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">connected</span><span class="p">,</span> <span class="n">opts</span><span class="p">,</span> <span class="n">loop</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="c1"># UNIX socket</span>
+            <span class="k">assert</span> <span class="n">ssl</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="n">connector</span> <span class="o">=</span> <span class="n">loop</span><span class="o">.</span><span class="n">create_unix_connection</span><span class="p">(</span><span class="n">proto_factory</span><span class="p">,</span> <span class="n">addr</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">ssl</span><span class="p">:</span>
+            <span class="n">connector</span> <span class="o">=</span> <span class="n">_create_ssl_connection</span><span class="p">(</span>
+                <span class="n">proto_factory</span><span class="p">,</span> <span class="o">*</span><span class="n">addr</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">,</span> <span class="n">ssl_context</span><span class="o">=</span><span class="n">ssl</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">addr</span> <span class="o">=</span> <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">port</span><span class="p">)</span>
-            <span class="n">conn</span> <span class="o">=</span> <span class="n">loop</span><span class="o">.</span><span class="n">create_connection</span><span class="p">(</span>
-                <span class="k">lambda</span><span class="p">:</span> <span class="n">protocol</span><span class="o">.</span><span class="n">Protocol</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">connected</span><span class="p">,</span> <span class="n">opts</span><span class="p">,</span> <span class="n">loop</span><span class="p">),</span>
-                <span class="n">h</span><span class="p">,</span> <span class="n">port</span><span class="p">)</span>
+            <span class="n">connector</span> <span class="o">=</span> <span class="n">loop</span><span class="o">.</span><span class="n">create_connection</span><span class="p">(</span><span class="n">proto_factory</span><span class="p">,</span> <span class="o">*</span><span class="n">addr</span><span class="p">)</span>
 
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">tr</span><span class="p">,</span> <span class="n">pr</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">)</span>
-        <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span><span class="p">)</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
-            <span class="n">last_ex</span> <span class="o">=</span> <span class="n">ex</span>
+            <span class="n">tr</span><span class="p">,</span> <span class="n">pr</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span>
+                <span class="n">connector</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span><span class="p">,</span> <span class="ne">ConnectionError</span><span class="p">)</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="n">last_error</span> <span class="o">=</span> <span class="n">ex</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">break</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">last_ex</span>
+        <span class="k">raise</span> <span class="n">last_error</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="k">await</span> <span class="n">connected</span>
@@ -749,11 +1012,229 @@
         <span class="n">tr</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="k">raise</span>
 
-    <span class="n">con</span> <span class="o">=</span> <span class="n">Connection</span><span class="p">(</span><span class="n">pr</span><span class="p">,</span> <span class="n">tr</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">opts</span><span class="p">,</span>
-                     <span class="n">statement_cache_size</span><span class="o">=</span><span class="n">statement_cache_size</span><span class="p">,</span>
-                     <span class="n">command_timeout</span><span class="o">=</span><span class="n">command_timeout</span><span class="p">)</span>
+    <span class="n">con</span> <span class="o">=</span> <span class="n">__connection_class__</span><span class="p">(</span>
+        <span class="n">pr</span><span class="p">,</span> <span class="n">tr</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">opts</span><span class="p">,</span>
+        <span class="n">statement_cache_size</span><span class="o">=</span><span class="n">statement_cache_size</span><span class="p">,</span>
+        <span class="n">max_cached_statement_lifetime</span><span class="o">=</span><span class="n">max_cached_statement_lifetime</span><span class="p">,</span>
+        <span class="n">command_timeout</span><span class="o">=</span><span class="n">command_timeout</span><span class="p">,</span> <span class="n">ssl_context</span><span class="o">=</span><span class="n">ssl</span><span class="p">)</span>
+
     <span class="n">pr</span><span class="o">.</span><span class="n">set_connection</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">con</span></div>
+
+
+<span class="k">async</span> <span class="k">def</span> <span class="nf">_get_ssl_ready_socket</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">loop</span><span class="p">):</span>
+    <span class="n">reader</span><span class="p">,</span> <span class="n">writer</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">open_connection</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">)</span>
+
+    <span class="n">tr</span> <span class="o">=</span> <span class="n">writer</span><span class="o">.</span><span class="n">transport</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sock</span> <span class="o">=</span> <span class="n">_get_socket</span><span class="p">(</span><span class="n">tr</span><span class="p">)</span>
+        <span class="n">_set_nodelay</span><span class="p">(</span><span class="n">sock</span><span class="p">)</span>
+
+        <span class="n">writer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s1">&#39;!ll&#39;</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">80877103</span><span class="p">))</span>  <span class="c1"># SSLRequest message.</span>
+        <span class="k">await</span> <span class="n">writer</span><span class="o">.</span><span class="n">drain</span><span class="p">()</span>
+        <span class="n">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">reader</span><span class="o">.</span><span class="n">readexactly</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">resp</span> <span class="o">==</span> <span class="sa">b</span><span class="s1">&#39;S&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">sock</span><span class="o">.</span><span class="n">dup</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span>
+                <span class="s1">&#39;PostgreSQL server at &quot;</span><span class="si">{}</span><span class="s1">:</span><span class="si">{}</span><span class="s1">&quot; rejected SSL upgrade&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">))</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">tr</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<span class="k">async</span> <span class="k">def</span> <span class="nf">_create_ssl_connection</span><span class="p">(</span><span class="n">protocol_factory</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+                                 <span class="n">loop</span><span class="p">,</span> <span class="n">ssl_context</span><span class="p">):</span>
+    <span class="n">sock</span> <span class="o">=</span> <span class="k">await</span> <span class="n">_get_ssl_ready_socket</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="n">loop</span><span class="o">.</span><span class="n">create_connection</span><span class="p">(</span>
+            <span class="n">protocol_factory</span><span class="p">,</span> <span class="n">sock</span><span class="o">=</span><span class="n">sock</span><span class="p">,</span> <span class="n">ssl</span><span class="o">=</span><span class="n">ssl_context</span><span class="p">,</span>
+            <span class="n">server_hostname</span><span class="o">=</span><span class="n">host</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">sock</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">raise</span>
+
+
+<span class="k">def</span> <span class="nf">_get_socket</span><span class="p">(</span><span class="n">transport</span><span class="p">):</span>
+    <span class="n">sock</span> <span class="o">=</span> <span class="n">transport</span><span class="o">.</span><span class="n">get_extra_info</span><span class="p">(</span><span class="s1">&#39;socket&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">sock</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Shouldn&#39;t happen with any asyncio-complaint event loop.</span>
+        <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span>
+            <span class="s1">&#39;could not get the socket for transport </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">transport</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">sock</span>
+
+
+<span class="k">def</span> <span class="nf">_set_nodelay</span><span class="p">(</span><span class="n">sock</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">socket</span><span class="p">,</span> <span class="s1">&#39;AF_UNIX&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">sock</span><span class="o">.</span><span class="n">family</span> <span class="o">!=</span> <span class="n">socket</span><span class="o">.</span><span class="n">AF_UNIX</span><span class="p">:</span>
+        <span class="n">sock</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">IPPROTO_TCP</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">TCP_NODELAY</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">_StatementCacheEntry</span><span class="p">:</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_query&#39;</span><span class="p">,</span> <span class="s1">&#39;_statement&#39;</span><span class="p">,</span> <span class="s1">&#39;_cache&#39;</span><span class="p">,</span> <span class="s1">&#39;_cleanup_cb&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">statement</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="n">cache</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_query</span> <span class="o">=</span> <span class="n">query</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_statement</span> <span class="o">=</span> <span class="n">statement</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_cb</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">class</span> <span class="nc">_StatementCache</span><span class="p">:</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_loop&#39;</span><span class="p">,</span> <span class="s1">&#39;_entries&#39;</span><span class="p">,</span> <span class="s1">&#39;_max_size&#39;</span><span class="p">,</span> <span class="s1">&#39;_on_remove&#39;</span><span class="p">,</span>
+                 <span class="s1">&#39;_max_lifetime&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span> <span class="n">max_size</span><span class="p">,</span> <span class="n">on_remove</span><span class="p">,</span> <span class="n">max_lifetime</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span> <span class="o">=</span> <span class="n">loop</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_max_size</span> <span class="o">=</span> <span class="n">max_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_on_remove</span> <span class="o">=</span> <span class="n">on_remove</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_max_lifetime</span> <span class="o">=</span> <span class="n">max_lifetime</span>
+
+        <span class="c1"># We use an OrderedDict for LRU implementation.  Operations:</span>
+        <span class="c1">#</span>
+        <span class="c1"># * We use a simple `__setitem__` to push a new entry:</span>
+        <span class="c1">#       `entries[key] = new_entry`</span>
+        <span class="c1">#   That will push `new_entry` to the *end* of the entries dict.</span>
+        <span class="c1">#</span>
+        <span class="c1"># * When we have a cache hit, we call</span>
+        <span class="c1">#       `entries.move_to_end(key, last=True)`</span>
+        <span class="c1">#   to move the entry to the *end* of the entries dict.</span>
+        <span class="c1">#</span>
+        <span class="c1"># * When we need to remove entries to maintain `max_size`, we call</span>
+        <span class="c1">#       `entries.popitem(last=False)`</span>
+        <span class="c1">#   to remove an entry from the *beginning* of the entries dict.</span>
+        <span class="c1">#</span>
+        <span class="c1"># So new entries and hits are always promoted to the end of the</span>
+        <span class="c1"># entries dict, whereas the unused one will group in the</span>
+        <span class="c1"># beginning of it.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_max_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_size</span>
+
+    <span class="k">def</span> <span class="nf">set_max_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_size</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">new_size</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_max_size</span> <span class="o">=</span> <span class="n">new_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_cleanup</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">get_max_lifetime</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_lifetime</span>
+
+    <span class="k">def</span> <span class="nf">set_max_lifetime</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_lifetime</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">new_lifetime</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_max_lifetime</span> <span class="o">=</span> <span class="n">new_lifetime</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="c1"># For every entry cancel the existing callback</span>
+            <span class="c1"># and setup a new one if necessary.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_entry_timeout</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">promote</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_size</span><span class="p">:</span>
+            <span class="c1"># The cache is disabled.</span>
+            <span class="k">return</span>
+
+        <span class="n">entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>  <span class="c1"># type: _StatementCacheEntry</span>
+        <span class="k">if</span> <span class="n">entry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">_statement</span><span class="o">.</span><span class="n">closed</span><span class="p">:</span>
+            <span class="c1"># Happens in unittests when we call `stmt._state.mark_closed()`</span>
+            <span class="c1"># manually.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_clear_entry_callback</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">promote</span><span class="p">:</span>
+            <span class="c1"># `promote` is `False` when `get()` is called by `has()`.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">move_to_end</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">last</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">entry</span><span class="o">.</span><span class="n">_statement</span>
+
+    <span class="k">def</span> <span class="nf">has</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">promote</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">statement</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_size</span><span class="p">:</span>
+            <span class="c1"># The cache is disabled.</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">[</span><span class="n">query</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_new_entry</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">statement</span><span class="p">)</span>
+
+        <span class="c1"># Check if the cache is bigger than max_size and trim it</span>
+        <span class="c1"># if necessary.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_cleanup</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">iter_statements</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">_statement</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># First, make sure that we cancel all scheduled callbacks.</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_clear_entry_callback</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+
+        <span class="c1"># Clear the entries dict.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_set_entry_timeout</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entry</span><span class="p">):</span>
+        <span class="c1"># Clear the existing timeout.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear_entry_callback</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+
+        <span class="c1"># Set the new timeout if it&#39;s not 0.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_lifetime</span><span class="p">:</span>
+            <span class="n">entry</span><span class="o">.</span><span class="n">_cleanup_cb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_later</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_max_lifetime</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_entry_expired</span><span class="p">,</span> <span class="n">entry</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_new_entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">statement</span><span class="p">):</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">_StatementCacheEntry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">statement</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_entry_timeout</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">entry</span>
+
+    <span class="k">def</span> <span class="nf">_on_entry_expired</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entry</span><span class="p">):</span>
+        <span class="c1"># `call_later` callback, called when an entry stayed longer</span>
+        <span class="c1"># than `self._max_lifetime`.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">_query</span><span class="p">)</span> <span class="ow">is</span> <span class="n">entry</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">_query</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_on_remove</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">_statement</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_clear_entry_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entry</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">_cleanup_cb</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">entry</span><span class="o">.</span><span class="n">_cleanup_cb</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_maybe_cleanup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Delete cache entries until the size of the cache is `max_size`.</span>
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_size</span><span class="p">:</span>
+            <span class="n">old_query</span><span class="p">,</span> <span class="n">old_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">popitem</span><span class="p">(</span><span class="n">last</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_clear_entry_callback</span><span class="p">(</span><span class="n">old_entry</span><span class="p">)</span>
+
+            <span class="c1"># Let the connection know that the statement was removed</span>
+            <span class="c1"># from the cache.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_on_remove</span><span class="p">(</span><span class="n">old_entry</span><span class="o">.</span><span class="n">_statement</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">_Atomic</span><span class="p">:</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_acquired&#39;</span><span class="p">,)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_acquired</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_acquired</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                <span class="s1">&#39;cannot perform operation: another operation is in progress&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_acquired</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">tb</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_acquired</span> <span class="o">=</span> <span class="mi">0</span>
+
+
+<span class="k">class</span> <span class="nc">_ConnectionProxy</span><span class="p">:</span>
+    <span class="c1"># Base class to enable `isinstance(Connection)` check.</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
 
 
 <span class="k">def</span> <span class="nf">_parse_connect_params</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">dsn</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">user</span><span class="p">,</span>
@@ -874,7 +1355,18 @@
                 <span class="s1">&#39;invalid connection parameter </span><span class="si">{!r}</span><span class="s1">: </span><span class="si">{!r}</span><span class="s1"> (str expected)&#39;</span>
                 <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">opts</span><span class="p">[</span><span class="n">param</span><span class="p">]))</span>
 
-    <span class="k">return</span> <span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">opts</span>
+    <span class="n">addrs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">host</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">h</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">):</span>
+            <span class="c1"># UNIX socket name</span>
+            <span class="k">if</span> <span class="s1">&#39;.s.PGSQL.&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">h</span><span class="p">:</span>
+                <span class="n">h</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="s1">&#39;.s.PGSQL.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">port</span><span class="p">))</span>
+            <span class="n">addrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># TCP host/port</span>
+            <span class="n">addrs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">h</span><span class="p">,</span> <span class="n">port</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">addrs</span><span class="p">,</span> <span class="n">opts</span>
 
 
 <span class="k">def</span> <span class="nf">_create_future</span><span class="p">(</span><span class="n">loop</span><span class="p">):</span>
@@ -884,6 +1376,63 @@
         <span class="k">return</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Future</span><span class="p">(</span><span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">create_future</span><span class="p">()</span>
+
+
+<span class="n">ServerCapabilities</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span>
+    <span class="s1">&#39;ServerCapabilities&#39;</span><span class="p">,</span>
+    <span class="p">[</span><span class="s1">&#39;advisory_locks&#39;</span><span class="p">,</span> <span class="s1">&#39;notifications&#39;</span><span class="p">,</span> <span class="s1">&#39;plpgsql&#39;</span><span class="p">,</span> <span class="s1">&#39;sql_reset&#39;</span><span class="p">,</span>
+     <span class="s1">&#39;sql_close_all&#39;</span><span class="p">])</span>
+<span class="n">ServerCapabilities</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">&#39;PostgreSQL server capabilities.&#39;</span>
+
+
+<span class="k">def</span> <span class="nf">_detect_server_capabilities</span><span class="p">(</span><span class="n">server_version</span><span class="p">,</span> <span class="n">connection_settings</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">connection_settings</span><span class="p">,</span> <span class="s1">&#39;padb_revision&#39;</span><span class="p">):</span>
+        <span class="c1"># Amazon Redshift detected.</span>
+        <span class="n">advisory_locks</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">notifications</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">plpgsql</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">sql_reset</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">sql_close_all</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">connection_settings</span><span class="p">,</span> <span class="s1">&#39;crdb_version&#39;</span><span class="p">):</span>
+        <span class="c1"># CocroachDB detected.</span>
+        <span class="n">advisory_locks</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">notifications</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">plpgsql</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">sql_reset</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">sql_close_all</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Standard PostgreSQL server assumed.</span>
+        <span class="n">advisory_locks</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">notifications</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">plpgsql</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">sql_reset</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">sql_close_all</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">return</span> <span class="n">ServerCapabilities</span><span class="p">(</span>
+        <span class="n">advisory_locks</span><span class="o">=</span><span class="n">advisory_locks</span><span class="p">,</span>
+        <span class="n">notifications</span><span class="o">=</span><span class="n">notifications</span><span class="p">,</span>
+        <span class="n">plpgsql</span><span class="o">=</span><span class="n">plpgsql</span><span class="p">,</span>
+        <span class="n">sql_reset</span><span class="o">=</span><span class="n">sql_reset</span><span class="p">,</span>
+        <span class="n">sql_close_all</span><span class="o">=</span><span class="n">sql_close_all</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_patch_executemany_signature</span><span class="p">():</span>
+    <span class="c1"># Patch Connection.executemany() signature to remove &#39;**kw&#39; parameter</span>
+    <span class="c1"># and change &#39;_timeout&#39; keyword arg to &#39;timeout&#39; keyword-only arg.</span>
+    <span class="c1"># TODO Remove in 0.11.0.</span>
+    <span class="kn">import</span> <span class="nn">inspect</span>
+    <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">Connection</span><span class="o">.</span><span class="n">executemany</span><span class="p">)</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">params</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;kw&#39;</span><span class="p">)</span>
+    <span class="n">timeout</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_timeout&#39;</span><span class="p">)</span>
+    <span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;timeout&#39;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="n">timeout</span><span class="o">.</span><span class="n">KEYWORD_ONLY</span><span class="p">)</span>
+    <span class="n">params</span><span class="p">[</span><span class="s1">&#39;timeout&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">timeout</span>
+    <span class="n">Connection</span><span class="o">.</span><span class="n">executemany</span><span class="o">.</span><span class="n">__signature__</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="n">params</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+
+<span class="n">_patch_executemany_signature</span><span class="p">()</span>
 </pre></div>
 
            </div>
@@ -919,7 +1468,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.9.0',
+            VERSION:'0.10.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

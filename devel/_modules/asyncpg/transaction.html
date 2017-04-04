@@ -13,6 +13,8 @@
 
   
   
+  
+  
 
   
 
@@ -34,7 +36,7 @@
               href="../../genindex.html"/>
         <link rel="search" title="Search" href="../../search.html"/>
     <link rel="top" title="asyncpg Documentation" href="../../index.html"/>
-        <link rel="up" title="Module code" href="../index.html"/> 
+        <link rel="up" title="asyncpg" href="../asyncpg.html"/> 
 
   
   <script src="../../_static/js/modernizr.min.js"></script>
@@ -63,7 +65,7 @@
             
             
               <div class="version">
-                0.9.0
+                0.10.0
               </div>
             
           
@@ -84,7 +86,10 @@
           
             
             
-                <ul>
+              
+            
+            
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../examples.html">Usage Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Reference</a></li>
@@ -133,6 +138,8 @@
       <li><a href="../../index.html">Docs</a> &raquo;</li>
         
           <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../asyncpg.html">asyncpg</a> &raquo;</li>
         
       <li>asyncpg.transaction</li>
     
@@ -238,6 +245,10 @@
         <span class="n">con</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span>
 
         <span class="k">if</span> <span class="n">con</span><span class="o">.</span><span class="n">_top_xact</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">con</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">is_in_transaction</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                    <span class="s1">&#39;cannot use Connection.transaction() in &#39;</span>
+                    <span class="s1">&#39;a manually started transaction&#39;</span><span class="p">)</span>
             <span class="n">con</span><span class="o">.</span><span class="n">_top_xact</span> <span class="o">=</span> <span class="bp">self</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Nested transaction block</span>
@@ -250,7 +261,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_nested</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nested</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_id</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_id</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">(</span><span class="s1">&#39;savepoint&#39;</span><span class="p">)</span>
             <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;SAVEPOINT </span><span class="si">{}</span><span class="s1">;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_id</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="o">==</span> <span class="s1">&#39;read_committed&#39;</span><span class="p">:</span>
@@ -399,7 +410,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.9.0',
+            VERSION:'0.10.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
