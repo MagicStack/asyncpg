@@ -484,6 +484,7 @@ class TestConnection(tb.ConnectedTestCase):
                 ssl=ssl_context)
 
 
+@unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
 class TestSSLConnection(tb.ConnectedTestCase):
     @classmethod
     def get_server_settings(cls):
@@ -503,9 +504,6 @@ class TestSSLConnection(tb.ConnectedTestCase):
 
     def setUp(self):
         super().setUp()
-
-        if not self.cluster.is_managed():
-            self.skipTest('unmanaged cluster')
 
         self.cluster.reset_hba()
 
