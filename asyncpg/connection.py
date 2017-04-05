@@ -777,7 +777,7 @@ async def connect(dsn=None, *,
 
     :param float command_timeout:
         the default timeout for operations on this connection
-        (the default is no timeout).
+        (the default is ``None``: no timeout).
 
     :param ssl:
         pass ``True`` or an `ssl.SSLContext <SSLContext_>`_ instance to
@@ -825,12 +825,12 @@ async def connect(dsn=None, *,
             if isinstance(command_timeout, bool):
                 raise ValueError
             command_timeout = float(command_timeout)
-            if command_timeout < 0:
+            if command_timeout <= 0:
                 raise ValueError
         except ValueError:
             raise ValueError(
                 'invalid command_timeout value: '
-                'expected non-negative float (got {!r})'.format(
+                'expected greater than 0 float (got {!r})'.format(
                     command_timeout)) from None
 
     addrs, opts = _parse_connect_params(

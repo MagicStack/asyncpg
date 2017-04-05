@@ -422,8 +422,8 @@ class TestConnectParams(tb.TestCase):
             self.run_testcase(testcase)
 
     async def test_connect_args_validation(self):
-        for val in {-1, 'a', True, False}:
-            with self.assertRaisesRegex(ValueError, 'non-negative'):
+        for val in {-1, 'a', True, False, 0}:
+            with self.assertRaisesRegex(ValueError, 'greater than 0'):
                 await asyncpg.connect(command_timeout=val)
 
         for arg in {'max_cacheable_statement_size',
