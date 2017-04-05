@@ -193,7 +193,7 @@ class TestAuthentication(tb.ConnectedTestCase):
         pass
 
 
-class TestConnectParams(unittest.TestCase):
+class TestConnectParams(tb.TestCase):
 
     TESTS = [
         {
@@ -420,6 +420,18 @@ class TestConnectParams(unittest.TestCase):
     def test_connect_params(self):
         for testcase in self.TESTS:
             self.run_testcase(testcase)
+
+    async def test_connect_args_validation(self):
+        for val in {-1, 'a', True, False}:
+            with self.assertRaisesRegex(ValueError, 'non-negative'):
+                await asyncpg.connect(command_timeout=val)
+
+        for arg in {'max_cacheable_statement_size',
+                    'max_cached_statement_lifetime',
+                    'statement_cache_size'}:
+            for val in {None, -1, True, False}:
+                with self.assertRaisesRegex(ValueError, 'greater or equal'):
+                    await asyncpg.connect(**{arg: val})
 
 
 class TestConnection(tb.ConnectedTestCase):

@@ -513,3 +513,24 @@ class TestPrepare(tb.ConnectedTestCase):
 
         # Check that nothing crashes after the initial timeout
         await asyncio.sleep(1, loop=self.loop)
+
+    @tb.with_connection_options(max_cacheable_statement_size=50)
+    async def test_prepare_27_max_cacheable_statement_size(self):
+        cache = self.con._stmt_cache
+
+        await self.con.prepare('SELECT 1')
+        self.assertEqual(len(cache), 1)
+
+        # Test that long and explicitly created prepared statements
+        # are not cached.
+        await self.con.prepare("SELECT \'" + "a" * 50 + "\'")
+        self.assertEqual(len(cache), 1)
+
+        # Test that implicitly created long prepared statements
+        # are not cached.
+        await self.con.fetchval("SELECT \'" + "a" * 50 + "\'")
+        self.assertEqual(len(cache), 1)
+
+        # Test that short prepared statements can still be cached.
+        await self.con.prepare('SELECT 2')
+        self.assertEqual(len(cache), 2)
