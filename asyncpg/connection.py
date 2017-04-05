@@ -848,8 +848,12 @@ async def connect(dsn=None, *,
     last_error = None
     addr = None
     for addr in addrs:
+        if timeout <= 0:
+            raise asyncio.TimeoutError
+
         connected = _create_future(loop)
-        proto_factory = lambda: protocol.Protocol(addr, connected, opts, loop)
+        proto_factory = lambda: protocol.Protocol(
+            addr, connected, opts, loop)
 
         if isinstance(addr, str):
             # UNIX socket
@@ -861,6 +865,7 @@ async def connect(dsn=None, *,
         else:
             connector = loop.create_connection(proto_factory, *addr)
 
+        before = time.monotonic()
         try:
             tr, pr = await asyncio.wait_for(
                 connector, timeout=timeout, loop=loop)
@@ -868,12 +873,16 @@ async def connect(dsn=None, *,
             last_error = ex
         else:
             break
+        finally:
+            timeout -= time.monotonic() - before
     else:
         raise last_error
 
     try:
-        await connected
-    except:
+        if timeout <= 0:
+            raise asyncio.TimeoutError
+        await asyncio.wait_for(connected, loop=loop, timeout=timeout)
+    except Exception:
         tr.close()
         raise
 
