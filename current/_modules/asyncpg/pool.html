@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                0.10.0
+                0.10.1
               </div>
             
           
@@ -276,6 +276,7 @@
                                             <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_connect_kwargs</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_addr</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_addr</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_opts</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_opts</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_ssl_context</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_ssl_context</span>
 
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># We&#39;ve connected before and have a resolved address</span>
@@ -287,9 +288,10 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">host</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_addr</span>
 
-            <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_connect</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span>
-                                            <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_loop</span><span class="p">,</span>
-                                            <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_opts</span><span class="p">)</span>
+            <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_connect</span><span class="p">(</span>
+                <span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_loop</span><span class="p">,</span>
+                <span class="n">ssl</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_ssl_context</span><span class="p">,</span>
+                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_opts</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
@@ -409,7 +411,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_queue&#39;</span><span class="p">,</span> <span class="s1">&#39;_loop&#39;</span><span class="p">,</span> <span class="s1">&#39;_minsize&#39;</span><span class="p">,</span> <span class="s1">&#39;_maxsize&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;_working_addr&#39;</span><span class="p">,</span> <span class="s1">&#39;_working_opts&#39;</span><span class="p">,</span>
+                 <span class="s1">&#39;_working_addr&#39;</span><span class="p">,</span> <span class="s1">&#39;_working_opts&#39;</span><span class="p">,</span> <span class="s1">&#39;_working_ssl_context&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_holders&#39;</span><span class="p">,</span> <span class="s1">&#39;_initialized&#39;</span><span class="p">,</span> <span class="s1">&#39;_closed&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">connect_args</span><span class="p">,</span>
@@ -453,6 +455,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_working_addr</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_working_opts</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_working_ssl_context</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">False</span>
 
@@ -824,7 +827,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.10.0',
+            VERSION:'0.10.1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

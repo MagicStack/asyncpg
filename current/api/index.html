@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                0.10.0
+                0.10.1
               </div>
             
           
@@ -169,7 +169,7 @@
 <span id="asyncpg-api-connection"></span><h2>Connection<a class="headerlink" href="#connection" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="asyncpg.connection.connect">
-<code class="descname">connect</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>host=None</em>, <em>port=None</em>, <em>user=None</em>, <em>password=None</em>, <em>database=None</em>, <em>loop=None</em>, <em>timeout=60</em>, <em>statement_cache_size=100</em>, <em>max_cached_statement_lifetime=300</em>, <em>command_timeout=None</em>, <em>ssl=None</em>, <em>__connection_class__=&lt;class 'asyncpg.connection.Connection'&gt;</em>, <em>**opts</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.connect" title="Permalink to this definition">¶</a></dt>
+<code class="descname">connect</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>host=None</em>, <em>port=None</em>, <em>user=None</em>, <em>password=None</em>, <em>database=None</em>, <em>loop=None</em>, <em>timeout=60</em>, <em>statement_cache_size=100</em>, <em>max_cached_statement_lifetime=300</em>, <em>max_cacheable_statement_size=15360</em>, <em>command_timeout=None</em>, <em>ssl=None</em>, <em>__connection_class__=&lt;class 'asyncpg.connection.Connection'&gt;</em>, <em>**opts</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.connect" title="Permalink to this definition">¶</a></dt>
 <dd><p>A coroutine to establish a connection to a PostgreSQL server.</p>
 <p>Returns a new <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal"><span class="pre">Connection</span></code></a> object.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -200,8 +200,11 @@ disable the cache.</li>
 <li><strong>max_cached_statement_lifetime</strong> (<em>int</em>) &#8211; the maximum time in seconds a prepared statement will stay
 in the cache.  Pass <code class="docutils literal"><span class="pre">0</span></code> to allow statements be cached
 indefinitely.</li>
+<li><strong>max_cacheable_statement_size</strong> (<em>int</em>) &#8211; the maximum size of a statement that can be cached (15KiB by
+default).  Pass <code class="docutils literal"><span class="pre">0</span></code> to allow all statements to be cached
+regardless of their size.</li>
 <li><strong>command_timeout</strong> (<em>float</em>) &#8211; the default timeout for operations on this connection
-(the default is no timeout).</li>
+(the default is <code class="docutils literal"><span class="pre">None</span></code>: no timeout).</li>
 <li><strong>ssl</strong> &#8211; pass <code class="docutils literal"><span class="pre">True</span></code> or an <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.SSLContext">ssl.SSLContext</a> instance to
 require an SSL connection.  If <code class="docutils literal"><span class="pre">True</span></code>, a default SSL context
 returned by <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.create_default_context">ssl.create_default_context()</a>
@@ -232,7 +235,7 @@ will be used.</li>
 
 <dl class="class">
 <dt id="asyncpg.connection.Connection">
-<em class="property">class </em><code class="descname">Connection</code><span class="sig-paren">(</span><em>protocol</em>, <em>transport</em>, <em>loop</em>, <em>addr</em>, <em>opts</em>, <em>*</em>, <em>statement_cache_size</em>, <em>command_timeout</em>, <em>max_cached_statement_lifetime</em>, <em>ssl_context</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Connection</code><span class="sig-paren">(</span><em>protocol</em>, <em>transport</em>, <em>loop</em>, <em>addr</em>, <em>opts</em>, <em>*</em>, <em>statement_cache_size</em>, <em>command_timeout</em>, <em>max_cached_statement_lifetime</em>, <em>max_cacheable_statement_size</em>, <em>ssl_context</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection" title="Permalink to this definition">¶</a></dt>
 <dd><p>A representation of a database session.</p>
 <p>Connections are created by calling <a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal"><span class="pre">connect()</span></code></a>.</p>
 <dl class="method">
@@ -1412,7 +1415,7 @@ items either by a numeric index or by a field name:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.10.0',
+            VERSION:'0.10.1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
