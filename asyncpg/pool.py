@@ -115,6 +115,7 @@ class PoolConnectionHolder:
                                             **self._connect_kwargs)
             self._pool._working_addr = con._addr
             self._pool._working_opts = con._opts
+            self._pool._working_ssl_context = con._ssl_context
 
         else:
             # We've connected before and have a resolved address
@@ -126,9 +127,10 @@ class PoolConnectionHolder:
             else:
                 host, port = self._pool._working_addr
 
-            con = await self._pool._connect(host=host, port=port,
-                                            loop=self._pool._loop,
-                                            **self._pool._working_opts)
+            con = await self._pool._connect(
+                host=host, port=port, loop=self._pool._loop,
+                ssl=self._pool._working_ssl_context,
+                **self._pool._working_opts)
 
         if self._init is not None:
             await self._init(con)
@@ -248,7 +250,7 @@ class Pool:
     """
 
     __slots__ = ('_queue', '_loop', '_minsize', '_maxsize',
-                 '_working_addr', '_working_opts',
+                 '_working_addr', '_working_opts', '_working_ssl_context',
                  '_holders', '_initialized', '_closed')
 
     def __init__(self, *connect_args,
@@ -292,6 +294,7 @@ class Pool:
 
         self._working_addr = None
         self._working_opts = None
+        self._working_ssl_context = None
 
         self._closed = False
 

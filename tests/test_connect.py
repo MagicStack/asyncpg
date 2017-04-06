@@ -579,3 +579,28 @@ class TestSSLConnection(tb.ConnectedTestCase):
                 database='postgres',
                 loop=self.loop,
                 ssl=True)
+
+    async def test_ssl_connection_pool(self):
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        ssl_context.load_verify_locations(SSL_CA_CERT_FILE)
+
+        pool = await self.create_pool(
+            host='localhost',
+            user='ssl_user',
+            database='postgres',
+            min_size=5,
+            max_size=10,
+            ssl=ssl_context)
+
+        async def worker():
+            async with pool.acquire() as con:
+                self.assertEqual(await con.fetchval('SELECT 42'), 42)
+
+                with self.assertRaises(asyncio.TimeoutError):
+                    await con.execute('SELECT pg_sleep(5)', timeout=0.5)
+
+                self.assertEqual(await con.fetchval('SELECT 43'), 43)
+
+        tasks = [worker() for _ in range(100)]
+        await asyncio.gather(*tasks, loop=self.loop)
+        await pool.close()
