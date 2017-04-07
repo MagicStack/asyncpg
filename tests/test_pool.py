@@ -549,7 +549,7 @@ class TestPool(tb.ConnectedTestCase):
             workers = [worker(pool) for _ in range(50)]
             await asyncio.gather(*workers, loop=self.loop)
 
-        self.assertGreater(N, 50)
+        self.assertGreaterEqual(N, 50)
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
