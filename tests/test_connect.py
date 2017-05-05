@@ -16,6 +16,7 @@ import unittest
 import asyncpg
 from asyncpg import _testbase as tb
 from asyncpg import connection
+from asyncpg import connect_utils
 from asyncpg import cluster as pg_cluster
 from asyncpg.serverversion import split_server_version_string
 
@@ -289,7 +290,24 @@ class TestConnectParams(tb.TestCase):
             'password': 'ask',
             'database': 'db',
             'result': ([('127.0.0.1', 888)], {
-                'param': '123',
+                'server_settings': {'param': '123'},
+                'user': 'me',
+                'password': 'ask',
+                'database': 'db'})
+        },
+
+        {
+            'dsn': 'postgresql://user3:123123@localhost:5555/'
+                   'abcdef?param=sss&param=123&host=testhost&user=testuser'
+                   '&port=2222&database=testdb',
+            'host': '127.0.0.1',
+            'port': '888',
+            'user': 'me',
+            'password': 'ask',
+            'database': 'db',
+            'server_settings': {'aa': 'bb'},
+            'result': ([('127.0.0.1', 888)], {
+                'server_settings': {'aa': 'bb', 'param': '123'},
                 'user': 'me',
                 'password': 'ask',
                 'database': 'db'})
@@ -339,12 +357,12 @@ class TestConnectParams(tb.TestCase):
         test_env.update(env)
 
         dsn = testcase.get('dsn')
-        opts = testcase.get('opts', {})
         user = testcase.get('user')
         port = testcase.get('port')
         host = testcase.get('host')
         password = testcase.get('password')
         database = testcase.get('database')
+        server_settings = testcase.get('server_settings')
 
         expected = testcase.get('result')
         expected_error = testcase.get('error')
@@ -358,15 +376,20 @@ class TestConnectParams(tb.TestCase):
                 'has to be specified, got both')
 
         with contextlib.ExitStack() as es:
-            es.enter_context(self.subTest(dsn=dsn, opts=opts, env=env))
+            es.enter_context(self.subTest(dsn=dsn, env=env))
             es.enter_context(self.environ(**test_env))
 
             if expected_error:
                 es.enter_context(self.assertRaisesRegex(*expected_error))
 
-            result = connection._parse_connect_params(
+            addrs, params = connect_utils._parse_connect_dsn_and_args(
                 dsn=dsn, host=host, port=port, user=user, password=password,
-                database=database, opts=opts)
+                database=database, ssl=None, connect_timeout=None,
+                server_settings=server_settings)
+
+            params = {k: v for k, v in params._asdict().items()
+                      if v is not None}
+            result = (addrs, params)
 
         if expected is not None:
             self.assertEqual(expected, result)
@@ -405,16 +428,10 @@ class TestConnectParams(tb.TestCase):
                     'PGUSER': '__test__'
                 },
                 'host': 'abc',
-                'result': ([('abc', 5432)], {'user': '__test__'})
-            })
-
-        with self.assertRaises(AssertionError):
-            self.run_testcase({
-                'env': {
-                    'PGUSER': '__test__'
-                },
-                'host': 'abc',
-                'result': ([('abc', 5432)], {'user': 'wrong_user'})
+                'result': (
+                    [('abc', 5432)],
+                    {'user': '__test__', 'database': '__test__'}
+                )
             })
 
     def test_connect_params(self):
@@ -492,7 +509,7 @@ class TestConnection(tb.ConnectedTestCase):
         with self.assertRaisesRegex(asyncpg.InterfaceError,
                                     'can only be enabled for TCP addresses'):
             await self.cluster.connect(
-                host=['localhost', '/tmp'],
+                host='/tmp',
                 loop=self.loop,
                 ssl=ssl_context)
 

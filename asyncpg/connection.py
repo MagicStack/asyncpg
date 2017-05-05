@@ -7,14 +7,10 @@
 
 import asyncio
 import collections
-import getpass
-import os
-import socket
 import struct
 import time
-import urllib.parse
-import warnings
 
+from . import connect_utils
 from . import cursor
 from . import exceptions
 from . import introspection
@@ -39,17 +35,15 @@ class Connection(metaclass=ConnectionMeta):
 
     __slots__ = ('_protocol', '_transport', '_loop', '_types_stmt',
                  '_type_by_name_stmt', '_top_xact', '_uid', '_aborted',
-                 '_stmt_cache', '_stmts_to_close',
-                 '_addr', '_opts', '_command_timeout', '_listeners',
+                 '_stmt_cache', '_stmts_to_close', '_listeners',
                  '_server_version', '_server_caps', '_intro_query',
                  '_reset_query', '_proxy', '_stmt_exclusive_section',
-                 '_max_cacheable_statement_size', '_ssl_context')
+                 '_config', '_params', '_addr')
 
-    def __init__(self, protocol, transport, loop, addr, opts, *,
-                 statement_cache_size, command_timeout,
-                 max_cached_statement_lifetime,
-                 max_cacheable_statement_size,
-                 ssl_context):
+    def __init__(self, protocol, transport, loop,
+                 addr: (str, int) or str,
+                 config: connect_utils._ClientConfiguration,
+                 params: connect_utils._ConnectionParameters):
         self._protocol = protocol
         self._transport = transport
         self._loop = loop
@@ -60,19 +54,16 @@ class Connection(metaclass=ConnectionMeta):
         self._aborted = False
 
         self._addr = addr
-        self._opts = opts
-        self._ssl_context = ssl_context
+        self._config = config
+        self._params = params
 
-        self._max_cacheable_statement_size = max_cacheable_statement_size
         self._stmt_cache = _StatementCache(
             loop=loop,
-            max_size=statement_cache_size,
+            max_size=config.statement_cache_size,
             on_remove=self._maybe_gc_stmt,
-            max_lifetime=max_cached_statement_lifetime)
+            max_lifetime=config.max_cached_statement_lifetime)
 
         self._stmts_to_close = set()
-
-        self._command_timeout = command_timeout
 
         self._listeners = {}
 
@@ -252,8 +243,8 @@ class Connection(metaclass=ConnectionMeta):
         #  * query size is less than `max_cacheable_statement_size`.
         use_cache = self._stmt_cache.get_max_size() > 0
         if (use_cache and
-                self._max_cacheable_statement_size and
-                len(query) > self._max_cacheable_statement_size):
+                self._config.max_cacheable_statement_size and
+                len(query) > self._config.max_cacheable_statement_size):
             use_cache = False
 
         if use_cache or named:
@@ -496,38 +487,18 @@ class Connection(metaclass=ConnectionMeta):
         async def cancel():
             try:
                 # Open new connection to the server
-                if isinstance(self._addr, str):
-                    r, w = await asyncio.open_unix_connection(
-                        self._addr, loop=self._loop)
-                else:
-                    if self._ssl_context:
-                        sock = await _get_ssl_ready_socket(
-                            *self._addr, loop=self._loop)
-
-                        try:
-                            r, w = await asyncio.open_connection(
-                                sock=sock,
-                                loop=self._loop,
-                                ssl=self._ssl_context,
-                                server_hostname=self._addr[0])
-                        except Exception:
-                            sock.close()
-                            raise
-
-                    else:
-                        r, w = await asyncio.open_connection(
-                            *self._addr, loop=self._loop)
-                        _set_nodelay(_get_socket(w.transport))
-
-                # Pack CancelRequest message
-                msg = struct.pack('!llll', 16, 80877102,
-                                  self._protocol.backend_pid,
-                                  self._protocol.backend_secret)
+                r, w = await connect_utils._open_connection(
+                    loop=self._loop, addr=self._addr, params=self._params)
             except Exception as ex:
                 waiter.set_exception(ex)
                 return
 
             try:
+                # Pack CancelRequest message
+                msg = struct.pack('!llll', 16, 80877102,
+                                  self._protocol.backend_pid,
+                                  self._protocol.backend_secret)
+
                 w.write(msg)
                 await r.read()  # Wait until EOF
             except ConnectionResetError:
@@ -701,8 +672,8 @@ async def connect(dsn=None, *,
                   max_cacheable_statement_size=1024 * 15,
                   command_timeout=None,
                   ssl=None,
-                  __connection_class__=Connection,
-                  **opts):
+                  connection_class=Connection,
+                  server_settings=None):
     r"""A coroutine to establish a connection to a PostgreSQL server.
 
     Returns a new :class:`~asyncpg.connection.Connection` object.
@@ -765,6 +736,13 @@ async def connect(dsn=None, *,
         returned by `ssl.create_default_context() <create_default_context_>`_
         will be used.
 
+    :param dict server_settings:
+        an optional dict of server parameters.
+
+    :param Connection connection_class:
+        class of the returned connection object.  Must be a subclass of
+        :class:`~asyncpg.connection.Connection`.
+
     :return: A :class:`~asyncpg.connection.Connection` instance.
 
     Example:
@@ -780,149 +758,38 @@ async def connect(dsn=None, *,
         >>> asyncio.get_event_loop().run_until_complete(run())
         [<Record typname='bool' typnamespace=11 ...
 
-    .. versionchanged:: 0.10.0
+    .. versionadded:: 0.10.0
        Added ``max_cached_statement_use_count`` parameter.
+
+    .. versionchanged:: 0.11.0
+       Removed ability to pass arbitrary keyword arguments to set
+       server settings.  Added a dedicated parameter ``server_settings``
+       for that.
+
+    .. versionadded:: 0.11.0
+       Added ``connection_class`` parameter.
 
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context: https://docs.python.org/3/library/ssl.html#\
                                 ssl.create_default_context
     """
+    if not issubclass(connection_class, Connection):
+        raise TypeError(
+            'connection_class is expected to be a subclass of '
+            'asyncpg.Connection, got {!r}'.format(connection_class))
+
     if loop is None:
         loop = asyncio.get_event_loop()
 
-    local_vars = locals()
-    for var_name in {'max_cacheable_statement_size',
-                     'max_cached_statement_lifetime',
-                     'statement_cache_size'}:
-        var_val = local_vars[var_name]
-        if var_val is None or isinstance(var_val, bool) or var_val < 0:
-            raise ValueError(
-                '{} is expected to be greater '
-                'or equal to 0, got {!r}'.format(var_name, var_val))
-
-    if command_timeout is not None:
-        try:
-            if isinstance(command_timeout, bool):
-                raise ValueError
-            command_timeout = float(command_timeout)
-            if command_timeout <= 0:
-                raise ValueError
-        except ValueError:
-            raise ValueError(
-                'invalid command_timeout value: '
-                'expected greater than 0 float (got {!r})'.format(
-                    command_timeout)) from None
-
-    addrs, opts = _parse_connect_params(
+    return await connect_utils._connect(
+        loop=loop, timeout=timeout, connection_class=connection_class,
         dsn=dsn, host=host, port=port, user=user, password=password,
-        database=database, opts=opts)
-
-    if ssl:
-        for addr in addrs:
-            if isinstance(addr, str):
-                # UNIX socket
-                raise exceptions.InterfaceError(
-                    '`ssl` parameter can only be enabled for TCP addresses, '
-                    'got a UNIX socket path: {!r}'.format(addr))
-
-    last_error = None
-    addr = None
-    for addr in addrs:
-        if timeout <= 0:
-            raise asyncio.TimeoutError
-
-        connected = _create_future(loop)
-        proto_factory = lambda: protocol.Protocol(
-            addr, connected, opts, loop)
-
-        if isinstance(addr, str):
-            # UNIX socket
-            assert ssl is None
-            connector = loop.create_unix_connection(proto_factory, addr)
-        elif ssl:
-            connector = _create_ssl_connection(
-                proto_factory, *addr, loop=loop, ssl_context=ssl)
-        else:
-            connector = loop.create_connection(proto_factory, *addr)
-
-        before = time.monotonic()
-        try:
-            tr, pr = await asyncio.wait_for(
-                connector, timeout=timeout, loop=loop)
-        except (OSError, asyncio.TimeoutError, ConnectionError) as ex:
-            last_error = ex
-        else:
-            break
-        finally:
-            timeout -= time.monotonic() - before
-    else:
-        raise last_error
-
-    try:
-        if timeout <= 0:
-            raise asyncio.TimeoutError
-        await asyncio.wait_for(connected, loop=loop, timeout=timeout)
-    except Exception:
-        tr.close()
-        raise
-
-    con = __connection_class__(
-        pr, tr, loop, addr, opts,
+        ssl=ssl, database=database,
+        server_settings=server_settings,
+        command_timeout=command_timeout,
         statement_cache_size=statement_cache_size,
         max_cached_statement_lifetime=max_cached_statement_lifetime,
-        max_cacheable_statement_size=max_cacheable_statement_size,
-        command_timeout=command_timeout, ssl_context=ssl)
-
-    pr.set_connection(con)
-    return con
-
-
-async def _get_ssl_ready_socket(host, port, *, loop):
-    reader, writer = await asyncio.open_connection(host, port, loop=loop)
-
-    tr = writer.transport
-    try:
-        sock = _get_socket(tr)
-        _set_nodelay(sock)
-
-        writer.write(struct.pack('!ll', 8, 80877103))  # SSLRequest message.
-        await writer.drain()
-        resp = await reader.readexactly(1)
-
-        if resp == b'S':
-            return sock.dup()
-        else:
-            raise ConnectionError(
-                'PostgreSQL server at "{}:{}" rejected SSL upgrade'.format(
-                    host, port))
-    finally:
-        tr.close()
-
-
-async def _create_ssl_connection(protocol_factory, host, port, *,
-                                 loop, ssl_context):
-    sock = await _get_ssl_ready_socket(host, port, loop=loop)
-    try:
-        return await loop.create_connection(
-            protocol_factory, sock=sock, ssl=ssl_context,
-            server_hostname=host)
-    except Exception:
-        sock.close()
-        raise
-
-
-def _get_socket(transport):
-    sock = transport.get_extra_info('socket')
-    if sock is None:
-        # Shouldn't happen with any asyncio-complaint event loop.
-        raise ConnectionError(
-            'could not get the socket for transport {!r}'.format(transport))
-    return sock
-
-
-def _set_nodelay(sock):
-    if not hasattr(socket, 'AF_UNIX') or sock.family != socket.AF_UNIX:
-        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        max_cacheable_statement_size=max_cacheable_statement_size)
 
 
 class _StatementCacheEntry:
@@ -1090,147 +957,6 @@ class _Atomic:
 class _ConnectionProxy:
     # Base class to enable `isinstance(Connection)` check.
     __slots__ = ()
-
-
-def _parse_connect_params(*, dsn, host, port, user,
-                          password, database, opts):
-
-    if dsn:
-        parsed = urllib.parse.urlparse(dsn)
-
-        if parsed.scheme not in {'postgresql', 'postgres'}:
-            raise ValueError(
-                'invalid DSN: scheme is expected to be either of '
-                '"postgresql" or "postgres", got {!r}'.format(parsed.scheme))
-
-        if parsed.port and port is None:
-            port = int(parsed.port)
-
-        if parsed.hostname and host is None:
-            host = parsed.hostname
-
-        if parsed.path and database is None:
-            database = parsed.path
-            if database.startswith('/'):
-                database = database[1:]
-
-        if parsed.username and user is None:
-            user = parsed.username
-
-        if parsed.password and password is None:
-            password = parsed.password
-
-        if parsed.query:
-            query = urllib.parse.parse_qs(parsed.query, strict_parsing=True)
-            for key, val in query.items():
-                if isinstance(val, list):
-                    query[key] = val[-1]
-
-            if 'host' in query:
-                val = query.pop('host')
-                if host is None:
-                    host = val
-
-            if 'port' in query:
-                val = int(query.pop('port'))
-                if port is None:
-                    port = val
-
-            if 'dbname' in query:
-                val = query.pop('dbname')
-                if database is None:
-                    database = val
-
-            if 'database' in query:
-                val = query.pop('database')
-                if database is None:
-                    database = val
-
-            if 'user' in query:
-                val = query.pop('user')
-                if user is None:
-                    user = val
-
-            if 'password' in query:
-                val = query.pop('password')
-                if password is None:
-                    password = val
-
-            if query:
-                opts = {**query, **opts}
-
-    # On env-var -> connection parameter conversion read here:
-    # https://www.postgresql.org/docs/current/static/libpq-envars.html
-    # Note that env values may be an empty string in cases when
-    # the variable is "unset" by setting it to an empty value
-    #
-    if host is None:
-        host = os.getenv('PGHOST')
-        if not host:
-            host = ['/tmp', '/private/tmp',
-                    '/var/pgsql_socket', '/run/postgresql',
-                    'localhost']
-    if not isinstance(host, list):
-        host = [host]
-
-    if port is None:
-        port = os.getenv('PGPORT')
-        if port:
-            port = int(port)
-        else:
-            port = 5432
-    else:
-        port = int(port)
-
-    if user is None:
-        user = os.getenv('PGUSER')
-        if not user:
-            user = getpass.getuser()
-
-    if password is None:
-        password = os.getenv('PGPASSWORD')
-
-    if database is None:
-        database = os.getenv('PGDATABASE')
-
-    if user is not None:
-        opts['user'] = user
-    if password is not None:
-        opts['password'] = password
-    if database is not None:
-        opts['database'] = database
-
-    for param in opts:
-        if not isinstance(param, str):
-            raise ValueError(
-                'invalid connection parameter {!r} (str expected)'
-                .format(param))
-        if not isinstance(opts[param], str):
-            raise ValueError(
-                'invalid connection parameter {!r}: {!r} (str expected)'
-                .format(param, opts[param]))
-
-    addrs = []
-    for h in host:
-        if h.startswith('/'):
-            # UNIX socket name
-            if '.s.PGSQL.' not in h:
-                h = os.path.join(h, '.s.PGSQL.{}'.format(port))
-            addrs.append(h)
-        else:
-            # TCP host/port
-            addrs.append((h, port))
-
-    return addrs, opts
-
-
-def _create_future(loop):
-    try:
-        create_future = loop.create_future
-    except AttributeError:
-        return asyncio.Future(loop=loop)
-    else:
-        return create_future()
 
 
 ServerCapabilities = collections.namedtuple(

@@ -147,7 +147,7 @@ class SlowPrepareConnection(pg_connection.Connection):
 
 class TestTimeoutCoversPrepare(tb.ConnectedTestCase):
 
-    @tb.with_connection_options(__connection_class__=SlowPrepareConnection,
+    @tb.with_connection_options(connection_class=SlowPrepareConnection,
                                 command_timeout=0.3)
     async def test_timeout_covers_prepare_01(self):
         for methname in {'fetch', 'fetchrow', 'fetchval', 'execute'}:

@@ -5,11 +5,12 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-from .connection import connect  # NOQA
+from .connection import connect, Connection  # NOQA
 from .exceptions import *  # NOQA
 from .pool import create_pool  # NOQA
 from .protocol import Record  # NOQA
 from .types import *  # NOQA
 
 
-__all__ = ('connect', 'create_pool', 'Record') + exceptions.__all__  # NOQA
+__all__ = ('connect', 'create_pool', 'Record', 'Connection') + \
+          exceptions.__all__  # NOQA

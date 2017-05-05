@@ -10,12 +10,13 @@ from hashlib import md5 as hashlib_md5  # for MD5 authentication
 
 cdef class CoreProtocol:
 
-    def __init__(self, con_args):
+    def __init__(self, con_params):
+        # type of `con_params` is `_ConnectionParameters`
         self.buffer = ReadBuffer()
-        self.user = con_args.get('user')
-        self.password = con_args.get('password')
+        self.user = con_params.user
+        self.password = con_params.password
         self.auth_msg = None
-        self.con_args = con_args
+        self.con_params = con_params
         self.transport = None
         self.con_status = CONNECTION_BAD
         self.state = PROTOCOL_IDLE
@@ -560,11 +561,16 @@ cdef class CoreProtocol:
         buf.write_bytestring(b'client_encoding')
         buf.write_bytestring("'{}'".format(self.encoding).encode('ascii'))
 
-        for param in self.con_args:
-            if param == 'password':
-                continue
-            buf.write_str(param, self.encoding)
-            buf.write_str(self.con_args[param], self.encoding)
+        buf.write_str('user', self.encoding)
+        buf.write_str(self.con_params.user, self.encoding)
+
+        buf.write_str('database', self.encoding)
+        buf.write_str(self.con_params.database, self.encoding)
+
+        if self.con_params.server_settings is not None:
+            for k, v in self.con_params.server_settings.items():
+                buf.write_str(k, self.encoding)
+                buf.write_str(v, self.encoding)
 
         buf.write_bytestring(b'')
 

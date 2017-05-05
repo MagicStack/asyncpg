@@ -39,7 +39,7 @@ class SlowResetConnection(pg_connection.Connection):
 class SlowResetConnectionPool(pg_pool.Pool):
     async def _connect(self, *args, **kwargs):
         return await pg_connection.connect(
-            *args, __connection_class__=SlowResetConnection, **kwargs)
+            *args, connection_class=SlowResetConnection, **kwargs)
 
 
 class TestPool(tb.ConnectedTestCase):
@@ -350,6 +350,30 @@ class TestPool(tb.ConnectedTestCase):
 
             async with pool.acquire() as con:
                 await con.fetchval('SELECT 1')
+
+    async def test_pool_config_persistence(self):
+        N = 100
+        cons = set()
+
+        class MyConnection(asyncpg.Connection):
+            pass
+
+        async def test(pool):
+            async with pool.acquire() as con:
+                await con.fetchval('SELECT 1')
+                self.assertTrue(isinstance(con, MyConnection))
+                self.assertEqual(con._con._config.statement_cache_size, 3)
+                cons.add(con)
+
+        async with self.create_pool(
+                database='postgres', min_size=10, max_size=10,
+                max_queries=1, connection_class=MyConnection,
+                statement_cache_size=3) as pool:
+
+            await asyncio.gather(*[test(pool) for _ in range(N)],
+                                 loop=self.loop)
+
+        self.assertEqual(len(cons), N)
 
     async def test_pool_release_in_xact(self):
         """Test that Connection.reset() closes any open transaction."""
