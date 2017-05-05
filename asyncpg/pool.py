@@ -10,6 +10,7 @@ import functools
 import inspect
 
 from . import connection
+from . import connect_utils
 from . import exceptions
 
 
@@ -110,27 +111,26 @@ class PoolConnectionHolder:
 
         if self._pool._working_addr is None:
             # First connection attempt on this pool.
-            con = await self._pool._connect(*self._connect_args,
-                                            loop=self._pool._loop,
-                                            **self._connect_kwargs)
+            con = await connection.connect(
+                *self._connect_args,
+                loop=self._pool._loop,
+                connection_class=self._pool._connection_class,
+                **self._connect_kwargs)
+
             self._pool._working_addr = con._addr
-            self._pool._working_opts = con._opts
-            self._pool._working_ssl_context = con._ssl_context
+            self._pool._working_config = con._config
+            self._pool._working_params = con._params
 
         else:
-            # We've connected before and have a resolved address
-            # and parsed options in `pool._working_addr` and
-            # `pool._working_opts`.
-            if isinstance(self._pool._working_addr, str):
-                host = self._pool._working_addr
-                port = 0
-            else:
-                host, port = self._pool._working_addr
-
-            con = await self._pool._connect(
-                host=host, port=port, loop=self._pool._loop,
-                ssl=self._pool._working_ssl_context,
-                **self._pool._working_opts)
+            # We've connected before and have a resolved address,
+            # and parsed options and config.
+            con = await connect_utils._connect_addr(
+                loop=self._pool._loop,
+                addr=self._pool._working_addr,
+                timeout=self._pool._working_params.connect_timeout,
+                config=self._pool._working_config,
+                params=self._pool._working_params,
+                connection_class=self._pool._connection_class)
 
         if self._init is not None:
             await self._init(con)
@@ -250,8 +250,9 @@ class Pool:
     """
 
     __slots__ = ('_queue', '_loop', '_minsize', '_maxsize',
-                 '_working_addr', '_working_opts', '_working_ssl_context',
-                 '_holders', '_initialized', '_closed')
+                 '_working_addr', '_working_config', '_working_params',
+                 '_holders', '_initialized', '_closed',
+                 '_connection_class')
 
     def __init__(self, *connect_args,
                  min_size,
@@ -261,6 +262,7 @@ class Pool:
                  setup,
                  init,
                  loop,
+                 connection_class,
                  **connect_kwargs):
 
         if loop is None:
@@ -293,8 +295,10 @@ class Pool:
         self._queue = asyncio.LifoQueue(maxsize=self._maxsize, loop=self._loop)
 
         self._working_addr = None
-        self._working_opts = None
-        self._working_ssl_context = None
+        self._working_config = None
+        self._working_params = None
+
+        self._connection_class = connection_class
 
         self._closed = False
 
@@ -310,10 +314,6 @@ class Pool:
 
             self._holders.append(ch)
             self._queue.put_nowait(ch)
-
-    async def _connect(self, *args, **kwargs):
-        # Used by PoolConnectionHolder.
-        return await connection.connect(*args, **kwargs)
 
     async def _async__init__(self):
         if self._initialized:
@@ -555,6 +555,7 @@ def create_pool(dsn=None, *,
                 setup=None,
                 init=None,
                 loop=None,
+                connection_class=connection.Connection,
                 **connect_kwargs):
     r"""Create a connection pool.
 
@@ -625,8 +626,14 @@ def create_pool(dsn=None, *,
        An :exc:`~asyncpg.exceptions.InterfaceError` will be raised on any
        attempted operation on a released connection.
     """
+    if not issubclass(connection_class, connection.Connection):
+        raise TypeError(
+            'connection_class is expected to be a subclass of '
+            'asyncpg.Connection, got {!r}'.format(connection_class))
+
     return Pool(
         dsn,
+        connection_class=connection_class,
         min_size=min_size, max_size=max_size,
         max_queries=max_queries, loop=loop, setup=setup, init=init,
         max_inactive_connection_lifetime=max_inactive_connection_lifetime,

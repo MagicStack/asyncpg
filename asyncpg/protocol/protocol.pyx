@@ -83,8 +83,9 @@ NO_TIMEOUT = object()
 
 
 cdef class BaseProtocol(CoreProtocol):
-    def __init__(self, addr, connected_fut, con_args, loop):
-        CoreProtocol.__init__(self, con_args)
+    def __init__(self, addr, connected_fut, con_params, loop):
+        # type of `con_params` is `_ConnectionParameters`
+        CoreProtocol.__init__(self, con_params)
 
         self.loop = loop
         self.waiter = connected_fut
@@ -92,8 +93,7 @@ cdef class BaseProtocol(CoreProtocol):
         self.cancel_sent_waiter = None
 
         self.address = addr
-        self.settings = ConnectionSettings(
-            (self.address, con_args.get('database')))
+        self.settings = ConnectionSettings((self.address, con_params.database))
 
         self.statement = None
         self.return_extra = False
@@ -371,7 +371,7 @@ cdef class BaseProtocol(CoreProtocol):
 
     cdef inline _get_timeout_impl(self, timeout):
         if timeout is None:
-            timeout = self.connection._command_timeout
+            timeout = self.connection._config.command_timeout
         elif timeout is NO_TIMEOUT:
             timeout = None
         else:

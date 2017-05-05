@@ -83,8 +83,8 @@ cdef class CoreProtocol:
 
         object transport
 
-        # Dict with all connection arguments
-        dict con_args
+        # Instance of _ConnectionParameters
+        object con_params
 
         readonly int32_t backend_pid
         readonly int32_t backend_secret
