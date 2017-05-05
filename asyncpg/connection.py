@@ -235,6 +235,9 @@ class Connection(metaclass=ConnectionMeta):
         :return None: This method discards the results of the operations.
 
         .. versionadded:: 0.7.0
+
+        .. versionchanged:: 0.11.0
+           `timeout` became a keyword-only parameter.
         """
         self._check_open()
         return await self._executemany(command, args, timeout)
