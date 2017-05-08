@@ -11,6 +11,7 @@ cimport cython
 cimport cpython
 
 import asyncio
+import builtins
 import codecs
 import collections
 import socket
@@ -24,7 +25,7 @@ from asyncpg.protocol cimport record
 from asyncpg.protocol.python cimport (
                      PyMem_Malloc, PyMem_Realloc, PyMem_Calloc, PyMem_Free,
                      PyMemoryView_GET_BUFFER, PyMemoryView_Check,
-                     PyMemoryView_FromMemory,
+                     PyMemoryView_FromMemory, PyMemoryView_GetContiguous,
                      PyUnicode_AsUTF8AndSize, PyByteArray_AsString,
                      PyByteArray_Check, PyUnicode_AsUCS4Copy,
                      PyByteArray_Size, PyByteArray_Resize,
@@ -34,6 +35,7 @@ from asyncpg.protocol.python cimport (
 from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
 
 from asyncpg.exceptions import _base as apg_exc_base
+from asyncpg import compat
 from asyncpg import types as apg_types
 from asyncpg import exceptions as apg_exc
 
@@ -106,6 +108,8 @@ cdef class BaseProtocol(CoreProtocol):
 
         self.closing = False
         self.is_reading = True
+        self.writing_allowed = asyncio.Event(loop=self.loop)
+        self.writing_allowed.set()
 
         self.timeout_handle = None
         self.timeout_callback = self._on_timeout
@@ -332,6 +336,116 @@ cdef class BaseProtocol(CoreProtocol):
 
         return status_msg
 
+    async def copy_in(self, copy_stmt, reader, data,
+                      records, PreparedStatementState record_stmt, timeout):
+        cdef:
+            WriteBuffer wbuf
+            ssize_t num_cols
+            Codec codec
+
+        if self.cancel_waiter is not None:
+            await self.cancel_waiter
+        if self.cancel_sent_waiter is not None:
+            await self.cancel_sent_waiter
+            self.cancel_sent_waiter = None
+
+        self._check_state()
+
+        timeout = self._get_timeout_impl(timeout)
+        timer = Timer(timeout)
+
+        waiter = self._new_waiter(timer.get_remaining_budget())
+
+        # Initiate COPY IN.
+        self._copy_in(copy_stmt)
+
+        try:
+            if record_stmt is not None:
+                # copy_in_records in binary mode
+                wbuf = WriteBuffer.new()
+                # Signature
+                wbuf.write_bytes(_COPY_SIGNATURE)
+                # Flags field
+                wbuf.write_int32(0)
+                # No header extension
+                wbuf.write_int32(0)
+
+                record_stmt._ensure_rows_decoder()
+                codecs = record_stmt.rows_codecs
+                num_cols = len(codecs)
+                settings = self.settings
+
+                for codec in codecs:
+                    if not codec.has_encoder():
+                        raise RuntimeError(
+                            'no encoder for OID {}'.format(codec.oid))
+
+                for row in records:
+                    # Tuple header
+                    wbuf.write_int16(<int16_t>num_cols)
+                    # Tuple data
+                    for i in range(num_cols):
+                        codec = <Codec>cpython.PyTuple_GET_ITEM(codecs, i)
+                        codec.encode(settings, wbuf, row[i])
+
+                    if wbuf.len() >= _COPY_BUFFER_SIZE:
+                        with timer:
+                            await self.writing_allowed.wait()
+                        self._write_copy_data_msg(wbuf)
+                        wbuf = WriteBuffer.new()
+
+                # End of binary copy.
+                wbuf.write_int16(-1)
+                self._write_copy_data_msg(wbuf)
+
+            elif reader is not None:
+                try:
+                    aiter = reader.__aiter__
+                except AttributeError:
+                    raise TypeError('reader is not an asynchronous iterable')
+                else:
+                    iterator = aiter()
+
+                try:
+                    while True:
+                        # We rely on protocol flow control to moderate the
+                        # rate of data messages.
+                        with timer:
+                            await self.writing_allowed.wait()
+                        with timer:
+                            chunk = await asyncio.wait_for(
+                                iterator.__anext__(),
+                                timeout=timer.get_remaining_budget(),
+                                loop=self.loop)
+                        self._write_copy_data_msg(chunk)
+                except builtins.StopAsyncIteration:
+                    pass
+            else:
+                # Buffer passed in directly.
+                await self.writing_allowed.wait()
+                self._write_copy_data_msg(data)
+
+        except asyncio.TimeoutError:
+            self._write_copy_fail_msg('TimeoutError')
+            self._on_timeout(self.waiter)
+            try:
+                await waiter
+            except TimeoutError:
+                raise
+            else:
+                raise RuntimeError('TimoutError was not raised')
+
+        except Exception as e:
+            self._write_copy_fail_msg(str(e))
+            self._request_cancel()
+            raise
+
+        self._write_copy_done_msg()
+
+        status_msg = await waiter
+
+        return status_msg
+
     async def close_statement(self, PreparedStatementState state, timeout):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
@@ -516,6 +630,10 @@ cdef class BaseProtocol(CoreProtocol):
 
         waiter.set_result((self.result, copy_done, status_msg))
 
+    cdef _on_result__copy_in(self, object waiter):
+        status_msg = self.result_status_msg.decode(self.encoding)
+        waiter.set_result(status_msg)
+
     cdef _decode_row(self, const char* buf, ssize_t buf_len):
         if ASYNCPG_DEBUG:
             if self.statement is None:
@@ -576,6 +694,9 @@ cdef class BaseProtocol(CoreProtocol):
                     self.state == PROTOCOL_COPY_OUT_DONE):
                 self._on_result__copy_out(waiter)
 
+            elif self.state == PROTOCOL_COPY_IN_DATA:
+                self._on_result__copy_in(waiter)
+
             else:
                 raise RuntimeError(
                     'got result for unknown protocol state {}'.
@@ -591,13 +712,8 @@ cdef class BaseProtocol(CoreProtocol):
 
         if self.cancel_waiter is not None:
             # We have received the result of a cancelled operation.
-            # Check that the result waiter (if it exists) has a result.
-            if self.waiter is not None and not self.waiter.done():
-                self.cancel_waiter.set_exception(
-                    RuntimeError(
-                        'invalid result waiter state on cancellation'))
-            else:
-                self.cancel_waiter.set_result(None)
+            # Simply ignore the result.
+            self.cancel_waiter.set_result(None)
             self.cancel_waiter = None
             self.waiter = None
             return
@@ -628,6 +744,12 @@ cdef class BaseProtocol(CoreProtocol):
             # Throw an error in any awaiting waiter.
             self.closing = True
             self._handle_waiter_on_connection_lost(exc)
+
+    def pause_writing(self):
+        self.writing_allowed.clear()
+
+    def resume_writing(self):
+        self.writing_allowed.set()
 
 
 class Timer:

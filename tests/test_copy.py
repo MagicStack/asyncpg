@@ -6,13 +6,15 @@
 
 
 import asyncio
+import datetime
 import io
 import tempfile
 
 from asyncpg import _testbase as tb
+from asyncpg import compat
 
 
-class TestCopy(tb.ConnectedTestCase):
+class TestCopyFrom(tb.ConnectedTestCase):
 
     async def test_copy_from_table_basics(self):
         await self.con.execute('''
@@ -353,3 +355,243 @@ class TestCopy(tb.ConnectedTestCase):
             await task
 
         self.assertEqual(await self.con.fetchval('SELECT 1'), 1)
+
+
+class TestCopyTo(tb.ConnectedTestCase):
+
+    async def test_copy_to_table_basics(self):
+        await self.con.execute('''
+            CREATE TABLE copytab(a text, "b~" text, i int);
+        ''')
+
+        try:
+            f = io.BytesIO()
+            f.write(
+                '\n'.join([
+                    'a1\tb1\t1',
+                    'a2\tb2\t2',
+                    'a3\tb3\t3',
+                    'a4\tb4\t4',
+                    'a5\tb5\t5',
+                    '*\t\\N\t\\N',
+                    ''
+                ]).encode('utf-8')
+            )
+            f.seek(0)
+
+            res = await self.con.copy_to_table('copytab', source=f)
+            self.assertEqual(res, 'COPY 6')
+
+            output = await self.con.fetch("""
+                SELECT * FROM copytab ORDER BY a
+            """)
+            self.assertEqual(
+                output,
+                [
+                    ('*', None, None),
+                    ('a1', 'b1', 1),
+                    ('a2', 'b2', 2),
+                    ('a3', 'b3', 3),
+                    ('a4', 'b4', 4),
+                    ('a5', 'b5', 5),
+                ]
+            )
+
+            # Test parameters.
+            await self.con.execute('TRUNCATE copytab')
+            await self.con.execute('SET search_path=none')
+
+            f.seek(0)
+            f.truncate()
+
+            f.write(
+                '\n'.join([
+                    'a|b~',
+                    '*a1*|b1',
+                    '*a2*|b2',
+                    '*a3*|b3',
+                    '*a4*|b4',
+                    '*a5*|b5',
+                    '*!**|*n-u-l-l*',
+                    'n-u-l-l|bb'
+                ]).encode('utf-8')
+            )
+            f.seek(0)
+
+            res = await self.con.copy_to_table(
+                'copytab', source=f, columns=('a', 'b~'),
+                schema_name='public', format='csv',
+                delimiter='|', null='n-u-l-l', header=True,
+                quote='*', escape='!', force_not_null=('a',),
+                force_null=('b~',))
+
+            self.assertEqual(res, 'COPY 7')
+
+            await self.con.execute('SET search_path=public')
+
+            output = await self.con.fetch("""
+                SELECT * FROM copytab ORDER BY a
+            """)
+            self.assertEqual(
+                output,
+                [
+                    ('*', None, None),
+                    ('a1', 'b1', None),
+                    ('a2', 'b2', None),
+                    ('a3', 'b3', None),
+                    ('a4', 'b4', None),
+                    ('a5', 'b5', None),
+                    ('n-u-l-l', 'bb', None),
+                ]
+            )
+
+        finally:
+            await self.con.execute('DROP TABLE public.copytab')
+
+    async def test_copy_to_table_large_rows(self):
+        await self.con.execute('''
+            CREATE TABLE copytab(a text, b text);
+        ''')
+
+        try:
+            class _Source:
+                def __init__(self):
+                    self.rowcount = 0
+
+                @compat.aiter_compat
+                def __aiter__(self):
+                    return self
+
+                async def __anext__(self):
+                    if self.rowcount >= 100:
+                        raise StopAsyncIteration
+                    else:
+                        self.rowcount += 1
+                        return b'a1' * 500000 + b'\t' + b'b1' * 500000 + b'\n'
+
+            res = await self.con.copy_to_table('copytab', source=_Source())
+
+            self.assertEqual(res, 'COPY 100')
+
+        finally:
+            await self.con.execute('DROP TABLE copytab')
+
+    async def test_copy_to_table_from_bytes_like(self):
+        await self.con.execute('''
+            CREATE TABLE copytab(a text, b text);
+        ''')
+
+        try:
+            data = memoryview((b'a1' * 500 + b'\t' + b'b1' * 500 + b'\n') * 2)
+            res = await self.con.copy_to_table('copytab', source=data)
+            self.assertEqual(res, 'COPY 2')
+        finally:
+            await self.con.execute('DROP TABLE copytab')
+
+    async def test_copy_to_table_fail_in_source_1(self):
+        await self.con.execute('''
+            CREATE TABLE copytab(a text, b text);
+        ''')
+
+        try:
+            class _Source:
+                def __init__(self):
+                    self.rowcount = 0
+
+                @compat.aiter_compat
+                def __aiter__(self):
+                    return self
+
+                async def __anext__(self):
+                    raise RuntimeError('failure in source')
+
+            with self.assertRaisesRegexp(RuntimeError, 'failure in source'):
+                await self.con.copy_to_table('copytab', source=_Source())
+
+            # Check that the protocol has recovered.
+            self.assertEqual(await self.con.fetchval('SELECT 1'), 1)
+
+        finally:
+            await self.con.execute('DROP TABLE copytab')
+
+    async def test_copy_to_table_fail_in_source_2(self):
+        await self.con.execute('''
+            CREATE TABLE copytab(a text, b text);
+        ''')
+
+        try:
+            class _Source:
+                def __init__(self):
+                    self.rowcount = 0
+
+                @compat.aiter_compat
+                def __aiter__(self):
+                    return self
+
+                async def __anext__(self):
+                    if self.rowcount == 0:
+                        self.rowcount += 1
+                        return b'a\tb\n'
+                    else:
+                        raise RuntimeError('failure in source')
+
+            with self.assertRaisesRegexp(RuntimeError, 'failure in source'):
+                await self.con.copy_to_table('copytab', source=_Source())
+
+            # Check that the protocol has recovered.
+            self.assertEqual(await self.con.fetchval('SELECT 1'), 1)
+
+        finally:
+            await self.con.execute('DROP TABLE copytab')
+
+    async def test_copy_to_table_timeout(self):
+        await self.con.execute('''
+            CREATE TABLE copytab(a text, b text);
+        ''')
+
+        try:
+            class _Source:
+                def __init__(self, loop):
+                    self.rowcount = 0
+                    self.loop = loop
+
+                @compat.aiter_compat
+                def __aiter__(self):
+                    return self
+
+                async def __anext__(self):
+                    self.rowcount += 1
+                    await asyncio.sleep(60, loop=self.loop)
+                    return b'a1' * 50 + b'\t' + b'b1' * 50 + b'\n'
+
+            with self.assertRaises(asyncio.TimeoutError):
+                await self.con.copy_to_table(
+                    'copytab', source=_Source(self.loop), timeout=0.10)
+
+            # Check that the protocol has recovered.
+            self.assertEqual(await self.con.fetchval('SELECT 1'), 1)
+
+        finally:
+            await self.con.execute('DROP TABLE copytab')
+
+    async def test_copy_records_to_table(self):
+        await self.con.execute('''
+            CREATE TABLE copytab(a text, b int, c timestamptz);
+        ''')
+
+        try:
+            date = datetime.datetime.now(tz=datetime.timezone.utc)
+            delta = datetime.timedelta(days=1)
+
+            records = [
+                ('a-{}'.format(i), i, date + delta)
+                for i in range(100)
+            ]
+
+            res = await self.con.copy_records_to_table(
+                'copytab', records=records)
+
+            self.assertEqual(res, 'COPY 100')
+
+        finally:
+            await self.con.execute('DROP TABLE copytab')

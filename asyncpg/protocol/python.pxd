@@ -21,6 +21,7 @@ cdef extern from "Python.h":
     int PyMemoryView_Check(object)
     Py_buffer *PyMemoryView_GET_BUFFER(object)
     object PyMemoryView_FromMemory(char *mem, ssize_t size, int flags)
+    object PyMemoryView_GetContiguous(object, int buffertype, char order)
 
     char* PyUnicode_AsUTF8AndSize(object unicode, ssize_t *size) except NULL
     char* PyByteArray_AsString(object)

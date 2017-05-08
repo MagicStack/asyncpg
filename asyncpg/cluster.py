@@ -15,6 +15,7 @@ import re
 import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 import textwrap
 import time
@@ -213,10 +214,15 @@ class Cluster:
                     'pg_ctl start exited with status {:d}: {}'.format(
                         process.returncode, stderr.decode()))
         else:
+            if os.getenv('ASYNCPG_DEBUG_SERVER'):
+                stdout = sys.stdout
+            else:
+                stdout = subprocess.DEVNULL
+
             self._daemon_process = \
                 subprocess.Popen(
                     [self._postgres, '-D', self._data_dir, *extra_args],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    stdout=stdout, stderr=subprocess.STDOUT,
                     preexec_fn=ensure_dead_with_parent)
 
             self._daemon_pid = self._daemon_process.pid
