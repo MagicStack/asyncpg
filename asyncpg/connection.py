@@ -7,6 +7,7 @@
 
 import asyncio
 import collections
+import collections.abc
 import struct
 import time
 
@@ -451,6 +452,115 @@ class Connection(metaclass=ConnectionMeta):
 
         return await self._copy_out(copy_stmt, output, timeout)
 
+    async def copy_to_table(self, table_name, *, source,
+                            columns=None, schema_name=None, timeout=None,
+                            format=None, oids=None, freeze=None,
+                            delimiter=None, null=None, header=None,
+                            quote=None, escape=None, force_quote=None,
+                            force_not_null=None, force_null=None,
+                            encoding=None):
+        """Copy data to the specified table.
+
+        :param str table_name:
+            The name of the table to copy data to.
+
+        :param source:
+            A :term:`path-like object <python:path-like object>`,
+            or a :term:`file-like object <python:file-like object>`, or
+            an :term:`asynchronous iterable <python:asynchronous iterable>`
+            that returns ``bytes``, or an object supporting the
+            :term:`buffer protocol <python:buffer protocol>`.
+
+        :param list columns:
+            An optional list of column names to copy.
+
+        :param str schema_name:
+            An optional schema name to qualify the table.
+
+        :param float timeout:
+            Optional timeout value in seconds.
+
+        The remaining kewyword arguments are ``COPY`` statement options,
+        see `COPY statement documentation`_ for details.
+
+        :return: The status string of the COPY command.
+
+        .. versionadded:: 0.11.0
+
+        .. _`COPY statement documentation`: https://www.postgresql.org/docs/\
+                                            current/static/sql-copy.html
+
+        """
+        tabname = utils._quote_ident(table_name)
+        if schema_name:
+            tabname = utils._quote_ident(schema_name) + '.' + tabname
+
+        if columns:
+            cols = '({})'.format(
+                ', '.join(utils._quote_ident(c) for c in columns))
+        else:
+            cols = ''
+
+        opts = self._format_copy_opts(
+            format=format, oids=oids, freeze=freeze, delimiter=delimiter,
+            null=null, header=header, quote=quote, escape=escape,
+            force_not_null=force_not_null, force_null=force_null,
+            encoding=encoding
+        )
+
+        copy_stmt = 'COPY {tab}{cols} FROM STDIN {opts}'.format(
+            tab=tabname, cols=cols, opts=opts)
+
+        return await self._copy_in(copy_stmt, source, timeout)
+
+    async def copy_records_to_table(self, table_name, *, records,
+                                    columns=None, schema_name=None,
+                                    timeout=None):
+        """Copy a list of records to the specified table using binary COPY.
+
+        :param str table_name:
+            The name of the table to copy data to.
+
+        :param records:
+            An iterable returning row tuples to copy into the table.
+
+        :param list columns:
+            An optional list of column names to copy.
+
+        :param str schema_name:
+            An optional schema name to qualify the table.
+
+        :param float timeout:
+            Optional timeout value in seconds.
+
+        :return: The status string of the COPY command.
+
+        .. versionadded:: 0.11.0
+        """
+        tabname = utils._quote_ident(table_name)
+        if schema_name:
+            tabname = utils._quote_ident(schema_name) + '.' + tabname
+
+        if columns:
+            col_list = ', '.join(utils._quote_ident(c) for c in columns)
+            cols = '({})'.format(col_list)
+        else:
+            col_list = '*'
+            cols = ''
+
+        intro_query = 'SELECT {cols} FROM {tab} LIMIT 1'.format(
+            tab=tabname, cols=col_list)
+
+        intro_ps = await self.prepare(intro_query)
+
+        opts = '(FORMAT binary)'
+
+        copy_stmt = 'COPY {tab}{cols} FROM STDIN {opts}'.format(
+            tab=tabname, cols=cols, opts=opts)
+
+        return await self._copy_in_records(
+            copy_stmt, records, intro_ps._state, timeout)
+
     def _format_copy_opts(self, *, format=None, oids=None, freeze=None,
                           delimiter=None, null=None, header=None, quote=None,
                           escape=None, force_quote=None, force_not_null=None,
@@ -518,6 +628,60 @@ class Connection(metaclass=ConnectionMeta):
         finally:
             if opened_by_us:
                 f.close()
+
+    async def _copy_in(self, copy_stmt, source, timeout):
+        try:
+            path = compat.fspath(source)
+        except TypeError:
+            # source is not a path-like object
+            path = None
+
+        f = None
+        reader = None
+        data = None
+        opened_by_us = False
+        run_in_executor = self._loop.run_in_executor
+
+        if path is not None:
+            # a path
+            f = await run_in_executor(None, open, path, 'wb')
+            opened_by_us = True
+        elif hasattr(source, 'read'):
+            # file-like
+            f = source
+        elif isinstance(source, collections.abc.AsyncIterable):
+            # assuming calling output returns an awaitable.
+            reader = source
+        else:
+            # assuming source is an instance supporting the buffer protocol.
+            data = source
+
+        if f is not None:
+            # Copying from a file-like object.
+            class _Reader:
+                @compat.aiter_compat
+                def __aiter__(self):
+                    return self
+
+                async def __anext__(self):
+                    data = await run_in_executor(None, f.read, 524288)
+                    if len(data) == 0:
+                        raise StopAsyncIteration
+                    else:
+                        return data
+
+            reader = _Reader()
+
+        try:
+            return await self._protocol.copy_in(
+                copy_stmt, reader, data, None, None, timeout)
+        finally:
+            if opened_by_us:
+                await run_in_executor(None, f.close)
+
+    async def _copy_in_records(self, copy_stmt, records, intro_stmt, timeout):
+        return await self._protocol.copy_in(
+            copy_stmt, None, None, records, intro_stmt, timeout)
 
     async def set_type_codec(self, typename, *,
                              schema='public', encoder, decoder, binary=False):

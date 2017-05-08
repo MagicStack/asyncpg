@@ -88,6 +88,12 @@ cdef class CoreProtocol:
                         state == PROTOCOL_COPY_OUT_DONE):
                     self._process__copy_out_data(mtype)
 
+                elif state == PROTOCOL_COPY_IN:
+                    self._process__copy_in(mtype)
+
+                elif state == PROTOCOL_COPY_IN_DATA:
+                    self._process__copy_in_data(mtype)
+
                 elif state == PROTOCOL_CANCELLED:
                     # discard all messages until the sync message
                     if mtype == b'E':
@@ -356,6 +362,33 @@ cdef class CoreProtocol:
             self._parse_msg_ready_for_query()
             self._push_result()
 
+    cdef _process__copy_in(self, char mtype):
+        if mtype == b'E':
+            self._parse_msg_error_response(True)
+
+        elif mtype == b'G':
+            # CopyInResponse
+            self._set_state(PROTOCOL_COPY_IN_DATA)
+            self.buffer.consume_message()
+
+        elif mtype == b'Z':
+            # ReadyForQuery
+            self._parse_msg_ready_for_query()
+            self._push_result()
+
+    cdef _process__copy_in_data(self, char mtype):
+        if mtype == b'E':
+            self._parse_msg_error_response(True)
+
+        elif mtype == b'C':
+            # CommandComplete
+            self._parse_msg_command_complete()
+
+        elif mtype == b'Z':
+            # ReadyForQuery
+            self._parse_msg_ready_for_query()
+            self._push_result()
+
     cdef _parse_msg_command_complete(self):
         cdef:
             char* cbuf
@@ -386,6 +419,42 @@ cdef class CoreProtocol:
         if not buf.has_message():
             self._on_result()
             self.result = None
+
+    cdef _write_copy_data_msg(self, object data):
+        cdef:
+            WriteBuffer buf
+            object mview
+            Py_buffer *pybuf
+
+        mview = PyMemoryView_GetContiguous(data, cpython.PyBUF_SIMPLE, b'C')
+
+        try:
+            pybuf = PyMemoryView_GET_BUFFER(mview)
+
+            buf = WriteBuffer.new_message(b'd')
+            buf.write_cstr(<const char *>pybuf.buf, pybuf.len)
+            buf.end_message()
+        finally:
+            mview.release()
+
+        self._write(buf)
+
+    cdef _write_copy_done_msg(self):
+        cdef:
+            WriteBuffer buf
+
+        buf = WriteBuffer.new_message(b'c')
+        buf.end_message()
+        self._write(buf)
+
+    cdef _write_copy_fail_msg(self, str cause):
+        cdef:
+            WriteBuffer buf
+
+        buf = WriteBuffer.new_message(b'f')
+        buf.write_str(cause or '', self.encoding)
+        buf.end_message()
+        self._write(buf)
 
     cdef _parse_data_msgs(self):
         cdef:
@@ -590,6 +659,10 @@ cdef class CoreProtocol:
 
             elif (self.state == PROTOCOL_COPY_OUT_DATA and
                     new_state == PROTOCOL_COPY_OUT_DONE):
+                self.state = new_state
+
+            elif (self.state == PROTOCOL_COPY_IN and
+                    new_state == PROTOCOL_COPY_IN_DATA):
                 self.state = new_state
 
             elif self.state == PROTOCOL_FAILED:
@@ -805,6 +878,17 @@ cdef class CoreProtocol:
         self._set_state(PROTOCOL_COPY_OUT)
 
         # Send the COPY .. TO STDOUT using the SimpleQuery protocol.
+        buf = WriteBuffer.new_message(b'Q')
+        buf.write_str(copy_stmt, self.encoding)
+        buf.end_message()
+        self._write(buf)
+
+    cdef _copy_in(self, str copy_stmt):
+        cdef WriteBuffer buf
+
+        self._ensure_connected()
+        self._set_state(PROTOCOL_COPY_IN)
+
         buf = WriteBuffer.new_message(b'Q')
         buf.write_str(copy_stmt, self.encoding)
         buf.end_message()

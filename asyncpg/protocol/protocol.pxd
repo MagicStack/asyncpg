@@ -41,6 +41,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         str last_query
 
+        bint writing_paused
         bint closing
 
         readonly uint64_t queries_count
@@ -58,6 +59,7 @@ cdef class BaseProtocol(CoreProtocol):
     cdef _on_result__simple_query(self, object waiter)
     cdef _on_result__bind(self, object waiter)
     cdef _on_result__copy_out(self, object waiter)
+    cdef _on_result__copy_in(self, object waiter)
 
     cdef _handle_waiter_on_connection_lost(self, cause)
 

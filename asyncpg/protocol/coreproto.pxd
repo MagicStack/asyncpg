@@ -113,6 +113,8 @@ cdef class CoreProtocol:
     cdef _process__bind(self, char mtype)
     cdef _process__copy_out(self, char mtype)
     cdef _process__copy_out_data(self, char mtype)
+    cdef _process__copy_in(self, char mtype)
+    cdef _process__copy_in_data(self, char mtype)
 
     cdef _parse_msg_authentication(self)
     cdef _parse_msg_parameter_status(self)
@@ -123,6 +125,10 @@ cdef class CoreProtocol:
     cdef _parse_copy_data_msgs(self)
     cdef _parse_msg_error_response(self, is_error)
     cdef _parse_msg_command_complete(self)
+
+    cdef _write_copy_data_msg(self, object data)
+    cdef _write_copy_done_msg(self)
+    cdef _write_copy_fail_msg(self, str cause)
 
     cdef _auth_password_message_cleartext(self)
     cdef _auth_password_message_md5(self, bytes salt)
@@ -157,6 +163,7 @@ cdef class CoreProtocol:
     cdef _close(self, str name, bint is_portal)
     cdef _simple_query(self, str query)
     cdef _copy_out(self, str copy_stmt)
+    cdef _copy_in(self, str copy_stmt)
     cdef _terminate(self)
 
     cdef _decode_row(self, const char* buf, ssize_t buf_len)
