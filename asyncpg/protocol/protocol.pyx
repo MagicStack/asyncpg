@@ -503,8 +503,8 @@ cdef class BaseProtocol(CoreProtocol):
             self.timeout_handle = None
 
         if self.cancel_waiter is not None:
-            if self.waiter is None or not self.waiter.cancelled():
-                self.cancel_waiter.set_result(
+            if self.waiter is not None and not self.waiter.done():
+                self.cancel_waiter.set_exception(
                     RuntimeError('invalid state after cancellation'))
             else:
                 self.cancel_waiter.set_result(None)
