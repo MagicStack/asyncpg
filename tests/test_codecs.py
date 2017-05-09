@@ -1166,15 +1166,43 @@ class TestCodecs(tb.ConnectedTestCase):
         await self.con.execute('''
             CREATE TYPE enum_t AS ENUM ('abc', 'def', 'ghi');
         ''')
-        result = await self.con.fetchrow('''SELECT $1::enum_t[];''',
-                                         ['abc'])
-        self.assertEqual(result, (['abc'],))
 
-        result = await self.con.fetchrow('''SELECT ARRAY[$1::enum_t];''',
-                                         'abc')
+        try:
+            result = await self.con.fetchrow('''SELECT $1::enum_t[];''',
+                                             ['abc'])
+            self.assertEqual(result, (['abc'],))
 
-        self.assertEqual(result, (['abc'],))
+            result = await self.con.fetchrow('''SELECT ARRAY[$1::enum_t];''',
+                                             'abc')
 
+            self.assertEqual(result, (['abc'],))
+
+        finally:
+            await self.con.execute('''
+                DROP TYPE enum_t;
+            ''')
+
+    async def test_enum_and_range(self):
         await self.con.execute('''
-            DROP TYPE enum_t;
+            CREATE TYPE enum_t AS ENUM ('abc', 'def', 'ghi');
+            CREATE TABLE testtab (
+                a int4range,
+                b enum_t
+            );
+
+            INSERT INTO testtab VALUES (
+                '[10, 20)', 'abc'
+            );
         ''')
+
+        try:
+            result = await self.con.fetchrow('''
+                SELECT testtab.a FROM testtab WHERE testtab.b = $1
+            ''', 'abc')
+
+            self.assertEqual(result, (asyncpg.Range(10, 20),))
+        finally:
+            await self.con.execute('''
+                DROP TABLE testtab;
+                DROP TYPE enum_t;
+            ''')
