@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (C) 2016-present the ayncpg authors and contributors
+# Copyright (C) 2016-present the asyncpg authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of asyncpg and is released under

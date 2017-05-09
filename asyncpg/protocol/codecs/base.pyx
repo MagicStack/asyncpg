@@ -1,4 +1,4 @@
-# Copyright (C) 2016-present the ayncpg authors and contributors
+# Copyright (C) 2016-present the asyncpg authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of asyncpg and is released under
@@ -530,7 +530,7 @@ cdef class DataCodecConfig:
             return codec
 
         if oid <= MAXBUILTINOID:
-            # This is a BKI type, for which ayncpg has no
+            # This is a BKI type, for which asyncpg has no
             # defined codec.  This should only happen for newly
             # added builtin types, for which this version of
             # asyncpg is lacking support.
