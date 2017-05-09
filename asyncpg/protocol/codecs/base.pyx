@@ -468,6 +468,10 @@ cdef class DataCodecConfig:
                 self._type_codecs_cache[oid, elem_format] = \
                     Codec.new_range_codec(oid, name, schema, elem_codec)
 
+            elif ti['kind'] == b'e':
+                # Enum types are essentially text
+                self._set_builtin_type_codec(oid, name, schema, 'scalar',
+                                             TEXTOID, PG_FORMAT_ANY)
             else:
                 self.declare_fallback_codec(oid, name, schema)
 
@@ -481,8 +485,8 @@ cdef class DataCodecConfig:
 
         self.clear_type_cache()
 
-    def set_builtin_type_codec(self, typeoid, typename, typeschema, typekind,
-                               alias_to, format=PG_FORMAT_ANY):
+    def _set_builtin_type_codec(self, typeoid, typename, typeschema, typekind,
+                                alias_to, format=PG_FORMAT_ANY):
         cdef:
             Codec codec
             Codec target_codec
@@ -517,6 +521,10 @@ cdef class DataCodecConfig:
                 (typeoid, PG_FORMAT_TEXT) not in self._local_type_codecs):
             raise ValueError('unknown alias target: {}'.format(alias_to))
 
+    def set_builtin_type_codec(self, typeoid, typename, typeschema, typekind,
+                               alias_to, format=PG_FORMAT_ANY):
+        self._set_builtin_type_codec(typeoid, typename, typeschema, typekind,
+                                     alias_to, format)
         self.clear_type_cache()
 
     def clear_type_cache(self):
@@ -545,8 +553,8 @@ cdef class DataCodecConfig:
             # can avoid this by specifying a codec for this type
             # using Connection.set_type_codec().
             #
-            self.set_builtin_type_codec(oid, name, schema, 'scalar',
-                                        TEXTOID, PG_FORMAT_TEXT)
+            self._set_builtin_type_codec(oid, name, schema, 'scalar',
+                                         TEXTOID, PG_FORMAT_TEXT)
 
             codec = self.get_codec(oid, PG_FORMAT_TEXT)
 
