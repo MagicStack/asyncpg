@@ -34,6 +34,7 @@ matrix:
           env: BUILD=tests,wheels PYTHON_VERSION=3.5.2 PIP_USER=1
 
         - os: osx
+          osx_image: xcode8.3
           env: BUILD=tests,wheels PYTHON_VERSION=3.6.0 PIP_USER=1
 
         # Do quick test runs for each supported version of PostgreSQL
