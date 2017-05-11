@@ -487,6 +487,12 @@ class TestCodecs(tb.ConnectedTestCase):
             ('int8', TypeError, 'an integer is required', [
                 '2',
                 'aa',
+            ]),
+            ('text', TypeError, 'expected str, got bytes', [
+                b'foo'
+            ]),
+            ('text', TypeError, 'expected str, got list', [
+                [1]
             ])
         ]
 
@@ -735,7 +741,7 @@ class TestCodecs(tb.ConnectedTestCase):
 
             res = await self.con.fetchval('''
                 SELECT $1::hstore AS result
-            ''', (('foo', 2), ('bar', 3)))
+            ''', (('foo', '2'), ('bar', '3')))
 
             self.assertEqual(res, {'foo': '2', 'bar': '3'})
 
