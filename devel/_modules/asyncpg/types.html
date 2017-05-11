@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                0.10.1
+                0.11.0
               </div>
             
           
@@ -91,8 +91,9 @@
             
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Usage Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">asyncpg Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions</a></li>
 </ul>
 
             
@@ -159,7 +160,7 @@
            <div itemprop="articleBody">
             
   <h1>Source code for asyncpg.types</h1><div class="highlight"><pre>
-<span></span><span class="c1"># Copyright (C) 2016-present the ayncpg authors and contributors</span>
+<span></span><span class="c1"># Copyright (C) 2016-present the asyncpg authors and contributors</span>
 <span class="c1"># &lt;see AUTHORS file&gt;</span>
 <span class="c1">#</span>
 <span class="c1"># This module is part of asyncpg and is released under</span>
@@ -195,7 +196,7 @@
 <span class="n">ServerVersion</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">&#39;PostgreSQL server version tuple.&#39;</span>
 
 
-<span class="k">class</span> <span class="nc">Range</span><span class="p">:</span>
+<div class="viewcode-block" id="Range"><a class="viewcode-back" href="../../api/index.html#asyncpg.types.Range">[docs]</a><span class="k">class</span> <span class="nc">Range</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Immutable representation of PostgreSQL `range` type.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="s1">&#39;_lower&#39;</span><span class="p">,</span> <span class="s1">&#39;_upper&#39;</span><span class="p">,</span> <span class="s1">&#39;_lower_inc&#39;</span><span class="p">,</span> <span class="s1">&#39;_upper_inc&#39;</span><span class="p">,</span> <span class="s1">&#39;_empty&#39;</span>
@@ -297,10 +298,10 @@
 
         <span class="k">return</span> <span class="s1">&#39;&lt;Range </span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">desc</span><span class="p">)</span>
 
-    <span class="fm">__str__</span> <span class="o">=</span> <span class="fm">__repr__</span>
+    <span class="fm">__str__</span> <span class="o">=</span> <span class="fm">__repr__</span></div>
 
 
-<span class="k">class</span> <span class="nc">BitString</span><span class="p">:</span>
+<div class="viewcode-block" id="BitString"><a class="viewcode-back" href="../../api/index.html#asyncpg.types.BitString">[docs]</a><span class="k">class</span> <span class="nc">BitString</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Immutable representation of PostgreSQL `bit` and `varbit` types.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="s1">&#39;_bytes&#39;</span><span class="p">,</span> <span class="s1">&#39;_bitlength&#39;</span>
@@ -419,10 +420,10 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getitem</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bitlength</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bitlength</span></div>
 
 
-<span class="k">class</span> <span class="nc">Point</span><span class="p">(</span><span class="nb">tuple</span><span class="p">):</span>
+<div class="viewcode-block" id="Point"><a class="viewcode-back" href="../../api/index.html#asyncpg.types.Point">[docs]</a><span class="k">class</span> <span class="nc">Point</span><span class="p">(</span><span class="nb">tuple</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Immutable representation of PostgreSQL `point` type.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
@@ -443,10 +444,10 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">y</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span></div>
 
 
-<span class="k">class</span> <span class="nc">Box</span><span class="p">(</span><span class="nb">tuple</span><span class="p">):</span>
+<div class="viewcode-block" id="Box"><a class="viewcode-back" href="../../api/index.html#asyncpg.types.Box">[docs]</a><span class="k">class</span> <span class="nc">Box</span><span class="p">(</span><span class="nb">tuple</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Immutable representation of PostgreSQL `box` type.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
@@ -467,10 +468,10 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">low</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span></div>
 
 
-<span class="k">class</span> <span class="nc">Line</span><span class="p">(</span><span class="nb">tuple</span><span class="p">):</span>
+<div class="viewcode-block" id="Line"><a class="viewcode-back" href="../../api/index.html#asyncpg.types.Line">[docs]</a><span class="k">class</span> <span class="nc">Line</span><span class="p">(</span><span class="nb">tuple</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Immutable representation of PostgreSQL `line` type.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
@@ -488,10 +489,10 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">C</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span></div>
 
 
-<span class="k">class</span> <span class="nc">LineSegment</span><span class="p">(</span><span class="nb">tuple</span><span class="p">):</span>
+<div class="viewcode-block" id="LineSegment"><a class="viewcode-back" href="../../api/index.html#asyncpg.types.LineSegment">[docs]</a><span class="k">class</span> <span class="nc">LineSegment</span><span class="p">(</span><span class="nb">tuple</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Immutable representation of PostgreSQL `lseg` type.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
@@ -512,10 +513,10 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">p2</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span></div>
 
 
-<span class="k">class</span> <span class="nc">Path</span><span class="p">:</span>
+<div class="viewcode-block" id="Path"><a class="viewcode-back" href="../../api/index.html#asyncpg.types.Path">[docs]</a><span class="k">class</span> <span class="nc">Path</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Immutable representation of PostgreSQL `path` type.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="s1">&#39;_is_closed&#39;</span><span class="p">,</span> <span class="s1">&#39;points&#39;</span>
@@ -548,20 +549,20 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">point</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span>
+        <span class="k">return</span> <span class="n">point</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span></div>
 
 
-<span class="k">class</span> <span class="nc">Polygon</span><span class="p">(</span><span class="n">Path</span><span class="p">):</span>
+<div class="viewcode-block" id="Polygon"><a class="viewcode-back" href="../../api/index.html#asyncpg.types.Polygon">[docs]</a><span class="k">class</span> <span class="nc">Polygon</span><span class="p">(</span><span class="n">Path</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Immutable representation of PostgreSQL `polygon` type.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">points</span><span class="p">):</span>
         <span class="c1"># polygon is always closed</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">points</span><span class="p">,</span> <span class="n">is_closed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">points</span><span class="p">,</span> <span class="n">is_closed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 
-<span class="k">class</span> <span class="nc">Circle</span><span class="p">(</span><span class="nb">tuple</span><span class="p">):</span>
+<div class="viewcode-block" id="Circle"><a class="viewcode-back" href="../../api/index.html#asyncpg.types.Circle">[docs]</a><span class="k">class</span> <span class="nc">Circle</span><span class="p">(</span><span class="nb">tuple</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Immutable representation of PostgreSQL `circle` type.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
@@ -575,7 +576,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">radius</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span></div>
 </pre></div>
 
            </div>
@@ -590,7 +591,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2016-present, the ayncpg authors and contributors.
+        &copy; Copyright 2016-present, the asyncpg authors and contributors.
 
     </p>
   </div> 
@@ -611,7 +612,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.10.1',
+            VERSION:'0.11.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                0.10.1
+                0.11.0
               </div>
             
           
@@ -91,8 +91,9 @@
             
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Usage Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">asyncpg Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions</a></li>
 </ul>
 
             
@@ -159,7 +160,7 @@
            <div itemprop="articleBody">
             
   <h1>Source code for asyncpg.connection</h1><div class="highlight"><pre>
-<span></span><span class="c1"># Copyright (C) 2016-present the ayncpg authors and contributors</span>
+<span></span><span class="c1"># Copyright (C) 2016-present the asyncpg authors and contributors</span>
 <span class="c1"># &lt;see AUTHORS file&gt;</span>
 <span class="c1">#</span>
 <span class="c1"># This module is part of asyncpg and is released under</span>
@@ -168,14 +169,12 @@
 
 <span class="kn">import</span> <span class="nn">asyncio</span>
 <span class="kn">import</span> <span class="nn">collections</span>
-<span class="kn">import</span> <span class="nn">getpass</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">collections.abc</span>
 <span class="kn">import</span> <span class="nn">struct</span>
 <span class="kn">import</span> <span class="nn">time</span>
-<span class="kn">import</span> <span class="nn">urllib.parse</span>
-<span class="kn">import</span> <span class="nn">warnings</span>
 
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">compat</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">connect_utils</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">cursor</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">exceptions</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">introspection</span>
@@ -183,6 +182,7 @@
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">protocol</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">serverversion</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">transaction</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">utils</span>
 
 
 <span class="k">class</span> <span class="nc">ConnectionMeta</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
@@ -200,17 +200,15 @@
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_protocol&#39;</span><span class="p">,</span> <span class="s1">&#39;_transport&#39;</span><span class="p">,</span> <span class="s1">&#39;_loop&#39;</span><span class="p">,</span> <span class="s1">&#39;_types_stmt&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_type_by_name_stmt&#39;</span><span class="p">,</span> <span class="s1">&#39;_top_xact&#39;</span><span class="p">,</span> <span class="s1">&#39;_uid&#39;</span><span class="p">,</span> <span class="s1">&#39;_aborted&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;_stmt_cache&#39;</span><span class="p">,</span> <span class="s1">&#39;_stmts_to_close&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;_addr&#39;</span><span class="p">,</span> <span class="s1">&#39;_opts&#39;</span><span class="p">,</span> <span class="s1">&#39;_command_timeout&#39;</span><span class="p">,</span> <span class="s1">&#39;_listeners&#39;</span><span class="p">,</span>
+                 <span class="s1">&#39;_stmt_cache&#39;</span><span class="p">,</span> <span class="s1">&#39;_stmts_to_close&#39;</span><span class="p">,</span> <span class="s1">&#39;_listeners&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_server_version&#39;</span><span class="p">,</span> <span class="s1">&#39;_server_caps&#39;</span><span class="p">,</span> <span class="s1">&#39;_intro_query&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_reset_query&#39;</span><span class="p">,</span> <span class="s1">&#39;_proxy&#39;</span><span class="p">,</span> <span class="s1">&#39;_stmt_exclusive_section&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;_max_cacheable_statement_size&#39;</span><span class="p">,</span> <span class="s1">&#39;_ssl_context&#39;</span><span class="p">)</span>
+                 <span class="s1">&#39;_config&#39;</span><span class="p">,</span> <span class="s1">&#39;_params&#39;</span><span class="p">,</span> <span class="s1">&#39;_addr&#39;</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">protocol</span><span class="p">,</span> <span class="n">transport</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">opts</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
-                 <span class="n">statement_cache_size</span><span class="p">,</span> <span class="n">command_timeout</span><span class="p">,</span>
-                 <span class="n">max_cached_statement_lifetime</span><span class="p">,</span>
-                 <span class="n">max_cacheable_statement_size</span><span class="p">,</span>
-                 <span class="n">ssl_context</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">protocol</span><span class="p">,</span> <span class="n">transport</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span>
+                 <span class="n">addr</span><span class="p">:</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">config</span><span class="p">:</span> <span class="n">connect_utils</span><span class="o">.</span><span class="n">_ClientConfiguration</span><span class="p">,</span>
+                 <span class="n">params</span><span class="p">:</span> <span class="n">connect_utils</span><span class="o">.</span><span class="n">_ConnectionParameters</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span> <span class="o">=</span> <span class="n">protocol</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_transport</span> <span class="o">=</span> <span class="n">transport</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span> <span class="o">=</span> <span class="n">loop</span>
@@ -221,19 +219,16 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_aborted</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_addr</span> <span class="o">=</span> <span class="n">addr</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_opts</span> <span class="o">=</span> <span class="n">opts</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ssl_context</span> <span class="o">=</span> <span class="n">ssl_context</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_params</span> <span class="o">=</span> <span class="n">params</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_max_cacheable_statement_size</span> <span class="o">=</span> <span class="n">max_cacheable_statement_size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span> <span class="o">=</span> <span class="n">_StatementCache</span><span class="p">(</span>
             <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">,</span>
-            <span class="n">max_size</span><span class="o">=</span><span class="n">statement_cache_size</span><span class="p">,</span>
+            <span class="n">max_size</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">statement_cache_size</span><span class="p">,</span>
             <span class="n">on_remove</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_maybe_gc_stmt</span><span class="p">,</span>
-            <span class="n">max_lifetime</span><span class="o">=</span><span class="n">max_cached_statement_lifetime</span><span class="p">)</span>
+            <span class="n">max_lifetime</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">max_cached_statement_lifetime</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_stmts_to_close</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_command_timeout</span> <span class="o">=</span> <span class="n">command_timeout</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">{}</span>
 
@@ -379,12 +374,7 @@
         <span class="n">_</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">status</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="Connection.executemany"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.executemany">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">executemany</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span>
-                          <span class="n">_timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
-        <span class="c1"># The real signature of this method is:</span>
-        <span class="c1">#</span>
-        <span class="c1">#     executemany(self, command: str, args, *, timeout: float=None)</span>
-        <span class="c1">#</span>
+<div class="viewcode-block" id="Connection.executemany"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.executemany">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">executemany</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Execute an SQL *command* for each sequence of arguments in *args*.</span>
 
 <span class="sd">        Example:</span>
@@ -401,26 +391,11 @@
 <span class="sd">        :return None: This method discards the results of the operations.</span>
 
 <span class="sd">        .. versionadded:: 0.7.0</span>
+
+<span class="sd">        .. versionchanged:: 0.11.0</span>
+<span class="sd">           `timeout` became a keyword-only parameter.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
-
-        <span class="k">if</span> <span class="s1">&#39;timeout&#39;</span> <span class="ow">in</span> <span class="n">kw</span><span class="p">:</span>
-            <span class="n">timeout</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;timeout&#39;</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">timeout</span> <span class="o">=</span> <span class="n">_timeout</span>
-            <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                    <span class="s2">&quot;Passing &#39;timeout&#39; as a positional argument to &quot;</span>
-                    <span class="s2">&quot;executemany() is deprecated and will be removed in &quot;</span>
-                    <span class="s2">&quot;asyncpg 0.11.0.  Pass it as a keyword argument instead: &quot;</span>
-                    <span class="s2">&quot;`executemany(..., timeout=...)`.&quot;</span><span class="p">,</span>
-                    <span class="ne">DeprecationWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">kw</span><span class="p">:</span>
-            <span class="n">first_kwarg</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">kw</span><span class="p">))</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-                <span class="s1">&#39;executemany() got an unexpected keyword argument </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                    <span class="n">first_kwarg</span><span class="p">))</span>
-
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_executemany</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_get_statement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">named</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
@@ -433,8 +408,8 @@
         <span class="c1">#  * query size is less than `max_cacheable_statement_size`.</span>
         <span class="n">use_cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">get_max_size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">use_cache</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_max_cacheable_statement_size</span> <span class="ow">and</span>
-                <span class="nb">len</span><span class="p">(</span><span class="n">query</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_cacheable_statement_size</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">max_cacheable_statement_size</span> <span class="ow">and</span>
+                <span class="nb">len</span><span class="p">(</span><span class="n">query</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">max_cacheable_statement_size</span><span class="p">):</span>
             <span class="n">use_cache</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="k">if</span> <span class="n">use_cache</span> <span class="ow">or</span> <span class="n">named</span><span class="p">:</span>
@@ -534,6 +509,398 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="Connection.copy_from_table"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.copy_from_table">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">copy_from_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span>
+                              <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">schema_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                              <span class="nb">format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">oids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                              <span class="n">null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                              <span class="n">escape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Copy table contents to a file or file-like object.</span>
+
+<span class="sd">        :param str table_name:</span>
+<span class="sd">            The name of the table to copy data from.</span>
+
+<span class="sd">        :param output:</span>
+<span class="sd">            A :term:`path-like object &lt;python:path-like object&gt;`,</span>
+<span class="sd">            or a :term:`file-like object &lt;python:file-like object&gt;`, or</span>
+<span class="sd">            a :term:`coroutine function &lt;python:coroutine function&gt;`</span>
+<span class="sd">            that takes a ``bytes`` instance as a sole argument.</span>
+
+<span class="sd">        :param list columns:</span>
+<span class="sd">            An optional list of column names to copy.</span>
+
+<span class="sd">        :param str schema_name:</span>
+<span class="sd">            An optional schema name to qualify the table.</span>
+
+<span class="sd">        :param float timeout:</span>
+<span class="sd">            Optional timeout value in seconds.</span>
+
+<span class="sd">        The remaining kewyword arguments are ``COPY`` statement options,</span>
+<span class="sd">        see `COPY statement documentation`_ for details.</span>
+
+<span class="sd">        :return: The status string of the COPY command.</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">        .. code-block:: pycon</span>
+
+<span class="sd">            &gt;&gt;&gt; import asyncpg</span>
+<span class="sd">            &gt;&gt;&gt; import asyncio</span>
+<span class="sd">            &gt;&gt;&gt; async def run():</span>
+<span class="sd">            ...     con = await asyncpg.connect(user=&#39;postgres&#39;)</span>
+<span class="sd">            ...     result = await con.copy_from_table(</span>
+<span class="sd">            ...         &#39;mytable&#39;, columns=(&#39;foo&#39;, &#39;bar&#39;),</span>
+<span class="sd">            ...         output=&#39;file.csv&#39;, format=&#39;csv&#39;)</span>
+<span class="sd">            ...     print(result)</span>
+<span class="sd">            &gt;&gt;&gt; asyncio.get_event_loop().run_until_complete(run())</span>
+<span class="sd">            &#39;COPY 100&#39;</span>
+
+<span class="sd">        .. _`COPY statement documentation`: https://www.postgresql.org/docs/\</span>
+<span class="sd">                                            current/static/sql-copy.html</span>
+
+<span class="sd">        .. versionadded:: 0.11.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tabname</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">_quote_ident</span><span class="p">(</span><span class="n">table_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">schema_name</span><span class="p">:</span>
+            <span class="n">tabname</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">_quote_ident</span><span class="p">(</span><span class="n">schema_name</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="n">tabname</span>
+
+        <span class="k">if</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="n">cols</span> <span class="o">=</span> <span class="s1">&#39;(</span><span class="si">{}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">utils</span><span class="o">.</span><span class="n">_quote_ident</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cols</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+        <span class="n">opts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_copy_opts</span><span class="p">(</span>
+            <span class="nb">format</span><span class="o">=</span><span class="nb">format</span><span class="p">,</span> <span class="n">oids</span><span class="o">=</span><span class="n">oids</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="n">delimiter</span><span class="p">,</span>
+            <span class="n">null</span><span class="o">=</span><span class="n">null</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span> <span class="n">quote</span><span class="o">=</span><span class="n">quote</span><span class="p">,</span> <span class="n">escape</span><span class="o">=</span><span class="n">escape</span><span class="p">,</span>
+            <span class="n">force_quote</span><span class="o">=</span><span class="n">force_quote</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span>
+        <span class="p">)</span>
+
+        <span class="n">copy_stmt</span> <span class="o">=</span> <span class="s1">&#39;COPY </span><span class="si">{tab}{cols}</span><span class="s1"> TO STDOUT </span><span class="si">{opts}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">tab</span><span class="o">=</span><span class="n">tabname</span><span class="p">,</span> <span class="n">cols</span><span class="o">=</span><span class="n">cols</span><span class="p">,</span> <span class="n">opts</span><span class="o">=</span><span class="n">opts</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy_out</span><span class="p">(</span><span class="n">copy_stmt</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Connection.copy_from_query"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.copy_from_query">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">copy_from_query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span>
+                              <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">oids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                              <span class="n">delimiter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                              <span class="n">quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">escape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                              <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Copy the results of a query to a file or file-like object.</span>
+
+<span class="sd">        :param str query:</span>
+<span class="sd">            The query to copy the results of.</span>
+
+<span class="sd">        :param \*args:</span>
+<span class="sd">            Query arguments.</span>
+
+<span class="sd">        :param output:</span>
+<span class="sd">            A :term:`path-like object &lt;python:path-like object&gt;`,</span>
+<span class="sd">            or a :term:`file-like object &lt;python:file-like object&gt;`, or</span>
+<span class="sd">            a :term:`coroutine function &lt;python:coroutine function&gt;`</span>
+<span class="sd">            that takes a ``bytes`` instance as a sole argument.</span>
+
+<span class="sd">        :param float timeout:</span>
+<span class="sd">            Optional timeout value in seconds.</span>
+
+<span class="sd">        The remaining kewyword arguments are ``COPY`` statement options,</span>
+<span class="sd">        see `COPY statement documentation`_ for details.</span>
+
+<span class="sd">        :return: The status string of the COPY command.</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">        .. code-block:: pycon</span>
+
+<span class="sd">            &gt;&gt;&gt; import asyncpg</span>
+<span class="sd">            &gt;&gt;&gt; import asyncio</span>
+<span class="sd">            &gt;&gt;&gt; async def run():</span>
+<span class="sd">            ...     con = await asyncpg.connect(user=&#39;postgres&#39;)</span>
+<span class="sd">            ...     result = await con.copy_from_query(</span>
+<span class="sd">            ...         &#39;SELECT foo, bar FROM mytable WHERE foo &gt; $1&#39;, 10,</span>
+<span class="sd">            ...         output=&#39;file.csv&#39;, format=&#39;csv&#39;)</span>
+<span class="sd">            ...     print(result)</span>
+<span class="sd">            &gt;&gt;&gt; asyncio.get_event_loop().run_until_complete(run())</span>
+<span class="sd">            &#39;COPY 10&#39;</span>
+
+<span class="sd">        .. _`COPY statement documentation`: https://www.postgresql.org/docs/\</span>
+<span class="sd">                                            current/static/sql-copy.html</span>
+
+<span class="sd">        .. versionadded:: 0.11.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">opts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_copy_opts</span><span class="p">(</span>
+            <span class="nb">format</span><span class="o">=</span><span class="nb">format</span><span class="p">,</span> <span class="n">oids</span><span class="o">=</span><span class="n">oids</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="n">delimiter</span><span class="p">,</span>
+            <span class="n">null</span><span class="o">=</span><span class="n">null</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span> <span class="n">quote</span><span class="o">=</span><span class="n">quote</span><span class="p">,</span> <span class="n">escape</span><span class="o">=</span><span class="n">escape</span><span class="p">,</span>
+            <span class="n">force_quote</span><span class="o">=</span><span class="n">force_quote</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">args</span><span class="p">:</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="k">await</span> <span class="n">utils</span><span class="o">.</span><span class="n">_mogrify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+        <span class="n">copy_stmt</span> <span class="o">=</span> <span class="s1">&#39;COPY (</span><span class="si">{query}</span><span class="s1">) TO STDOUT </span><span class="si">{opts}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">,</span> <span class="n">opts</span><span class="o">=</span><span class="n">opts</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy_out</span><span class="p">(</span><span class="n">copy_stmt</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Connection.copy_to_table"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.copy_to_table">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">copy_to_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span>
+                            <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">schema_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                            <span class="nb">format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">oids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">freeze</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                            <span class="n">delimiter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                            <span class="n">quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">escape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                            <span class="n">force_not_null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                            <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Copy data to the specified table.</span>
+
+<span class="sd">        :param str table_name:</span>
+<span class="sd">            The name of the table to copy data to.</span>
+
+<span class="sd">        :param source:</span>
+<span class="sd">            A :term:`path-like object &lt;python:path-like object&gt;`,</span>
+<span class="sd">            or a :term:`file-like object &lt;python:file-like object&gt;`, or</span>
+<span class="sd">            an :term:`asynchronous iterable &lt;python:asynchronous iterable&gt;`</span>
+<span class="sd">            that returns ``bytes``, or an object supporting the</span>
+<span class="sd">            :ref:`buffer protocol &lt;python:bufferobjects&gt;`.</span>
+
+<span class="sd">        :param list columns:</span>
+<span class="sd">            An optional list of column names to copy.</span>
+
+<span class="sd">        :param str schema_name:</span>
+<span class="sd">            An optional schema name to qualify the table.</span>
+
+<span class="sd">        :param float timeout:</span>
+<span class="sd">            Optional timeout value in seconds.</span>
+
+<span class="sd">        The remaining kewyword arguments are ``COPY`` statement options,</span>
+<span class="sd">        see `COPY statement documentation`_ for details.</span>
+
+<span class="sd">        :return: The status string of the COPY command.</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">        .. code-block:: pycon</span>
+
+<span class="sd">            &gt;&gt;&gt; import asyncpg</span>
+<span class="sd">            &gt;&gt;&gt; import asyncio</span>
+<span class="sd">            &gt;&gt;&gt; async def run():</span>
+<span class="sd">            ...     con = await asyncpg.connect(user=&#39;postgres&#39;)</span>
+<span class="sd">            ...     result = await con.copy_to_table(</span>
+<span class="sd">            ...         &#39;mytable&#39;, source=&#39;datafile.tbl&#39;)</span>
+<span class="sd">            ....    print(result)</span>
+<span class="sd">            &gt;&gt;&gt; asyncio.get_event_loop().run_until_complete(run())</span>
+<span class="sd">            &#39;COPY 140000&#39;</span>
+
+<span class="sd">        .. _`COPY statement documentation`: https://www.postgresql.org/docs/\</span>
+<span class="sd">                                            current/static/sql-copy.html</span>
+
+<span class="sd">        .. versionadded:: 0.11.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tabname</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">_quote_ident</span><span class="p">(</span><span class="n">table_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">schema_name</span><span class="p">:</span>
+            <span class="n">tabname</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">_quote_ident</span><span class="p">(</span><span class="n">schema_name</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="n">tabname</span>
+
+        <span class="k">if</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="n">cols</span> <span class="o">=</span> <span class="s1">&#39;(</span><span class="si">{}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">utils</span><span class="o">.</span><span class="n">_quote_ident</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cols</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+        <span class="n">opts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_copy_opts</span><span class="p">(</span>
+            <span class="nb">format</span><span class="o">=</span><span class="nb">format</span><span class="p">,</span> <span class="n">oids</span><span class="o">=</span><span class="n">oids</span><span class="p">,</span> <span class="n">freeze</span><span class="o">=</span><span class="n">freeze</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="n">delimiter</span><span class="p">,</span>
+            <span class="n">null</span><span class="o">=</span><span class="n">null</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span> <span class="n">quote</span><span class="o">=</span><span class="n">quote</span><span class="p">,</span> <span class="n">escape</span><span class="o">=</span><span class="n">escape</span><span class="p">,</span>
+            <span class="n">force_not_null</span><span class="o">=</span><span class="n">force_not_null</span><span class="p">,</span> <span class="n">force_null</span><span class="o">=</span><span class="n">force_null</span><span class="p">,</span>
+            <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span>
+        <span class="p">)</span>
+
+        <span class="n">copy_stmt</span> <span class="o">=</span> <span class="s1">&#39;COPY </span><span class="si">{tab}{cols}</span><span class="s1"> FROM STDIN </span><span class="si">{opts}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">tab</span><span class="o">=</span><span class="n">tabname</span><span class="p">,</span> <span class="n">cols</span><span class="o">=</span><span class="n">cols</span><span class="p">,</span> <span class="n">opts</span><span class="o">=</span><span class="n">opts</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy_in</span><span class="p">(</span><span class="n">copy_stmt</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Connection.copy_records_to_table"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.copy_records_to_table">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">copy_records_to_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span>
+                                    <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">schema_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                    <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Copy a list of records to the specified table using binary COPY.</span>
+
+<span class="sd">        :param str table_name:</span>
+<span class="sd">            The name of the table to copy data to.</span>
+
+<span class="sd">        :param records:</span>
+<span class="sd">            An iterable returning row tuples to copy into the table.</span>
+
+<span class="sd">        :param list columns:</span>
+<span class="sd">            An optional list of column names to copy.</span>
+
+<span class="sd">        :param str schema_name:</span>
+<span class="sd">            An optional schema name to qualify the table.</span>
+
+<span class="sd">        :param float timeout:</span>
+<span class="sd">            Optional timeout value in seconds.</span>
+
+<span class="sd">        :return: The status string of the COPY command.</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">        .. code-block:: pycon</span>
+
+<span class="sd">            &gt;&gt;&gt; import asyncpg</span>
+<span class="sd">            &gt;&gt;&gt; import asyncio</span>
+<span class="sd">            &gt;&gt;&gt; async def run():</span>
+<span class="sd">            ...     con = await asyncpg.connect(user=&#39;postgres&#39;)</span>
+<span class="sd">            ...     result = await con.copy_records_to_table(</span>
+<span class="sd">            ...         &#39;mytable&#39;, records=[</span>
+<span class="sd">            ...             (1, &#39;foo&#39;, &#39;bar&#39;),</span>
+<span class="sd">            ...             (2, &#39;ham&#39;, &#39;spam&#39;)])</span>
+<span class="sd">            ....    print(result)</span>
+<span class="sd">            &gt;&gt;&gt; asyncio.get_event_loop().run_until_complete(run())</span>
+<span class="sd">            &#39;COPY 2&#39;</span>
+
+<span class="sd">        .. versionadded:: 0.11.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tabname</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">_quote_ident</span><span class="p">(</span><span class="n">table_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">schema_name</span><span class="p">:</span>
+            <span class="n">tabname</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">_quote_ident</span><span class="p">(</span><span class="n">schema_name</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="n">tabname</span>
+
+        <span class="k">if</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="n">col_list</span> <span class="o">=</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">utils</span><span class="o">.</span><span class="n">_quote_ident</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">)</span>
+            <span class="n">cols</span> <span class="o">=</span> <span class="s1">&#39;(</span><span class="si">{}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">col_list</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">col_list</span> <span class="o">=</span> <span class="s1">&#39;*&#39;</span>
+            <span class="n">cols</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+        <span class="n">intro_query</span> <span class="o">=</span> <span class="s1">&#39;SELECT </span><span class="si">{cols}</span><span class="s1"> FROM </span><span class="si">{tab}</span><span class="s1"> LIMIT 1&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">tab</span><span class="o">=</span><span class="n">tabname</span><span class="p">,</span> <span class="n">cols</span><span class="o">=</span><span class="n">col_list</span><span class="p">)</span>
+
+        <span class="n">intro_ps</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="n">intro_query</span><span class="p">)</span>
+
+        <span class="n">opts</span> <span class="o">=</span> <span class="s1">&#39;(FORMAT binary)&#39;</span>
+
+        <span class="n">copy_stmt</span> <span class="o">=</span> <span class="s1">&#39;COPY </span><span class="si">{tab}{cols}</span><span class="s1"> FROM STDIN </span><span class="si">{opts}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">tab</span><span class="o">=</span><span class="n">tabname</span><span class="p">,</span> <span class="n">cols</span><span class="o">=</span><span class="n">cols</span><span class="p">,</span> <span class="n">opts</span><span class="o">=</span><span class="n">opts</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy_in_records</span><span class="p">(</span>
+            <span class="n">copy_stmt</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">intro_ps</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_format_copy_opts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">oids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">freeze</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                          <span class="n">delimiter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                          <span class="n">escape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_not_null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                          <span class="n">force_null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">locals</span><span class="p">())</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;self&#39;</span><span class="p">)</span>
+        <span class="n">opts</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">force_quote</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">force_quote</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;force_quote&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">force_quote</span><span class="p">:</span>
+                <span class="n">opts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;FORCE_QUOTE *&#39;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;force_not_null&#39;</span><span class="p">,</span> <span class="s1">&#39;force_null&#39;</span><span class="p">,</span> <span class="s1">&#39;force_quote&#39;</span><span class="p">):</span>
+                    <span class="n">v</span> <span class="o">=</span> <span class="s1">&#39;(&#39;</span> <span class="o">+</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">utils</span><span class="o">.</span><span class="n">_quote_ident</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">v</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;)&#39;</span>
+                <span class="k">elif</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;oids&#39;</span><span class="p">,</span> <span class="s1">&#39;freeze&#39;</span><span class="p">,</span> <span class="s1">&#39;header&#39;</span><span class="p">):</span>
+                    <span class="n">v</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">v</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">_quote_literal</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+
+                <span class="n">opts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span> <span class="n">v</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">opts</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;(&#39;</span> <span class="o">+</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">opts</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;)&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;&#39;</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_copy_out</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">copy_stmt</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">compat</span><span class="o">.</span><span class="n">fspath</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="c1"># output is not a path-like object</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">writer</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">opened_by_us</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">run_in_executor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">run_in_executor</span>
+
+        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># a path</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="k">await</span> <span class="n">run_in_executor</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="nb">open</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span>
+            <span class="n">opened_by_us</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;write&#39;</span><span class="p">):</span>
+            <span class="c1"># file-like</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">output</span>
+        <span class="k">elif</span> <span class="n">callable</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
+            <span class="c1"># assuming calling output returns an awaitable.</span>
+            <span class="n">writer</span> <span class="o">=</span> <span class="n">output</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s1">&#39;output is expected to be a file-like object, &#39;</span>
+                <span class="s1">&#39;a path-like object or a coroutine function, &#39;</span>
+                <span class="s1">&#39;not </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">output</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">writer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">async</span> <span class="k">def</span> <span class="nf">_writer</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+                <span class="k">await</span> <span class="n">run_in_executor</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+            <span class="n">writer</span> <span class="o">=</span> <span class="n">_writer</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">copy_out</span><span class="p">(</span><span class="n">copy_stmt</span><span class="p">,</span> <span class="n">writer</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">opened_by_us</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_copy_in</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">copy_stmt</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">compat</span><span class="o">.</span><span class="n">fspath</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="c1"># source is not a path-like object</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">f</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">reader</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">opened_by_us</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">run_in_executor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">run_in_executor</span>
+
+        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># a path</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="k">await</span> <span class="n">run_in_executor</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="nb">open</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span>
+            <span class="n">opened_by_us</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="s1">&#39;read&#39;</span><span class="p">):</span>
+            <span class="c1"># file-like</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">source</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">AsyncIterable</span><span class="p">):</span>
+            <span class="c1"># assuming calling output returns an awaitable.</span>
+            <span class="n">reader</span> <span class="o">=</span> <span class="n">source</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># assuming source is an instance supporting the buffer protocol.</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">source</span>
+
+        <span class="k">if</span> <span class="n">f</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Copying from a file-like object.</span>
+            <span class="k">class</span> <span class="nc">_Reader</span><span class="p">:</span>
+                <span class="nd">@compat</span><span class="o">.</span><span class="n">aiter_compat</span>
+                <span class="k">def</span> <span class="nf">__aiter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="bp">self</span>
+
+                <span class="k">async</span> <span class="k">def</span> <span class="nf">__anext__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">run_in_executor</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">,</span> <span class="mi">524288</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="n">StopAsyncIteration</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">return</span> <span class="n">data</span>
+
+            <span class="n">reader</span> <span class="o">=</span> <span class="n">_Reader</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">copy_in</span><span class="p">(</span>
+                <span class="n">copy_stmt</span><span class="p">,</span> <span class="n">reader</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">opened_by_us</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">run_in_executor</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_copy_in_records</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">copy_stmt</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">intro_stmt</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">copy_in</span><span class="p">(</span>
+            <span class="n">copy_stmt</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">intro_stmt</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Connection.set_type_codec"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.set_type_codec">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">set_type_codec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                              <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;public&#39;</span><span class="p">,</span> <span class="n">encoder</span><span class="p">,</span> <span class="n">decoder</span><span class="p">,</span> <span class="n">binary</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
@@ -677,38 +1044,18 @@
         <span class="k">async</span> <span class="k">def</span> <span class="nf">cancel</span><span class="p">():</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="c1"># Open new connection to the server</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_addr</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-                    <span class="n">r</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">open_unix_connection</span><span class="p">(</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">_addr</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ssl_context</span><span class="p">:</span>
-                        <span class="n">sock</span> <span class="o">=</span> <span class="k">await</span> <span class="n">_get_ssl_ready_socket</span><span class="p">(</span>
-                            <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_addr</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span>
-
-                        <span class="k">try</span><span class="p">:</span>
-                            <span class="n">r</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">open_connection</span><span class="p">(</span>
-                                <span class="n">sock</span><span class="o">=</span><span class="n">sock</span><span class="p">,</span>
-                                <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">,</span>
-                                <span class="n">ssl</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ssl_context</span><span class="p">,</span>
-                                <span class="n">server_hostname</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_addr</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-                        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-                            <span class="n">sock</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                            <span class="k">raise</span>
-
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="n">r</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">open_connection</span><span class="p">(</span>
-                            <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_addr</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span>
-                        <span class="n">_set_nodelay</span><span class="p">(</span><span class="n">_get_socket</span><span class="p">(</span><span class="n">w</span><span class="o">.</span><span class="n">transport</span><span class="p">))</span>
-
-                <span class="c1"># Pack CancelRequest message</span>
-                <span class="n">msg</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s1">&#39;!llll&#39;</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">80877102</span><span class="p">,</span>
-                                  <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">backend_pid</span><span class="p">,</span>
-                                  <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">backend_secret</span><span class="p">)</span>
+                <span class="n">r</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="k">await</span> <span class="n">connect_utils</span><span class="o">.</span><span class="n">_open_connection</span><span class="p">(</span>
+                    <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">,</span> <span class="n">addr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_addr</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_params</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
                 <span class="n">waiter</span><span class="o">.</span><span class="n">set_exception</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span>
                 <span class="k">return</span>
 
             <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Pack CancelRequest message</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s1">&#39;!llll&#39;</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">80877102</span><span class="p">,</span>
+                                  <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">backend_pid</span><span class="p">,</span>
+                                  <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">backend_secret</span><span class="p">)</span>
+
                 <span class="n">w</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
                 <span class="k">await</span> <span class="n">r</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>  <span class="c1"># Wait until EOF</span>
             <span class="k">except</span> <span class="ne">ConnectionResetError</span><span class="p">:</span>
@@ -882,8 +1229,8 @@
                   <span class="n">max_cacheable_statement_size</span><span class="o">=</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">15</span><span class="p">,</span>
                   <span class="n">command_timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                   <span class="n">ssl</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                  <span class="n">__connection_class__</span><span class="o">=</span><span class="n">Connection</span><span class="p">,</span>
-                  <span class="o">**</span><span class="n">opts</span><span class="p">):</span>
+                  <span class="n">connection_class</span><span class="o">=</span><span class="n">Connection</span><span class="p">,</span>
+                  <span class="n">server_settings</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sa">r</span><span class="sd">&quot;&quot;&quot;A coroutine to establish a connection to a PostgreSQL server.</span>
 
 <span class="sd">    Returns a new :class:`~asyncpg.connection.Connection` object.</span>
@@ -946,6 +1293,13 @@
 <span class="sd">        returned by `ssl.create_default_context() &lt;create_default_context_&gt;`_</span>
 <span class="sd">        will be used.</span>
 
+<span class="sd">    :param dict server_settings:</span>
+<span class="sd">        an optional dict of server parameters.</span>
+
+<span class="sd">    :param Connection connection_class:</span>
+<span class="sd">        class of the returned connection object.  Must be a subclass of</span>
+<span class="sd">        :class:`~asyncpg.connection.Connection`.</span>
+
 <span class="sd">    :return: A :class:`~asyncpg.connection.Connection` instance.</span>
 
 <span class="sd">    Example:</span>
@@ -961,149 +1315,38 @@
 <span class="sd">        &gt;&gt;&gt; asyncio.get_event_loop().run_until_complete(run())</span>
 <span class="sd">        [&lt;Record typname=&#39;bool&#39; typnamespace=11 ...</span>
 
-<span class="sd">    .. versionchanged:: 0.10.0</span>
+<span class="sd">    .. versionadded:: 0.10.0</span>
 <span class="sd">       Added ``max_cached_statement_use_count`` parameter.</span>
+
+<span class="sd">    .. versionchanged:: 0.11.0</span>
+<span class="sd">       Removed ability to pass arbitrary keyword arguments to set</span>
+<span class="sd">       server settings.  Added a dedicated parameter ``server_settings``</span>
+<span class="sd">       for that.</span>
+
+<span class="sd">    .. versionadded:: 0.11.0</span>
+<span class="sd">       Added ``connection_class`` parameter.</span>
 
 <span class="sd">    .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext</span>
 <span class="sd">    .. _create_default_context: https://docs.python.org/3/library/ssl.html#\</span>
 <span class="sd">                                ssl.create_default_context</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">connection_class</span><span class="p">,</span> <span class="n">Connection</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+            <span class="s1">&#39;connection_class is expected to be a subclass of &#39;</span>
+            <span class="s1">&#39;asyncpg.Connection, got </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">connection_class</span><span class="p">))</span>
+
     <span class="k">if</span> <span class="n">loop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
 
-    <span class="n">local_vars</span> <span class="o">=</span> <span class="nb">locals</span><span class="p">()</span>
-    <span class="k">for</span> <span class="n">var_name</span> <span class="ow">in</span> <span class="p">{</span><span class="s1">&#39;max_cacheable_statement_size&#39;</span><span class="p">,</span>
-                     <span class="s1">&#39;max_cached_statement_lifetime&#39;</span><span class="p">,</span>
-                     <span class="s1">&#39;statement_cache_size&#39;</span><span class="p">}:</span>
-        <span class="n">var_val</span> <span class="o">=</span> <span class="n">local_vars</span><span class="p">[</span><span class="n">var_name</span><span class="p">]</span>
-        <span class="k">if</span> <span class="n">var_val</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">var_val</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span> <span class="ow">or</span> <span class="n">var_val</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> is expected to be greater &#39;</span>
-                <span class="s1">&#39;or equal to 0, got </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">var_name</span><span class="p">,</span> <span class="n">var_val</span><span class="p">))</span>
-
-    <span class="k">if</span> <span class="n">command_timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command_timeout</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span>
-            <span class="n">command_timeout</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">command_timeout</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">command_timeout</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span>
-        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s1">&#39;invalid command_timeout value: &#39;</span>
-                <span class="s1">&#39;expected greater than 0 float (got </span><span class="si">{!r}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                    <span class="n">command_timeout</span><span class="p">))</span> <span class="kn">from</span> <span class="nn">None</span>
-
-    <span class="n">addrs</span><span class="p">,</span> <span class="n">opts</span> <span class="o">=</span> <span class="n">_parse_connect_params</span><span class="p">(</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">connect_utils</span><span class="o">.</span><span class="n">_connect</span><span class="p">(</span>
+        <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span> <span class="n">connection_class</span><span class="o">=</span><span class="n">connection_class</span><span class="p">,</span>
         <span class="n">dsn</span><span class="o">=</span><span class="n">dsn</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="n">user</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="n">password</span><span class="p">,</span>
-        <span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">,</span> <span class="n">opts</span><span class="o">=</span><span class="n">opts</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">ssl</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">addrs</span><span class="p">:</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-                <span class="c1"># UNIX socket</span>
-                <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
-                    <span class="s1">&#39;`ssl` parameter can only be enabled for TCP addresses, &#39;</span>
-                    <span class="s1">&#39;got a UNIX socket path: </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">addr</span><span class="p">))</span>
-
-    <span class="n">last_error</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">addr</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">addrs</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">timeout</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span>
-
-        <span class="n">connected</span> <span class="o">=</span> <span class="n">_create_future</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span>
-        <span class="n">proto_factory</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">protocol</span><span class="o">.</span><span class="n">Protocol</span><span class="p">(</span>
-            <span class="n">addr</span><span class="p">,</span> <span class="n">connected</span><span class="p">,</span> <span class="n">opts</span><span class="p">,</span> <span class="n">loop</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-            <span class="c1"># UNIX socket</span>
-            <span class="k">assert</span> <span class="n">ssl</span> <span class="ow">is</span> <span class="kc">None</span>
-            <span class="n">connector</span> <span class="o">=</span> <span class="n">loop</span><span class="o">.</span><span class="n">create_unix_connection</span><span class="p">(</span><span class="n">proto_factory</span><span class="p">,</span> <span class="n">addr</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">ssl</span><span class="p">:</span>
-            <span class="n">connector</span> <span class="o">=</span> <span class="n">_create_ssl_connection</span><span class="p">(</span>
-                <span class="n">proto_factory</span><span class="p">,</span> <span class="o">*</span><span class="n">addr</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">,</span> <span class="n">ssl_context</span><span class="o">=</span><span class="n">ssl</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">connector</span> <span class="o">=</span> <span class="n">loop</span><span class="o">.</span><span class="n">create_connection</span><span class="p">(</span><span class="n">proto_factory</span><span class="p">,</span> <span class="o">*</span><span class="n">addr</span><span class="p">)</span>
-
-        <span class="n">before</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">tr</span><span class="p">,</span> <span class="n">pr</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span>
-                <span class="n">connector</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">)</span>
-        <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span><span class="p">,</span> <span class="ne">ConnectionError</span><span class="p">)</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
-            <span class="n">last_error</span> <span class="o">=</span> <span class="n">ex</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">break</span>
-        <span class="k">finally</span><span class="p">:</span>
-            <span class="n">timeout</span> <span class="o">-=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">-</span> <span class="n">before</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">last_error</span>
-
-    <span class="k">try</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">timeout</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span>
-        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">connected</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-        <span class="n">tr</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-        <span class="k">raise</span>
-
-    <span class="n">con</span> <span class="o">=</span> <span class="n">__connection_class__</span><span class="p">(</span>
-        <span class="n">pr</span><span class="p">,</span> <span class="n">tr</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">opts</span><span class="p">,</span>
+        <span class="n">ssl</span><span class="o">=</span><span class="n">ssl</span><span class="p">,</span> <span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">,</span>
+        <span class="n">server_settings</span><span class="o">=</span><span class="n">server_settings</span><span class="p">,</span>
+        <span class="n">command_timeout</span><span class="o">=</span><span class="n">command_timeout</span><span class="p">,</span>
         <span class="n">statement_cache_size</span><span class="o">=</span><span class="n">statement_cache_size</span><span class="p">,</span>
         <span class="n">max_cached_statement_lifetime</span><span class="o">=</span><span class="n">max_cached_statement_lifetime</span><span class="p">,</span>
-        <span class="n">max_cacheable_statement_size</span><span class="o">=</span><span class="n">max_cacheable_statement_size</span><span class="p">,</span>
-        <span class="n">command_timeout</span><span class="o">=</span><span class="n">command_timeout</span><span class="p">,</span> <span class="n">ssl_context</span><span class="o">=</span><span class="n">ssl</span><span class="p">)</span>
-
-    <span class="n">pr</span><span class="o">.</span><span class="n">set_connection</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">con</span></div>
-
-
-<span class="k">async</span> <span class="k">def</span> <span class="nf">_get_ssl_ready_socket</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">loop</span><span class="p">):</span>
-    <span class="n">reader</span><span class="p">,</span> <span class="n">writer</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">open_connection</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">)</span>
-
-    <span class="n">tr</span> <span class="o">=</span> <span class="n">writer</span><span class="o">.</span><span class="n">transport</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">sock</span> <span class="o">=</span> <span class="n">_get_socket</span><span class="p">(</span><span class="n">tr</span><span class="p">)</span>
-        <span class="n">_set_nodelay</span><span class="p">(</span><span class="n">sock</span><span class="p">)</span>
-
-        <span class="n">writer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s1">&#39;!ll&#39;</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">80877103</span><span class="p">))</span>  <span class="c1"># SSLRequest message.</span>
-        <span class="k">await</span> <span class="n">writer</span><span class="o">.</span><span class="n">drain</span><span class="p">()</span>
-        <span class="n">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">reader</span><span class="o">.</span><span class="n">readexactly</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">resp</span> <span class="o">==</span> <span class="sa">b</span><span class="s1">&#39;S&#39;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">sock</span><span class="o">.</span><span class="n">dup</span><span class="p">()</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span>
-                <span class="s1">&#39;PostgreSQL server at &quot;</span><span class="si">{}</span><span class="s1">:</span><span class="si">{}</span><span class="s1">&quot; rejected SSL upgrade&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                    <span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">))</span>
-    <span class="k">finally</span><span class="p">:</span>
-        <span class="n">tr</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-
-
-<span class="k">async</span> <span class="k">def</span> <span class="nf">_create_ssl_connection</span><span class="p">(</span><span class="n">protocol_factory</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
-                                 <span class="n">loop</span><span class="p">,</span> <span class="n">ssl_context</span><span class="p">):</span>
-    <span class="n">sock</span> <span class="o">=</span> <span class="k">await</span> <span class="n">_get_ssl_ready_socket</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">)</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="n">loop</span><span class="o">.</span><span class="n">create_connection</span><span class="p">(</span>
-            <span class="n">protocol_factory</span><span class="p">,</span> <span class="n">sock</span><span class="o">=</span><span class="n">sock</span><span class="p">,</span> <span class="n">ssl</span><span class="o">=</span><span class="n">ssl_context</span><span class="p">,</span>
-            <span class="n">server_hostname</span><span class="o">=</span><span class="n">host</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-        <span class="n">sock</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-        <span class="k">raise</span>
-
-
-<span class="k">def</span> <span class="nf">_get_socket</span><span class="p">(</span><span class="n">transport</span><span class="p">):</span>
-    <span class="n">sock</span> <span class="o">=</span> <span class="n">transport</span><span class="o">.</span><span class="n">get_extra_info</span><span class="p">(</span><span class="s1">&#39;socket&#39;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">sock</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1"># Shouldn&#39;t happen with any asyncio-complaint event loop.</span>
-        <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span>
-            <span class="s1">&#39;could not get the socket for transport </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">transport</span><span class="p">))</span>
-    <span class="k">return</span> <span class="n">sock</span>
-
-
-<span class="k">def</span> <span class="nf">_set_nodelay</span><span class="p">(</span><span class="n">sock</span><span class="p">):</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">socket</span><span class="p">,</span> <span class="s1">&#39;AF_UNIX&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">sock</span><span class="o">.</span><span class="n">family</span> <span class="o">!=</span> <span class="n">socket</span><span class="o">.</span><span class="n">AF_UNIX</span><span class="p">:</span>
-        <span class="n">sock</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">IPPROTO_TCP</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">TCP_NODELAY</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">max_cacheable_statement_size</span><span class="o">=</span><span class="n">max_cacheable_statement_size</span><span class="p">)</span></div>
 
 
 <span class="k">class</span> <span class="nc">_StatementCacheEntry</span><span class="p">:</span>
@@ -1273,147 +1516,6 @@
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
 
 
-<span class="k">def</span> <span class="nf">_parse_connect_params</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">dsn</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">user</span><span class="p">,</span>
-                          <span class="n">password</span><span class="p">,</span> <span class="n">database</span><span class="p">,</span> <span class="n">opts</span><span class="p">):</span>
-
-    <span class="k">if</span> <span class="n">dsn</span><span class="p">:</span>
-        <span class="n">parsed</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">parse</span><span class="o">.</span><span class="n">urlparse</span><span class="p">(</span><span class="n">dsn</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">parsed</span><span class="o">.</span><span class="n">scheme</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s1">&#39;postgresql&#39;</span><span class="p">,</span> <span class="s1">&#39;postgres&#39;</span><span class="p">}:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s1">&#39;invalid DSN: scheme is expected to be either of &#39;</span>
-                <span class="s1">&#39;&quot;postgresql&quot; or &quot;postgres&quot;, got </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">parsed</span><span class="o">.</span><span class="n">scheme</span><span class="p">))</span>
-
-        <span class="k">if</span> <span class="n">parsed</span><span class="o">.</span><span class="n">port</span> <span class="ow">and</span> <span class="n">port</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">parsed</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">parsed</span><span class="o">.</span><span class="n">hostname</span> <span class="ow">and</span> <span class="n">host</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">host</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">hostname</span>
-
-        <span class="k">if</span> <span class="n">parsed</span><span class="o">.</span><span class="n">path</span> <span class="ow">and</span> <span class="n">database</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">database</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">path</span>
-            <span class="k">if</span> <span class="n">database</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">):</span>
-                <span class="n">database</span> <span class="o">=</span> <span class="n">database</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
-
-        <span class="k">if</span> <span class="n">parsed</span><span class="o">.</span><span class="n">username</span> <span class="ow">and</span> <span class="n">user</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">user</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">username</span>
-
-        <span class="k">if</span> <span class="n">parsed</span><span class="o">.</span><span class="n">password</span> <span class="ow">and</span> <span class="n">password</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">password</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">password</span>
-
-        <span class="k">if</span> <span class="n">parsed</span><span class="o">.</span><span class="n">query</span><span class="p">:</span>
-            <span class="n">query</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">parse</span><span class="o">.</span><span class="n">parse_qs</span><span class="p">(</span><span class="n">parsed</span><span class="o">.</span><span class="n">query</span><span class="p">,</span> <span class="n">strict_parsing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">query</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-                    <span class="n">query</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-
-            <span class="k">if</span> <span class="s1">&#39;host&#39;</span> <span class="ow">in</span> <span class="n">query</span><span class="p">:</span>
-                <span class="n">val</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;host&#39;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">host</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">host</span> <span class="o">=</span> <span class="n">val</span>
-
-            <span class="k">if</span> <span class="s1">&#39;port&#39;</span> <span class="ow">in</span> <span class="n">query</span><span class="p">:</span>
-                <span class="n">val</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">query</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;port&#39;</span><span class="p">))</span>
-                <span class="k">if</span> <span class="n">port</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">port</span> <span class="o">=</span> <span class="n">val</span>
-
-            <span class="k">if</span> <span class="s1">&#39;dbname&#39;</span> <span class="ow">in</span> <span class="n">query</span><span class="p">:</span>
-                <span class="n">val</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;dbname&#39;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">database</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">database</span> <span class="o">=</span> <span class="n">val</span>
-
-            <span class="k">if</span> <span class="s1">&#39;database&#39;</span> <span class="ow">in</span> <span class="n">query</span><span class="p">:</span>
-                <span class="n">val</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;database&#39;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">database</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">database</span> <span class="o">=</span> <span class="n">val</span>
-
-            <span class="k">if</span> <span class="s1">&#39;user&#39;</span> <span class="ow">in</span> <span class="n">query</span><span class="p">:</span>
-                <span class="n">val</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;user&#39;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">user</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">user</span> <span class="o">=</span> <span class="n">val</span>
-
-            <span class="k">if</span> <span class="s1">&#39;password&#39;</span> <span class="ow">in</span> <span class="n">query</span><span class="p">:</span>
-                <span class="n">val</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;password&#39;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">password</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">password</span> <span class="o">=</span> <span class="n">val</span>
-
-            <span class="k">if</span> <span class="n">query</span><span class="p">:</span>
-                <span class="n">opts</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">query</span><span class="p">,</span> <span class="o">**</span><span class="n">opts</span><span class="p">}</span>
-
-    <span class="c1"># On env-var -&gt; connection parameter conversion read here:</span>
-    <span class="c1"># https://www.postgresql.org/docs/current/static/libpq-envars.html</span>
-    <span class="c1"># Note that env values may be an empty string in cases when</span>
-    <span class="c1"># the variable is &quot;unset&quot; by setting it to an empty value</span>
-    <span class="c1">#</span>
-    <span class="k">if</span> <span class="n">host</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">host</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;PGHOST&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">host</span><span class="p">:</span>
-            <span class="n">host</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;/tmp&#39;</span><span class="p">,</span> <span class="s1">&#39;/private/tmp&#39;</span><span class="p">,</span>
-                    <span class="s1">&#39;/var/pgsql_socket&#39;</span><span class="p">,</span> <span class="s1">&#39;/run/postgresql&#39;</span><span class="p">,</span>
-                    <span class="s1">&#39;localhost&#39;</span><span class="p">]</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-        <span class="n">host</span> <span class="o">=</span> <span class="p">[</span><span class="n">host</span><span class="p">]</span>
-
-    <span class="k">if</span> <span class="n">port</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">port</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;PGPORT&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">port</span><span class="p">:</span>
-            <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">port</span> <span class="o">=</span> <span class="mi">5432</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">user</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">user</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;PGUSER&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span><span class="p">:</span>
-            <span class="n">user</span> <span class="o">=</span> <span class="n">getpass</span><span class="o">.</span><span class="n">getuser</span><span class="p">()</span>
-
-    <span class="k">if</span> <span class="n">password</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">password</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;PGPASSWORD&#39;</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">database</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">database</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;PGDATABASE&#39;</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">user</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">opts</span><span class="p">[</span><span class="s1">&#39;user&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">user</span>
-    <span class="k">if</span> <span class="n">password</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">opts</span><span class="p">[</span><span class="s1">&#39;password&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">password</span>
-    <span class="k">if</span> <span class="n">database</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">opts</span><span class="p">[</span><span class="s1">&#39;database&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">database</span>
-
-    <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">opts</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s1">&#39;invalid connection parameter </span><span class="si">{!r}</span><span class="s1"> (str expected)&#39;</span>
-                <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">param</span><span class="p">))</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">opts</span><span class="p">[</span><span class="n">param</span><span class="p">],</span> <span class="nb">str</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s1">&#39;invalid connection parameter </span><span class="si">{!r}</span><span class="s1">: </span><span class="si">{!r}</span><span class="s1"> (str expected)&#39;</span>
-                <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">opts</span><span class="p">[</span><span class="n">param</span><span class="p">]))</span>
-
-    <span class="n">addrs</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">host</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">h</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">):</span>
-            <span class="c1"># UNIX socket name</span>
-            <span class="k">if</span> <span class="s1">&#39;.s.PGSQL.&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">h</span><span class="p">:</span>
-                <span class="n">h</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="s1">&#39;.s.PGSQL.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">port</span><span class="p">))</span>
-            <span class="n">addrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># TCP host/port</span>
-            <span class="n">addrs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">h</span><span class="p">,</span> <span class="n">port</span><span class="p">))</span>
-
-    <span class="k">return</span> <span class="n">addrs</span><span class="p">,</span> <span class="n">opts</span>
-
-
-<span class="k">def</span> <span class="nf">_create_future</span><span class="p">(</span><span class="n">loop</span><span class="p">):</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">create_future</span> <span class="o">=</span> <span class="n">loop</span><span class="o">.</span><span class="n">create_future</span>
-    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Future</span><span class="p">(</span><span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">create_future</span><span class="p">()</span>
-
-
 <span class="n">ServerCapabilities</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span>
     <span class="s1">&#39;ServerCapabilities&#39;</span><span class="p">,</span>
     <span class="p">[</span><span class="s1">&#39;advisory_locks&#39;</span><span class="p">,</span> <span class="s1">&#39;notifications&#39;</span><span class="p">,</span> <span class="s1">&#39;plpgsql&#39;</span><span class="p">,</span> <span class="s1">&#39;sql_reset&#39;</span><span class="p">,</span>
@@ -1451,24 +1553,6 @@
         <span class="n">sql_reset</span><span class="o">=</span><span class="n">sql_reset</span><span class="p">,</span>
         <span class="n">sql_close_all</span><span class="o">=</span><span class="n">sql_close_all</span>
     <span class="p">)</span>
-
-
-<span class="k">def</span> <span class="nf">_patch_executemany_signature</span><span class="p">():</span>
-    <span class="c1"># Patch Connection.executemany() signature to remove &#39;**kw&#39; parameter</span>
-    <span class="c1"># and change &#39;_timeout&#39; keyword arg to &#39;timeout&#39; keyword-only arg.</span>
-    <span class="c1"># TODO Remove in 0.11.0.</span>
-    <span class="kn">import</span> <span class="nn">inspect</span>
-    <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">Connection</span><span class="o">.</span><span class="n">executemany</span><span class="p">)</span>
-    <span class="n">params</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-    <span class="n">params</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;kw&#39;</span><span class="p">)</span>
-    <span class="n">timeout</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_timeout&#39;</span><span class="p">)</span>
-    <span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;timeout&#39;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="n">timeout</span><span class="o">.</span><span class="n">KEYWORD_ONLY</span><span class="p">)</span>
-    <span class="n">params</span><span class="p">[</span><span class="s1">&#39;timeout&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">timeout</span>
-    <span class="n">Connection</span><span class="o">.</span><span class="n">executemany</span><span class="o">.</span><span class="n">__signature__</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
-        <span class="n">parameters</span><span class="o">=</span><span class="n">params</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
-
-
-<span class="n">_patch_executemany_signature</span><span class="p">()</span>
 </pre></div>
 
            </div>
@@ -1483,7 +1567,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2016-present, the ayncpg authors and contributors.
+        &copy; Copyright 2016-present, the asyncpg authors and contributors.
 
     </p>
   </div> 
@@ -1504,7 +1588,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.10.1',
+            VERSION:'0.11.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

@@ -1,0 +1,261 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Frequently Asked Questions &mdash; asyncpg Documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="asyncpg Documentation" href="index.html"/>
+        <link rel="prev" title="API Reference" href="api/index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> asyncpg
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.11.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">asyncpg Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Frequently Asked Questions</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">asyncpg</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Frequently Asked Questions</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="frequently-asked-questions">
+<span id="asyncpg-faq"></span><h1>Frequently Asked Questions<a class="headerlink" href="#frequently-asked-questions" title="Permalink to this headline">¶</a></h1>
+<dl class="docutils">
+<dt>Does asyncpg support DB-API?</dt>
+<dd>No.  DB-API is a synchronous API, while asyncpg is based
+around an asynchronous I/O model.  Thus, full drop-in compatibility
+with DB-API is not possible and we decided to design asyncpg API
+in a way that is better aligned with PostgreSQL architecture and
+terminology.  We will release a synchronous DB-API-compatible version
+of asyncpg at some point in the future.</dd>
+<dt>Can I use asyncpg with SQLAlchemy ORM?</dt>
+<dd>Short answer: no.  asyncpg uses asynchronous execution model
+and API, which is fundamentally incompatible with asyncpg.
+However, it is possible to use asyncpg and SQLAlchemy Core
+with the help of a third-party adapter, such as <a class="reference external" href="https://github.com/CanopyTax/asyncpgsa">asyncpgsa</a>.</dd>
+<dt>Can I use dot-notation with <a class="reference internal" href="api/index.html#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">asyncpg.Record</span></code></a>?  It looks cleaner.</dt>
+<dd>We decided against making <a class="reference internal" href="api/index.html#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">asyncpg.Record</span></code></a> a named tuple
+because we want to keep the <code class="docutils literal"><span class="pre">Record</span></code> method namespace separate
+from the column namespace.</dd>
+<dt>Why can&#8217;t I use a <a class="reference internal" href="api/index.html#asyncpg-api-cursor"><span class="std std-ref">cursor</span></a> outside of a transaction?</dt>
+<dd>Cursors created by a call to
+<a class="reference internal" href="api/index.html#asyncpg.connection.Connection.cursor" title="asyncpg.connection.Connection.cursor"><code class="xref py py-meth docutils literal"><span class="pre">Connection.cursor()</span></code></a> or
+<a class="reference internal" href="api/index.html#asyncpg.prepared_stmt.PreparedStatement.cursor" title="asyncpg.prepared_stmt.PreparedStatement.cursor"><code class="xref py py-meth docutils literal"><span class="pre">PreparedStatement.cursor()</span> </code></a>
+cannot be used outside of a transaction.  Any such attempt will result in
+<code class="docutils literal"><span class="pre">InterfaceError</span></code>.
+To create a cursor usable outside of a transaction, use the
+<code class="docutils literal"><span class="pre">DECLARE</span> <span class="pre">...</span> <span class="pre">CURSOR</span> <span class="pre">WITH</span> <span class="pre">HOLD</span></code> SQL statement directly.</dd>
+<dt>Why do I get <code class="docutils literal"><span class="pre">PostgresSyntaxError</span></code> when using <code class="docutils literal"><span class="pre">expression</span> <span class="pre">IN</span> <span class="pre">$1</span></code>?</dt>
+<dd><code class="docutils literal"><span class="pre">expression</span> <span class="pre">IN</span> <span class="pre">$1</span></code> is not a valid PostgreSQL syntax.  To check
+a value against a sequence use <code class="docutils literal"><span class="pre">expression</span> <span class="pre">=</span> <span class="pre">any($1::mytype[])</span></code>,
+where <code class="docutils literal"><span class="pre">mytype</span></code> is the array element type.</dd>
+</dl>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="api/index.html" class="btn btn-neutral" title="API Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016-present, the asyncpg authors and contributors.
+
+    </p>
+  </div> 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.11.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

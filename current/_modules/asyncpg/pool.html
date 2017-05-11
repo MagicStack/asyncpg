@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                0.10.1
+                0.11.0
               </div>
             
           
@@ -91,8 +91,9 @@
             
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Usage Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">asyncpg Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions</a></li>
 </ul>
 
             
@@ -159,7 +160,7 @@
            <div itemprop="articleBody">
             
   <h1>Source code for asyncpg.pool</h1><div class="highlight"><pre>
-<span></span><span class="c1"># Copyright (C) 2016-present the ayncpg authors and contributors</span>
+<span></span><span class="c1"># Copyright (C) 2016-present the asyncpg authors and contributors</span>
 <span class="c1"># &lt;see AUTHORS file&gt;</span>
 <span class="c1">#</span>
 <span class="c1"># This module is part of asyncpg and is released under</span>
@@ -171,6 +172,7 @@
 <span class="kn">import</span> <span class="nn">inspect</span>
 
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">connection</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">connect_utils</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">exceptions</span>
 
 
@@ -271,27 +273,26 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_addr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># First connection attempt on this pool.</span>
-            <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_connect</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_connect_args</span><span class="p">,</span>
-                                            <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_loop</span><span class="p">,</span>
-                                            <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_connect_kwargs</span><span class="p">)</span>
+            <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+                <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_connect_args</span><span class="p">,</span>
+                <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_loop</span><span class="p">,</span>
+                <span class="n">connection_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_connection_class</span><span class="p">,</span>
+                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_connect_kwargs</span><span class="p">)</span>
+
             <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_addr</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_addr</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_opts</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_opts</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_ssl_context</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_ssl_context</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_config</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_config</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_params</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_params</span>
 
         <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># We&#39;ve connected before and have a resolved address</span>
-            <span class="c1"># and parsed options in `pool._working_addr` and</span>
-            <span class="c1"># `pool._working_opts`.</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_addr</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-                <span class="n">host</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_addr</span>
-                <span class="n">port</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">host</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_addr</span>
-
-            <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_connect</span><span class="p">(</span>
-                <span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_loop</span><span class="p">,</span>
-                <span class="n">ssl</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_ssl_context</span><span class="p">,</span>
-                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_opts</span><span class="p">)</span>
+            <span class="c1"># We&#39;ve connected before and have a resolved address,</span>
+            <span class="c1"># and parsed options and config.</span>
+            <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="n">connect_utils</span><span class="o">.</span><span class="n">_connect_addr</span><span class="p">(</span>
+                <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_loop</span><span class="p">,</span>
+                <span class="n">addr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_addr</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_params</span><span class="o">.</span><span class="n">connect_timeout</span><span class="p">,</span>
+                <span class="n">config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_config</span><span class="p">,</span>
+                <span class="n">params</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_params</span><span class="p">,</span>
+                <span class="n">connection_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_connection_class</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
@@ -411,8 +412,9 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_queue&#39;</span><span class="p">,</span> <span class="s1">&#39;_loop&#39;</span><span class="p">,</span> <span class="s1">&#39;_minsize&#39;</span><span class="p">,</span> <span class="s1">&#39;_maxsize&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;_working_addr&#39;</span><span class="p">,</span> <span class="s1">&#39;_working_opts&#39;</span><span class="p">,</span> <span class="s1">&#39;_working_ssl_context&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;_holders&#39;</span><span class="p">,</span> <span class="s1">&#39;_initialized&#39;</span><span class="p">,</span> <span class="s1">&#39;_closed&#39;</span><span class="p">)</span>
+                 <span class="s1">&#39;_working_addr&#39;</span><span class="p">,</span> <span class="s1">&#39;_working_config&#39;</span><span class="p">,</span> <span class="s1">&#39;_working_params&#39;</span><span class="p">,</span>
+                 <span class="s1">&#39;_holders&#39;</span><span class="p">,</span> <span class="s1">&#39;_initialized&#39;</span><span class="p">,</span> <span class="s1">&#39;_closed&#39;</span><span class="p">,</span>
+                 <span class="s1">&#39;_connection_class&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">connect_args</span><span class="p">,</span>
                  <span class="n">min_size</span><span class="p">,</span>
@@ -422,6 +424,7 @@
                  <span class="n">setup</span><span class="p">,</span>
                  <span class="n">init</span><span class="p">,</span>
                  <span class="n">loop</span><span class="p">,</span>
+                 <span class="n">connection_class</span><span class="p">,</span>
                  <span class="o">**</span><span class="n">connect_kwargs</span><span class="p">):</span>
 
         <span class="k">if</span> <span class="n">loop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -454,8 +457,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_queue</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">LifoQueue</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_maxsize</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_working_addr</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_working_opts</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_working_ssl_context</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_working_config</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_working_params</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection_class</span> <span class="o">=</span> <span class="n">connection_class</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">False</span>
 
@@ -471,10 +476,6 @@
 
             <span class="bp">self</span><span class="o">.</span><span class="n">_holders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_queue</span><span class="o">.</span><span class="n">put_nowait</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">_connect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="c1"># Used by PoolConnectionHolder.</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_async__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span><span class="p">:</span>
@@ -716,6 +717,7 @@
                 <span class="n">setup</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">init</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">connection_class</span><span class="o">=</span><span class="n">connection</span><span class="o">.</span><span class="n">Connection</span><span class="p">,</span>
                 <span class="o">**</span><span class="n">connect_kwargs</span><span class="p">):</span>
     <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Create a connection pool.</span>
 
@@ -786,8 +788,14 @@
 <span class="sd">       An :exc:`~asyncpg.exceptions.InterfaceError` will be raised on any</span>
 <span class="sd">       attempted operation on a released connection.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">connection_class</span><span class="p">,</span> <span class="n">connection</span><span class="o">.</span><span class="n">Connection</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+            <span class="s1">&#39;connection_class is expected to be a subclass of &#39;</span>
+            <span class="s1">&#39;asyncpg.Connection, got </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">connection_class</span><span class="p">))</span>
+
     <span class="k">return</span> <span class="n">Pool</span><span class="p">(</span>
         <span class="n">dsn</span><span class="p">,</span>
+        <span class="n">connection_class</span><span class="o">=</span><span class="n">connection_class</span><span class="p">,</span>
         <span class="n">min_size</span><span class="o">=</span><span class="n">min_size</span><span class="p">,</span> <span class="n">max_size</span><span class="o">=</span><span class="n">max_size</span><span class="p">,</span>
         <span class="n">max_queries</span><span class="o">=</span><span class="n">max_queries</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">,</span> <span class="n">setup</span><span class="o">=</span><span class="n">setup</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="n">init</span><span class="p">,</span>
         <span class="n">max_inactive_connection_lifetime</span><span class="o">=</span><span class="n">max_inactive_connection_lifetime</span><span class="p">,</span>
@@ -806,7 +814,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2016-present, the ayncpg authors and contributors.
+        &copy; Copyright 2016-present, the asyncpg authors and contributors.
 
     </p>
   </div> 
@@ -827,7 +835,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.10.1',
+            VERSION:'0.11.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

@@ -233,8 +233,8 @@ It's also possible to create cursors from prepared statements:
 
 .. _asyncpg-api-pool:
 
-Connection Pool
-===============
+Connection Pools
+================
 
 .. autofunction:: asyncpg.pool.create_pool
 
@@ -326,11 +326,8 @@ items either by a numeric index or by a field name:
            'UTF8'
 
 
-Introspection
-=============
+Data Types
+==========
 
-.. autoclass:: asyncpg.types.Type()
-   :members:
-
-.. autoclass:: asyncpg.types.Attribute()
+.. automodule:: asyncpg.types
    :members:

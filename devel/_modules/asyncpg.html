@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                0.10.1
+                0.11.0
               </div>
             
           
@@ -91,8 +91,9 @@
             
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../examples.html">Usage Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">asyncpg Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions</a></li>
 </ul>
 
             
@@ -157,21 +158,22 @@
            <div itemprop="articleBody">
             
   <h1>Source code for asyncpg</h1><div class="highlight"><pre>
-<span></span><span class="c1"># Copyright (C) 2016-present the ayncpg authors and contributors</span>
+<span></span><span class="c1"># Copyright (C) 2016-present the asyncpg authors and contributors</span>
 <span class="c1"># &lt;see AUTHORS file&gt;</span>
 <span class="c1">#</span>
 <span class="c1"># This module is part of asyncpg and is released under</span>
 <span class="c1"># the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0</span>
 
 
-<span class="kn">from</span> <span class="nn">.connection</span> <span class="k">import</span> <span class="n">connect</span>  <span class="c1"># NOQA</span>
+<span class="kn">from</span> <span class="nn">.connection</span> <span class="k">import</span> <span class="n">connect</span><span class="p">,</span> <span class="n">Connection</span>  <span class="c1"># NOQA</span>
 <span class="kn">from</span> <span class="nn">.exceptions</span> <span class="k">import</span> <span class="o">*</span>  <span class="c1"># NOQA</span>
 <span class="kn">from</span> <span class="nn">.pool</span> <span class="k">import</span> <span class="n">create_pool</span>  <span class="c1"># NOQA</span>
 <span class="kn">from</span> <span class="nn">.protocol</span> <span class="k">import</span> <span class="n">Record</span>  <span class="c1"># NOQA</span>
 <span class="kn">from</span> <span class="nn">.types</span> <span class="k">import</span> <span class="o">*</span>  <span class="c1"># NOQA</span>
 
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;connect&#39;</span><span class="p">,</span> <span class="s1">&#39;create_pool&#39;</span><span class="p">,</span> <span class="s1">&#39;Record&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">__all__</span>  <span class="c1"># NOQA</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;connect&#39;</span><span class="p">,</span> <span class="s1">&#39;create_pool&#39;</span><span class="p">,</span> <span class="s1">&#39;Record&#39;</span><span class="p">,</span> <span class="s1">&#39;Connection&#39;</span><span class="p">)</span> <span class="o">+</span> \
+          <span class="n">exceptions</span><span class="o">.</span><span class="n">__all__</span>  <span class="c1"># NOQA</span>
 </pre></div>
 
            </div>
@@ -186,7 +188,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2016-present, the ayncpg authors and contributors.
+        &copy; Copyright 2016-present, the asyncpg authors and contributors.
 
     </p>
   </div> 
@@ -207,7 +209,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.10.1',
+            VERSION:'0.11.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

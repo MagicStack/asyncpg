@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                0.10.1
+                0.11.0
               </div>
             
           
@@ -91,8 +91,9 @@
             
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html">Usage Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">asyncpg Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
 </ul>
 
             
@@ -159,12 +160,15 @@
 
 <div class="genindex-jumpbox">
  <a href="#A"><strong>A</strong></a>
+ | <a href="#B"><strong>B</strong></a>
  | <a href="#C"><strong>C</strong></a>
  | <a href="#E"><strong>E</strong></a>
  | <a href="#F"><strong>F</strong></a>
  | <a href="#G"><strong>G</strong></a>
  | <a href="#I"><strong>I</strong></a>
  | <a href="#K"><strong>K</strong></a>
+ | <a href="#L"><strong>L</strong></a>
+ | <a href="#M"><strong>M</strong></a>
  | <a href="#N"><strong>N</strong></a>
  | <a href="#O"><strong>O</strong></a>
  | <a href="#P"><strong>P</strong></a>
@@ -185,7 +189,21 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/index.html#module-asyncpg">asyncpg (module)</a>
 </li>
+      <li><a href="api/index.html#module-asyncpg.types">asyncpg.types (module)</a>
+</li>
       <li><a href="api/index.html#asyncpg.types.Attribute">Attribute (class in asyncpg.types)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="B">B</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/index.html#asyncpg.types.BitString">BitString (class in asyncpg.types)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/index.html#asyncpg.types.Box">Box (class in asyncpg.types)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -193,6 +211,8 @@
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/index.html#asyncpg.types.Circle">Circle (class in asyncpg.types)</a>
+</li>
       <li><a href="api/index.html#asyncpg.connection.Connection.close">close() (Connection method)</a>
 
       <ul>
@@ -205,9 +225,17 @@
 </li>
       <li><a href="api/index.html#asyncpg.connection.Connection">Connection (class in asyncpg.connection)</a>
 </li>
+      <li><a href="api/index.html#asyncpg.ConnectionSettings">ConnectionSettings (class in asyncpg)</a>
+</li>
+      <li><a href="api/index.html#asyncpg.connection.Connection.copy_from_query">copy_from_query() (Connection method)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/index.html#asyncpg.ConnectionSettings">ConnectionSettings (class in asyncpg)</a>
+      <li><a href="api/index.html#asyncpg.connection.Connection.copy_from_table">copy_from_table() (Connection method)</a>
+</li>
+      <li><a href="api/index.html#asyncpg.connection.Connection.copy_records_to_table">copy_records_to_table() (Connection method)</a>
+</li>
+      <li><a href="api/index.html#asyncpg.connection.Connection.copy_to_table">copy_to_table() (Connection method)</a>
 </li>
       <li><a href="api/index.html#asyncpg.pool.create_pool">create_pool() (in module asyncpg.pool)</a>
 </li>
@@ -330,6 +358,32 @@
   </ul></td>
 </tr></table>
 
+<h2 id="L">L</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/index.html#asyncpg.types.Line">Line (class in asyncpg.types)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/index.html#asyncpg.types.LineSegment">LineSegment (class in asyncpg.types)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="M">M</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/index.html#asyncpg.types.ServerVersion.major">major (ServerVersion attribute)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/index.html#asyncpg.types.ServerVersion.micro">micro (ServerVersion attribute)</a>
+</li>
+      <li><a href="api/index.html#asyncpg.types.ServerVersion.minor">minor (ServerVersion attribute)</a>
+</li>
+  </ul></td>
+</tr></table>
+
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -353,10 +407,16 @@
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/index.html#asyncpg.pool.Pool">Pool (class in asyncpg.pool)</a>
+      <li><a href="api/index.html#asyncpg.types.Path">Path (class in asyncpg.types)</a>
+</li>
+      <li><a href="api/index.html#asyncpg.types.Point">Point (class in asyncpg.types)</a>
+</li>
+      <li><a href="api/index.html#asyncpg.types.Polygon">Polygon (class in asyncpg.types)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/index.html#asyncpg.pool.Pool">Pool (class in asyncpg.pool)</a>
+</li>
       <li><a href="api/index.html#asyncpg.connection.Connection.prepare">prepare() (Connection method)</a>
 </li>
       <li><a href="api/index.html#asyncpg.prepared_stmt.PreparedStatement">PreparedStatement (class in asyncpg.prepared_stmt)</a>
@@ -367,12 +427,16 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/index.html#asyncpg.types.Range">Range (class in asyncpg.types)</a>
+</li>
       <li><a href="api/index.html#asyncpg.Record">Record (class in asyncpg)</a>
 </li>
       <li><a href="api/index.html#asyncpg.pool.Pool.release">release() (Pool method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/index.html#asyncpg.types.ServerVersion.releaselevel">releaselevel (ServerVersion attribute)</a>
+</li>
       <li><a href="api/index.html#asyncpg.connection.Connection.remove_listener">remove_listener() (Connection method)</a>
 </li>
       <li><a href="api/index.html#asyncpg.transaction.Transaction.rollback">rollback() (Transaction method)</a>
@@ -385,10 +449,14 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/index.html#asyncpg.types.Type.schema">schema (Type attribute)</a>
 </li>
-      <li><a href="api/index.html#asyncpg.connection.Connection.set_builtin_type_codec">set_builtin_type_codec() (Connection method)</a>
+      <li><a href="api/index.html#asyncpg.types.ServerVersion.serial">serial (ServerVersion attribute)</a>
+</li>
+      <li><a href="api/index.html#asyncpg.types.ServerVersion">ServerVersion (class in asyncpg.types)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/index.html#asyncpg.connection.Connection.set_builtin_type_codec">set_builtin_type_codec() (Connection method)</a>
+</li>
       <li><a href="api/index.html#asyncpg.connection.Connection.set_type_codec">set_type_codec() (Connection method)</a>
 </li>
       <li><a href="api/index.html#asyncpg.transaction.Transaction.start">start() (Transaction method)</a>
@@ -440,7 +508,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2016-present, the ayncpg authors and contributors.
+        &copy; Copyright 2016-present, the asyncpg authors and contributors.
 
     </p>
   </div> 
@@ -461,7 +529,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.10.1',
+            VERSION:'0.11.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

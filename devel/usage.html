@@ -1,0 +1,516 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>asyncpg Usage &mdash; asyncpg Documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="asyncpg Documentation" href="index.html"/>
+        <link rel="next" title="API Reference" href="api/index.html"/>
+        <link rel="prev" title="Installation" href="installation.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> asyncpg
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.11.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">asyncpg Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#type-conversion">Type Conversion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#custom-type-conversions">Custom Type Conversions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#transactions">Transactions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#connection-pools">Connection Pools</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">asyncpg</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>asyncpg Usage</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="asyncpg-usage">
+<span id="asyncpg-examples"></span><h1>asyncpg Usage<a class="headerlink" href="#asyncpg-usage" title="Permalink to this headline">¶</a></h1>
+<p>The interaction with the database normally starts with a call to
+<a class="reference internal" href="api/index.html#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal"><span class="pre">connect()</span></code></a>, which establishes
+a new database session and returns a new
+<a class="reference internal" href="api/index.html#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal"><span class="pre">Connection</span></code></a> instance,
+which provides methods to run queries and manage transactions.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">import</span> <span class="nn">asyncpg</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+
+<span class="n">async</span> <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="c1"># Establish a connection to an existing database named &quot;test&quot;</span>
+    <span class="c1"># as a &quot;postgres&quot; user.</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s1">&#39;postgresql://postgres@localhost/test&#39;</span><span class="p">)</span>
+    <span class="c1"># Execute a statement to create a new table.</span>
+    <span class="n">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">        CREATE TABLE users(</span>
+<span class="s1">            id serial PRIMARY KEY,</span>
+<span class="s1">            name text,</span>
+<span class="s1">            dob date</span>
+<span class="s1">        )</span>
+<span class="s1">    &#39;&#39;&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Insert a record into the created table.</span>
+    <span class="n">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">        INSERT INTO users(name, dob) VALUES($1, $2)</span>
+<span class="s1">    &#39;&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;Bob&#39;</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">1984</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+
+    <span class="c1"># Select a row from the table.</span>
+    <span class="n">row</span> <span class="o">=</span> <span class="n">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">(</span>
+        <span class="s1">&#39;SELECT * FROM users WHERE name = $1&#39;</span><span class="p">,</span> <span class="s1">&#39;Bob&#39;</span><span class="p">)</span>
+    <span class="c1"># *row* now contains</span>
+    <span class="c1"># asyncpg.Record(id=1, name=&#39;Bob&#39;, dob=datetime.date(1984, 3, 1))</span>
+
+    <span class="c1"># Close the connection.</span>
+    <span class="n">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">asyncpg uses the native PostgreSQL syntax for query arguments: <code class="docutils literal"><span class="pre">$n</span></code>.</p>
+</div>
+<div class="section" id="type-conversion">
+<h2>Type Conversion<a class="headerlink" href="#type-conversion" title="Permalink to this headline">¶</a></h2>
+<p>asyncpg automatically converts PostgreSQL types to the corresponding Python
+types and vice versa.  All standard data types are supported out of the box,
+including arrays, composite types, range types, enumerations and any
+combination of them.  It is possible to supply codecs for non-standard
+types or override standard codecs.  See <a class="reference internal" href="#asyncpg-custom-codecs"><span class="std std-ref">Custom Type Conversions</span></a> for
+more information.</p>
+<p>The table below shows the correspondence between PostgreSQL and Python types.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="29%" />
+<col width="71%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">PostgreSQL Type</th>
+<th class="head">Python Type</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">anyarray</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">list</span></code></a></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">anyenum</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">str</span></code></a></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">anyrange</span></code></td>
+<td><a class="reference internal" href="api/index.html#asyncpg.types.Range" title="asyncpg.types.Range"><code class="xref py py-class docutils literal"><span class="pre">asyncpg.Range</span></code></a></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">record</span></code></td>
+<td><a class="reference internal" href="api/index.html#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">asyncpg.Record</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">tuple</span></code></a></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">bit</span></code>, <code class="docutils literal"><span class="pre">varbit</span></code></td>
+<td><a class="reference internal" href="api/index.html#asyncpg.types.BitString" title="asyncpg.types.BitString"><code class="xref py py-class docutils literal"><span class="pre">asyncpg.BitString</span></code></a></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">bool</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">bool</span></code></a></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">box</span></code></td>
+<td><a class="reference internal" href="api/index.html#asyncpg.types.Box" title="asyncpg.types.Box"><code class="xref py py-class docutils literal"><span class="pre">asyncpg.Box</span></code></a></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">bytea</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/functions.html#bytes" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">bytes</span></code></a></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">char</span></code>, <code class="docutils literal"><span class="pre">name</span></code>,
+<code class="docutils literal"><span class="pre">varchar</span></code>,
+<code class="docutils literal"><span class="pre">text</span></code>,
+<code class="docutils literal"><span class="pre">xml</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">str</span></code></a></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">cidr</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Network" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">ipaddress.IPv4Network</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Network" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">ipaddress.IPv6Netowrk</span></code></a></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">inet</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Network" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">ipaddress.IPv4Network</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Network" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">ipaddress.IPv6Netowrk</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Address" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">ipaddress.IPv4Address</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Address" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">ipaddress.IPv6Address</span></code></a></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">macaddr</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">str</span></code></a></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">circle</span></code></td>
+<td><a class="reference internal" href="api/index.html#asyncpg.types.Circle" title="asyncpg.types.Circle"><code class="xref py py-class docutils literal"><span class="pre">asyncpg.Circle</span></code></a></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">date</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.date" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">datetime.date</span></code></a></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">time</span></code></td>
+<td>offset-naïve <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.time" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">datetime.time</span> </code></a></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">time</span> <span class="pre">with</span>
+<span class="pre">timezone</span></code></td>
+<td>offset-aware <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.time" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">datetime.time</span> </code></a></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">timestamp</span></code></td>
+<td>offset-naïve <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">datetime.datetime</span> </code></a></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">timestamp</span> <span class="pre">with</span>
+<span class="pre">timezone</span></code></td>
+<td>offset-aware <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">datetime.datetime</span> </code></a></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">interval</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.timedelta" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">datetime.timedelta</span> </code></a></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">float</span></code>,
+<code class="docutils literal"><span class="pre">double</span> <span class="pre">precision</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">float</span></code></a></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">smallint</span></code>,
+<code class="docutils literal"><span class="pre">integer</span></code>,
+<code class="docutils literal"><span class="pre">bigint</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">int</span></code></a></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">numeric</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/decimal.html#decimal.Decimal" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">Decimal</span></code></a></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">json</span></code>, <code class="docutils literal"><span class="pre">jsonb</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">str</span></code></a></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">line</span></code></td>
+<td><a class="reference internal" href="api/index.html#asyncpg.types.Line" title="asyncpg.types.Line"><code class="xref py py-class docutils literal"><span class="pre">asyncpg.Line</span></code></a></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">lseg</span></code></td>
+<td><a class="reference internal" href="api/index.html#asyncpg.types.LineSegment" title="asyncpg.types.LineSegment"><code class="xref py py-class docutils literal"><span class="pre">asyncpg.LineSegment</span> </code></a></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">money</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">str</span></code></a></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">path</span></code></td>
+<td><a class="reference internal" href="api/index.html#asyncpg.types.Path" title="asyncpg.types.Path"><code class="xref py py-class docutils literal"><span class="pre">asyncpg.Path</span></code></a></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">point</span></code></td>
+<td><a class="reference internal" href="api/index.html#asyncpg.types.Point" title="asyncpg.types.Point"><code class="xref py py-class docutils literal"><span class="pre">asyncpg.Point</span></code></a></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">polygon</span></code></td>
+<td><a class="reference internal" href="api/index.html#asyncpg.types.Polygon" title="asyncpg.types.Polygon"><code class="xref py py-class docutils literal"><span class="pre">asyncpg.Polygon</span></code></a></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">uuid</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/uuid.html#uuid.UUID" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">uuid.UUID</span></code></a></td>
+</tr>
+</tbody>
+</table>
+<p>All other types are encoded and decoded as text by default.</p>
+</div>
+<div class="section" id="custom-type-conversions">
+<span id="asyncpg-custom-codecs"></span><h2>Custom Type Conversions<a class="headerlink" href="#custom-type-conversions" title="Permalink to this headline">¶</a></h2>
+<p>asyncpg allows defining custom type conversion functions both for standard
+and user-defined types using the <a class="reference internal" href="api/index.html#asyncpg.connection.Connection.set_type_codec" title="asyncpg.connection.Connection.set_type_codec"><code class="xref py py-meth docutils literal"><span class="pre">Connection.set_type_codec()</span> </code></a> and
+<a class="reference internal" href="api/index.html#asyncpg.connection.Connection.set_builtin_type_codec" title="asyncpg.connection.Connection.set_builtin_type_codec"><code class="xref py py-meth docutils literal"><span class="pre">Connection.set_builtin_type_codec()</span> </code></a> methods.
+The example below shows how to configure asyncpg to encode and decode
+JSON values using the <a class="reference external" href="https://docs.python.org/3/library/json.html#module-json" title="(in Python v3.6)"><code class="xref py py-mod docutils literal"><span class="pre">json</span></code></a> module.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">import</span> <span class="nn">asyncpg</span>
+<span class="kn">import</span> <span class="nn">json</span>
+
+
+<span class="n">async</span> <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s1">&#39;postgresql://postgres@localhost/test&#39;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">def</span> <span class="nf">_encoder</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">_decoder</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+
+        <span class="n">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">set_type_codec</span><span class="p">(</span>
+            <span class="s1">&#39;json&#39;</span><span class="p">,</span> <span class="n">encoder</span><span class="o">=</span><span class="n">_encoder</span><span class="p">,</span> <span class="n">decoder</span><span class="o">=</span><span class="n">_decoder</span><span class="p">,</span>
+            <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;pg_catalog&#39;</span><span class="p">,</span> <span class="n">binary</span><span class="o">=</span><span class="bp">True</span>
+        <span class="p">)</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;foo&#39;</span><span class="p">:</span> <span class="s1">&#39;bar&#39;</span><span class="p">,</span> <span class="s1">&#39;spam&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span><span class="s1">&#39;SELECT $1::json&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="transactions">
+<h2>Transactions<a class="headerlink" href="#transactions" title="Permalink to this headline">¶</a></h2>
+<p>To create transactions, the
+<a class="reference internal" href="api/index.html#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-meth docutils literal"><span class="pre">Connection.transaction()</span></code></a> method
+should be used.</p>
+<p>The most common way to use transactions is through an <code class="docutils literal"><span class="pre">async</span> <span class="pre">with</span></code> statement:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="k">with</span> <span class="n">connection</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
+    <span class="n">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;INSERT INTO mytable VALUES(1, 2, 3)&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When not in an explicit transaction block, any changes to the database
+will be applied immediately.  This is also known as <em>auto-commit</em>.</p>
+</div>
+<p>See the <a class="reference internal" href="api/index.html#asyncpg-api-transaction"><span class="std std-ref">Transactions</span></a> API documentation for more information.</p>
+</div>
+<div class="section" id="connection-pools">
+<h2>Connection Pools<a class="headerlink" href="#connection-pools" title="Permalink to this headline">¶</a></h2>
+<p>For server-type type applications, that handle frequent requests and need
+the database connection for a short period time while handling a request,
+the use of a connection pool is recommended.  asyncpg provides an advanced
+pool implementation, which eliminates the need to use an external connection
+pooler such as PgBouncer.</p>
+<p>To create a connection pool, use the
+<a class="reference internal" href="api/index.html#asyncpg.pool.create_pool" title="asyncpg.pool.create_pool"><code class="xref py py-func docutils literal"><span class="pre">asyncpg.create_pool</span></code></a> function.
+The resulting <a class="reference internal" href="api/index.html#asyncpg.pool.Pool" title="asyncpg.pool.Pool"><code class="xref py py-class docutils literal"><span class="pre">Pool</span></code></a> object can then be used
+to borrow connections from the pool.</p>
+<p>Below is an example of how <strong>asyncpg</strong> can be used to implement a simple
+Web service that computes the requested power of two.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">import</span> <span class="nn">asyncpg</span>
+<span class="kn">from</span> <span class="nn">aiohttp</span> <span class="kn">import</span> <span class="n">web</span>
+
+
+<span class="n">async</span> <span class="k">def</span> <span class="nf">handle</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Handle incoming requests.&quot;&quot;&quot;</span>
+    <span class="n">pool</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">app</span><span class="p">[</span><span class="s1">&#39;pool&#39;</span><span class="p">]</span>
+    <span class="n">power</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">match_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;power&#39;</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+
+    <span class="c1"># Take a connection from the pool.</span>
+    <span class="n">async</span> <span class="k">with</span> <span class="n">pool</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span> <span class="k">as</span> <span class="n">connection</span><span class="p">:</span>
+        <span class="c1"># Open a transaction.</span>
+        <span class="n">async</span> <span class="k">with</span> <span class="n">connection</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
+            <span class="c1"># Run the query passing the request argument.</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span><span class="s1">&#39;select 2 ^ $1&#39;</span><span class="p">,</span> <span class="n">power</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">web</span><span class="o">.</span><span class="n">Response</span><span class="p">(</span>
+                <span class="n">text</span><span class="o">=</span><span class="s2">&quot;2 ^ {} is {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">power</span><span class="p">,</span> <span class="n">result</span><span class="p">))</span>
+
+
+<span class="n">async</span> <span class="k">def</span> <span class="nf">init_app</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Initialize the application server.&quot;&quot;&quot;</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">web</span><span class="o">.</span><span class="n">Application</span><span class="p">()</span>
+    <span class="c1"># Create a database connection pool</span>
+    <span class="n">app</span><span class="p">[</span><span class="s1">&#39;pool&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">create_pool</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">,</span>
+                                            <span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
+    <span class="c1"># Configure service routes</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;/{power:\d+}&#39;</span><span class="p">,</span> <span class="n">handle</span><span class="p">)</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">handle</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">app</span>
+
+
+<span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">loop</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">init_app</span><span class="p">())</span>
+<span class="n">web</span><span class="o">.</span><span class="n">run_app</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="api/index.html#asyncpg-api-pool"><span class="std std-ref">Connection Pools</span></a> API documentation for more information.</p>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="api/index.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="installation.html" class="btn btn-neutral" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2016-present, the asyncpg authors and contributors.
+
+    </p>
+  </div> 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.11.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
