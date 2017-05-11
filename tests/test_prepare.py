@@ -534,3 +534,12 @@ class TestPrepare(tb.ConnectedTestCase):
         # Test that short prepared statements can still be cached.
         await self.con.prepare('SELECT 2')
         self.assertEqual(len(cache), 2)
+
+    async def test_prepare_28_max_args(self):
+        N = 32768
+        args = ','.join('${}'.format(i) for i in range(1, N + 1))
+        query = 'SELECT ARRAY[{}]'.format(args)
+
+        with self.assertRaisesRegex(ValueError,
+                                    'number of arguments cannot exceed 32767'):
+            await self.con.fetchval(query, *range(1, N + 1))
