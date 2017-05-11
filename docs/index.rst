@@ -24,5 +24,6 @@ Contents
    :maxdepth: 2
 
    installation
-   examples
+   usage
    api/index
+   faq

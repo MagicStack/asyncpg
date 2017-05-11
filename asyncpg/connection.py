@@ -378,11 +378,25 @@ class Connection(metaclass=ConnectionMeta):
 
         :return: The status string of the COPY command.
 
-        .. versionadded:: 0.11.0
+        Example:
+
+        .. code-block:: pycon
+
+            >>> import asyncpg
+            >>> import asyncio
+            >>> async def run():
+            ...     con = await asyncpg.connect(user='postgres')
+            ...     result = await con.copy_from_table(
+            ...         'mytable', columns=('foo', 'bar'),
+            ...         output='file.csv', format='csv')
+            ...     print(result)
+            >>> asyncio.get_event_loop().run_until_complete(run())
+            'COPY 100'
 
         .. _`COPY statement documentation`: https://www.postgresql.org/docs/\
                                             current/static/sql-copy.html
 
+        .. versionadded:: 0.11.0
         """
         tabname = utils._quote_ident(table_name)
         if schema_name:
@@ -415,7 +429,7 @@ class Connection(metaclass=ConnectionMeta):
         :param str query:
             The query to copy the results of.
 
-        :param *args:
+        :param \*args:
             Query arguments.
 
         :param output:
@@ -432,11 +446,25 @@ class Connection(metaclass=ConnectionMeta):
 
         :return: The status string of the COPY command.
 
-        .. versionadded:: 0.11.0
+        Example:
+
+        .. code-block:: pycon
+
+            >>> import asyncpg
+            >>> import asyncio
+            >>> async def run():
+            ...     con = await asyncpg.connect(user='postgres')
+            ...     result = await con.copy_from_query(
+            ...         'SELECT foo, bar FROM mytable WHERE foo > $1', 10,
+            ...         output='file.csv', format='csv')
+            ...     print(result)
+            >>> asyncio.get_event_loop().run_until_complete(run())
+            'COPY 10'
 
         .. _`COPY statement documentation`: https://www.postgresql.org/docs/\
                                             current/static/sql-copy.html
 
+        .. versionadded:: 0.11.0
         """
         opts = self._format_copy_opts(
             format=format, oids=oids, delimiter=delimiter,
@@ -469,7 +497,7 @@ class Connection(metaclass=ConnectionMeta):
             or a :term:`file-like object <python:file-like object>`, or
             an :term:`asynchronous iterable <python:asynchronous iterable>`
             that returns ``bytes``, or an object supporting the
-            :term:`buffer protocol <python:buffer protocol>`.
+            :ref:`buffer protocol <python:bufferobjects>`.
 
         :param list columns:
             An optional list of column names to copy.
@@ -485,11 +513,24 @@ class Connection(metaclass=ConnectionMeta):
 
         :return: The status string of the COPY command.
 
-        .. versionadded:: 0.11.0
+        Example:
+
+        .. code-block:: pycon
+
+            >>> import asyncpg
+            >>> import asyncio
+            >>> async def run():
+            ...     con = await asyncpg.connect(user='postgres')
+            ...     result = await con.copy_to_table(
+            ...         'mytable', source='datafile.tbl')
+            ....    print(result)
+            >>> asyncio.get_event_loop().run_until_complete(run())
+            'COPY 140000'
 
         .. _`COPY statement documentation`: https://www.postgresql.org/docs/\
                                             current/static/sql-copy.html
 
+        .. versionadded:: 0.11.0
         """
         tabname = utils._quote_ident(table_name)
         if schema_name:
@@ -534,6 +575,22 @@ class Connection(metaclass=ConnectionMeta):
             Optional timeout value in seconds.
 
         :return: The status string of the COPY command.
+
+        Example:
+
+        .. code-block:: pycon
+
+            >>> import asyncpg
+            >>> import asyncio
+            >>> async def run():
+            ...     con = await asyncpg.connect(user='postgres')
+            ...     result = await con.copy_records_to_table(
+            ...         'mytable', records=[
+            ...             (1, 'foo', 'bar'),
+            ...             (2, 'ham', 'spam')])
+            ....    print(result)
+            >>> asyncio.get_event_loop().run_until_complete(run())
+            'COPY 2'
 
         .. versionadded:: 0.11.0
         """
