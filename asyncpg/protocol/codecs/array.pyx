@@ -639,7 +639,8 @@ cdef _textarray_decode(ConnectionSettings settings,
             indexes[item_level - 1],
             item)
 
-        indexes[nest_level - 1] += 1
+        if nest_level > 0:
+            indexes[nest_level - 1] += 1
 
     return result
 
