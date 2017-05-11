@@ -384,7 +384,7 @@ class TestPrepare(tb.ConnectedTestCase):
                 meth = getattr(self.con, methname)
 
                 vf = self.loop.create_task(
-                    meth('SELECT ROW(pg_sleep(0.03), 1)'))
+                    meth('SELECT ROW(pg_sleep(0.1), 1)'))
 
                 await asyncio.sleep(0.01, loop=self.loop)
 
