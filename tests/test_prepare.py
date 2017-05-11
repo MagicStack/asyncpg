@@ -360,7 +360,7 @@ class TestPrepare(tb.ConnectedTestCase):
 
     async def test_prepare_19_concurrent_calls(self):
         st = self.loop.create_task(self.con.fetchval(
-            'SELECT ROW(pg_sleep(0.03), 1)'))
+            'SELECT ROW(pg_sleep(0.1), 1)'))
 
         # Wait for some time to make sure the first query is fully
         # prepared (!) and is now awaiting the results (!!).
