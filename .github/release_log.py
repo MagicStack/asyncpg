@@ -27,7 +27,10 @@ def main():
     for commit in data['commits']:
         message = commit['commit']['message']
         first_line = message.partition('\n\n')[0]
-        gh_username = commit['author']['login']
+        if commit.get('author'):
+            username = '@{}'.format(commit['author']['login'])
+        else:
+            username = commit['commit']['author']['name']
         sha = commit["sha"][:8]
 
         m = re.search(r'\#(?P<num>\d+)\b', message)
@@ -37,7 +40,7 @@ def main():
             issue_num = None
 
         print(f'* {first_line}')
-        print(f'  (by @{gh_username} in {sha}', end='')
+        print(f'  (by {username} in {sha}', end='')
         if issue_num:
             print(f' for #{issue_num})')
         else:
