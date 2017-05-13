@@ -202,9 +202,8 @@ setuptools.setup(
     author_email='hello@magic.io',
     url='https://github.com/MagicStack/asyncpg',
     license='Apache License, Version 2.0',
-    packages=['asyncpg'],
+    packages=setuptools.find_packages(),
     provides=['asyncpg'],
-    include_package_data=True,
     ext_modules=[
         setuptools.Extension(
             "asyncpg.protocol.protocol",
