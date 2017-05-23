@@ -373,7 +373,7 @@ class Connection(metaclass=ConnectionMeta):
         :param float timeout:
             Optional timeout value in seconds.
 
-        The remaining kewyword arguments are ``COPY`` statement options,
+        The remaining keyword arguments are ``COPY`` statement options,
         see `COPY statement documentation`_ for details.
 
         :return: The status string of the COPY command.
@@ -441,7 +441,7 @@ class Connection(metaclass=ConnectionMeta):
         :param float timeout:
             Optional timeout value in seconds.
 
-        The remaining kewyword arguments are ``COPY`` statement options,
+        The remaining keyword arguments are ``COPY`` statement options,
         see `COPY statement documentation`_ for details.
 
         :return: The status string of the COPY command.
@@ -508,7 +508,7 @@ class Connection(metaclass=ConnectionMeta):
         :param float timeout:
             Optional timeout value in seconds.
 
-        The remaining kewyword arguments are ``COPY`` statement options,
+        The remaining keyword arguments are ``COPY`` statement options,
         see `COPY statement documentation`_ for details.
 
         :return: The status string of the COPY command.
@@ -857,10 +857,10 @@ class Connection(metaclass=ConnectionMeta):
     def _maybe_gc_stmt(self, stmt):
         if stmt.refs == 0 and not self._stmt_cache.has(stmt.query):
             # If low-level `stmt` isn't referenced from any high-level
-            # `PreparedStatament` object and is not in the `_stmt_cache`:
+            # `PreparedStatement` object and is not in the `_stmt_cache`:
             #
             #  * mark it as closed, which will make it non-usable
-            #    for any `PreparedStatament` or for methods like
+            #    for any `PreparedStatement` or for methods like
             #    `Connection.fetch()`.
             #
             # * schedule it to be formally closed on the server.
