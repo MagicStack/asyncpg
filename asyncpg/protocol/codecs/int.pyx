@@ -19,10 +19,17 @@ cdef bool_decode(ConnectionSettings settings, FastReadBuffer buf):
 
 
 cdef int2_encode(ConnectionSettings settings, WriteBuffer buf, obj):
-    cdef long val = cpython.PyLong_AsLong(obj)
-    if val < -32768 or val > 32767:
-        raise ValueError(
-            'integer too large to be encoded as INT2: {!r}'.format(val))
+    cdef int overflow = 0
+    cdef long val
+
+    try:
+        val = cpython.PyLong_AsLong(obj)
+    except OverflowError:
+        overflow = 1
+
+    if overflow or val < -32768 or val > 32767:
+        raise OverflowError(
+            'int too big to be encoded as INT2: {!r}'.format(obj))
 
     buf.write_int32(2)
     buf.write_int16(<int16_t>val)
@@ -33,10 +40,22 @@ cdef int2_decode(ConnectionSettings settings, FastReadBuffer buf):
 
 
 cdef int4_encode(ConnectionSettings settings, WriteBuffer buf, obj):
-    cdef int32_t val = <int32_t>cpython.PyLong_AsLong(obj)
+    cdef int overflow = 0
+    cdef long val
+
+    try:
+        val = cpython.PyLong_AsLong(obj)
+    except OverflowError:
+        overflow = 1
+
+    # "long" and "long long" have the same size for x86_64, need an extra check
+    if overflow or (sizeof(val) > 4 and (val < -2147483648 or
+                                         val > 2147483647)):
+        raise OverflowError(
+            'int too big to be encoded as INT4: {!r}'.format(obj))
 
     buf.write_int32(4)
-    buf.write_int32(val)
+    buf.write_int32(<int32_t>val)
 
 
 cdef int4_decode(ConnectionSettings settings, FastReadBuffer buf):
@@ -44,9 +63,22 @@ cdef int4_decode(ConnectionSettings settings, FastReadBuffer buf):
 
 
 cdef int8_encode(ConnectionSettings settings, WriteBuffer buf, obj):
-    cdef int64_t val = cpython.PyLong_AsLongLong(obj)
+    cdef int overflow = 0
+    cdef long long val
+
+    try:
+        val = cpython.PyLong_AsLongLong(obj)
+    except OverflowError:
+        overflow = 1
+
+    # Just in case for systems with "long long" bigger than 8 bytes
+    if overflow or (sizeof(val) > 8 and (val < -9223372036854775808 or
+                                         val > 9223372036854775807)):
+        raise OverflowError(
+            'int too big to be encoded as INT8: {!r}'.format(obj))
+
     buf.write_int32(8)
-    buf.write_int64(val)
+    buf.write_int64(<int64_t>val)
 
 
 cdef int8_decode(ConnectionSettings settings, FastReadBuffer buf):

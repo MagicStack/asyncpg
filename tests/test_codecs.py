@@ -472,7 +472,11 @@ class TestCodecs(tb.ConnectedTestCase):
                 '2',
                 'aa',
             ]),
-            ('smallint', ValueError, 'integer too large', [
+            ('smallint', OverflowError, 'int too big to be encoded as INT2', [
+                2**256,  # check for the same exception for any big numbers
+                decimal.Decimal("2000000000000000000000000000000"),
+                0xffff,
+                0xffffffff,
                 32768,
                 -32769
             ]),
@@ -484,9 +488,23 @@ class TestCodecs(tb.ConnectedTestCase):
                 '2',
                 'aa',
             ]),
+            ('int', OverflowError, 'int too big to be encoded as INT4', [
+                2**256,  # check for the same exception for any big numbers
+                decimal.Decimal("2000000000000000000000000000000"),
+                0xffffffff,
+                2**31,
+                -2**31 - 1,
+            ]),
             ('int8', TypeError, 'an integer is required', [
                 '2',
                 'aa',
+            ]),
+            ('bigint', OverflowError, 'int too big to be encoded as INT8', [
+                2**256,  # check for the same exception for any big numbers
+                decimal.Decimal("2000000000000000000000000000000"),
+                0xffffffffffffffff,
+                2**63,
+                -2**63 - 1,
             ]),
             ('text', TypeError, 'expected str, got bytes', [
                 b'foo'
