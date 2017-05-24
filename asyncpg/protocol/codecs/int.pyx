@@ -20,7 +20,7 @@ cdef bool_decode(ConnectionSettings settings, FastReadBuffer buf):
 
 cdef int2_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     cdef long val = cpython.PyLong_AsLong(obj)
-    if val < -32767 or val > 32767:
+    if val < -32768 or val > 32767:
         raise ValueError(
             'integer too large to be encoded as INT2: {!r}'.format(val))
 

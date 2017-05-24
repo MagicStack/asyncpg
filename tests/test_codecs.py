@@ -37,15 +37,15 @@ type_samples = [
         True, False,
     )),
     ('smallint', 'int2', (
-        -2 ** 15 + 1, 2 ** 15 - 1,
+        -2 ** 15, 2 ** 15 - 1,
         -1, 0, 1,
     )),
     ('int', 'int4', (
-        -2 ** 31 + 1, 2 ** 31 - 1,
+        -2 ** 31, 2 ** 31 - 1,
         -1, 0, 1,
     )),
     ('bigint', 'int8', (
-        -2 ** 63 + 1, 2 ** 63 - 1,
+        -2 ** 63, 2 ** 63 - 1,
         -1, 0, 1,
     )),
     ('numeric', 'numeric', (
@@ -474,7 +474,7 @@ class TestCodecs(tb.ConnectedTestCase):
             ]),
             ('smallint', ValueError, 'integer too large', [
                 32768,
-                -32768
+                -32769
             ]),
             ('float4', ValueError, 'float value too large', [
                 4.1 * 10 ** 40,
