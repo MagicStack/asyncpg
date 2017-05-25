@@ -131,7 +131,7 @@ class TestPool(tb.ConnectedTestCase):
         cons = set()
 
         async def setup(con):
-            if con._con not in cons:  # `con` is `PooledConnectionProxy`.
+            if con._con not in cons:  # `con` is `PoolConnectionProxy`.
                 raise RuntimeError('init was not called before setup')
 
         async def init(con):
@@ -141,7 +141,7 @@ class TestPool(tb.ConnectedTestCase):
 
         async def user(pool):
             async with pool.acquire() as con:
-                if con._con not in cons:  # `con` is `PooledConnectionProxy`.
+                if con._con not in cons:  # `con` is `PoolConnectionProxy`.
                     raise RuntimeError('init was not called')
 
         async with self.create_pool(database='postgres',

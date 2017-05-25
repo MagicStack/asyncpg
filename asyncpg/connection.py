@@ -918,7 +918,7 @@ class Connection(metaclass=ConnectionMeta):
         else:
             # `_proxy` is not None when the connection is a member
             # of a connection pool.  Which means that the user is working
-            # with a PooledConnectionProxy instance, and expects to see it
+            # with a `PoolConnectionProxy` instance, and expects to see it
             # (and not the actual Connection) in their event callbacks.
             con_ref = self._proxy
 
