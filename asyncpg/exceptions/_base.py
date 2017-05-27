@@ -127,6 +127,15 @@ class PostgresMessage(metaclass=PostgresMessageMeta):
 
         return e
 
+    def as_dict(self):
+        message = {}
+        for f in type(self)._field_map.values():
+            val = getattr(self, f)
+            if val is not None:
+                message[f] = val
+
+        return message
+
 
 class PostgresError(PostgresMessage, Exception):
     """Base class for all Postgres errors."""
