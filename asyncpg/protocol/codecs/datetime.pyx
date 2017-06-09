@@ -232,16 +232,110 @@ cdef timetz_decode(ConnectionSettings settings, FastReadBuffer buf):
     return time.replace(tzinfo=datetime.timezone(timedelta(minutes=offset)))
 
 
-cdef interval_encode(ConnectionSettings settings, WriteBuffer buf, obj):
+cdef class Interval(object):
     cdef:
-        int32_t days = <int32_t>cpython.PyLong_AsLong(obj.days)
-        int64_t seconds = cpython.PyLong_AsLongLong(obj.seconds)
-        int32_t microseconds = <int32_t>cpython.PyLong_AsLong(obj.microseconds)
+        readonly int32_t months
+        readonly int32_t days
+        readonly int64_t seconds
+        readonly uint32_t microseconds
 
+    def __init__(self, int32_t months, int32_t days, int64_t seconds, uint32_t microseconds):
+        cdef int32_t carry
+
+        if microseconds >= 1000000:
+            carry, microseconds = divmod(microseconds, 1000000)
+            seconds += carry
+
+        if seconds >= 24 * 60 * 60:
+            carry, seconds = divmod(seconds, 24 * 60 * 60)
+            days += carry
+
+        if days >= 30:
+            carry, days = divmod(days, 30)
+            months += carry
+
+        self.months = months
+        self.days = days
+        self.seconds = seconds
+        self.microseconds = microseconds
+
+    def __repr__(self):
+        return "<Interval months=%d days=%d seconds=%d microseconds=%d>" % (
+            self.months, self.days, self.seconds, self.microseconds)
+
+    def __str__(self):
+        cdef int64_t secs
+        cdef int32_t mins
+
+        parts = []
+        if self.months:
+            parts.append("%d months" % self.months)
+        if self.days:
+            parts.append("%d days" % self.days)
+        if self.seconds or self.microseconds:
+            secs = self.seconds
+            hours, secs = divmod(secs, 3600)
+            mins, secs = divmod(secs, 60)
+            parts.append("%02d:%02d:%02d.%d" % (hours, mins, secs, self.microseconds))
+        return ', '.join(parts)
+
+    def __hash__(self):
+        return hash((self.months, self.days, self.seconds, self.microseconds))
+
+    def __richcmp__(self, other, int op):
+        if isinstance(other, Interval):
+            if op == 2: # ==
+                return (self.months == other.months
+                        and self.days == other.days
+                        and self.seconds == other.seconds
+                        and self.microseconds == other.microseconds)
+            elif op == 3: # !=
+                return (self.months != other.months
+                        or self.days != other.days
+                        or self.seconds != other.seconds
+                        or self.microseconds != other.microseconds)
+            elif op == 0: # <
+                return ((self.months, self.days, self.seconds, self.microseconds)
+                        <
+                        (other.months, other.days, other.seconds, other.microseconds))
+            elif op == 1: # <=
+                return ((self.months, self.days, self.seconds, self.microseconds)
+                        <=
+                        (other.months, other.days, other.seconds, other.microseconds))
+            elif op == 4: # >
+                return ((self.months, self.days, self.seconds, self.microseconds)
+                        >
+                        (other.months, other.days, other.seconds, other.microseconds))
+            elif op == 5: # >=
+                return ((self.months, self.days, self.seconds, self.microseconds)
+                        >=
+                        (other.months, other.days, other.seconds, other.microseconds))
+        return False
+
+    def __add__(self, other):
+        if isinstance(other, Interval):
+            return Interval(self.months + other.months,
+                            self.days + other.days,
+                            self.seconds + other.seconds,
+                            self.microseconds + other.microseconds)
+
+        return NotImplemented
+
+    def __radd__(self, other):
+        return self + other
+
+    def __nonzero__(self):
+        return (self.months != 0
+                or self.days != 0
+                or self.seconds != 0
+                or self.microseconds != 0)
+
+
+cdef interval_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     buf.write_int32(16)
-    _encode_time(buf, seconds, microseconds)
-    buf.write_int32(days)
-    buf.write_int32(0) # Months
+    _encode_time(buf, obj.seconds, obj.microseconds)
+    buf.write_int32(obj.days)
+    buf.write_int32(obj.months)
 
 
 cdef interval_decode(ConnectionSettings settings, FastReadBuffer buf):
@@ -255,8 +349,7 @@ cdef interval_decode(ConnectionSettings settings, FastReadBuffer buf):
     days = hton.unpack_int32(buf.read(4))
     months = hton.unpack_int32(buf.read(4))
 
-    return datetime.timedelta(days=days + months * 30, seconds=seconds,
-                              microseconds=microseconds)
+    return Interval(months, days, seconds, microseconds)
 
 
 cdef init_datetime_codecs():
