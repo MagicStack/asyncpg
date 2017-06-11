@@ -5,4 +5,4 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-from .protocol import Protocol, Record, NO_TIMEOUT  # NOQA
+from .protocol import Interval, Protocol, Record, NO_TIMEOUT  # NOQA
