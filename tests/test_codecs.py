@@ -1323,16 +1323,16 @@ class TestCodecs(tb.ConnectedTestCase):
             for record in result:
                 with self.subTest(record=record):
                     dat, ts, d, md, dat_p_d, dat_m_d, ts_p_d, ts_m_d, d_p_d, d_m_d = record
-                    self.assertEqual(md, -d)
-                    self.assertEqual(d_p_d, d + d)
-                    self.assertEqual(d*2, d + d)
-                    self.assertEqual(2*d, d + d)
-                    self.assertEqual(d_m_d, d - d)
-                    self.assertEqual(dat+d, dat_p_d)
-                    self.assertEqual(d+dat, dat_p_d)
-                    self.assertEqual(dat-d, dat_m_d)
-                    self.assertEqual(ts+d, ts_p_d)
-                    self.assertEqual(ts-d, ts_m_d)
+                    self.assertEqual(-d, md)
+                    self.assertEqual(d + d, d_p_d)
+                    self.assertEqual(d - d, d_m_d)
+                    self.assertEqual(d * 2, d + d)
+                    self.assertEqual(2 * d, d + d)
+                    self.assertEqual(dat + d, dat_p_d)
+                    self.assertEqual(d + dat, dat_p_d)
+                    self.assertEqual(dat - d, dat_m_d)
+                    self.assertEqual(ts + d, ts_p_d)
+                    self.assertEqual(ts - d, ts_m_d)
         finally:
             await self.con.execute('''
                 DROP TABLE testtab
