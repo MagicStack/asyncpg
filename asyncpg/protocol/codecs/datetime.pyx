@@ -292,12 +292,34 @@ cdef class Interval(object):
         readonly int64_t time
 
     def __init__(self, int32_t months, int32_t days, int64_t time=0,
-                 int32_t hours=0, int32_t minutes=0, int32_t seconds=0, int32_t microseconds=0):
+                 int64_t hours=0, int64_t minutes=0, int64_t seconds=0, int64_t microseconds=0):
+        if time == 0:
+            carry, microseconds = divmod(microseconds, 1000000)
+            carry, seconds = divmod(seconds + carry, 60)
+            carry, minutes = divmod(minutes + carry, 60)
+            carry, hours = divmod(hours + carry, 24)
+            days += carry
+            time = (hours * 60 * 60 + minutes * 60 + seconds) * 1000000 + microseconds
+
         self.months = months
         self.days = days
-        if time == 0:
-            time = (hours * 60 * 60 + minutes * 60 + seconds) * 1000000 + microseconds
         self.time = time
+
+    @property
+    def hours(self):
+        return (self.time // (60 * 60 * 1000000))
+
+    @property
+    def minutes(self):
+        return (self.time // (60 * 1000000)) % 60
+
+    @property
+    def seconds(self):
+        return (self.time // 1000000) % 60
+
+    @property
+    def microseconds(self):
+        return self.time % 1000000
 
     def __repr__(self):
         return "Interval(months=%d, days=%d, time=%d)" % (self.months, self.days, self.time)

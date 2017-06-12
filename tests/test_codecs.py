@@ -1240,6 +1240,42 @@ class TestCodecs(tb.ConnectedTestCase):
         self.assertTrue(asyncpg.Interval(0, 0, 1) < asyncpg.Interval(0, 1))
         self.assertTrue(asyncpg.Interval(1, 0, 1) > asyncpg.Interval(0, 1))
 
+        i = asyncpg.Interval(0, 0, 1)
+        self.assertEqual(i.microseconds, 1)
+
+        i = asyncpg.Interval(0, 0, microseconds=1000001)
+        self.assertEqual(i, asyncpg.Interval(0, 0, 1000001))
+        self.assertEqual(i.microseconds, 1)
+        self.assertEqual(i.seconds, 1)
+
+        i = asyncpg.Interval(0, 0, seconds=1)
+        self.assertEqual(i, asyncpg.Interval(0, 0, 1000000))
+        self.assertEqual(i.seconds, 1)
+
+        i = asyncpg.Interval(0, 0, seconds=61)
+        self.assertEqual(i, asyncpg.Interval(0, 0, 61000000))
+        self.assertEqual(i.seconds, 1)
+        self.assertEqual(i.minutes, 1)
+
+        i = asyncpg.Interval(0, 0, minutes=1)
+        self.assertEqual(i, asyncpg.Interval(0, 0, 60000000))
+        self.assertEqual(i.minutes, 1)
+
+        i = asyncpg.Interval(0, 0, minutes=61)
+        self.assertEqual(i, asyncpg.Interval(0, 0, 3660000000))
+        self.assertEqual(i.minutes, 1)
+        self.assertEqual(i.hours, 1)
+
+        i = asyncpg.Interval(0, 0, hours=1)
+        self.assertEqual(i, asyncpg.Interval(0, 0, 3600000000))
+        self.assertEqual(i.hours, 1)
+
+        i = asyncpg.Interval(0, 0, hours=25)
+        self.assertEqual(i, asyncpg.Interval(0, 1, 3600000000))
+        self.assertEqual(i.hours, 1)
+        self.assertEqual(i.days, 1)
+
+    async def test_interval_arith(self):
         await self.con.execute('''
             CREATE TABLE testtab (
                 dat date,
