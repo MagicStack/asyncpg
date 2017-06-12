@@ -192,6 +192,15 @@ type_samples = [
         datetime.time(10, 10, 0, tzinfo=_timezone(2000)),
         datetime.time(22, 30, 0, tzinfo=_timezone(0)),
     ]),
+    ('interval', 'interval', [
+        asyncpg.Interval(40, 10, 1234),
+        asyncpg.Interval(0, 0, 4321),
+        asyncpg.Interval(0, 0),
+        asyncpg.Interval(-100, 0),
+        asyncpg.Interval(-100, -400),
+        {'textinput': '1 day ago',
+         'output': asyncpg.Interval(0, -1)},
+    ]),
     ('uuid', 'uuid', [
         uuid.UUID('38a4ff5a-3a56-11e6-a6c2-c8f73323c6d4'),
         uuid.UUID('00000000-0000-0000-0000-000000000000'),
