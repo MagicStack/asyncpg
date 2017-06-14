@@ -364,7 +364,7 @@ cdef class Interval(object):
             time, hours = divmod(time, 60)
             sign = '-' if time < 0 else ''
             if usecs:
-                parts.append("%s%02d:%02d:%02d.%d" % (sign, hours, mins, secs, usecs))
+                parts.append("%s%02d:%02d:%02d.%06d" % (sign, hours, mins, secs, usecs))
             else:
                 parts.append("%s%02d:%02d:%02d" % (sign, hours, mins, secs))
 
