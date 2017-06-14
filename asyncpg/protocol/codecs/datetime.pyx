@@ -246,7 +246,7 @@ cdef int32_t month_days(int32_t year, int32_t month):
 
 
 cdef to_timedelta(int32_t months, int32_t days, int64_t time,
-                  int32_t year, int32_t month, int32_t day, int32_t adjust=0):
+                  int32_t year, int32_t month, int32_t day):
     cdef:
         int64_t cum_days
         int32_t step
@@ -256,6 +256,7 @@ cdef to_timedelta(int32_t months, int32_t days, int64_t time,
 
     step = -1 if months < 0 else 1
     cum_days = 0
+
     while months:
         months -= step
         if step == 1:
@@ -271,11 +272,12 @@ cdef to_timedelta(int32_t months, int32_t days, int64_t time,
                 year -= 1
             mdays = month_days(year, month)
         cum_days += mdays
+
     cum_days *= step
 
     mdays = month_days(year, month)
     if day > mdays:
-        days -= day - mdays - adjust
+        days -= day - mdays
 
     cum_days += days
 
@@ -434,14 +436,14 @@ cdef class Interval(object):
 
         elif isinstance(self, datetime.date):
             if isinstance(other, Interval):
-                delta = to_timedelta(other.months, other.days, other.time,
-                                     self.year, self.month, self.day, +1)
+                delta = to_timedelta(-other.months, -other.days, -other.time,
+                                     self.year, self.month, self.day)
                 if isinstance(self, datetime.datetime):
                     result = self
                 else:
                     result = datetime.datetime(year=self.year, month=self.month, day=self.day)
 
-                return result - delta
+                return result + delta
 
         return NotImplemented
 
