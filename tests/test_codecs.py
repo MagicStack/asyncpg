@@ -1356,6 +1356,38 @@ class TestCodecs(tb.ConnectedTestCase):
                 '2017-01-14', '2017-01-14 10:11:12',
                 '-1 month -2 days -3.4 seconds'
             );
+            INSERT INTO testtab VALUES (
+                '2017-02-28', '2017-02-28 10:11:12',
+                '1 year'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-02-28', '2017-02-28 10:11:12',
+                '-1 year'
+            );
+            INSERT INTO testtab VALUES (
+                '2016-02-29', '2016-02-29 10:11:12',
+                '4 year'
+            );
+            INSERT INTO testtab VALUES (
+                '2016-02-29', '2016-02-29 10:11:12',
+                '-4 year'
+            );
+            INSERT INTO testtab VALUES (
+                '2016-02-28', '2016-02-28 10:11:12',
+                '5 year'
+            );
+            INSERT INTO testtab VALUES (
+                '2016-02-28', '2016-02-28 10:11:12',
+                '-5 year'
+            );
+            INSERT INTO testtab VALUES (
+                '2016-02-29', '2016-02-29 10:11:12',
+                '5 year'
+            );
+            INSERT INTO testtab VALUES (
+                '2016-02-29', '2016-02-29 10:11:12',
+                '-5 year'
+            );
         ''')
 
         try:
