@@ -253,9 +253,24 @@ cdef to_timedelta(int32_t months, int32_t days, int64_t time,
         int64_t seconds
         uint32_t microseconds
         int32_t mdays
+        int32_t years
 
     step = -1 if months < 0 else 1
     cum_days = 0
+
+    years = <int32_t> ((months * step) // 12)
+    months -= step * years * 12
+
+    while years:
+        years -= 1
+        cum_days += 365
+        if step == 1:
+            if (month < 3 and is_leap(year)) or (month > 2 and is_leap(year+1)):
+                cum_days += 1
+        else:
+            if (month > 2 and is_leap(year)) or (month < 3 and is_leap(year-1)):
+                cum_days += 1
+        year += step
 
     while months:
         months -= step
