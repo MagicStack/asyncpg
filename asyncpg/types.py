@@ -9,9 +9,11 @@ import collections
 
 
 __all__ = (
-    'Type', 'Attribute', 'Range', 'BitString', 'Point', 'Path', 'Polygon',
-    'Box', 'Line', 'LineSegment', 'Circle', 'ServerVersion',
+    'Attribute', 'BitString', 'Box', 'Circle', 'Interval', 'Line', 'LineSegment',
+    'Path', 'Point', 'Polygon', 'Range', 'ServerVersion', 'Type',
 )
+
+from asyncpg.protocol.protocol import Interval
 
 
 Type = collections.namedtuple('Type', ['oid', 'name', 'kind', 'schema'])

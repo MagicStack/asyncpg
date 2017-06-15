@@ -8,7 +8,7 @@
 from .connection import connect, Connection  # NOQA
 from .exceptions import *  # NOQA
 from .pool import create_pool  # NOQA
-from .protocol import Interval, Record  # NOQA
+from .protocol import Record  # NOQA
 from .types import *  # NOQA
 
 
