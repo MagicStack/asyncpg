@@ -303,6 +303,95 @@ cdef to_timedelta(int32_t months, int32_t days, int64_t time,
 
 
 cdef class Interval(object):
+    """Immutable representation of PostgreSQL `interval` type, implementing it's
+    basic `datetime arithmetic`__.
+
+    __ https://www.postgresql.org/docs/current/static/functions-datetime.html
+
+    :param int32 months: number of months
+    :param int32 days: number of days
+    :param int64 time: time, expressed in microseconds, defaults to 0
+    :param int64 hours: number of hours, defaults to 0
+    :param int64 minutes: number of minutes, defaults to 0
+    :param int64 seconds: number of seconds, defaults to 0
+    :param int64 microseconds: number of microseconds, defaults to 0
+
+    The `time` can be either entered as a single number of microseconds:
+
+    .. code:: pycon
+
+       >>> from asyncpg import Interval
+       >>> a = Interval(months=0, days=0, time=3723000004)
+       >>> repr(a)
+       Interval(months=0, days=0, time=3723000004)
+       >>> str(a)
+       '01:02:03.000004'
+
+    or specified as one or more of its subunits:
+
+    .. code:: pycon
+
+       >>> b = Interval(0, 0, hours=1, minutes=2, seconds=3, microseconds=4)
+       >>> a == b
+       True
+       >>> c = Interval(0, 0, seconds=3723, microseconds=4)
+       >>> a == c
+       True
+
+    An instance exposes the same set of members:
+
+    .. code:: pycon
+
+       >>> a.months, a.days, a.time, a.hours, a.minutes, a.seconds, a.microseconds
+       (0, 0, 3723000004, 1, 2, 3, 4)
+
+    that cannot be altered:
+
+    .. code:: pycon
+
+       >>> a.days = 1
+       Traceback (most recent call last):
+         File "<stdin>", line 1, in <module>
+       AttributeError: attribute 'days' of 'asyncpg.protocol.protocol.Interval' objects is not writable
+
+    and, being immutable, they are *hashable*:
+
+    .. code:: pycon
+
+       >>> {a: True}
+       {Interval(months=0, days=0, time=3723000004): True}
+
+    They also implement almost the same *datetime* arithmetic of PostgreSQL:
+
+    .. code:: pycon
+
+       >>> from datetime import date
+       >>> d = date(2017, 6, 14)
+       >>> d + a
+       datetime.datetime(2017, 6, 14, 1, 2, 3, 4)
+       >>> d + a*100
+       datetime.datetime(2017, 6, 18, 7, 25, 0, 400)
+       >>> d - a
+       datetime.datetime(2017, 6, 13, 22, 57, 56, 999996)
+
+    This is very similar to what you can do with Python's ``datetime.timedelta``.
+
+    The ``Interval`` behaviour differs when it carries a number of `months`:
+
+    .. code:: pycon
+
+       >>> m = Interval(1, 0)
+       >>> eom = date(2017, 3, 31)
+       >>> eom + m
+       datetime.datetime(2017, 4, 30, 0, 0)
+       >>> eom - m
+       datetime.datetime(2017, 2, 28, 0, 0)
+       >>> eom - m*12
+       datetime.datetime(2016, 3, 31, 0, 0)
+       >>> eom - m*13
+       datetime.datetime(2016, 2, 29, 0, 0)
+    """
+
     cdef:
         readonly int32_t months
         readonly int32_t days
