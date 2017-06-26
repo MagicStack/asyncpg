@@ -93,12 +93,12 @@ The table below shows the correspondence between PostgreSQL and Python types.
 +----------------------+-----------------------------------------------------+
 | ``cidr``             | :class:`ipaddress.IPv4Network\                      |
 |                      | <python:ipaddress.IPv4Network>`,                    |
-|                      | :class:`ipaddress.IPv6Netowrk\                      |
+|                      | :class:`ipaddress.IPv6Network\                      |
 |                      | <python:ipaddress.IPv6Network>`                     |
 +----------------------+-----------------------------------------------------+
 | ``inet``             | :class:`ipaddress.IPv4Network\                      |
 |                      | <python:ipaddress.IPv4Network>`,                    |
-|                      | :class:`ipaddress.IPv6Netowrk\                      |
+|                      | :class:`ipaddress.IPv6Network\                      |
 |                      | <python:ipaddress.IPv6Network>`,                    |
 |                      | :class:`ipaddress.IPv4Address\                      |
 |                      | <python:ipaddress.IPv4Address>`,                    |
