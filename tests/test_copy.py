@@ -574,7 +574,7 @@ class TestCopyTo(tb.ConnectedTestCase):
         finally:
             await self.con.execute('DROP TABLE copytab')
 
-    async def test_copy_records_to_table(self):
+    async def test_copy_records_to_table_1(self):
         await self.con.execute('''
             CREATE TABLE copytab(a text, b int, c timestamptz);
         ''')
@@ -594,6 +594,22 @@ class TestCopyTo(tb.ConnectedTestCase):
                 'copytab', records=records)
 
             self.assertEqual(res, 'COPY 101')
+
+        finally:
+            await self.con.execute('DROP TABLE copytab')
+
+    async def test_copy_records_to_table_no_binary_codec(self):
+        await self.con.execute('''
+            CREATE TABLE copytab(a numeric);
+        ''')
+
+        try:
+            records = [(123.123,)]
+
+            with self.assertRaisesRegex(
+                    RuntimeError, 'no binary format encoder'):
+                await self.con.copy_records_to_table(
+                    'copytab', records=records)
 
         finally:
             await self.con.execute('DROP TABLE copytab')

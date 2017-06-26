@@ -376,9 +376,11 @@ cdef class BaseProtocol(CoreProtocol):
                 settings = self.settings
 
                 for codec in codecs:
-                    if not codec.has_encoder():
+                    if (not codec.has_encoder() or
+                            codec.format != PG_FORMAT_BINARY):
                         raise RuntimeError(
-                            'no encoder for OID {}'.format(codec.oid))
+                            'no binary format encoder for '
+                            'type {} (OID {})'.format(codec.name, codec.oid))
 
                 for row in records:
                     # Tuple header
