@@ -588,10 +588,12 @@ class TestCopyTo(tb.ConnectedTestCase):
                 for i in range(100)
             ]
 
+            records.append(('a-100', None, None))
+
             res = await self.con.copy_records_to_table(
                 'copytab', records=records)
 
-            self.assertEqual(res, 'COPY 100')
+            self.assertEqual(res, 'COPY 101')
 
         finally:
             await self.con.execute('DROP TABLE copytab')

@@ -385,8 +385,12 @@ cdef class BaseProtocol(CoreProtocol):
                     wbuf.write_int16(<int16_t>num_cols)
                     # Tuple data
                     for i in range(num_cols):
-                        codec = <Codec>cpython.PyTuple_GET_ITEM(codecs, i)
-                        codec.encode(settings, wbuf, row[i])
+                        item = row[i]
+                        if item is None:
+                            wbuf.write_int32(-1)
+                        else:
+                            codec = <Codec>cpython.PyTuple_GET_ITEM(codecs, i)
+                            codec.encode(settings, wbuf, item)
 
                     if wbuf.len() >= _COPY_BUFFER_SIZE:
                         with timer:
