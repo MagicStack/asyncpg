@@ -455,7 +455,7 @@ record_keys(PyObject *o, PyObject *args)
         return NULL;
     }
 
-    return PyObject_GetIter(((ApgRecordObject*)o)->desc->mapping);
+    return PyObject_GetIter(((ApgRecordObject*)o)->desc->keys);
 }
 
 
