@@ -543,3 +543,16 @@ class TestPrepare(tb.ConnectedTestCase):
         with self.assertRaisesRegex(ValueError,
                                     'number of arguments cannot exceed 32767'):
             await self.con.fetchval(query, *range(1, N + 1))
+
+    async def test_prepare_29_duplicates(self):
+        # In addition to test_record.py, let's have a full functional
+        # test for records with duplicate keys.
+        r = await self.con.fetchrow('SELECT 1 as a, 2 as b, 3 as a')
+        self.assertEqual(list(r.items()), [('a', 1), ('b', 2), ('a', 3)])
+        self.assertEqual(list(r.keys()), ['a', 'b', 'a'])
+        self.assertEqual(list(r.values()), [1, 2, 3])
+        self.assertEqual(r['a'], 3)
+        self.assertEqual(r['b'], 2)
+        self.assertEqual(r[0], 1)
+        self.assertEqual(r[1], 2)
+        self.assertEqual(r[2], 3)
