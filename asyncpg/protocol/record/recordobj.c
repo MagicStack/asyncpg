@@ -688,7 +688,7 @@ record_iter(PyObject *seq)
 typedef struct {
     PyObject_HEAD
     Py_ssize_t it_index;
-    PyObject *it_map_iter;
+    PyObject *it_key_iter;
     ApgRecordObject *it_seq; /* Set to NULL when iterator is exhausted */
 } ApgRecordItemsObject;
 
@@ -697,7 +697,7 @@ static void
 record_items_dealloc(ApgRecordItemsObject *it)
 {
     PyObject_GC_UnTrack(it);
-    Py_CLEAR(it->it_map_iter);
+    Py_CLEAR(it->it_key_iter);
     Py_CLEAR(it->it_seq);
     PyObject_GC_Del(it);
 }
@@ -706,7 +706,7 @@ record_items_dealloc(ApgRecordItemsObject *it)
 static int
 record_items_traverse(ApgRecordItemsObject *it, visitproc visit, void *arg)
 {
-    Py_VISIT(it->it_map_iter);
+    Py_VISIT(it->it_key_iter);
     Py_VISIT(it->it_seq);
     return 0;
 }
@@ -726,11 +726,11 @@ record_items_next(ApgRecordItemsObject *it)
         return NULL;
     }
     assert(ApgRecord_CheckExact(seq));
-    assert(it->it_map_iter != NULL);
+    assert(it->it_key_iter != NULL);
 
-    key = PyIter_Next(it->it_map_iter);
+    key = PyIter_Next(it->it_key_iter);
     if (key == NULL) {
-        /* likely it_map_iter had less items than seq has values */
+        /* likely it_key_iter had less items than seq has values */
         goto exhausted;
     }
 
@@ -740,7 +740,7 @@ record_items_next(ApgRecordItemsObject *it)
         Py_INCREF(val);
     }
     else {
-        /* it_map_iter had more items than seq has values */
+        /* it_key_iter had more items than seq has values */
         Py_DECREF(key);
         goto exhausted;
     }
@@ -757,7 +757,7 @@ record_items_next(ApgRecordItemsObject *it)
     return tup;
 
 exhausted:
-    Py_CLEAR(it->it_map_iter);
+    Py_CLEAR(it->it_key_iter);
     Py_CLEAR(it->it_seq);
     return NULL;
 }
@@ -823,15 +823,15 @@ static PyObject *
 record_new_items_iter(PyObject *seq)
 {
     ApgRecordItemsObject *it;
-    PyObject *map_iter;
+    PyObject *key_iter;
 
     if (!ApgRecord_CheckExact(seq)) {
         PyErr_BadInternalCall();
         return NULL;
     }
 
-    map_iter = PyObject_GetIter(((ApgRecordObject*)seq)->desc->mapping);
-    if (map_iter == NULL) {
+    key_iter = PyObject_GetIter(((ApgRecordObject*)seq)->desc->keys);
+    if (key_iter == NULL) {
         return NULL;
     }
 
@@ -839,7 +839,7 @@ record_new_items_iter(PyObject *seq)
     if (it == NULL)
         return NULL;
 
-    it->it_map_iter = map_iter;
+    it->it_key_iter = key_iter;
     it->it_index = 0;
     Py_INCREF(seq);
     it->it_seq = (ApgRecordObject *)seq;
