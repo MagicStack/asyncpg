@@ -298,6 +298,7 @@ class TestRecord(tb.ConnectedTestCase):
         self.assertEqual(r['a'], 2)
         self.assertEqual(r[0], 1)
         self.assertEqual(repr(r), '<Record a=1 a=2>')
+        self.assertEqual(list(r.items()), [('a', 1), ('a', 2)])
 
     async def test_record_isinstance(self):
         """Test that Record works with isinstance."""
