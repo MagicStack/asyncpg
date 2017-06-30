@@ -18,11 +18,6 @@ class PoolConnectionProxyMeta(type):
 
     def __new__(mcls, name, bases, dct, *, wrap=False):
         if wrap:
-            def get_wrapper(meth):
-                def wrapper(self, *args, **kwargs):
-                    return self._dispatch_method_call(meth, args, kwargs)
-                return wrapper
-
             for attrname in dir(connection.Connection):
                 if attrname.startswith('_') or attrname in dct:
                     continue
@@ -31,7 +26,7 @@ class PoolConnectionProxyMeta(type):
                 if not inspect.isfunction(meth):
                     continue
 
-                wrapper = get_wrapper(meth)
+                wrapper = mcls._wrap_connection_method(attrname)
                 wrapper = functools.update_wrapper(wrapper, meth)
                 dct[attrname] = wrapper
 
@@ -43,6 +38,21 @@ class PoolConnectionProxyMeta(type):
     def __init__(cls, name, bases, dct, *, wrap=False):
         # Needed for Python 3.5 to handle `wrap` class keyword argument.
         super().__init__(name, bases, dct)
+
+    @staticmethod
+    def _wrap_connection_method(meth_name):
+        def call_con_method(self, *args, **kwargs):
+            # This method will be owned by PoolConnectionProxy class.
+            if self._con is None:
+                raise exceptions.InterfaceError(
+                    'cannot call Connection.{}(): '
+                    'connection has been released back to the pool'.format(
+                        meth_name))
+
+            meth = getattr(self._con.__class__, meth_name)
+            return meth(self._con, *args, **kwargs)
+
+        return call_con_method
 
 
 class PoolConnectionProxy(connection._ConnectionProxy,
@@ -57,6 +67,10 @@ class PoolConnectionProxy(connection._ConnectionProxy,
         self._holder = holder
         con._set_proxy(self)
 
+    def __getattr__(self, attr):
+        # Proxy all unresolved attributes to the wrapped Connection object.
+        return getattr(self._con, attr)
+
     def _detach(self):
         if self._con is None:
             raise exceptions.InterfaceError(
@@ -64,15 +78,6 @@ class PoolConnectionProxy(connection._ConnectionProxy,
 
         con, self._con = self._con, None
         con._set_proxy(None)
-
-    def _dispatch_method_call(self, meth, args, kwargs):
-        if self._con is None:
-            raise exceptions.InterfaceError(
-                'cannot call Connection.{}(): '
-                'connection has been released back to the pool'.format(
-                    meth.__name__))
-
-        return meth(self._con, *args, **kwargs)
 
     def __repr__(self):
         if self._con is None:
