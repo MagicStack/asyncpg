@@ -294,11 +294,33 @@ class TestRecord(tb.ConnectedTestCase):
 
     async def test_record_duplicate_colnames(self):
         """Test that Record handles duplicate column names."""
-        r = await self.con.fetchrow('SELECT 1 as a, 2 as a')
-        self.assertEqual(r['a'], 2)
-        self.assertEqual(r[0], 1)
-        self.assertEqual(repr(r), '<Record a=1 a=2>')
-        self.assertEqual(list(r.items()), [('a', 1), ('a', 2)])
+
+        records_descs = [
+            [('a', 1)],
+            [('a', 1), ('a', 2)],
+            [('a', 1), ('b', 2), ('a', 3)],
+            [('a', 1), ('b', 2), ('a', 3), ('c', 4), ('b', 5)],
+        ]
+
+        for desc in records_descs:
+            items = collections.OrderedDict(desc)
+
+            query = 'SELECT ' + ', '.join(
+                ['{} as {}'.format(p[1], p[0]) for p in desc])
+
+            with self.subTest(query=query):
+                r = await self.con.fetchrow(query)
+                for idx, (field, val) in enumerate(desc):
+                    self.assertEqual(r[idx], val)
+                    self.assertEqual(r[field], items[field])
+
+                expected_repr = '<Record {}>'.format(
+                    ' '.join('{}={}'.format(p[0], p[1]) for p in desc))
+                self.assertEqual(repr(r), expected_repr)
+
+                self.assertEqual(list(r.items()), desc)
+                self.assertEqual(list(r.values()), [p[1] for p in desc])
+                self.assertEqual(list(r.keys()), [p[0] for p in desc])
 
     async def test_record_isinstance(self):
         """Test that Record works with isinstance."""
