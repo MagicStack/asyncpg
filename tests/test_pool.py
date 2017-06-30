@@ -356,11 +356,17 @@ class TestPool(tb.ConnectedTestCase):
         cons = set()
 
         class MyConnection(asyncpg.Connection):
-            pass
+            async def foo(self):
+                return 42
+
+            async def fetchval(self, query):
+                res = await super().fetchval(query)
+                return res + 1
 
         async def test(pool):
             async with pool.acquire() as con:
-                await con.fetchval('SELECT 1')
+                self.assertEqual(await con.fetchval('SELECT 1'), 2)
+                self.assertEqual(await con.foo(), 42)
                 self.assertTrue(isinstance(con, MyConnection))
                 self.assertEqual(con._con._config.statement_cache_size, 3)
                 cons.add(con)
