@@ -923,14 +923,18 @@ class Connection(metaclass=ConnectionMeta):
             con_ref = self._proxy
 
         for cb in self._listeners[channel]:
-            try:
-                cb(con_ref, pid, channel, payload)
-            except Exception as ex:
-                self._loop.call_exception_handler({
-                    'message': 'Unhandled exception in asyncpg notification '
-                               'listener callback {!r}'.format(cb),
-                    'exception': ex
-                })
+            self._loop.call_soon(
+                self._call_notify_cb, cb, con_ref, pid, channel, payload)
+
+    def _call_notify_cb(self, cb, con_ref, pid, channel, payload):
+        try:
+            cb(con_ref, pid, channel, payload)
+        except Exception as ex:
+            self._loop.call_exception_handler({
+                'message': 'Unhandled exception in asyncpg notification '
+                           'listener callback {!r}'.format(cb),
+                'exception': ex
+            })
 
     def _get_reset_query(self):
         if self._reset_query is not None:
