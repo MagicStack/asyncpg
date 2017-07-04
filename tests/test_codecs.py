@@ -439,6 +439,19 @@ class TestCodecs(tb.ConnectedTestCase):
 
         self.assertEqual(len(bits.bytes), expected_bytelen)
 
+    async def test_interval(self):
+        res = await self.con.fetchval("SELECT '5 years'::interval")
+        self.assertEqual(res, datetime.timedelta(days=1825))
+
+        res = await self.con.fetchval("SELECT '5 years 1 month'::interval")
+        self.assertEqual(res, datetime.timedelta(days=1855))
+
+        res = await self.con.fetchval("SELECT '-5 years'::interval")
+        self.assertEqual(res, datetime.timedelta(days=-1825))
+
+        res = await self.con.fetchval("SELECT '-5 years -1 month'::interval")
+        self.assertEqual(res, datetime.timedelta(days=-1855))
+
     async def test_unhandled_type_fallback(self):
         await self.con.execute('''
             CREATE EXTENSION IF NOT EXISTS isn
