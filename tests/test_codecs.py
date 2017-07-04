@@ -193,12 +193,13 @@ type_samples = [
         datetime.time(22, 30, 0, tzinfo=_timezone(0)),
     ]),
     ('interval', 'interval', [
-        # no months :(
-        datetime.timedelta(40, 10, 1234),
-        datetime.timedelta(0, 0, 4321),
-        datetime.timedelta(0, 0),
-        datetime.timedelta(-100, 0),
-        datetime.timedelta(-100, -400),
+        asyncpg.Interval(40, 10, 1234),
+        asyncpg.Interval(0, 0, 4321),
+        asyncpg.Interval(0, 0),
+        asyncpg.Interval(-100, 0),
+        asyncpg.Interval(-100, -400),
+        {'textinput': '1 day ago',
+         'output': asyncpg.Interval(0, -1)},
     ]),
     ('uuid', 'uuid', [
         uuid.UUID('38a4ff5a-3a56-11e6-a6c2-c8f73323c6d4'),
@@ -1267,4 +1268,187 @@ class TestCodecs(tb.ConnectedTestCase):
             await self.con.execute('''
                 DROP TABLE testtab;
                 DROP TYPE enum_t;
+            ''')
+
+    async def test_interval(self):
+        self.assertFalse(asyncpg.Interval(0, 0, 0))
+        self.assertTrue(asyncpg.Interval(0, 0, 1))
+        self.assertTrue(asyncpg.Interval(0, 0, 1) == asyncpg.Interval(0, 0, microseconds=1))
+        self.assertTrue(asyncpg.Interval(0, 0, 2) != asyncpg.Interval(0, 0, microseconds=1))
+        self.assertTrue(asyncpg.Interval(0, 0, 1) < asyncpg.Interval(0, 1))
+        self.assertTrue(asyncpg.Interval(1, 0, 1) > asyncpg.Interval(0, 1))
+
+        i = asyncpg.Interval(0, 0, 1)
+        self.assertEqual(i.microseconds, 1)
+
+        i = asyncpg.Interval(0, 0, microseconds=1000001)
+        self.assertEqual(i, asyncpg.Interval(0, 0, 1000001))
+        self.assertEqual(i.microseconds, 1)
+        self.assertEqual(i.seconds, 1)
+
+        i = asyncpg.Interval(0, 0, seconds=1)
+        self.assertEqual(i, asyncpg.Interval(0, 0, 1000000))
+        self.assertEqual(i.seconds, 1)
+
+        i = asyncpg.Interval(0, 0, seconds=61)
+        self.assertEqual(i, asyncpg.Interval(0, 0, 61000000))
+        self.assertEqual(i.seconds, 1)
+        self.assertEqual(i.minutes, 1)
+
+        i = asyncpg.Interval(0, 0, minutes=1)
+        self.assertEqual(i, asyncpg.Interval(0, 0, 60000000))
+        self.assertEqual(i.minutes, 1)
+
+        i = asyncpg.Interval(0, 0, minutes=61)
+        self.assertEqual(i, asyncpg.Interval(0, 0, 3660000000))
+        self.assertEqual(i.minutes, 1)
+        self.assertEqual(i.hours, 1)
+
+        i = asyncpg.Interval(0, 0, hours=1)
+        self.assertEqual(i, asyncpg.Interval(0, 0, 3600000000))
+        self.assertEqual(i.hours, 1)
+
+        i = asyncpg.Interval(0, 0, hours=25)
+        self.assertEqual(i, asyncpg.Interval(0, 1, 3600000000))
+        self.assertEqual(i.hours, 1)
+        self.assertEqual(i.days, 1)
+
+    async def test_interval_arith(self):
+        await self.con.execute('''
+            CREATE TABLE testtab (
+                dat date,
+                ts timestamp,
+                delta interval
+            );
+
+            INSERT INTO testtab VALUES (
+                '2017-03-31', '2017-03-31 10:11:12',
+                '1 month'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-03-31', '2017-03-31 10:11:12',
+                '-1 month'
+            );
+            INSERT INTO testtab VALUES (
+                '1968-02-29', '1968-02-29 10:11:12',
+                '1 year'
+            );
+            INSERT INTO testtab VALUES (
+                '1968-02-29', '1968-02-29 10:11:12',
+                '-1 year'
+            );
+
+            INSERT INTO testtab VALUES (
+                '2017-01-01', '2017-01-01 10:11:12',
+                '8.9 seconds'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-01-02', '2017-01-02 10:11:12',
+                '-8.9 seconds'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-01-03', '2017-01-03 10:11:12',
+                '1 day 2.3 seconds'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-01-04', '2017-01-04 10:11:12',
+                '1 day -2.3 seconds'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-01-05', '2017-01-05 10:11:12',
+                '-1 day 2.3 seconds'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-01-06', '2017-01-06 10:11:12',
+                '-1 day -2.3 seconds'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-01-07', '2017-01-07 10:11:12',
+                '1 month 2 days 3.4 seconds'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-01-08', '2017-01-08 10:11:12',
+                '1 month 2 days -3.4 seconds'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-01-09', '2017-01-09 10:11:12',
+                '1 month -2 days 3.4 seconds'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-01-10', '2017-01-10 10:11:12',
+                '1 month -2 days -3.4 seconds'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-01-11', '2017-01-11 10:11:12',
+                '-1 month 2 days 3.4 seconds'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-01-12', '2017-01-12 10:11:12',
+                '-1 month 2 days -3.4 seconds'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-01-13', '2017-01-13 10:11:12',
+                '-1 month -2 days 3.4 seconds'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-01-14', '2017-01-14 10:11:12',
+                '-1 month -2 days -3.4 seconds'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-02-28', '2017-02-28 10:11:12',
+                '1 year'
+            );
+            INSERT INTO testtab VALUES (
+                '2017-02-28', '2017-02-28 10:11:12',
+                '-1 year'
+            );
+            INSERT INTO testtab VALUES (
+                '2016-02-29', '2016-02-29 10:11:12',
+                '4 year'
+            );
+            INSERT INTO testtab VALUES (
+                '2016-02-29', '2016-02-29 10:11:12',
+                '-4 year'
+            );
+            INSERT INTO testtab VALUES (
+                '2016-02-28', '2016-02-28 10:11:12',
+                '5 year'
+            );
+            INSERT INTO testtab VALUES (
+                '2016-02-28', '2016-02-28 10:11:12',
+                '-5 year'
+            );
+            INSERT INTO testtab VALUES (
+                '2016-02-29', '2016-02-29 10:11:12',
+                '5 year'
+            );
+            INSERT INTO testtab VALUES (
+                '2016-02-29', '2016-02-29 10:11:12',
+                '-5 year'
+            );
+        ''')
+
+        try:
+            result = await self.con.fetch('''
+                SELECT dat, ts, delta, -delta as mdelta,
+                       dat+delta as dat_p_delta, dat-delta as dat_m_delta,
+                       ts+delta as ts_p_delta, ts-delta as ts_m_delta,
+                       delta+delta as delta_p_delta, delta-delta as delta_m_delta
+                FROM testtab''')
+            for record in result:
+                with self.subTest(record=record):
+                    dat, ts, d, md, dat_p_d, dat_m_d, ts_p_d, ts_m_d, d_p_d, d_m_d = record
+                    self.assertEqual(-d, md)
+                    self.assertEqual(d + d, d_p_d)
+                    self.assertEqual(d - d, d_m_d)
+                    self.assertEqual(d * 2, d + d)
+                    self.assertEqual(2 * d, d + d)
+                    self.assertEqual(dat + d, dat_p_d)
+                    self.assertEqual(d + dat, dat_p_d)
+                    self.assertEqual(dat - d, dat_m_d)
+                    self.assertEqual(ts + d, ts_p_d)
+                    self.assertEqual(ts - d, ts_m_d)
+        finally:
+            await self.con.execute('''
+                DROP TABLE testtab
             ''')

@@ -12,5 +12,5 @@ from .protocol import Record  # NOQA
 from .types import *  # NOQA
 
 
-__all__ = ('connect', 'create_pool', 'Record', 'Connection') + \
+__all__ = ('Connection', 'Interval', 'Record', 'connect', 'create_pool') + \
           exceptions.__all__  # NOQA

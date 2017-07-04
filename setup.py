@@ -35,7 +35,7 @@ class build_ext(_build_ext.build_ext):
         ('cython-annotate', None,
             'Produce a colorized HTML version of the Cython source.'),
         ('cython-directives=', None,
-            'Cythion compiler directives'),
+            'Cython compiler directives'),
     ]
 
     def initialize_options(self):

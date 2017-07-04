@@ -232,31 +232,361 @@ cdef timetz_decode(ConnectionSettings settings, FastReadBuffer buf):
     return time.replace(tzinfo=datetime.timezone(timedelta(minutes=offset)))
 
 
-cdef interval_encode(ConnectionSettings settings, WriteBuffer buf, obj):
-    cdef:
-        int32_t days = <int32_t>cpython.PyLong_AsLong(obj.days)
-        int64_t seconds = cpython.PyLong_AsLongLong(obj.seconds)
-        int32_t microseconds = <int32_t>cpython.PyLong_AsLong(obj.microseconds)
+cdef int32_t is_leap(int32_t year):
+    return ((year % 4) == 0 and ((year % 100) != 0 or (year % 400) == 0))
 
+
+cdef int32_t month_days(int32_t year, int32_t month):
+    if month == 4 or month == 6 or month == 9 or month == 11:
+        return 30
+    elif month == 2:
+        return 29 if is_leap(year) else 28
+    else:
+        return 31
+
+
+cdef to_timedelta(int32_t months, int32_t days, int64_t time,
+                  int32_t year, int32_t month, int32_t day):
+    cdef:
+        int64_t cum_days
+        int32_t step
+        int64_t seconds
+        uint32_t microseconds
+        int32_t mdays
+        int32_t years
+
+    step = -1 if months < 0 else 1
+    cum_days = 0
+
+    years = <int32_t> ((months * step) // 12)
+    months -= step * years * 12
+
+    while years:
+        years -= 1
+        cum_days += 365
+        if step == 1:
+            if (month < 3 and is_leap(year)) or (month > 2 and is_leap(year+1)):
+                cum_days += 1
+        else:
+            if (month > 2 and is_leap(year)) or (month < 3 and is_leap(year-1)):
+                cum_days += 1
+        year += step
+
+    while months:
+        months -= step
+        if step == 1:
+            mdays = month_days(year, month)
+        month += step
+        if step == 1:
+            if month == 13:
+                month = 1
+                year += 1
+        else:
+            if month == 0:
+                month = 12
+                year -= 1
+            mdays = month_days(year, month)
+        cum_days += mdays
+
+    cum_days *= step
+
+    mdays = month_days(year, month)
+    if day > mdays:
+        days -= day - mdays
+
+    cum_days += days
+
+    seconds, microseconds = divmod(time, 1000000)
+    days, seconds = divmod(seconds, 24 * 60 * 60)
+
+    return timedelta(cum_days + days, seconds, microseconds)
+
+
+cdef class Interval(object):
+    """Immutable representation of PostgreSQL `interval` type, implementing it's
+    basic `datetime arithmetic`__.
+
+    __ https://www.postgresql.org/docs/current/static/functions-datetime.html
+
+    :param int32 months: number of months
+    :param int32 days: number of days
+    :param int64 time: time, expressed in microseconds, defaults to 0
+    :param int64 hours: number of hours, defaults to 0
+    :param int64 minutes: number of minutes, defaults to 0
+    :param int64 seconds: number of seconds, defaults to 0
+    :param int64 microseconds: number of microseconds, defaults to 0
+
+    The `time` can be either entered as a single number of microseconds:
+
+    .. code:: pycon
+
+       >>> from asyncpg import Interval
+       >>> a = Interval(months=0, days=0, time=3723000004)
+       >>> repr(a)
+       Interval(months=0, days=0, time=3723000004)
+       >>> str(a)
+       '01:02:03.000004'
+
+    or specified as one or more of its subunits:
+
+    .. code:: pycon
+
+       >>> b = Interval(0, 0, hours=1, minutes=2, seconds=3, microseconds=4)
+       >>> a == b
+       True
+       >>> c = Interval(0, 0, seconds=3723, microseconds=4)
+       >>> a == c
+       True
+
+    An instance exposes the same set of members:
+
+    .. code:: pycon
+
+       >>> a.months, a.days, a.time, a.hours, a.minutes, a.seconds, a.microseconds
+       (0, 0, 3723000004, 1, 2, 3, 4)
+
+    that cannot be altered:
+
+    .. code:: pycon
+
+       >>> a.days = 1
+       Traceback (most recent call last):
+         File "<stdin>", line 1, in <module>
+       AttributeError: attribute 'days' of 'asyncpg.protocol.protocol.Interval' objects is not writable
+
+    and, being immutable, they are *hashable*:
+
+    .. code:: pycon
+
+       >>> {a: True}
+       {Interval(months=0, days=0, time=3723000004): True}
+
+    They also implement almost the same *datetime* arithmetic of PostgreSQL:
+
+    .. code:: pycon
+
+       >>> from datetime import date
+       >>> d = date(2017, 6, 14)
+       >>> d + a
+       datetime.datetime(2017, 6, 14, 1, 2, 3, 4)
+       >>> d + a*100
+       datetime.datetime(2017, 6, 18, 7, 25, 0, 400)
+       >>> d - a
+       datetime.datetime(2017, 6, 13, 22, 57, 56, 999996)
+
+    This is very similar to what you can do with Python's ``datetime.timedelta``.
+
+    The ``Interval`` behaviour differs when it carries a number of `months`:
+
+    .. code:: pycon
+
+       >>> m = Interval(1, 0)
+       >>> eom = date(2017, 3, 31)
+       >>> eom + m
+       datetime.datetime(2017, 4, 30, 0, 0)
+       >>> eom - m
+       datetime.datetime(2017, 2, 28, 0, 0)
+       >>> eom - m*12
+       datetime.datetime(2016, 3, 31, 0, 0)
+       >>> eom - m*13
+       datetime.datetime(2016, 2, 29, 0, 0)
+    """
+
+    cdef:
+        readonly int32_t months
+        readonly int32_t days
+        readonly int64_t time
+
+    def __init__(self, int32_t months, int32_t days, int64_t time=0,
+                 int64_t hours=0, int64_t minutes=0, int64_t seconds=0, int64_t microseconds=0):
+        if time == 0:
+            carry, microseconds = divmod(microseconds, 1000000)
+            carry, seconds = divmod(seconds + carry, 60)
+            carry, minutes = divmod(minutes + carry, 60)
+            carry, hours = divmod(hours + carry, 24)
+            days += carry
+            time = (hours * 60 * 60 + minutes * 60 + seconds) * 1000000 + microseconds
+
+        self.months = months
+        self.days = days
+        self.time = time
+
+    @property
+    def hours(self):
+        return (self.time // (60 * 60 * 1000000))
+
+    @property
+    def minutes(self):
+        return (self.time // (60 * 1000000)) % 60
+
+    @property
+    def seconds(self):
+        return (self.time // 1000000) % 60
+
+    @property
+    def microseconds(self):
+        return self.time % 1000000
+
+    def __repr__(self):
+        return "Interval(months=%d, days=%d, time=%d)" % (self.months, self.days, self.time)
+
+    def __str__(self):
+        cdef:
+            int32_t hours
+            int32_t mins
+            int32_t secs
+            int32_t usecs
+            int64_t time
+
+        parts = []
+
+        if self.months:
+            parts.append("%d month%s" % (self.months, '' if abs(self.months) == 1 else 's'))
+
+        if self.days:
+            parts.append("%d day%s" % (self.days, '' if abs(self.days) == 1 else 's'))
+
+        if self.time:
+            time, usecs = divmod(self.time, 1000000)
+            time, secs = divmod(time, 60)
+            time, mins = divmod(time, 60)
+            time, hours = divmod(time, 60)
+            sign = '-' if time < 0 else ''
+            if usecs:
+                parts.append("%s%02d:%02d:%02d.%06d" % (sign, hours, mins, secs, usecs))
+            else:
+                parts.append("%s%02d:%02d:%02d" % (sign, hours, mins, secs))
+
+        return ', '.join(parts)
+
+    def __hash__(self):
+        return hash((self.months, self.days, self.time))
+
+    def __richcmp__(self, other, int op):
+        if isinstance(other, Interval):
+            if op == 2: # ==
+                return (self.months == other.months
+                        and self.days == other.days
+                        and self.time == other.time)
+            elif op == 3: # !=
+                return (self.months != other.months
+                        or self.days != other.days
+                        or self.time != other.time)
+            elif op == 0: # <
+                return ((self.months, self.days, self.time)
+                        <
+                        (other.months, other.days, other.time))
+            elif op == 1: # <=
+                return ((self.months, self.days, self.time)
+                        <=
+                        (other.months, other.days, other.time))
+            elif op == 4: # >
+                return ((self.months, self.days, self.time)
+                        >
+                        (other.months, other.days, other.time))
+            elif op == 5: # >=
+                return ((self.months, self.days, self.time)
+                        >=
+                        (other.months, other.days, other.time))
+        return False
+
+    def __abs__(self):
+        return Interval(abs(self.months),
+                        abs(self.days),
+                        abs(self.time))
+
+    def __neg__(self):
+        return Interval(-self.months,
+                        -self.days,
+                        -self.time)
+
+    def __add__(self, other):
+        if isinstance(self, Interval):
+            if isinstance(other, Interval):
+                return Interval(self.months + other.months,
+                                self.days + other.days,
+                                self.time + other.time)
+
+            if isinstance(other, datetime.date):
+                delta = to_timedelta(self.months, self.days, self.time,
+                                     other.year, other.month, other.day)
+
+                if isinstance(other, datetime.datetime):
+                    result = other
+                else:
+                    result = datetime.datetime(year=other.year, month=other.month, day=other.day)
+
+                return result + delta
+
+        elif isinstance(self, datetime.date):
+            if isinstance(other, Interval):
+                delta = to_timedelta(other.months, other.days, other.time,
+                                     self.year, self.month, self.day)
+                if isinstance(self, datetime.datetime):
+                    result = self
+                else:
+                    result = datetime.datetime(year=self.year, month=self.month, day=self.day)
+
+                return result + delta
+
+        return NotImplemented
+
+    def __sub__(self, other):
+        if isinstance(self, Interval):
+            if isinstance(other, Interval):
+                return Interval(self.months - other.months,
+                                self.days - other.days,
+                                self.time - other.time)
+
+        elif isinstance(self, datetime.date):
+            if isinstance(other, Interval):
+                delta = to_timedelta(-other.months, -other.days, -other.time,
+                                     self.year, self.month, self.day)
+                if isinstance(self, datetime.datetime):
+                    result = self
+                else:
+                    result = datetime.datetime(year=self.year, month=self.month, day=self.day)
+
+                return result + delta
+
+        return NotImplemented
+
+    def __mul__(self, other):
+        if isinstance(self, Interval):
+            return Interval(self.months * other,
+                            self.days * other,
+                            self.time * other)
+        elif isinstance(other, Interval):
+            return Interval(other.months * self,
+                            other.days * self,
+                            other.time * self)
+
+        return NotImplemented
+
+    def __nonzero__(self):
+        return (self.months != 0
+                or self.days != 0
+                or self.time != 0)
+
+
+cdef interval_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     buf.write_int32(16)
-    _encode_time(buf, seconds, microseconds)
-    buf.write_int32(days)
-    buf.write_int32(0) # Months
+    buf.write_int64(obj.time)
+    buf.write_int32(obj.days)
+    buf.write_int32(obj.months)
 
 
 cdef interval_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
         int32_t days
         int32_t months
-        int64_t seconds = 0
-        uint32_t microseconds = 0
+        int64_t time
 
-    _decode_time(buf, &seconds, &microseconds)
+    time = hton.unpack_int64(buf.read(8))
     days = hton.unpack_int32(buf.read(4))
     months = hton.unpack_int32(buf.read(4))
 
-    return datetime.timedelta(days=days + months * 30, seconds=seconds,
-                              microseconds=microseconds)
+    return Interval(months, days, time)
 
 
 cdef init_datetime_codecs():
