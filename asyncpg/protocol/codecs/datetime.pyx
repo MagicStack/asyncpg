@@ -248,6 +248,7 @@ cdef interval_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
         int32_t days
         int32_t months
+        int32_t years
         int64_t seconds = 0
         uint32_t microseconds = 0
 
@@ -255,8 +256,15 @@ cdef interval_decode(ConnectionSettings settings, FastReadBuffer buf):
     days = hton.unpack_int32(buf.read(4))
     months = hton.unpack_int32(buf.read(4))
 
-    return datetime.timedelta(days=days + months * 30, seconds=seconds,
-                              microseconds=microseconds)
+    if months < 0:
+        years = -<int32_t>(-months // 12)
+        months = -<int32_t>(-months % 12)
+    else:
+        years = <int32_t>(months // 12)
+        months = <int32_t>(months % 12)
+
+    return datetime.timedelta(days=days + months * 30 + years * 365,
+                              seconds=seconds, microseconds=microseconds)
 
 
 cdef init_datetime_codecs():
