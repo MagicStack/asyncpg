@@ -161,3 +161,5 @@ cdef class DataCodecConfig:
         dict _local_type_codecs
 
     cdef inline Codec get_codec(self, uint32_t oid, CodecFormat format)
+    cdef inline Codec get_local_codec(
+        self, uint32_t oid, CodecFormat preferred_format=*)

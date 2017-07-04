@@ -563,17 +563,39 @@ cdef class DataCodecConfig:
     cdef inline Codec get_codec(self, uint32_t oid, CodecFormat format):
         cdef Codec codec
 
-        try:
-            return self._local_type_codecs[oid, format]
-        except KeyError:
-            codec = get_core_codec(oid, format)
-            if codec is not None:
-                return codec
+        codec = self.get_local_codec(oid, format)
+        if codec is not None:
+            if codec.format != format:
+                # The codec for this OID has been overridden by
+                # set_{builtin}_type_codec with a different format.
+                # We must respect that and not return a core codec.
+                return None
             else:
-                try:
-                    return self._type_codecs_cache[oid, format]
-                except KeyError:
-                    return None
+                return codec
+
+        codec = get_core_codec(oid, format)
+        if codec is not None:
+            return codec
+        else:
+            try:
+                return self._type_codecs_cache[oid, format]
+            except KeyError:
+                return None
+
+    cdef inline Codec get_local_codec(
+            self, uint32_t oid, CodecFormat preferred_format=PG_FORMAT_BINARY):
+        cdef Codec codec
+
+        codec = self._local_type_codecs.get((oid, preferred_format))
+        if codec is None:
+            if preferred_format == PG_FORMAT_BINARY:
+                alt_format = PG_FORMAT_TEXT
+            else:
+                alt_format = PG_FORMAT_BINARY
+
+            codec = self._local_type_codecs.get((oid, alt_format))
+
+        return codec
 
 
 cdef inline Codec get_core_codec(uint32_t oid, CodecFormat format):
