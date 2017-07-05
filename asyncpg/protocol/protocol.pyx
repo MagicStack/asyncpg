@@ -664,7 +664,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         if self.result_type == RESULT_FAILED:
             if isinstance(self.result, dict):
-                exc = apg_exc_base.PostgresMessage.new(
+                exc = apg_exc_base.PostgresError.new(
                     self.result, query=self.last_query)
             else:
                 exc = self.result
@@ -732,15 +732,10 @@ cdef class BaseProtocol(CoreProtocol):
             self.return_extra = False
 
     cdef _on_notice(self, parsed):
-        # Check it here to avoid unnecessary object creation.
-        if self.connection._notice_callbacks:
-            message = apg_exc_base.PostgresMessage.new(
-                parsed, query=self.last_query)
-
-            self.connection._notice(message)
+        self.connection._process_log_message(parsed, self.last_query)
 
     cdef _on_notification(self, pid, channel, payload):
-        self.connection._notify(pid, channel, payload)
+        self.connection._process_notification(pid, channel, payload)
 
     cdef _on_connection_lost(self, exc):
         if self.closing:

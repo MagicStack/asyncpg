@@ -8,7 +8,7 @@
 import asyncio
 
 from asyncpg import _testbase as tb
-from asyncpg.exceptions import PostgresNotice, PostgresWarning
+from asyncpg import exceptions
 
 
 class TestListeners(tb.ClusterTestCase):
@@ -77,70 +77,81 @@ class TestListeners(tb.ClusterTestCase):
                     (con1, con2.get_server_pid(), 'ipc', 'hello'))
 
 
-class TestNotices(tb.ConnectedTestCase):
-    async def test_notify_01(self):
+class TestLogListeners(tb.ConnectedTestCase):
+
+    async def test_log_listener_01(self):
         q1 = asyncio.Queue(loop=self.loop)
 
         def notice_callb(con, message):
-            # data in the message depend on PG's version, hide some values
-            if message.server_source_line is not None :
-                message.server_source_line = '***'
+            # Message fields depend on PG version, hide some values.
+            dct = message.as_dict()
+            del dct['server_source_line']
+            q1.put_nowait((con, type(message), dct))
 
-            q1.put_nowait((con, type(message), message.as_dict()))
+        async def raise_notice():
+            await self.con.execute(
+                "DO $$ BEGIN RAISE NOTICE 'catch me!'; END; $$ LANGUAGE plpgsql"
+            )
+
+        async def raise_warning():
+            await self.con.execute(
+                "DO $$ BEGIN RAISE WARNING 'catch me!'; END; $$ LANGUAGE plpgsql"
+            )
 
         con = self.con
-        con.add_notice_callback(notice_callb)
-        await con.execute(
-            "DO $$ BEGIN RAISE NOTICE 'catch me!'; END; $$ LANGUAGE plpgsql"
-        )
-        await con.execute(
-            "DO $$ BEGIN RAISE WARNING 'catch me!'; END; $$ LANGUAGE plpgsql"
-        )
+        con.add_log_listener(notice_callb)
 
-        expect_msg = {
+        expected_msg = {
             'context': 'PL/pgSQL function inline_code_block line 1 at RAISE',
             'message': 'catch me!',
             'server_source_filename': 'pl_exec.c',
             'server_source_function': 'exec_stmt_raise',
-            'server_source_line': '***'}
+        }
 
-        expect_msg_notice = expect_msg.copy()
-        expect_msg_notice.update({
+        expected_msg_notice = {
+            **expected_msg,
             'severity': 'NOTICE',
             'severity_en': 'NOTICE',
             'sqlstate': '00000',
-        })
+        }
 
-        expect_msg_warn = expect_msg.copy()
-        expect_msg_warn.update({
+        expected_msg_warn = {
+            **expected_msg,
             'severity': 'WARNING',
             'severity_en': 'WARNING',
             'sqlstate': '01000',
-        })
+        }
 
         if con.get_server_version() < (9, 6):
-            del expect_msg_notice['context']
-            del expect_msg_notice['severity_en']
-            del expect_msg_warn['context']
-            del expect_msg_warn['severity_en']
+            del expected_msg_notice['context']
+            del expected_msg_notice['severity_en']
+            del expected_msg_warn['context']
+            del expected_msg_warn['severity_en']
+
+        await raise_notice()
+        await raise_warning()
 
         self.assertEqual(
             await q1.get(),
-            (con, PostgresNotice, expect_msg_notice))
+            (con, exceptions.PostgresLogMessage, expected_msg_notice))
 
         self.assertEqual(
             await q1.get(),
-            (con, PostgresWarning, expect_msg_warn))
+            (con, exceptions.PostgresWarning, expected_msg_warn))
 
-        con.remove_notice_callback(notice_callb)
-        await con.execute(
-            "DO $$ BEGIN RAISE NOTICE '/dev/null!'; END; $$ LANGUAGE plpgsql"
-        )
-
+        con.remove_log_listener(notice_callb)
+        await raise_notice()
         self.assertTrue(q1.empty())
 
+        con.add_log_listener(notice_callb)
+        await raise_notice()
+        await q1.get()
+        self.assertTrue(q1.empty())
+        await con.reset()
+        await raise_notice()
+        self.assertTrue(q1.empty())
 
-    async def test_notify_sequence(self):
+    async def test_log_listener_02(self):
         q1 = asyncio.Queue(loop=self.loop)
 
         cur_id = None
@@ -159,7 +170,7 @@ class TestNotices(tb.ConnectedTestCase):
             " END"
             "$$"
         )
-        con.add_notice_callback(notice_callb)
+        con.add_log_listener(notice_callb)
         for cur_id in range(10):
             await con.execute("SELECT _test($1)", cur_id)
 
@@ -171,5 +182,35 @@ class TestNotices(tb.ConnectedTestCase):
                 q1.get_nowait(),
                 (con, cur_id, '2_%s' % cur_id))
 
-        con.remove_notice_callback(notice_callb)
+        con.remove_log_listener(notice_callb)
+        self.assertTrue(q1.empty())
+
+    async def test_log_listener_03(self):
+        q1 = asyncio.Queue(loop=self.loop)
+
+        async def raise_message(level, code):
+            await self.con.execute("""
+                DO $$ BEGIN
+                    RAISE {} 'catch me!' USING ERRCODE = '{}';
+                END; $$ LANGUAGE plpgsql;
+            """.format(level, code))
+
+        def notice_callb(con, message):
+            # Message fields depend on PG version, hide some values.
+            q1.put_nowait(message)
+
+        self.con.add_log_listener(notice_callb)
+
+        await raise_message('WARNING', '99999')
+        msg = await q1.get()
+        self.assertIsInstance(msg, exceptions.PostgresWarning)
+        self.assertEqual(msg.sqlstate, '99999')
+
+        await raise_message('WARNING', '01004')
+        msg = await q1.get()
+        self.assertIsInstance(msg, exceptions.StringDataRightTruncation)
+        self.assertEqual(msg.sqlstate, '01004')
+
+        with self.assertRaises(exceptions.InvalidCharacterValueForCastError):
+            await raise_message('', '22018')
         self.assertTrue(q1.empty())

@@ -42,7 +42,7 @@ class Connection(metaclass=ConnectionMeta):
                  '_stmt_cache', '_stmts_to_close', '_listeners',
                  '_server_version', '_server_caps', '_intro_query',
                  '_reset_query', '_proxy', '_stmt_exclusive_section',
-                 '_config', '_params', '_addr', '_notice_callbacks')
+                 '_config', '_params', '_addr', '_log_listeners')
 
     def __init__(self, protocol, transport, loop,
                  addr: (str, int) or str,
@@ -70,7 +70,7 @@ class Connection(metaclass=ConnectionMeta):
         self._stmts_to_close = set()
 
         self._listeners = {}
-        self._notice_callbacks = set()
+        self._log_listeners = set()
 
         settings = self._protocol.get_settings()
         ver_string = settings.server_version
@@ -128,25 +128,30 @@ class Connection(metaclass=ConnectionMeta):
             del self._listeners[channel]
             await self.fetch('UNLISTEN {}'.format(channel))
 
-    def add_notice_callback(self, callback):
-        """Add a callback for Postgres notices (NOTICE, DEBUG, LOG etc.).
+    def add_log_listener(self, callback):
+        """Add a listener for Postgres log messages.
 
         It will be called when asyncronous NoticeResponse is received
-        from the connection.  Possible message types are: WARNING, NOTICE, DEBUG,
-        INFO, or LOG.
+        from the connection.  Possible message types are: WARNING, NOTICE,
+        DEBUG, INFO, or LOG.
 
         :param callable callback:
             A callable receiving the following arguments:
             **connection**: a Connection the callback is registered with;
-            **message**: the `exceptions.PostgresNotice` message.
+            **message**: the `exceptions.PostgresLogMessage` message.
+
+        .. versionadded:: 0.12.0
         """
         if self.is_closed():
             raise exceptions.InterfaceError('connection is closed')
-        self._notice_callbacks.add(callback)
+        self._log_listeners.add(callback)
 
-    def remove_notice_callback(self, callback):
-        """Remove a callback for notices."""
-        self._notice_callbacks.discard(callback)
+    def remove_log_listener(self, callback):
+        """Remove a listening callback for log messages.
+
+        .. versionadded:: 0.12.0
+        """
+        self._log_listeners.discard(callback)
 
     def get_server_pid(self):
         """Return the PID of the Postgres server the connection is bound to."""
@@ -975,22 +980,23 @@ class Connection(metaclass=ConnectionMeta):
         if self.is_closed():
             return
         self._mark_stmts_as_closed()
-        self._listeners = {}
+        self._listeners.clear()
+        self._log_listeners.clear()
         self._aborted = True
         await self._protocol.close()
-        self._notice_callbacks = set()
 
     def terminate(self):
         """Terminate the connection without waiting for pending data."""
         self._mark_stmts_as_closed()
-        self._listeners = {}
+        self._listeners.clear()
+        self._log_listeners.clear()
         self._aborted = True
         self._protocol.abort()
-        self._notice_callbacks = set()
 
     async def reset(self):
         self._check_open()
         self._listeners.clear()
+        self._log_listeners.clear()
         reset_query = self._get_reset_query()
         if reset_query:
             await self.execute(reset_query)
@@ -1068,44 +1074,37 @@ class Connection(metaclass=ConnectionMeta):
 
         self._loop.create_task(cancel())
 
-    def _notice(self, message):
-        if self._proxy is None:
-            con_ref = self
-        else:
-            # See the comment in the `_notify` below.
-            con_ref = self._proxy
+    def _process_log_message(self, fields, last_query):
+        if not self._log_listeners:
+            return
 
-        for cb in self._notice_callbacks:
-            self._loop.call_soon(self._call_notice_cb, cb, con_ref, message)
+        message = exceptions.PostgresLogMessage.new(fields, query=last_query)
 
-    def _call_notice_cb(self, cb, con_ref, message):
+        con_ref = self._unwrap()
+        for cb in self._log_listeners:
+            self._loop.call_soon(
+                self._call_log_listener, cb, con_ref, message)
+
+    def _call_log_listener(self, cb, con_ref, message):
         try:
             cb(con_ref, message)
         except Exception as ex:
             self._loop.call_exception_handler({
-                'message': 'Unhandled exception in asyncpg notice message '
-                           'callback {!r}'.format(cb),
+                'message': 'Unhandled exception in asyncpg log message '
+                           'listener callback {!r}'.format(cb),
                 'exception': ex
             })
 
-    def _notify(self, pid, channel, payload):
+    def _process_notification(self, pid, channel, payload):
         if channel not in self._listeners:
             return
 
-        if self._proxy is None:
-            con_ref = self
-        else:
-            # `_proxy` is not None when the connection is a member
-            # of a connection pool.  Which means that the user is working
-            # with a `PoolConnectionProxy` instance, and expects to see it
-            # (and not the actual Connection) in their event callbacks.
-            con_ref = self._proxy
-
+        con_ref = self._unwrap()
         for cb in self._listeners[channel]:
             self._loop.call_soon(
-                self._call_notify_cb, cb, con_ref, pid, channel, payload)
+                self._call_listener, cb, con_ref, pid, channel, payload)
 
-    def _call_notify_cb(self, cb, con_ref, pid, channel, payload):
+    def _call_listener(self, cb, con_ref, pid, channel, payload):
         try:
             cb(con_ref, pid, channel, payload)
         except Exception as ex:
@@ -1114,6 +1113,17 @@ class Connection(metaclass=ConnectionMeta):
                            'listener callback {!r}'.format(cb),
                 'exception': ex
             })
+
+    def _unwrap(self):
+        if self._proxy is None:
+            con_ref = self
+        else:
+            # `_proxy` is not None when the connection is a member
+            # of a connection pool.  Which means that the user is working
+            # with a `PoolConnectionProxy` instance, and expects to see it
+            # (and not the actual Connection) in their event callbacks.
+            con_ref = self._proxy
+        return con_ref
 
     def _get_reset_query(self):
         if self._reset_query is not None:

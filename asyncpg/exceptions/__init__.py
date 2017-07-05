@@ -5,7 +5,7 @@ from ._base import *  # NOQA
 from . import _base
 
 
-class PostgresWarning(Warning, _base.PostgresMessage):
+class PostgresWarning(_base.PostgresLogMessage, Warning):
     sqlstate = '01000'
 
 
@@ -259,6 +259,10 @@ class NullValueNoIndicatorParameterError(DataError):
 
 class NumericValueOutOfRangeError(DataError):
     sqlstate = '22003'
+
+
+class SequenceGeneratorLimitExceededError(DataError):
+    sqlstate = '2200H'
 
 
 class StringDataLengthMismatchError(DataError):
@@ -608,6 +612,10 @@ class WrongObjectTypeError(SyntaxOrAccessError):
     sqlstate = '42809'
 
 
+class GeneratedAlwaysError(SyntaxOrAccessError):
+    sqlstate = '428C9'
+
+
 class UndefinedColumnError(SyntaxOrAccessError):
     sqlstate = '42703'
 
@@ -770,6 +778,10 @@ class CantChangeRuntimeParamError(ObjectNotInPrerequisiteStateError):
 
 class LockNotAvailableError(ObjectNotInPrerequisiteStateError):
     sqlstate = '55P03'
+
+
+class UnsafeNewEnumValueUsageError(ObjectNotInPrerequisiteStateError):
+    sqlstate = '55P04'
 
 
 class OperatorInterventionError(_base.PostgresError):
@@ -1007,7 +1019,8 @@ __all__ = _base.__all__ + (
     'FDWUnableToCreateExecutionError', 'FDWUnableToCreateReplyError',
     'FDWUnableToEstablishConnectionError', 'FeatureNotSupportedError',
     'ForeignKeyViolationError', 'FunctionExecutedNoReturnStatementError',
-    'GroupingError', 'HeldCursorRequiresSameIsolationLevelError',
+    'GeneratedAlwaysError', 'GroupingError',
+    'HeldCursorRequiresSameIsolationLevelError',
     'IdleInTransactionSessionTimeoutError', 'ImplicitZeroBitPadding',
     'InFailedSQLTransactionError',
     'InappropriateAccessModeForBranchTransactionError',
@@ -1073,7 +1086,8 @@ __all__ = _base.__all__ + (
     'ReadingSQLDataNotPermittedError', 'ReservedNameError',
     'RestrictViolationError', 'SQLRoutineError',
     'SQLStatementNotYetCompleteError', 'SavepointError',
-    'SchemaAndDataStatementMixingNotSupportedError', 'SerializationError',
+    'SchemaAndDataStatementMixingNotSupportedError',
+    'SequenceGeneratorLimitExceededError', 'SerializationError',
     'SnapshotTooOldError', 'SrfProtocolViolatedError',
     'StackedDiagnosticsAccessedWithoutActiveHandlerError',
     'StatementCompletionUnknownError', 'StatementTooComplexError',
@@ -1088,8 +1102,8 @@ __all__ = _base.__all__ + (
     'UndefinedColumnError', 'UndefinedFileError',
     'UndefinedFunctionError', 'UndefinedObjectError',
     'UndefinedParameterError', 'UndefinedTableError',
-    'UniqueViolationError', 'UnterminatedCStringError',
-    'UntranslatableCharacterError', 'WindowingError',
-    'WithCheckOptionViolationError', 'WrongObjectTypeError',
-    'ZeroLengthCharacterStringError'
+    'UniqueViolationError', 'UnsafeNewEnumValueUsageError',
+    'UnterminatedCStringError', 'UntranslatableCharacterError',
+    'WindowingError', 'WithCheckOptionViolationError',
+    'WrongObjectTypeError', 'ZeroLengthCharacterStringError'
 )

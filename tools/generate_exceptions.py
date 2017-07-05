@@ -139,7 +139,7 @@ class {clsname}({base}):
         if new_section:
             section_class = clsname
             if clsname == 'PostgresWarning':
-                base = 'Warning, _base.PostgresMessage'
+                base = '_base.PostgresLogMessage, Warning'
             else:
                 if msgtype == 'W':
                     base = 'PostgresWarning'
