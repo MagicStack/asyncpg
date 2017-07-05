@@ -41,7 +41,7 @@ cdef int2_decode(ConnectionSettings settings, FastReadBuffer buf):
 
 cdef int4_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     cdef int overflow = 0
-    cdef long val
+    cdef long val = 0
 
     try:
         val = cpython.PyLong_AsLong(obj)
