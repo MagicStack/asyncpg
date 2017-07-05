@@ -5,11 +5,12 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+import asyncpg
 import sys
 
 
 __all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError',
-           'InterfaceError', 'PostgresNotice')
+           'InterfaceError', 'PostgresLogMessage')
 
 
 def _is_asyncpg_class(cls):
@@ -18,6 +19,7 @@ def _is_asyncpg_class(cls):
 
 
 class PostgresMessageMeta(type):
+
     _message_map = {}
     _field_map = {
         'S': 'severity',
@@ -69,35 +71,31 @@ class PostgresMessageMeta(type):
 
 
 class PostgresMessage(metaclass=PostgresMessageMeta):
-    def __str__(self):
-        msg = self.args[0]
-        if self.detail:
-            msg += '\nDETAIL:  {}'.format(self.detail)
-        if self.hint:
-            msg += '\nHINT:  {}'.format(self.hint)
-
-        return msg
 
     @classmethod
-    def _get_error_template(cls, fields, query):
-        errcode = fields.get('C')
-        mcls = cls.__class__
-        exccls = mcls.get_message_class_for_sqlstate(errcode)
+    def _get_error_class(cls, fields):
+        sqlstate = fields.get('C')
+        return type(cls).get_message_class_for_sqlstate(sqlstate)
+
+    @classmethod
+    def _get_error_dict(cls, fields, query):
         dct = {
             'query': query
         }
 
+        field_map = type(cls)._field_map
         for k, v in fields.items():
-            field = mcls._field_map.get(k)
+            field = field_map.get(k)
             if field:
                 dct[field] = v
 
-        return exccls, dct
+        return dct
 
     @classmethod
-    def new(cls, fields, query=None):
-        exccls, dct = cls._get_error_template(fields, query)
+    def _make_constructor(cls, fields, query=None):
+        dct = cls._get_error_dict(fields, query)
 
+        exccls = cls._get_error_class(fields)
         message = dct.get('message', '')
 
         # PostgreSQL will raise an exception when it detects
@@ -122,23 +120,35 @@ class PostgresMessage(metaclass=PostgresMessageMeta):
             message = ('cached statement plan is invalid due to a database '
                        'schema or configuration change')
 
-        e = exccls(message)
-        e.__dict__.update(dct)
-
-        return e
+        return exccls, message, dct
 
     def as_dict(self):
-        message = {}
+        dct = {}
         for f in type(self)._field_map.values():
             val = getattr(self, f)
             if val is not None:
-                message[f] = val
-
-        return message
+                dct[f] = val
+        return dct
 
 
 class PostgresError(PostgresMessage, Exception):
     """Base class for all Postgres errors."""
+
+    def __str__(self):
+        msg = self.args[0]
+        if self.detail:
+            msg += '\nDETAIL:  {}'.format(self.detail)
+        if self.hint:
+            msg += '\nHINT:  {}'.format(self.hint)
+
+        return msg
+
+    @classmethod
+    def new(cls, fields, query=None):
+        exccls, message, dct = cls._make_constructor(fields, query)
+        ex = exccls(message)
+        ex.__dict__.update(dct)
+        return ex
 
 
 class FatalPostgresError(PostgresError):
@@ -153,8 +163,32 @@ class InterfaceError(Exception):
     """An error caused by improper use of asyncpg API."""
 
 
-class PostgresNotice(PostgresMessage):
-    sqlstate = '00000'
+class PostgresLogMessage(PostgresMessage):
+    """A base class for non-error server messages."""
 
-    def __init__(self, message):
-        self.args = [message]
+    def __str__(self):
+        return '{}: {}'.format(type(self).__name__, self.message)
+
+    def __setattr__(self, name, val):
+        raise TypeError('instances of {} are immutable'.format(
+            type(self).__name__))
+
+    @classmethod
+    def new(cls, fields, query=None):
+        exccls, message_text, dct = cls._make_constructor(fields, query)
+
+        if exccls is UnknownPostgresError:
+            exccls = PostgresLogMessage
+
+        if exccls is PostgresLogMessage:
+            severity = dct.get('severity_en') or dct.get('severity')
+            if severity and severity.upper() == 'WARNING':
+                exccls = asyncpg.PostgresWarning
+
+        if issubclass(exccls, (BaseException, Warning)):
+            msg = exccls(message_text)
+        else:
+            msg = exccls()
+
+        msg.__dict__.update(dct)
+        return msg
