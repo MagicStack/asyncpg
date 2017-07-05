@@ -33,9 +33,32 @@ cdef class ConnectionSettings:
         self._data_codecs.add_types(types)
 
     cpdef inline add_python_codec(self, typeoid, typename, typeschema,
-                                  typekind, encoder, decoder, binary):
+                                  typekind, encoder, decoder, format):
+        cdef:
+            ServerDataFormat _format
+            ClientExchangeFormat xformat
+
+        if format == 'binary':
+            _format = PG_FORMAT_BINARY
+            xformat = PG_XFORMAT_OBJECT
+        elif format == 'text':
+            _format = PG_FORMAT_TEXT
+            xformat = PG_XFORMAT_OBJECT
+        elif format == 'tuple':
+            _format = PG_FORMAT_ANY
+            xformat = PG_XFORMAT_TUPLE
+        else:
+            raise ValueError(
+                'invalid `format` argument, expected {}, got {!r}'.format(
+                    "'text', 'binary' or 'tuple'", format
+                ))
+
         self._data_codecs.add_python_codec(typeoid, typename, typeschema,
-                                           typekind, encoder, decoder, binary)
+                                           typekind, encoder, decoder,
+                                           _format, xformat)
+
+    cpdef inline remove_python_codec(self, typeoid, typename, typeschema):
+        self._data_codecs.remove_python_codec(typeoid, typename, typeschema)
 
     cpdef inline set_builtin_type_codec(self, typeoid, typename, typeschema,
                                         typekind, alias_to):
@@ -43,7 +66,7 @@ cdef class ConnectionSettings:
                                           typekind, alias_to)
 
     cpdef inline Codec get_data_codec(self, uint32_t oid,
-                                      CodecFormat format=PG_FORMAT_ANY):
+                                      ServerDataFormat format=PG_FORMAT_ANY):
         if format == PG_FORMAT_ANY:
             codec = self._data_codecs.get_codec(oid, PG_FORMAT_BINARY)
             if codec is None:

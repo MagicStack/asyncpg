@@ -52,7 +52,7 @@ html_theme = 'sphinx_rtd_theme'
 html_theme_path = [alabaster.get_path()]
 html_title = 'asyncpg Documentation'
 html_short_title = 'asyncpg'
-html_static_path = []
+html_static_path = ['_static']
 html_sidebars = {
     '**': [
         'about.html',
@@ -62,6 +62,11 @@ html_sidebars = {
 html_show_sourcelink = False
 html_show_sphinx = False
 html_show_copyright = True
+html_context = {
+    'css_files': [
+        '_static/theme_overrides.css',
+    ],
+}
 htmlhelp_basename = 'asyncpgdoc'
 
 

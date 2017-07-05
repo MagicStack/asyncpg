@@ -103,6 +103,20 @@ cdef date_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     buf.write_int32(pg_ordinal)
 
 
+cdef date_encode_tuple(ConnectionSettings settings, WriteBuffer buf, obj):
+    cdef:
+        int32_t pg_ordinal
+
+    if len(obj) != 1:
+        raise ValueError(
+            'date tuple encoder: expecting 1 element '
+            'in tuple, got {}'.format(len(obj)))
+
+    pg_ordinal = obj[0]
+    buf.write_int32(4)
+    buf.write_int32(pg_ordinal)
+
+
 cdef date_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef int32_t pg_ordinal = hton.unpack_int32(buf.read(4))
 
@@ -112,6 +126,12 @@ cdef date_decode(ConnectionSettings settings, FastReadBuffer buf):
         return negative_infinity_date
     else:
         return date_from_ordinal(pg_ordinal + pg_date_offset_ord)
+
+
+cdef date_decode_tuple(ConnectionSettings settings, FastReadBuffer buf):
+    cdef int32_t pg_ordinal = hton.unpack_int32(buf.read(4))
+
+    return (pg_ordinal,)
 
 
 cdef timestamp_encode(ConnectionSettings settings, WriteBuffer buf, obj):
@@ -124,6 +144,21 @@ cdef timestamp_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
     buf.write_int32(8)
     _encode_time(buf, seconds, microseconds)
+
+
+cdef timestamp_encode_tuple(ConnectionSettings settings, WriteBuffer buf, obj):
+    cdef:
+        int64_t microseconds
+
+    if len(obj) != 1:
+        raise ValueError(
+            'timestamp tuple encoder: expecting 1 element '
+            'in tuple, got {}'.format(len(obj)))
+
+    microseconds = obj[0]
+
+    buf.write_int32(8)
+    buf.write_int64(microseconds)
 
 
 cdef timestamp_decode(ConnectionSettings settings, FastReadBuffer buf):
@@ -141,6 +176,13 @@ cdef timestamp_decode(ConnectionSettings settings, FastReadBuffer buf):
     else:
         return pg_epoch_datetime.__add__(
             timedelta(0, seconds, microseconds))
+
+
+cdef timestamp_decode_tuple(ConnectionSettings settings, FastReadBuffer buf):
+    cdef:
+        int64_t ts = hton.unpack_int64(buf.read(8))
+
+    return (ts,)
 
 
 cdef timestamptz_encode(ConnectionSettings settings, WriteBuffer buf, obj):
@@ -191,6 +233,21 @@ cdef time_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     _encode_time(buf, seconds, microseconds)
 
 
+cdef time_encode_tuple(ConnectionSettings settings, WriteBuffer buf, obj):
+    cdef:
+        int64_t microseconds
+
+    if len(obj) != 1:
+        raise ValueError(
+            'time tuple encoder: expecting 1 element '
+            'in tuple, got {}'.format(len(obj)))
+
+    microseconds = obj[0]
+
+    buf.write_int32(8)
+    buf.write_int64(microseconds)
+
+
 cdef time_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
         int64_t seconds = 0
@@ -205,6 +262,13 @@ cdef time_decode(ConnectionSettings settings, FastReadBuffer buf):
         int64_t min = minutes % 60
 
     return datetime.time(hours, min, sec, microseconds)
+
+
+cdef time_decode_tuple(ConnectionSettings settings, FastReadBuffer buf):
+    cdef:
+        int64_t ts = hton.unpack_int64(buf.read(8))
+
+    return (ts,)
 
 
 cdef timetz_encode(ConnectionSettings settings, WriteBuffer buf, obj):
@@ -226,10 +290,36 @@ cdef timetz_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     buf.write_int32(offset_sec)
 
 
+cdef timetz_encode_tuple(ConnectionSettings settings, WriteBuffer buf, obj):
+    cdef:
+        int64_t microseconds
+        int32_t offset_sec
+
+    if len(obj) != 2:
+        raise ValueError(
+            'time tuple encoder: expecting 2 elements2 '
+            'in tuple, got {}'.format(len(obj)))
+
+    microseconds = obj[0]
+    offset_sec = obj[1]
+
+    buf.write_int32(12)
+    buf.write_int64(microseconds)
+    buf.write_int32(offset_sec)
+
+
 cdef timetz_decode(ConnectionSettings settings, FastReadBuffer buf):
     time = time_decode(settings, buf)
     cdef int32_t offset = <int32_t>(hton.unpack_int32(buf.read(4)) / 60)
     return time.replace(tzinfo=datetime.timezone(timedelta(minutes=offset)))
+
+
+cdef timetz_decode_tuple(ConnectionSettings settings, FastReadBuffer buf):
+    cdef:
+        int64_t microseconds = hton.unpack_int64(buf.read(8))
+        int32_t offset_sec = hton.unpack_int32(buf.read(4))
+
+    return (microseconds, offset_sec)
 
 
 cdef interval_encode(ConnectionSettings settings, WriteBuffer buf, obj):
@@ -242,6 +332,30 @@ cdef interval_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     _encode_time(buf, seconds, microseconds)
     buf.write_int32(days)
     buf.write_int32(0) # Months
+
+
+cdef interval_encode_tuple(ConnectionSettings settings, WriteBuffer buf,
+                           tuple obj):
+    cdef:
+        int32_t months
+        int32_t days
+        int64_t seconds
+        int32_t microseconds
+
+    if len(obj) != 4:
+        raise ValueError(
+            'interval tuple encoder: expecting 4 elements '
+            'in tuple, got {}'.format(len(obj)))
+
+    months = obj[0]
+    days = obj[1]
+    seconds = obj[2]
+    microseconds = obj[3]
+
+    buf.write_int32(16)
+    _encode_time(buf, seconds, microseconds)
+    buf.write_int32(days)
+    buf.write_int32(months)
 
 
 cdef interval_decode(ConnectionSettings settings, FastReadBuffer buf):
@@ -267,36 +381,86 @@ cdef interval_decode(ConnectionSettings settings, FastReadBuffer buf):
                               seconds=seconds, microseconds=microseconds)
 
 
+cdef interval_decode_tuple(ConnectionSettings settings, FastReadBuffer buf):
+    cdef:
+        int32_t days
+        int32_t months
+        int64_t seconds = 0
+        uint32_t microseconds = 0
+
+    _decode_time(buf, &seconds, &microseconds)
+    days = hton.unpack_int32(buf.read(4))
+    months = hton.unpack_int32(buf.read(4))
+
+    return (months, days, seconds, microseconds)
+
+
 cdef init_datetime_codecs():
     register_core_codec(DATEOID,
                         <encode_func>&date_encode,
                         <decode_func>&date_decode,
                         PG_FORMAT_BINARY)
 
+    register_core_codec(DATEOID,
+                        <encode_func>&date_encode_tuple,
+                        <decode_func>&date_decode_tuple,
+                        PG_FORMAT_BINARY,
+                        PG_XFORMAT_TUPLE)
+
     register_core_codec(TIMEOID,
                         <encode_func>&time_encode,
                         <decode_func>&time_decode,
                         PG_FORMAT_BINARY)
+
+    register_core_codec(TIMEOID,
+                        <encode_func>&time_encode_tuple,
+                        <decode_func>&time_decode_tuple,
+                        PG_FORMAT_BINARY,
+                        PG_XFORMAT_TUPLE)
 
     register_core_codec(TIMETZOID,
                         <encode_func>&timetz_encode,
                         <decode_func>&timetz_decode,
                         PG_FORMAT_BINARY)
 
+    register_core_codec(TIMETZOID,
+                        <encode_func>&timetz_encode_tuple,
+                        <decode_func>&timetz_decode_tuple,
+                        PG_FORMAT_BINARY,
+                        PG_XFORMAT_TUPLE)
+
     register_core_codec(TIMESTAMPOID,
                         <encode_func>&timestamp_encode,
                         <decode_func>&timestamp_decode,
                         PG_FORMAT_BINARY)
+
+    register_core_codec(TIMESTAMPOID,
+                        <encode_func>&timestamp_encode_tuple,
+                        <decode_func>&timestamp_decode_tuple,
+                        PG_FORMAT_BINARY,
+                        PG_XFORMAT_TUPLE)
 
     register_core_codec(TIMESTAMPTZOID,
                         <encode_func>&timestamptz_encode,
                         <decode_func>&timestamptz_decode,
                         PG_FORMAT_BINARY)
 
+    register_core_codec(TIMESTAMPTZOID,
+                        <encode_func>&timestamp_encode_tuple,
+                        <decode_func>&timestamp_decode_tuple,
+                        PG_FORMAT_BINARY,
+                        PG_XFORMAT_TUPLE)
+
     register_core_codec(INTERVALOID,
                         <encode_func>&interval_encode,
                         <decode_func>&interval_decode,
                         PG_FORMAT_BINARY)
+
+    register_core_codec(INTERVALOID,
+                        <encode_func>&interval_encode_tuple,
+                        <decode_func>&interval_decode_tuple,
+                        PG_FORMAT_BINARY,
+                        PG_XFORMAT_TUPLE)
 
     # For obsolete abstime/reltime/tinterval, we do not bother to
     # interpret the value, and simply return and pass it as text.
