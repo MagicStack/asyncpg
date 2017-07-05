@@ -1563,7 +1563,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_reset = True
         sql_close_all = False
     elif hasattr(connection_settings, 'crdb_version'):
-        # CocroachDB detected.
+        # CockroachDB detected.
         advisory_locks = False
         notifications = False
         plpgsql = False
