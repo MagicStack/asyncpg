@@ -908,7 +908,7 @@ class TestCodecs(tb.ConnectedTestCase):
         try:
             await self.con.set_type_codec('hstore', encoder=hstore_encoder,
                                           decoder=hstore_decoder,
-                                          binary=True)
+                                          format='binary')
 
             st = await self.con.prepare('''
                 SELECT $1::hstore AS result
@@ -951,7 +951,7 @@ class TestCodecs(tb.ConnectedTestCase):
 
             await conn.set_type_codec(
                 'json', encoder=_encoder, decoder=_decoder,
-                schema='pg_catalog', binary=True
+                schema='pg_catalog', format='binary'
             )
 
             data = {'foo': 'bar', 'spam': 1}
@@ -975,7 +975,7 @@ class TestCodecs(tb.ConnectedTestCase):
 
             await conn.set_type_codec(
                 'json', encoder=_encoder, decoder=_decoder,
-                schema='pg_catalog', binary=False
+                schema='pg_catalog', format='text'
             )
 
             data = {'foo': 'bar', 'spam': 1}
@@ -990,12 +990,96 @@ class TestCodecs(tb.ConnectedTestCase):
 
             await conn.set_type_codec(
                 'uuid', encoder=_encoder, decoder=_decoder,
-                schema='pg_catalog', binary=False
+                schema='pg_catalog', format='text'
             )
 
             data = '14058ad9-0118-4b7e-ac15-01bc13e2ccd1'
             res = await conn.fetchval('SELECT $1::uuid', data)
             self.assertEqual(res, data)
+        finally:
+            await conn.close()
+
+    async def test_custom_codec_override_tuple(self):
+        """Test overriding core codecs."""
+        cases = [
+            ('date', (3,), '2000-01-04'),
+            ('date', (2**31 - 1,), 'infinity'),
+            ('date', (-2**31,), '-infinity'),
+            ('time', (60 * 10**6,), '00:01:00'),
+            ('timetz', (60 * 10**6, 12600), '00:01:00-03:30'),
+            ('timestamp', (60 * 10**6,), '2000-01-01 00:01:00'),
+            ('timestamp', (2**63 - 1,), 'infinity'),
+            ('timestamp', (-2**63,), '-infinity'),
+            ('timestamptz', (60 * 10**6,), '1999-12-31 19:01:00',
+                "tab.v AT TIME ZONE 'EST'"),
+            ('timestamptz', (2**63 - 1,), 'infinity'),
+            ('timestamptz', (-2**63,), '-infinity'),
+            ('interval', (2, 3, 0, 0), '2 mons 3 days')
+        ]
+
+        conn = await self.cluster.connect(database='postgres', loop=self.loop)
+
+        def _encoder(value):
+            return tuple(value)
+
+        def _decoder(value):
+            return tuple(value)
+
+        try:
+            for (typename, data, expected_result, *extra) in cases:
+                with self.subTest(type=typename):
+                    await self.con.execute(
+                        'CREATE TABLE tab (v {})'.format(typename))
+
+                    try:
+                        await conn.set_type_codec(
+                            typename, encoder=_encoder, decoder=_decoder,
+                            schema='pg_catalog', format='tuple'
+                        )
+
+                        await conn.execute(
+                            'INSERT INTO tab VALUES ($1)', data)
+
+                        res = await conn.fetchval('SELECT tab.v FROM tab')
+                        self.assertEqual(res, data)
+
+                        await conn.reset_type_codec(
+                            typename, schema='pg_catalog')
+
+                        if extra:
+                            val = extra[0]
+                        else:
+                            val = 'tab.v'
+
+                        res = await conn.fetchval(
+                            'SELECT ({val})::text FROM tab'.format(val=val))
+                        self.assertEqual(res, expected_result)
+                    finally:
+                        await self.con.execute('DROP TABLE tab')
+        finally:
+            await conn.close()
+
+    async def test_custom_codec_override_deprecation(self):
+        conn = await self.cluster.connect(database='postgres', loop=self.loop)
+        try:
+            def _encoder(value):
+                return value
+
+            def _decoder(value):
+                return value
+
+            with self.assertWarnsRegex(DeprecationWarning,
+                                       r"The `binary` keyword argument to "
+                                       r"set_type_codec\(\) is deprecated"):
+                await conn.set_type_codec(
+                    'uuid', encoder=_encoder, decoder=_decoder,
+                    schema='pg_catalog', binary=False
+                )
+
+                data = '14058ad9-0118-4b7e-ac15-01bc13e2ccd1'
+                res = await conn.fetchval('SELECT $1::uuid', data)
+                self.assertEqual(res, data)
+
         finally:
             await conn.close()
 

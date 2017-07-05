@@ -31,10 +31,15 @@ cdef enum CodecType:
     CODEC_RANGE     = 5
 
 
-cdef enum CodecFormat:
+cdef enum ServerDataFormat:
     PG_FORMAT_ANY = -1
     PG_FORMAT_TEXT = 0
     PG_FORMAT_BINARY = 1
+
+
+cdef enum ClientExchangeFormat:
+    PG_XFORMAT_OBJECT = 1
+    PG_XFORMAT_TUPLE = 2
 
 
 cdef class Codec:
@@ -46,7 +51,8 @@ cdef class Codec:
         str             kind
 
         CodecType       type
-        CodecFormat     format
+        ServerDataFormat format
+        ClientExchangeFormat xformat
 
         encode_func     c_encoder
         decode_func     c_decoder
@@ -68,7 +74,8 @@ cdef class Codec:
         codec_decode_func decoder
 
     cdef init(self, str name, str schema, str kind,
-              CodecType type, CodecFormat format,
+              CodecType type, ServerDataFormat format,
+              ClientExchangeFormat xformat,
               encode_func c_encoder, decode_func c_decoder,
               object py_encoder, object py_decoder,
               Codec element_codec, tuple element_type_oids,
@@ -140,7 +147,7 @@ cdef class Codec:
     cdef Codec new_composite_codec(uint32_t oid,
                                    str name,
                                    str schema,
-                                   CodecFormat format,
+                                   ServerDataFormat format,
                                    list element_codecs,
                                    tuple element_type_oids,
                                    object element_names)
@@ -152,7 +159,10 @@ cdef class Codec:
                                 str kind,
                                 object encoder,
                                 object decoder,
-                                CodecFormat format)
+                                encode_func c_encoder,
+                                decode_func c_decoder,
+                                ServerDataFormat format,
+                                ClientExchangeFormat xformat)
 
 
 cdef class DataCodecConfig:
@@ -160,6 +170,5 @@ cdef class DataCodecConfig:
         dict _type_codecs_cache
         dict _local_type_codecs
 
-    cdef inline Codec get_codec(self, uint32_t oid, CodecFormat format)
-    cdef inline Codec get_local_codec(
-        self, uint32_t oid, CodecFormat preferred_format=*)
+    cdef inline Codec get_codec(self, uint32_t oid, ServerDataFormat format)
+    cdef inline Codec get_local_codec(self, uint32_t oid)

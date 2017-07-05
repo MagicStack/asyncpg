@@ -5,8 +5,8 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-cdef void* binary_codec_map[MAXSUPPORTEDOID + 1]
-cdef void* text_codec_map[MAXSUPPORTEDOID + 1]
+cdef void* binary_codec_map[(MAXSUPPORTEDOID + 1) * 2]
+cdef void* text_codec_map[(MAXSUPPORTEDOID + 1) * 2]
 cdef dict TYPE_CODECS_CACHE = {}
 cdef dict EXTRA_CODECS = {}
 
@@ -19,7 +19,8 @@ cdef class Codec:
         self.type = CODEC_UNDEFINED
 
     cdef init(self, str name, str schema, str kind,
-              CodecType type, CodecFormat format,
+              CodecType type, ServerDataFormat format,
+              ClientExchangeFormat xformat,
               encode_func c_encoder, decode_func c_decoder,
               object py_encoder, object py_decoder,
               Codec element_codec, tuple element_type_oids,
@@ -31,6 +32,7 @@ cdef class Codec:
         self.kind = kind
         self.type = type
         self.format = format
+        self.xformat = xformat
         self.c_encoder = c_encoder
         self.c_decoder = c_decoder
         self.py_encoder = py_encoder
@@ -81,7 +83,7 @@ cdef class Codec:
 
         codec = Codec(self.oid)
         codec.init(self.name, self.schema, self.kind,
-                   self.type, self.format,
+                   self.type, self.format, self.xformat,
                    self.c_encoder, self.c_decoder,
                    self.py_encoder, self.py_decoder,
                    self.element_codec,
@@ -139,11 +141,20 @@ cdef class Codec:
 
     cdef encode_in_python(self, ConnectionSettings settings, WriteBuffer buf,
                           object obj):
-        bb = self.py_encoder(obj)
-        if self.format == PG_FORMAT_BINARY:
-            bytea_encode(settings, buf, bb)
+        data = self.py_encoder(obj)
+        if self.xformat == PG_XFORMAT_OBJECT:
+            if self.format == PG_FORMAT_BINARY:
+                bytea_encode(settings, buf, data)
+            elif self.format == PG_FORMAT_TEXT:
+                text_encode(settings, buf, data)
+            else:
+                raise RuntimeError(
+                    'unexpected data format: {}'.format(self.format))
+        elif self.xformat == PG_XFORMAT_TUPLE:
+            self.c_encoder(settings, buf, data)
         else:
-            text_encode(settings, buf, bb)
+            raise RuntimeError(
+                'unexpected exchange format: {}'.format(self.xformat))
 
     cdef encode(self, ConnectionSettings settings, WriteBuffer buf,
                 object obj):
@@ -210,12 +221,21 @@ cdef class Codec:
 
     cdef decode_in_python(self, ConnectionSettings settings,
                           FastReadBuffer buf):
-        if self.format == PG_FORMAT_BINARY:
-            bb = bytea_decode(settings, buf)
+        if self.xformat == PG_XFORMAT_OBJECT:
+            if self.format == PG_FORMAT_BINARY:
+                data = bytea_decode(settings, buf)
+            elif self.format == PG_FORMAT_TEXT:
+                data = text_decode(settings, buf)
+            else:
+                raise RuntimeError(
+                    'unexpected data format: {}'.format(self.format))
+        elif self.xformat == PG_XFORMAT_TUPLE:
+            data = self.c_decoder(settings, buf)
         else:
-            bb = text_decode(settings, buf)
+            raise RuntimeError(
+                'unexpected exchange format: {}'.format(self.xformat))
 
-        return self.py_decoder(bb)
+        return self.py_decoder(data)
 
     cdef inline decode(self, ConnectionSettings settings, FastReadBuffer buf):
         return self.decoder(self, settings, buf)
@@ -274,8 +294,8 @@ cdef class Codec:
         cdef Codec codec
         codec = Codec(oid)
         codec.init(name, schema, 'array', CODEC_ARRAY, element_codec.format,
-                   NULL, NULL, None, None, element_codec, None, None, None,
-                   element_delimiter)
+                   PG_XFORMAT_OBJECT, NULL, NULL, None, None, element_codec,
+                   None, None, None, element_delimiter)
         return codec
 
     @staticmethod
@@ -286,21 +306,22 @@ cdef class Codec:
         cdef Codec codec
         codec = Codec(oid)
         codec.init(name, schema, 'range', CODEC_RANGE, element_codec.format,
-                   NULL, NULL, None, None, element_codec, None, None, None, 0)
+                   PG_XFORMAT_OBJECT, NULL, NULL, None, None, element_codec,
+                   None, None, None, 0)
         return codec
 
     @staticmethod
     cdef Codec new_composite_codec(uint32_t oid,
                                    str name,
                                    str schema,
-                                   CodecFormat format,
+                                   ServerDataFormat format,
                                    list element_codecs,
                                    tuple element_type_oids,
                                    object element_names):
         cdef Codec codec
         codec = Codec(oid)
         codec.init(name, schema, 'composite', CODEC_COMPOSITE,
-                   format, NULL, NULL, None, None, None,
+                   format, PG_XFORMAT_OBJECT, NULL, NULL, None, None, None,
                    element_type_oids, element_names, element_codecs, 0)
         return codec
 
@@ -311,11 +332,15 @@ cdef class Codec:
                                 str kind,
                                 object encoder,
                                 object decoder,
-                                CodecFormat format):
+                                encode_func c_encoder,
+                                decode_func c_decoder,
+                                ServerDataFormat format,
+                                ClientExchangeFormat xformat):
         cdef Codec codec
         codec = Codec(oid)
-        codec.init(name, schema, kind, CODEC_PY, format, NULL, NULL,
-                   encoder, decoder, None, None, None, None, 0)
+        codec.init(name, schema, kind, CODEC_PY, format, xformat,
+                   c_encoder, c_decoder, encoder, decoder,
+                   None, None, None, None, 0)
         return codec
 
 
@@ -344,8 +369,8 @@ cdef class DataCodecConfig:
         cdef:
             Codec elem_codec
             list comp_elem_codecs
-            CodecFormat format
-            CodecFormat elem_format
+            ServerDataFormat format
+            ServerDataFormat elem_format
             bint has_text_elements
             Py_UCS4 elem_delim
 
@@ -476,13 +501,32 @@ cdef class DataCodecConfig:
                 self.declare_fallback_codec(oid, name, schema)
 
     def add_python_codec(self, typeoid, typename, typeschema, typekind,
-                         encoder, decoder, binary):
-        format = PG_FORMAT_BINARY if binary else PG_FORMAT_TEXT
+                         encoder, decoder, format, xformat):
+        cdef:
+            Codec core_codec
+            encode_func c_encoder = NULL
+            decode_func c_decoder = NULL
 
-        self._local_type_codecs[typeoid, format] = \
+        if xformat == PG_XFORMAT_TUPLE:
+            core_codec = get_any_core_codec(typeoid, format, xformat)
+            if core_codec is None:
+                raise ValueError(
+                    "{} type does not support 'tuple' exchange format".format(
+                        typename))
+            c_encoder = core_codec.c_encoder
+            c_decoder = core_codec.c_decoder
+            format = core_codec.format
+
+        # Clear all previous overrides (this also clears type cache).
+        self.remove_python_codec(typeoid, typename, typeschema)
+
+        self._local_type_codecs[typeoid] = \
             Codec.new_python_codec(typeoid, typename, typeschema, typekind,
-                                   encoder, decoder, format)
+                                   encoder, decoder, c_encoder, c_decoder,
+                                   format, xformat)
 
+    def remove_python_codec(self, typeoid, typename, typeschema):
+        self._local_type_codecs.pop(typeoid, None)
         self.clear_type_cache()
 
     def _set_builtin_type_codec(self, typeoid, typename, typeschema, typekind,
@@ -515,10 +559,9 @@ cdef class DataCodecConfig:
             codec.schema = typeschema
             codec.kind = typekind
 
-            self._local_type_codecs[typeoid, format] = codec
-
-        if ((typeoid, PG_FORMAT_BINARY) not in self._local_type_codecs and
-                (typeoid, PG_FORMAT_TEXT) not in self._local_type_codecs):
+            self._local_type_codecs[typeoid] = codec
+            break
+        else:
             raise ValueError('unknown alias target: {}'.format(alias_to))
 
     def set_builtin_type_codec(self, typeoid, typename, typeschema, typekind,
@@ -560,10 +603,10 @@ cdef class DataCodecConfig:
 
         return codec
 
-    cdef inline Codec get_codec(self, uint32_t oid, CodecFormat format):
+    cdef inline Codec get_codec(self, uint32_t oid, ServerDataFormat format):
         cdef Codec codec
 
-        codec = self.get_local_codec(oid, format)
+        codec = self.get_local_codec(oid)
         if codec is not None:
             if codec.format != format:
                 # The codec for this OID has been overridden by
@@ -582,33 +625,44 @@ cdef class DataCodecConfig:
             except KeyError:
                 return None
 
-    cdef inline Codec get_local_codec(
-            self, uint32_t oid, CodecFormat preferred_format=PG_FORMAT_BINARY):
-        cdef Codec codec
-
-        codec = self._local_type_codecs.get((oid, preferred_format))
-        if codec is None:
-            if preferred_format == PG_FORMAT_BINARY:
-                alt_format = PG_FORMAT_TEXT
-            else:
-                alt_format = PG_FORMAT_BINARY
-
-            codec = self._local_type_codecs.get((oid, alt_format))
-
-        return codec
+    cdef inline Codec get_local_codec(self, uint32_t oid):
+        return self._local_type_codecs.get(oid)
 
 
-cdef inline Codec get_core_codec(uint32_t oid, CodecFormat format):
-    cdef void *ptr
+cdef inline Codec get_core_codec(
+        uint32_t oid, ServerDataFormat format,
+        ClientExchangeFormat xformat=PG_XFORMAT_OBJECT):
+    cdef:
+        void *ptr = NULL
+
     if oid > MAXSUPPORTEDOID:
         return None
     if format == PG_FORMAT_BINARY:
-        ptr = binary_codec_map[oid]
-    else:
-        ptr = text_codec_map[oid]
+        ptr = binary_codec_map[oid * xformat]
+    elif format == PG_FORMAT_TEXT:
+        ptr = text_codec_map[oid * xformat]
+
     if ptr is NULL:
         return None
-    return <Codec>ptr
+    else:
+        return <Codec>ptr
+
+
+cdef inline Codec get_any_core_codec(
+        uint32_t oid, ServerDataFormat format,
+        ClientExchangeFormat xformat=PG_XFORMAT_OBJECT):
+    """A version of get_core_codec that accepts PG_FORMAT_ANY."""
+    cdef:
+        Codec codec
+
+    if format == PG_FORMAT_ANY:
+        codec = get_core_codec(oid, PG_FORMAT_BINARY, xformat)
+        if codec is None:
+            codec = get_core_codec(oid, PG_FORMAT_TEXT, xformat)
+    else:
+        codec = get_core_codec(oid, format, xformat)
+
+    return codec
 
 
 cdef inline int has_core_codec(uint32_t oid):
@@ -618,7 +672,8 @@ cdef inline int has_core_codec(uint32_t oid):
 cdef register_core_codec(uint32_t oid,
                          encode_func encode,
                          decode_func decode,
-                         CodecFormat format):
+                         ServerDataFormat format,
+                         ClientExchangeFormat xformat=PG_XFORMAT_OBJECT):
 
     if oid > MAXSUPPORTEDOID:
         raise RuntimeError(
@@ -634,20 +689,22 @@ cdef register_core_codec(uint32_t oid,
     kind = 'array' if oid in ARRAY_TYPES else 'scalar'
 
     codec = Codec(oid)
-    codec.init(name, 'pg_catalog', kind, CODEC_C, format, encode,
-               decode, None, None, None, None, None, None, 0)
+    codec.init(name, 'pg_catalog', kind, CODEC_C, format, xformat,
+               encode, decode, None, None, None, None, None, None, 0)
     cpython.Py_INCREF(codec)  # immortalize
 
     if format == PG_FORMAT_BINARY:
-        binary_codec_map[oid] = <void*>codec
+        binary_codec_map[oid * xformat] = <void*>codec
+    elif format == PG_FORMAT_TEXT:
+        text_codec_map[oid * xformat] = <void*>codec
     else:
-        text_codec_map[oid] = <void*>codec
+        raise RuntimeError('invalid data format: {}'.format(format))
 
 
 cdef register_extra_codec(str name,
                           encode_func encode,
                           decode_func decode,
-                          CodecFormat format):
+                          ServerDataFormat format):
     cdef:
         Codec codec
         str kind
@@ -655,10 +712,10 @@ cdef register_extra_codec(str name,
     kind = 'scalar'
 
     codec = Codec(INVALIDOID)
-    codec.init(name, None, kind, CODEC_C, format, encode,
-               decode, None, None, None, None, None, None, 0)
+    codec.init(name, None, kind, CODEC_C, format, PG_XFORMAT_OBJECT,
+               encode, decode, None, None, None, None, None, None, 0)
     EXTRA_CODECS[name, format] = codec
 
 
-cdef inline Codec get_extra_codec(str name, CodecFormat format):
+cdef inline Codec get_extra_codec(str name, ServerDataFormat format):
     return EXTRA_CODECS.get((name, format))
