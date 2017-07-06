@@ -339,21 +339,19 @@ cdef interval_encode_tuple(ConnectionSettings settings, WriteBuffer buf,
     cdef:
         int32_t months
         int32_t days
-        int64_t seconds
-        int32_t microseconds
+        int64_t microseconds
 
-    if len(obj) != 4:
+    if len(obj) != 3:
         raise ValueError(
-            'interval tuple encoder: expecting 4 elements '
+            'interval tuple encoder: expecting 3 elements '
             'in tuple, got {}'.format(len(obj)))
 
     months = obj[0]
     days = obj[1]
-    seconds = obj[2]
-    microseconds = obj[3]
+    microseconds = obj[2]
 
     buf.write_int32(16)
-    _encode_time(buf, seconds, microseconds)
+    buf.write_int64(microseconds)
     buf.write_int32(days)
     buf.write_int32(months)
 
@@ -385,14 +383,13 @@ cdef interval_decode_tuple(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
         int32_t days
         int32_t months
-        int64_t seconds = 0
-        uint32_t microseconds = 0
+        int64_t microseconds
 
-    _decode_time(buf, &seconds, &microseconds)
+    microseconds = hton.unpack_int64(buf.read(8))
     days = hton.unpack_int32(buf.read(4))
     months = hton.unpack_int32(buf.read(4))
 
-    return (months, days, seconds, microseconds)
+    return (months, days, microseconds)
 
 
 cdef init_datetime_codecs():

@@ -1014,7 +1014,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 "tab.v AT TIME ZONE 'EST'"),
             ('timestamptz', (2**63 - 1,), 'infinity'),
             ('timestamptz', (-2**63,), '-infinity'),
-            ('interval', (2, 3, 0, 0), '2 mons 3 days')
+            ('interval', (2, 3, 1), '2 mons 3 days 00:00:00.000001')
         ]
 
         conn = await self.cluster.connect(database='postgres', loop=self.loop)

@@ -798,8 +798,7 @@ class Connection(metaclass=ConnectionMeta):
             +-----------------+---------------------------------------------+
             |  Type           |                Tuple layout                 |
             +=================+=============================================+
-            | ``interval``    | (``months``, ``days``, ``seconds``,         |
-            |                 | ``microseconds``)                           |
+            | ``interval``    | (``months``, ``days``, ``microseconds``)    |
             +-----------------+---------------------------------------------+
             | ``date``        | (``date ordinal relative to Jan 1 2000``,)  |
             |                 | ``-2^31`` for negative infinity timestamp   |
@@ -845,14 +844,13 @@ class Connection(metaclass=ConnectionMeta):
             ...         ndelta = delta.normalized()
             ...         return (ndelta.years * 12 + ndelta.months,
             ...                 ndelta.days,
-            ...                 (ndelta.hours * 3600 +
+            ...                 ((ndelta.hours * 3600 +
             ...                    ndelta.minutes * 60 +
-            ...                    ndelta.seconds),
-            ...                 ndelta.microseconds)
+            ...                    ndelta.seconds) * 1000000 +
+            ...                  ndelta.microseconds))
             ...     def decoder(tup):
             ...         return relativedelta(months=tup[0], days=tup[1],
-            ...                              seconds=tup[2],
-            ...                              microseconds=tup[3])
+            ...                              microseconds=tup[2])
             ...     await con.set_type_codec(
             ...         'interval', schema='pg_catalog', encoder=encoder,
             ...         decoder=decoder, format='tuple')
