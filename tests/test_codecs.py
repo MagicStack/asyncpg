@@ -452,6 +452,43 @@ class TestCodecs(tb.ConnectedTestCase):
         res = await self.con.fetchval("SELECT '-5 years -1 month'::interval")
         self.assertEqual(res, datetime.timedelta(days=-1855))
 
+    async def test_numeric(self):
+        # Test that we handle dscale correctly.
+        cases = [
+            '0.001',
+            '0.001000',
+            '1',
+            '1.00000'
+        ]
+
+        for case in cases:
+            res = await self.con.fetchval(
+                "SELECT $1::numeric", case)
+
+            self.assertEqual(str(res), case)
+
+        res = await self.con.fetchval(
+            "SELECT $1::numeric", decimal.Decimal('NaN'))
+        self.assertTrue(res.is_nan())
+
+        res = await self.con.fetchval(
+            "SELECT $1::numeric", decimal.Decimal('sNaN'))
+        self.assertTrue(res.is_nan())
+
+        with self.assertRaisesRegex(ValueError, 'numeric type does not '
+                                                'support infinite values'):
+            await self.con.fetchval(
+                "SELECT $1::numeric", decimal.Decimal('-Inf'))
+
+        with self.assertRaisesRegex(ValueError, 'numeric type does not '
+                                                'support infinite values'):
+            await self.con.fetchval(
+                "SELECT $1::numeric", decimal.Decimal('+Inf'))
+
+        with self.assertRaises(decimal.InvalidOperation):
+            await self.con.fetchval(
+                "SELECT $1::numeric", 'invalid')
+
     async def test_unhandled_type_fallback(self):
         await self.con.execute('''
             CREATE EXTENSION IF NOT EXISTS isn

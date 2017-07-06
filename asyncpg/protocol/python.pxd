@@ -23,6 +23,7 @@ cdef extern from "Python.h":
     object PyMemoryView_FromMemory(char *mem, ssize_t size, int flags)
     object PyMemoryView_GetContiguous(object, int buffertype, char order)
 
+    object PyUnicode_FromString(const char *u)
     char* PyUnicode_AsUTF8AndSize(object unicode, ssize_t *size) except NULL
     char* PyByteArray_AsString(object)
     Py_UCS4* PyUnicode_AsUCS4Copy(object)

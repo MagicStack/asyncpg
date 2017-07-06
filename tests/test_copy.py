@@ -600,11 +600,22 @@ class TestCopyTo(tb.ConnectedTestCase):
 
     async def test_copy_records_to_table_no_binary_codec(self):
         await self.con.execute('''
-            CREATE TABLE copytab(a numeric);
+            CREATE TABLE copytab(a uuid);
         ''')
 
         try:
-            records = [(123.123,)]
+            def _encoder(value):
+                return value
+
+            def _decoder(value):
+                return value
+
+            await self.con.set_type_codec(
+                'uuid', encoder=_encoder, decoder=_decoder,
+                schema='pg_catalog', format='text'
+            )
+
+            records = [('2975ab9a-f79c-4ab4-9be5-7bc134d952f0',)]
 
             with self.assertRaisesRegex(
                     RuntimeError, 'no binary format encoder'):
@@ -612,4 +623,7 @@ class TestCopyTo(tb.ConnectedTestCase):
                     'copytab', records=records)
 
         finally:
+            await self.con.reset_type_codec(
+                'uuid', schema='pg_catalog'
+            )
             await self.con.execute('DROP TABLE copytab')
