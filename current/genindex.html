@@ -31,6 +31,8 @@
   
 
   
+    <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
+  
 
   
         <link rel="index" title="Index"
@@ -65,7 +67,7 @@
             
             
               <div class="version">
-                0.11.0
+                0.12.0
               </div>
             
           
@@ -184,6 +186,8 @@
       <li><a href="api/index.html#asyncpg.pool.Pool.acquire">acquire() (Pool method)</a>
 </li>
       <li><a href="api/index.html#asyncpg.connection.Connection.add_listener">add_listener() (Connection method)</a>
+</li>
+      <li><a href="api/index.html#asyncpg.connection.Connection.add_log_listener">add_log_listener() (Connection method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -433,11 +437,15 @@
 </li>
       <li><a href="api/index.html#asyncpg.pool.Pool.release">release() (Pool method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/index.html#asyncpg.types.ServerVersion.releaselevel">releaselevel (ServerVersion attribute)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/index.html#asyncpg.connection.Connection.remove_listener">remove_listener() (Connection method)</a>
+</li>
+      <li><a href="api/index.html#asyncpg.connection.Connection.remove_log_listener">remove_log_listener() (Connection method)</a>
+</li>
+      <li><a href="api/index.html#asyncpg.connection.Connection.reset_type_codec">reset_type_codec() (Connection method)</a>
 </li>
       <li><a href="api/index.html#asyncpg.transaction.Transaction.rollback">rollback() (Transaction method)</a>
 </li>
@@ -529,7 +537,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.11.0',
+            VERSION:'0.12.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

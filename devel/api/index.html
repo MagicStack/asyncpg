@@ -30,6 +30,8 @@
   
 
   
+    <link rel="stylesheet" href="../_static/theme_overrides.css" type="text/css" />
+  
 
   
         <link rel="index" title="Index"
@@ -66,7 +68,7 @@
             
             
               <div class="version">
-                0.11.0
+                0.12.0
               </div>
             
           
@@ -179,40 +181,40 @@
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>dsn</strong> &#8211; Connection arguments specified using as a single string in the
+<li><strong>dsn</strong> – Connection arguments specified using as a single string in the
 following format:
 <code class="docutils literal"><span class="pre">postgres://user:pass&#64;host:port/database?option=value</span></code></li>
-<li><strong>host</strong> &#8211; database host address or a path to the directory containing
+<li><strong>host</strong> – database host address or a path to the directory containing
 database server UNIX socket (defaults to the default UNIX socket,
 or the value of the <code class="docutils literal"><span class="pre">PGHOST</span></code> environment variable, if set).</li>
-<li><strong>port</strong> &#8211; connection port number (defaults to <code class="docutils literal"><span class="pre">5432</span></code>, or the value of
+<li><strong>port</strong> – connection port number (defaults to <code class="docutils literal"><span class="pre">5432</span></code>, or the value of
 the <code class="docutils literal"><span class="pre">PGPORT</span></code> environment variable, if set)</li>
-<li><strong>user</strong> &#8211; the name of the database role used for authentication
+<li><strong>user</strong> – the name of the database role used for authentication
 (defaults to the name of the effective user of the process
 making the connection, or the value of <code class="docutils literal"><span class="pre">PGUSER</span></code> environment
 variable, if set)</li>
-<li><strong>database</strong> &#8211; the name of the database (defaults to the value of <code class="docutils literal"><span class="pre">PGDATABASE</span></code>
+<li><strong>database</strong> – the name of the database (defaults to the value of <code class="docutils literal"><span class="pre">PGDATABASE</span></code>
 environment variable, if set.)</li>
-<li><strong>password</strong> &#8211; password used for authentication</li>
-<li><strong>loop</strong> &#8211; An asyncio event loop instance.  If <code class="docutils literal"><span class="pre">None</span></code>, the default
+<li><strong>password</strong> – password used for authentication</li>
+<li><strong>loop</strong> – An asyncio event loop instance.  If <code class="docutils literal"><span class="pre">None</span></code>, the default
 event loop will be used.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; connection timeout in seconds.</li>
-<li><strong>statement_cache_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) &#8211; the size of prepared statement LRU cache.  Pass <code class="docutils literal"><span class="pre">0</span></code> to
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – connection timeout in seconds.</li>
+<li><strong>statement_cache_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – the size of prepared statement LRU cache.  Pass <code class="docutils literal"><span class="pre">0</span></code> to
 disable the cache.</li>
-<li><strong>max_cached_statement_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) &#8211; the maximum time in seconds a prepared statement will stay
+<li><strong>max_cached_statement_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – the maximum time in seconds a prepared statement will stay
 in the cache.  Pass <code class="docutils literal"><span class="pre">0</span></code> to allow statements be cached
 indefinitely.</li>
-<li><strong>max_cacheable_statement_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) &#8211; the maximum size of a statement that can be cached (15KiB by
+<li><strong>max_cacheable_statement_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – the maximum size of a statement that can be cached (15KiB by
 default).  Pass <code class="docutils literal"><span class="pre">0</span></code> to allow all statements to be cached
 regardless of their size.</li>
-<li><strong>command_timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; the default timeout for operations on this connection
+<li><strong>command_timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – the default timeout for operations on this connection
 (the default is <code class="docutils literal"><span class="pre">None</span></code>: no timeout).</li>
-<li><strong>ssl</strong> &#8211; pass <code class="docutils literal"><span class="pre">True</span></code> or an <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.SSLContext">ssl.SSLContext</a> instance to
+<li><strong>ssl</strong> – pass <code class="docutils literal"><span class="pre">True</span></code> or an <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.SSLContext">ssl.SSLContext</a> instance to
 require an SSL connection.  If <code class="docutils literal"><span class="pre">True</span></code>, a default SSL context
 returned by <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.create_default_context">ssl.create_default_context()</a>
 will be used.</li>
-<li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) &#8211; an optional dict of server parameters.</li>
-<li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) &#8211; class of the returned connection object.  Must be a subclass of
+<li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – an optional dict of server parameters.</li>
+<li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – class of the returned connection object.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal"><span class="pre">Connection</span></code></a>.</li>
 </ul>
 </td>
@@ -260,8 +262,8 @@ for that.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>channel</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; Channel to listen on.</li>
-<li><strong>callback</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#callable" title="(in Python v3.6)"><em>callable</em></a>) &#8211; A callable receiving the following arguments:
+<li><strong>channel</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Channel to listen on.</li>
+<li><strong>callback</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#callable" title="(in Python v3.6)"><em>callable</em></a>) – A callable receiving the following arguments:
 <strong>connection</strong>: a Connection the callback is registered with;
 <strong>pid</strong>: PID of the Postgres server that sent the notification;
 <strong>channel</strong>: name of the channel the notification was sent to;
@@ -271,6 +273,28 @@ for that.</p>
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.add_log_listener">
+<code class="descname">add_log_listener</code><span class="sig-paren">(</span><em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.add_log_listener"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.add_log_listener" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a listener for Postgres log messages.</p>
+<p>It will be called when asyncronous NoticeResponse is received
+from the connection.  Possible message types are: WARNING, NOTICE,
+DEBUG, INFO, or LOG.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>callback</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#callable" title="(in Python v3.6)"><em>callable</em></a>) – A callable receiving the following arguments:
+<strong>connection</strong>: a Connection the callback is registered with;
+<strong>message</strong>: the <cite>exceptions.PostgresLogMessage</cite> message.</td>
+</tr>
+</tbody>
+</table>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.12.0.</span></p>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -288,19 +312,19 @@ for that.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; The query to copy the results of.</li>
-<li><strong>*args</strong> &#8211; Query arguments.</li>
-<li><strong>output</strong> &#8211; A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.6)"><span class="xref std std-term">path-like object</span></a>,
+<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – The query to copy the results of.</li>
+<li><strong>*args</strong> – Query arguments.</li>
+<li><strong>output</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.6)"><span class="xref std std-term">path-like object</span></a>,
 or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.6)"><span class="xref std std-term">file-like object</span></a>, or
 a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-coroutine-function" title="(in Python v3.6)"><span class="xref std std-term">coroutine function</span></a>
 that takes a <code class="docutils literal"><span class="pre">bytes</span></code> instance as a sole argument.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
-<p>The remaining kewyword arguments are <code class="docutils literal"><span class="pre">COPY</span></code> statement options,
+<p>The remaining keyword arguments are <code class="docutils literal"><span class="pre">COPY</span></code> statement options,
 see <a class="reference external" href="https://www.postgresql.org/docs/current/static/sql-copy.html">COPY statement documentation</a> for details.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -337,20 +361,20 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; The name of the table to copy data from.</li>
-<li><strong>output</strong> &#8211; A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.6)"><span class="xref std std-term">path-like object</span></a>,
+<li><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – The name of the table to copy data from.</li>
+<li><strong>output</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.6)"><span class="xref std std-term">path-like object</span></a>,
 or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.6)"><span class="xref std std-term">file-like object</span></a>, or
 a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-coroutine-function" title="(in Python v3.6)"><span class="xref std std-term">coroutine function</span></a>
 that takes a <code class="docutils literal"><span class="pre">bytes</span></code> instance as a sole argument.</li>
-<li><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.6)"><em>list</em></a>) &#8211; An optional list of column names to copy.</li>
-<li><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; An optional schema name to qualify the table.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.</li>
+<li><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.6)"><em>list</em></a>) – An optional list of column names to copy.</li>
+<li><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – An optional schema name to qualify the table.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
-<p>The remaining kewyword arguments are <code class="docutils literal"><span class="pre">COPY</span></code> statement options,
+<p>The remaining keyword arguments are <code class="docutils literal"><span class="pre">COPY</span></code> statement options,
 see <a class="reference external" href="https://www.postgresql.org/docs/current/static/sql-copy.html">COPY statement documentation</a> for details.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -387,11 +411,11 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; The name of the table to copy data to.</li>
-<li><strong>records</strong> &#8211; An iterable returning row tuples to copy into the table.</li>
-<li><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.6)"><em>list</em></a>) &#8211; An optional list of column names to copy.</li>
-<li><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; An optional schema name to qualify the table.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.</li>
+<li><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – The name of the table to copy data to.</li>
+<li><strong>records</strong> – An iterable returning row tuples to copy into the table.</li>
+<li><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.6)"><em>list</em></a>) – An optional list of column names to copy.</li>
+<li><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – An optional schema name to qualify the table.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -428,21 +452,21 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; The name of the table to copy data to.</li>
-<li><strong>source</strong> &#8211; A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.6)"><span class="xref std std-term">path-like object</span></a>,
+<li><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – The name of the table to copy data to.</li>
+<li><strong>source</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.6)"><span class="xref std std-term">path-like object</span></a>,
 or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.6)"><span class="xref std std-term">file-like object</span></a>, or
 an <a class="reference external" href="https://docs.python.org/3/glossary.html#term-asynchronous-iterable" title="(in Python v3.6)"><span class="xref std std-term">asynchronous iterable</span></a>
 that returns <code class="docutils literal"><span class="pre">bytes</span></code>, or an object supporting the
 <a class="reference external" href="https://docs.python.org/3/c-api/buffer.html#bufferobjects" title="(in Python v3.6)"><span class="xref std std-ref">buffer protocol</span></a>.</li>
-<li><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.6)"><em>list</em></a>) &#8211; An optional list of column names to copy.</li>
-<li><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; An optional schema name to qualify the table.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.</li>
+<li><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.6)"><em>list</em></a>) – An optional list of column names to copy.</li>
+<li><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – An optional schema name to qualify the table.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
-<p>The remaining kewyword arguments are <code class="docutils literal"><span class="pre">COPY</span></code> statement options,
+<p>The remaining keyword arguments are <code class="docutils literal"><span class="pre">COPY</span></code> statement options,
 see <a class="reference external" href="https://www.postgresql.org/docs/current/static/sql-copy.html">COPY statement documentation</a> for details.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -478,10 +502,10 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>args</strong> &#8211; Query arguments.</li>
-<li><strong>prefetch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) &#8211; The number of rows the <em>cursor iterator</em>
+<li><strong>args</strong> – Query arguments.</li>
+<li><strong>prefetch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – The number of rows the <em>cursor iterator</em>
 will prefetch (defaults to <code class="docutils literal"><span class="pre">50</span></code>.)</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout in seconds.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -516,8 +540,8 @@ are provided.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>args</strong> &#8211; Query arguments.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.</li>
+<li><strong>args</strong> – Query arguments.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -546,9 +570,9 @@ are provided.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>command</strong> &#8211; Command to execute.</li>
-<li><strong>args</strong> &#8211; An iterable containing sequences of arguments.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.</li>
+<li><strong>command</strong> – Command to execute.</li>
+<li><strong>args</strong> – An iterable containing sequences of arguments.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -574,9 +598,9 @@ are provided.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; Query text.</li>
-<li><strong>args</strong> &#8211; Query arguments.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.</li>
+<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Query text.</li>
+<li><strong>args</strong> – Query arguments.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -596,9 +620,9 @@ are provided.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; Query text</li>
-<li><strong>args</strong> &#8211; Query arguments</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.</li>
+<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Query text</li>
+<li><strong>args</strong> – Query arguments</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -618,11 +642,11 @@ are provided.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; Query text.</li>
-<li><strong>args</strong> &#8211; Query arguments.</li>
-<li><strong>column</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) &#8211; Numeric index within the record of the value to
+<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Query text.</li>
+<li><strong>args</strong> – Query arguments.</li>
+<li><strong>column</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Numeric index within the record of the value to
 return (defaults to 0).</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.
 If not specified, defaults to the value of
 <code class="docutils literal"><span class="pre">command_timeout</span></code> argument to the <code class="docutils literal"><span class="pre">Connection</span></code>
 instance constructor.</li>
@@ -696,8 +720,8 @@ otherwise.</td>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; Text of the query to create a prepared statement for.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.</li>
+<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Text of the query to create a prepared statement for.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -715,6 +739,37 @@ otherwise.</td>
 </dd></dl>
 
 <dl class="method">
+<dt id="asyncpg.connection.Connection.remove_log_listener">
+<code class="descname">remove_log_listener</code><span class="sig-paren">(</span><em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.remove_log_listener"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.remove_log_listener" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a listening callback for log messages.</p>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.12.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.reset_type_codec">
+<em class="property">coroutine </em><code class="descname">reset_type_codec</code><span class="sig-paren">(</span><em>typename</em>, <em>*</em>, <em>schema='public'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.reset_type_codec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.reset_type_codec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset <em>typename</em> codec to the default implementation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>typename</strong> – Name of the data type the codec is for.</li>
+<li><strong>schema</strong> – Schema name of the data type the codec is for
+(defaults to <code class="docutils literal"><span class="pre">'public'</span></code>)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.12.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="method">
 <dt id="asyncpg.connection.Connection.set_builtin_type_codec">
 <em class="property">coroutine </em><code class="descname">set_builtin_type_codec</code><span class="sig-paren">(</span><em>typename</em>, <em>*</em>, <em>schema='public'</em>, <em>codec_name</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.set_builtin_type_codec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.set_builtin_type_codec" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set a builtin codec for the specified data type.</p>
@@ -723,10 +778,10 @@ otherwise.</td>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>typename</strong> &#8211; Name of the data type the codec is for.</li>
-<li><strong>schema</strong> &#8211; Schema name of the data type the codec is for
-(defaults to &#8216;public&#8217;)</li>
-<li><strong>codec_name</strong> &#8211; The name of the builtin codec.</li>
+<li><strong>typename</strong> – Name of the data type the codec is for.</li>
+<li><strong>schema</strong> – Schema name of the data type the codec is for
+(defaults to ‘public’)</li>
+<li><strong>codec_name</strong> – The name of the builtin codec.</li>
 </ul>
 </td>
 </tr>
@@ -736,28 +791,117 @@ otherwise.</td>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.set_type_codec">
-<em class="property">coroutine </em><code class="descname">set_type_codec</code><span class="sig-paren">(</span><em>typename</em>, <em>*</em>, <em>schema='public'</em>, <em>encoder</em>, <em>decoder</em>, <em>binary=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.set_type_codec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.set_type_codec" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">set_type_codec</code><span class="sig-paren">(</span><em>typename</em>, <em>*</em>, <em>schema='public'</em>, <em>encoder</em>, <em>decoder</em>, <em>binary=None</em>, <em>format='text'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.set_type_codec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.set_type_codec" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set an encoder/decoder pair for the specified data type.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>typename</strong> &#8211; Name of the data type the codec is for.</li>
-<li><strong>schema</strong> &#8211; Schema name of the data type the codec is for
-(defaults to &#8216;public&#8217;)</li>
-<li><strong>encoder</strong> &#8211; Callable accepting a single argument and returning
-a string or a bytes object (if <cite>binary</cite> is True).</li>
-<li><strong>decoder</strong> &#8211; Callable accepting a single string or bytes argument
-and returning a decoded object.</li>
-<li><strong>binary</strong> &#8211; Specifies whether the codec is able to handle binary
-data.  If <code class="docutils literal"><span class="pre">False</span></code> (the default), the data is
-expected to be encoded/decoded in text.</li>
+<li><strong>typename</strong> – Name of the data type the codec is for.</li>
+<li><strong>schema</strong> – Schema name of the data type the codec is for
+(defaults to <code class="docutils literal"><span class="pre">'public'</span></code>)</li>
+<li><strong>format</strong> – <p>The type of the argument received by the <em>decoder</em> callback,
+and the type of the <em>encoder</em> callback return value.</p>
+<p>If <em>format</em> is <code class="docutils literal"><span class="pre">'text'</span></code> (the default), the exchange datum is a
+<code class="docutils literal"><span class="pre">str</span></code> instance containing valid text representation of the
+data type.</p>
+<p>If <em>format</em> is <code class="docutils literal"><span class="pre">'binary'</span></code>, the exchange datum is a <code class="docutils literal"><span class="pre">bytes</span></code>
+instance containing valid _binary_ representation of the
+data type.</p>
+<p>If <em>format</em> is <code class="docutils literal"><span class="pre">'tuple'</span></code>, the exchange datum is a type-specific
+<code class="docutils literal"><span class="pre">tuple</span></code> of values.  The table below lists supported data
+types and their format for this mode.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="27%" />
+<col width="73%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Type</th>
+<th class="head">Tuple layout</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">interval</span></code></td>
+<td>(<code class="docutils literal"><span class="pre">months</span></code>, <code class="docutils literal"><span class="pre">days</span></code>, <code class="docutils literal"><span class="pre">microseconds</span></code>)</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">date</span></code></td>
+<td>(<code class="docutils literal"><span class="pre">date</span> <span class="pre">ordinal</span> <span class="pre">relative</span> <span class="pre">to</span> <span class="pre">Jan</span> <span class="pre">1</span> <span class="pre">2000</span></code>,)
+<code class="docutils literal"><span class="pre">-2^31</span></code> for negative infinity timestamp
+<code class="docutils literal"><span class="pre">2^31-1</span></code> for positive infinity timestamp.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">timestamp</span></code></td>
+<td>(<code class="docutils literal"><span class="pre">microseconds</span> <span class="pre">relative</span> <span class="pre">to</span> <span class="pre">Jan</span> <span class="pre">1</span> <span class="pre">2000</span></code>,)
+<code class="docutils literal"><span class="pre">-2^63</span></code> for negative infinity timestamp
+<code class="docutils literal"><span class="pre">2^63-1</span></code> for positive infinity timestamp.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">timestamp</span>
+<span class="pre">with</span> <span class="pre">time</span> <span class="pre">zone</span></code></td>
+<td>(<code class="docutils literal"><span class="pre">microseconds</span> <span class="pre">relative</span> <span class="pre">to</span> <span class="pre">Jan</span> <span class="pre">1</span> <span class="pre">2000</span>
+<span class="pre">UTC</span></code>,)
+<code class="docutils literal"><span class="pre">-2^63</span></code> for negative infinity timestamp
+<code class="docutils literal"><span class="pre">2^63-1</span></code> for positive infinity timestamp.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">time</span></code></td>
+<td>(<code class="docutils literal"><span class="pre">microseconds</span></code>,)</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">time</span> <span class="pre">with</span>
+<span class="pre">time</span> <span class="pre">zone</span></code></td>
+<td>(<code class="docutils literal"><span class="pre">microseconds</span></code>,
+<code class="docutils literal"><span class="pre">time</span> <span class="pre">zone</span> <span class="pre">offset</span> <span class="pre">in</span> <span class="pre">seconds</span></code>)</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong>encoder</strong> – Callable accepting a Python object as a single argument and
+returning a value encoded according to <em>format</em>.</li>
+<li><strong>decoder</strong> – Callable accepting a single argument encoded according to <em>format</em>
+and returning a decoded Python object.</li>
+<li><strong>binary</strong> – <strong>Deprecated</strong>.  Use <em>format</em> instead.</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
+<p>Example:</p>
+<div class="highlight-pycon"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncpg</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">datetime</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">dateutil.relativedelta</span> <span class="kn">import</span> <span class="n">relativedelta</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">def</span> <span class="nf">encoder</span><span class="p">(</span><span class="n">delta</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="n">ndelta</span> <span class="o">=</span> <span class="n">delta</span><span class="o">.</span><span class="n">normalized</span><span class="p">()</span>
+<span class="gp">... </span>        <span class="k">return</span> <span class="p">(</span><span class="n">ndelta</span><span class="o">.</span><span class="n">years</span> <span class="o">*</span> <span class="mi">12</span> <span class="o">+</span> <span class="n">ndelta</span><span class="o">.</span><span class="n">months</span><span class="p">,</span>
+<span class="gp">... </span>                <span class="n">ndelta</span><span class="o">.</span><span class="n">days</span><span class="p">,</span>
+<span class="gp">... </span>                <span class="p">((</span><span class="n">ndelta</span><span class="o">.</span><span class="n">hours</span> <span class="o">*</span> <span class="mi">3600</span> <span class="o">+</span>
+<span class="gp">... </span>                   <span class="n">ndelta</span><span class="o">.</span><span class="n">minutes</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">+</span>
+<span class="gp">... </span>                   <span class="n">ndelta</span><span class="o">.</span><span class="n">seconds</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000000</span> <span class="o">+</span>
+<span class="gp">... </span>                 <span class="n">ndelta</span><span class="o">.</span><span class="n">microseconds</span><span class="p">))</span>
+<span class="gp">... </span>    <span class="k">def</span> <span class="nf">decoder</span><span class="p">(</span><span class="n">tup</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="k">return</span> <span class="n">relativedelta</span><span class="p">(</span><span class="n">months</span><span class="o">=</span><span class="n">tup</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">days</span><span class="o">=</span><span class="n">tup</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+<span class="gp">... </span>                             <span class="n">microseconds</span><span class="o">=</span><span class="n">tup</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+<span class="gp">... </span>    <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">set_type_codec</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="s1">&#39;interval&#39;</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;pg_catalog&#39;</span><span class="p">,</span> <span class="n">encoder</span><span class="o">=</span><span class="n">encoder</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="n">decoder</span><span class="o">=</span><span class="n">decoder</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="s1">&#39;tuple&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">result</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="s2">&quot;SELECT &#39;2 years 3 mons 1 day&#39;::interval&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2002</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">result</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
+<span class="go">relativedelta(years=+2, months=+3, days=+1)</span>
+<span class="go">2004-04-02 00:00:00</span>
+</pre></div>
+</div>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.12.0: </span>Added the <code class="docutils literal"><span class="pre">format</span></code> keyword argument and support for ‘tuple’
+format.</p>
+</div>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.12.0: </span>The <code class="docutils literal"><span class="pre">binary</span></code> keyword argument is deprecated in favor of
+<code class="docutils literal"><span class="pre">format</span></code>.</p>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -777,12 +921,12 @@ parameters.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>isolation</strong> &#8211; Transaction isolation mode, can be one of:
-<cite>&#8216;serializable&#8217;</cite>, <cite>&#8216;repeatable_read&#8217;</cite>,
-<cite>&#8216;read_committed&#8217;</cite>.</li>
-<li><strong>readonly</strong> &#8211; Specifies whether or not this transaction is
+<li><strong>isolation</strong> – Transaction isolation mode, can be one of:
+<cite>‘serializable’</cite>, <cite>‘repeatable_read’</cite>,
+<cite>‘read_committed’</cite>.</li>
+<li><strong>readonly</strong> – Specifies whether or not this transaction is
 read-only.</li>
-<li><strong>deferrable</strong> &#8211; Specifies whether or not this transaction is
+<li><strong>deferrable</strong> – Specifies whether or not this transaction is
 deferrable.</li>
 </ul>
 </td>
@@ -833,10 +977,10 @@ or <code class="xref py py-meth docutils literal"><span class="pre">fetchval()</
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>args</strong> &#8211; Query arguments.</li>
-<li><strong>prefetch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) &#8211; The number of rows the <em>cursor iterator</em>
+<li><strong>args</strong> – Query arguments.</li>
+<li><strong>prefetch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – The number of rows the <em>cursor iterator</em>
 will prefetch (defaults to <code class="docutils literal"><span class="pre">50</span></code>.)</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout in seconds.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -856,8 +1000,8 @@ will prefetch (defaults to <code class="docutils literal"><span class="pre">50</
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>args</strong> &#8211; Query arguments.</li>
-<li><strong>analyze</strong> &#8211; If <code class="docutils literal"><span class="pre">True</span></code>, the statement will be executed and
+<li><strong>args</strong> – Query arguments.</li>
+<li><strong>analyze</strong> – If <code class="docutils literal"><span class="pre">True</span></code>, the statement will be executed and
 the run time statitics added to the return value.</li>
 </ul>
 </td>
@@ -880,9 +1024,9 @@ is actually a deserialized JSON output of the SQL
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; Query text</li>
-<li><strong>args</strong> &#8211; Query arguments</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.</li>
+<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Query text</li>
+<li><strong>args</strong> – Query arguments</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -902,9 +1046,9 @@ is actually a deserialized JSON output of the SQL
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; Query text</li>
-<li><strong>args</strong> &#8211; Query arguments</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.</li>
+<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Query text</li>
+<li><strong>args</strong> – Query arguments</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -924,10 +1068,10 @@ is actually a deserialized JSON output of the SQL
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>args</strong> &#8211; Query arguments.</li>
-<li><strong>column</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) &#8211; Numeric index within the record of the value to
+<li><strong>args</strong> – Query arguments.</li>
+<li><strong>column</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Numeric index within the record of the value to
 return (defaults to 0).</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.
 If not specified, defaults to the value of
 <code class="docutils literal"><span class="pre">command_timeout</span></code> argument to the <code class="docutils literal"><span class="pre">Connection</span></code>
 instance constructor.</li>
@@ -1119,7 +1263,7 @@ reduce the number of queries sent to the server:</p>
 </pre></div>
 </div>
 <p>Or, alternatively, you can iterate over the cursor manually (cursor
-won&#8217;t be prefetching any rows):</p>
+won’t be prefetching any rows):</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="k">def</span> <span class="nf">iterate</span><span class="p">(</span><span class="n">con</span><span class="p">:</span> <span class="n">Connection</span><span class="p">):</span>
     <span class="n">async</span> <span class="k">with</span> <span class="n">con</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
         <span class="c1"># Postgres requires non-scrollable cursors to be created</span>
@@ -1139,7 +1283,7 @@ won&#8217;t be prefetching any rows):</p>
             <span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
 </pre></div>
 </div>
-<p>It&#8217;s also possible to create cursors from prepared statements:</p>
+<p>It’s also possible to create cursors from prepared statements:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="k">def</span> <span class="nf">iterate</span><span class="p">(</span><span class="n">con</span><span class="p">:</span> <span class="n">Connection</span><span class="p">):</span>
     <span class="c1"># Create a prepared statement that will accept one argument</span>
     <span class="n">stmt</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="s1">&#39;SELECT generate_series(0, $1)&#39;</span><span class="p">)</span>
@@ -1208,7 +1352,7 @@ fetch subsets of the query results.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A list of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> instances.</td>
 </tr>
@@ -1224,7 +1368,7 @@ fetch subsets of the query results.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> instance.</td>
 </tr>
@@ -1240,7 +1384,7 @@ fetch subsets of the query results.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Optional timeout value in seconds.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A number of rows actually skipped over (&lt;= <em>n</em>).</td>
 </tr>
@@ -1278,26 +1422,26 @@ fetch subsets of the query results.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>dsn</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) &#8211; Connection arguments specified using as a single string in
+<li><strong>dsn</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Connection arguments specified using as a single string in
 the following format:
 <code class="docutils literal"><span class="pre">postgres://user:pass&#64;host:port/database?option=value</span></code>.</li>
-<li><strong>**connect_kwargs</strong> &#8211; Keyword arguments for the <a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal"><span class="pre">connect()</span></code></a>
+<li><strong>**connect_kwargs</strong> – Keyword arguments for the <a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal"><span class="pre">connect()</span></code></a>
 function.</li>
-<li><strong>min_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) &#8211; Number of connection the pool will be initialized with.</li>
-<li><strong>max_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) &#8211; Max number of connections in the pool.</li>
-<li><strong>max_queries</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) &#8211; Number of queries after a connection is closed and replaced
+<li><strong>min_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Number of connection the pool will be initialized with.</li>
+<li><strong>max_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Max number of connections in the pool.</li>
+<li><strong>max_queries</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Number of queries after a connection is closed and replaced
 with a new connection.</li>
-<li><strong>max_inactive_connection_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; Number of seconds after which inactive connections in the
+<li><strong>max_inactive_connection_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Number of seconds after which inactive connections in the
 pool will be closed.  Pass <code class="docutils literal"><span class="pre">0</span></code> to disable this mechanism.</li>
-<li><strong>setup</strong> (<em>coroutine</em>) &#8211; A coroutine to prepare a connection right before it is returned
+<li><strong>setup</strong> (<em>coroutine</em>) – A coroutine to prepare a connection right before it is returned
 from <a class="reference internal" href="#asyncpg.pool.Pool.acquire" title="asyncpg.pool.Pool.acquire"><code class="xref py py-meth docutils literal"><span class="pre">Pool.acquire()</span></code></a>.  An example use
 case would be to automatically set up notifications listeners for
 all connections of a pool.</li>
-<li><strong>init</strong> (<em>coroutine</em>) &#8211; A coroutine to initialize a connection when it is created.
+<li><strong>init</strong> (<em>coroutine</em>) – A coroutine to initialize a connection when it is created.
 An example use case would be to setup type codecs with
 <a class="reference internal" href="#asyncpg.connection.Connection.set_builtin_type_codec" title="asyncpg.connection.Connection.set_builtin_type_codec"><code class="xref py py-meth docutils literal"><span class="pre">Connection.set_builtin_type_codec()</span></code></a>
 or <a class="reference internal" href="#asyncpg.connection.Connection.set_type_codec" title="asyncpg.connection.Connection.set_type_codec"><code class="xref py py-meth docutils literal"><span class="pre">Connection.set_type_codec()</span></code></a>.</li>
-<li><strong>loop</strong> &#8211; An asyncio event loop instance.  If <code class="docutils literal"><span class="pre">None</span></code>, the default
+<li><strong>loop</strong> – An asyncio event loop instance.  If <code class="docutils literal"><span class="pre">None</span></code>, the default
 event loop will be used.</li>
 </ul>
 </td>
@@ -1319,7 +1463,7 @@ attempted operation on a released connection.</p>
 <dd><p>A connection pool.</p>
 <p>Connection pool can be used to manage a set of connections to the database.
 Connections are first acquired from the pool, then used, and then released
-back to the pool.  Once a connection is released, it&#8217;s reset to close all
+back to the pool.  Once a connection is released, it’s reset to close all
 open cursors and other resources <em>except</em> prepared statements.</p>
 <p>Pools are created by calling <a class="reference internal" href="#asyncpg.pool.create_pool" title="asyncpg.pool.create_pool"><code class="xref py py-func docutils literal"><span class="pre">create_pool()</span></code></a>.</p>
 <dl class="method">
@@ -1330,7 +1474,7 @@ open cursors and other resources <em>except</em> prepared statements.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) &#8211; A timeout for acquiring a Connection.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – A timeout for acquiring a Connection.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">An instance of <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal"><span class="pre">Connection</span></code></a>.</td>
 </tr>
@@ -1515,7 +1659,7 @@ items either by a numeric index or by a field name:</p>
 <dl class="describe">
 <dt>
 <code class="descname">settings.setting_name</code></dt>
-<dd><p>Return the value of the &#8220;setting_name&#8221; setting.  Raises an
+<dd><p>Return the value of the “setting_name” setting.  Raises an
 <code class="docutils literal"><span class="pre">AttributeError</span></code> if the setting is not defined.</p>
 <p>Example:</p>
 <div class="highlight-pycon"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">connection</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">client_encoding</span>
@@ -1536,13 +1680,13 @@ items either by a numeric index or by a field name:</p>
 <dl class="attribute">
 <dt id="asyncpg.types.Type.kind">
 <code class="descname">kind</code><a class="headerlink" href="#asyncpg.types.Type.kind" title="Permalink to this definition">¶</a></dt>
-<dd><p>Type kind.  Can be &#8220;scalar&#8221;, &#8220;array&#8221;, &#8220;composite&#8221; or &#8220;range&#8221;.</p>
+<dd><p>Type kind.  Can be “scalar”, “array”, “composite” or “range”.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="asyncpg.types.Type.name">
 <code class="descname">name</code><a class="headerlink" href="#asyncpg.types.Type.name" title="Permalink to this definition">¶</a></dt>
-<dd><p>Type name.  For example &#8220;int2&#8221;.</p>
+<dd><p>Type name.  For example “int2”.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -1713,7 +1857,7 @@ items either by a numeric index or by a field name:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.11.0',
+            VERSION:'0.12.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

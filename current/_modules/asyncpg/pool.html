@@ -30,6 +30,8 @@
   
 
   
+    <link rel="stylesheet" href="../../_static/theme_overrides.css" type="text/css" />
+  
 
   
         <link rel="index" title="Index"
@@ -65,7 +67,7 @@
             
             
               <div class="version">
-                0.11.0
+                0.12.0
               </div>
             
           
@@ -180,11 +182,6 @@
 
     <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">mcls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">dct</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">wrap</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">wrap</span><span class="p">:</span>
-            <span class="k">def</span> <span class="nf">get_wrapper</span><span class="p">(</span><span class="n">meth</span><span class="p">):</span>
-                <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_method_call</span><span class="p">(</span><span class="n">meth</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
-                <span class="k">return</span> <span class="n">wrapper</span>
-
             <span class="k">for</span> <span class="n">attrname</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">connection</span><span class="o">.</span><span class="n">Connection</span><span class="p">):</span>
                 <span class="k">if</span> <span class="n">attrname</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">attrname</span> <span class="ow">in</span> <span class="n">dct</span><span class="p">:</span>
                     <span class="k">continue</span>
@@ -193,7 +190,7 @@
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isfunction</span><span class="p">(</span><span class="n">meth</span><span class="p">):</span>
                     <span class="k">continue</span>
 
-                <span class="n">wrapper</span> <span class="o">=</span> <span class="n">get_wrapper</span><span class="p">(</span><span class="n">meth</span><span class="p">)</span>
+                <span class="n">wrapper</span> <span class="o">=</span> <span class="n">mcls</span><span class="o">.</span><span class="n">_wrap_connection_method</span><span class="p">(</span><span class="n">attrname</span><span class="p">)</span>
                 <span class="n">wrapper</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">update_wrapper</span><span class="p">(</span><span class="n">wrapper</span><span class="p">,</span> <span class="n">meth</span><span class="p">)</span>
                 <span class="n">dct</span><span class="p">[</span><span class="n">attrname</span><span class="p">]</span> <span class="o">=</span> <span class="n">wrapper</span>
 
@@ -205,6 +202,21 @@
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">dct</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">wrap</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="c1"># Needed for Python 3.5 to handle `wrap` class keyword argument.</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">dct</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_wrap_connection_method</span><span class="p">(</span><span class="n">meth_name</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">call_con_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="c1"># This method will be owned by PoolConnectionProxy class.</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                    <span class="s1">&#39;cannot call Connection.</span><span class="si">{}</span><span class="s1">(): &#39;</span>
+                    <span class="s1">&#39;connection has been released back to the pool&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="n">meth_name</span><span class="p">))</span>
+
+            <span class="n">meth</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="vm">__class__</span><span class="p">,</span> <span class="n">meth_name</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">meth</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">call_con_method</span>
 
 
 <span class="k">class</span> <span class="nc">PoolConnectionProxy</span><span class="p">(</span><span class="n">connection</span><span class="o">.</span><span class="n">_ConnectionProxy</span><span class="p">,</span>
@@ -219,6 +231,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_holder</span> <span class="o">=</span> <span class="n">holder</span>
         <span class="n">con</span><span class="o">.</span><span class="n">_set_proxy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
+    <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="c1"># Proxy all unresolved attributes to the wrapped Connection object.</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+
     <span class="k">def</span> <span class="nf">_detach</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
@@ -226,15 +242,6 @@
 
         <span class="n">con</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="p">,</span> <span class="kc">None</span>
         <span class="n">con</span><span class="o">.</span><span class="n">_set_proxy</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_dispatch_method_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">meth</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
-                <span class="s1">&#39;cannot call Connection.</span><span class="si">{}</span><span class="s1">(): &#39;</span>
-                <span class="s1">&#39;connection has been released back to the pool&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                    <span class="n">meth</span><span class="o">.</span><span class="vm">__name__</span><span class="p">))</span>
-
-        <span class="k">return</span> <span class="n">meth</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -835,7 +842,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.11.0',
+            VERSION:'0.12.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

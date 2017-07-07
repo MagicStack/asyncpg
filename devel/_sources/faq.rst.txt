@@ -14,7 +14,7 @@ Does asyncpg support DB-API?
 
 Can I use asyncpg with SQLAlchemy ORM?
     Short answer: no.  asyncpg uses asynchronous execution model
-    and API, which is fundamentally incompatible with asyncpg.
+    and API, which is fundamentally incompatible with SQLAlchemy.
     However, it is possible to use asyncpg and SQLAlchemy Core
     with the help of a third-party adapter, such as asyncpgsa_.
 
