@@ -180,20 +180,24 @@ class TestLogListeners(tb.ConnectedTestCase):
             " END"
             "$$"
         )
-        con.add_log_listener(notice_callb)
-        for cur_id in range(10):
-            await con.execute("SELECT _test($1)", cur_id)
 
-        for cur_id in range(10):
-            self.assertEqual(
-                q1.get_nowait(),
-                (con, cur_id, '1_%s' % cur_id))
-            self.assertEqual(
-                q1.get_nowait(),
-                (con, cur_id, '2_%s' % cur_id))
+        try:
+            con.add_log_listener(notice_callb)
+            for cur_id in range(10):
+                await con.execute("SELECT _test($1)", cur_id)
 
-        con.remove_log_listener(notice_callb)
-        self.assertTrue(q1.empty())
+            for cur_id in range(10):
+                self.assertEqual(
+                    q1.get_nowait(),
+                    (con, cur_id, '1_%s' % cur_id))
+                self.assertEqual(
+                    q1.get_nowait(),
+                    (con, cur_id, '2_%s' % cur_id))
+
+            con.remove_log_listener(notice_callb)
+            self.assertTrue(q1.empty())
+        finally:
+            await con.execute('DROP FUNCTION _test(i INT)')
 
     @tb.with_connection_options(server_settings={
         'client_min_messages': 'notice'
