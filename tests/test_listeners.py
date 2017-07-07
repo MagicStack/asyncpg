@@ -79,6 +79,9 @@ class TestListeners(tb.ClusterTestCase):
 
 class TestLogListeners(tb.ConnectedTestCase):
 
+    @tb.with_connection_options(server_settings={
+        'client_min_messages': 'notice'
+    })
     async def test_log_listener_01(self):
         q1 = asyncio.Queue(loop=self.loop)
 
@@ -90,19 +93,23 @@ class TestLogListeners(tb.ConnectedTestCase):
 
         async def raise_notice():
             await self.con.execute(
-                "DO $$ BEGIN RAISE NOTICE 'catch me!'; END; $$ LANGUAGE plpgsql"
+                """DO $$
+                    BEGIN RAISE NOTICE 'catch me!'; END;
+                $$ LANGUAGE plpgsql"""
             )
 
         async def raise_warning():
             await self.con.execute(
-                "DO $$ BEGIN RAISE WARNING 'catch me!'; END; $$ LANGUAGE plpgsql"
+                """DO $$
+                    BEGIN RAISE WARNING 'catch me!'; END;
+                $$ LANGUAGE plpgsql"""
             )
 
         con = self.con
         con.add_log_listener(notice_callb)
 
         expected_msg = {
-            'context': 'PL/pgSQL function inline_code_block line 1 at RAISE',
+            'context': 'PL/pgSQL function inline_code_block line 2 at RAISE',
             'message': 'catch me!',
             'server_source_filename': 'pl_exec.c',
             'server_source_function': 'exec_stmt_raise',
@@ -151,6 +158,9 @@ class TestLogListeners(tb.ConnectedTestCase):
         await raise_notice()
         self.assertTrue(q1.empty())
 
+    @tb.with_connection_options(server_settings={
+        'client_min_messages': 'notice'
+    })
     async def test_log_listener_02(self):
         q1 = asyncio.Queue(loop=self.loop)
 
@@ -185,6 +195,9 @@ class TestLogListeners(tb.ConnectedTestCase):
         con.remove_log_listener(notice_callb)
         self.assertTrue(q1.empty())
 
+    @tb.with_connection_options(server_settings={
+        'client_min_messages': 'notice'
+    })
     async def test_log_listener_03(self):
         q1 = asyncio.Queue(loop=self.loop)
 
