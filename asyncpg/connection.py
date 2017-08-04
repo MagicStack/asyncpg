@@ -352,7 +352,8 @@ class Connection(metaclass=ConnectionMeta):
                             ``command_timeout`` argument to the ``Connection``
                             instance constructor.
 
-        :return: The value of the specified column of the first record.
+        :return: The value of the specified column of the first record, or
+                 None if no results.
         """
         self._check_open()
         data = await self._execute(query, args, 1, timeout)
@@ -367,7 +368,8 @@ class Connection(metaclass=ConnectionMeta):
         :param args: Query arguments
         :param float timeout: Optional timeout value in seconds.
 
-        :return: The first row as a :class:`Record` instance.
+        :return: The first row as a :class:`Record` instance, or None if
+                 no results.
         """
         self._check_open()
         data = await self._execute(query, args, 1, timeout)
