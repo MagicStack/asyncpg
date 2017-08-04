@@ -135,6 +135,9 @@ matrix:
           addons:
               postgresql: '9.6'
 
+    allow_failures:
+        - python: "3.7-dev"
+
 cache:
     pip
 
