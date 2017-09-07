@@ -93,9 +93,12 @@ class TestCase(unittest.TestCase, metaclass=TestCaseMeta):
         try:
             yield
         finally:
-            if time.monotonic() - st > delta:
+            elapsed = time.monotonic() - st
+            if elapsed > delta:
                 raise AssertionError(
-                    'running block took longer than {}'.format(delta))
+                    'running block took {:0.3f}s which is longer '
+                    'than the expected maximum of {:0.3f}s'.format(
+                        elapsed, delta))
 
     @contextlib.contextmanager
     def assertLoopErrorHandlerCalled(self, msg_re: str):
@@ -214,18 +217,18 @@ def with_connection_options(**options):
 
 class ConnectedTestCase(ClusterTestCase):
 
-    def getExtraConnectOptions(self):
-        return {}
-
     def setUp(self):
         super().setUp()
 
         # Extract options set up with `with_connection_options`.
         test_func = getattr(self, self._testMethodName).__func__
         opts = getattr(test_func, '__connect_options__', {})
+        if 'database' not in opts:
+            opts = dict(opts)
+            opts['database'] = 'postgres'
 
         self.con = self.loop.run_until_complete(
-            self.cluster.connect(database='postgres', loop=self.loop, **opts))
+            self.cluster.connect(loop=self.loop, **opts))
 
         self.server_version = self.con.get_server_version()
 

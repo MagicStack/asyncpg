@@ -5,29 +5,8 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-INTRO_LOOKUP_TYPES = '''\
-WITH RECURSIVE typeinfo_tree(
-    oid, ns, name, kind, basetype, has_bin_io, elemtype, elemdelim,
-    range_subtype, elem_has_bin_io, attrtypoids, attrnames, depth)
-AS (
-    WITH composite_attrs
-    AS (
-        SELECT
-            c.reltype                                        AS comptype_oid,
-            array_agg(ia.atttypid ORDER BY ia.attnum)        AS typoids,
-            array_agg(ia.attname::text ORDER BY ia.attnum)   AS names
-        FROM
-            pg_attribute ia
-            INNER JOIN pg_class c
-                ON (ia.attrelid = c.oid)
-        WHERE
-            ia.attnum > 0 AND NOT ia.attisdropped
-        GROUP BY
-            c.reltype
-    ),
-
-    typeinfo
-    AS (
+_TYPEINFO = '''\
+    (
         SELECT
             t.oid                           AS oid,
             ns.nspname                      AS ns,
@@ -76,16 +55,28 @@ AS (
                     elem_t.typsend::oid != 0
             END)                            AS elem_has_bin_io,
             (CASE WHEN t.typtype = 'c' THEN
-                (SELECT ca.typoids
-                FROM composite_attrs AS ca
-                WHERE ca.comptype_oid = t.oid)
+                (SELECT
+                    array_agg(ia.atttypid ORDER BY ia.attnum)
+                FROM
+                    pg_attribute ia
+                    INNER JOIN pg_class c
+                        ON (ia.attrelid = c.oid)
+                WHERE
+                    ia.attnum > 0 AND NOT ia.attisdropped
+                    AND c.reltype = t.oid)
 
                 ELSE NULL
             END)                            AS attrtypoids,
             (CASE WHEN t.typtype = 'c' THEN
-                (SELECT ca.names
-                FROM composite_attrs AS ca
-                WHERE ca.comptype_oid = t.oid)
+                (SELECT
+                    array_agg(ia.attname::text ORDER BY ia.attnum)
+                FROM
+                    pg_attribute ia
+                    INNER JOIN pg_class c
+                        ON (ia.attrelid = c.oid)
+                WHERE
+                    ia.attnum > 0 AND NOT ia.attisdropped
+                    AND c.reltype = t.oid)
 
                 ELSE NULL
             END)                            AS attrnames
@@ -102,13 +93,20 @@ AS (
                 t.oid = range_t.rngtypid
             )
     )
+'''
 
+
+INTRO_LOOKUP_TYPES = '''\
+WITH RECURSIVE typeinfo_tree(
+    oid, ns, name, kind, basetype, has_bin_io, elemtype, elemdelim,
+    range_subtype, elem_has_bin_io, attrtypoids, attrnames, depth)
+AS (
     SELECT
         ti.oid, ti.ns, ti.name, ti.kind, ti.basetype, ti.has_bin_io,
         ti.elemtype, ti.elemdelim, ti.range_subtype, ti.elem_has_bin_io,
         ti.attrtypoids, ti.attrnames, 0
     FROM
-        typeinfo AS ti
+        {typeinfo} AS ti
     WHERE
         ti.oid = any($1::oid[])
 
@@ -119,7 +117,7 @@ AS (
         ti.elemtype, ti.elemdelim, ti.range_subtype, ti.elem_has_bin_io,
         ti.attrtypoids, ti.attrnames, tt.depth + 1
     FROM
-        typeinfo ti,
+        {typeinfo} ti,
         typeinfo_tree tt
     WHERE
         (tt.elemtype IS NOT NULL AND ti.oid = tt.elemtype)
@@ -133,33 +131,12 @@ FROM
     typeinfo_tree
 ORDER BY
     depth DESC
-'''
+'''.format(typeinfo=_TYPEINFO)
 
 
 # Prior to 9.2 PostgreSQL did not have range types.
-INTRO_LOOKUP_TYPES_91 = '''\
-WITH RECURSIVE typeinfo_tree(
-    oid, ns, name, kind, basetype, has_bin_io, elemtype, elemdelim,
-    range_subtype, elem_has_bin_io, attrtypoids, attrnames, depth)
-AS (
-    WITH composite_attrs
-    AS (
-        SELECT
-            c.reltype                                        AS comptype_oid,
-            array_agg(ia.atttypid ORDER BY ia.attnum)        AS typoids,
-            array_agg(ia.attname::text ORDER BY ia.attnum)   AS names
-        FROM
-            pg_attribute ia
-            INNER JOIN pg_class c
-                ON (ia.attrelid = c.oid)
-        WHERE
-            ia.attnum > 0 AND NOT ia.attisdropped
-        GROUP BY
-            c.reltype
-    ),
-
-    typeinfo
-    AS (
+_TYPEINFO_91 = '''\
+    (
         SELECT
             t.oid                           AS oid,
             ns.nspname                      AS ns,
@@ -199,16 +176,28 @@ AS (
                 elem_t.typsend::oid != 0
                                             AS elem_has_bin_io,
             (CASE WHEN t.typtype = 'c' THEN
-                (SELECT ca.typoids
-                FROM composite_attrs AS ca
-                WHERE ca.comptype_oid = t.oid)
+                (SELECT
+                    array_agg(ia.atttypid ORDER BY ia.attnum)
+                FROM
+                    pg_attribute ia
+                    INNER JOIN pg_class c
+                        ON (ia.attrelid = c.oid)
+                WHERE
+                    ia.attnum > 0 AND NOT ia.attisdropped
+                    AND c.reltype = t.oid)
 
                 ELSE NULL
             END)                            AS attrtypoids,
             (CASE WHEN t.typtype = 'c' THEN
-                (SELECT ca.names
-                FROM composite_attrs AS ca
-                WHERE ca.comptype_oid = t.oid)
+                (SELECT
+                    array_agg(ia.attname::text ORDER BY ia.attnum)
+                FROM
+                    pg_attribute ia
+                    INNER JOIN pg_class c
+                        ON (ia.attrelid = c.oid)
+                WHERE
+                    ia.attnum > 0 AND NOT ia.attisdropped
+                    AND c.reltype = t.oid)
 
                 ELSE NULL
             END)                            AS attrnames
@@ -222,13 +211,20 @@ AS (
                 t.typelem = elem_t.oid
             )
     )
+'''
+
+INTRO_LOOKUP_TYPES_91 = '''\
+WITH RECURSIVE typeinfo_tree(
+    oid, ns, name, kind, basetype, has_bin_io, elemtype, elemdelim,
+    range_subtype, elem_has_bin_io, attrtypoids, attrnames, depth)
+AS (
 
     SELECT
         ti.oid, ti.ns, ti.name, ti.kind, ti.basetype, ti.has_bin_io,
         ti.elemtype, ti.elemdelim, ti.range_subtype, ti.elem_has_bin_io,
         ti.attrtypoids, ti.attrnames, 0
     FROM
-        typeinfo AS ti
+        {typeinfo} AS ti
     WHERE
         ti.oid = any($1::oid[])
 
@@ -239,7 +235,7 @@ AS (
         ti.elemtype, ti.elemdelim, ti.range_subtype, ti.elem_has_bin_io,
         ti.attrtypoids, ti.attrnames, tt.depth + 1
     FROM
-        typeinfo ti,
+        {typeinfo} ti,
         typeinfo_tree tt
     WHERE
         (tt.elemtype IS NOT NULL AND ti.oid = tt.elemtype)
@@ -253,7 +249,7 @@ FROM
     typeinfo_tree
 ORDER BY
     depth DESC
-'''
+'''.format(typeinfo=_TYPEINFO_91)
 
 
 TYPE_BY_NAME = '''\
