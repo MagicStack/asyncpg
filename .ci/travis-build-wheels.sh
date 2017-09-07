@@ -13,7 +13,6 @@ if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
     PYENV_ROOT="$HOME/.pyenv"
     PATH="$PYENV_ROOT/bin:$PATH"
     eval "$(pyenv init -)"
-    pyenv local ${PYTHON_VERSION}
 fi
 
 PACKAGE_VERSION=$(python ".ci/package-version.py")

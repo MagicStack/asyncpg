@@ -84,8 +84,7 @@ class Cluster:
     def __init__(self, data_dir, *, pg_config_path=None):
         self._data_dir = data_dir
         self._pg_config_path = pg_config_path
-        self._pg_config = None
-        self._pg_config_data = None
+        self._pg_bin_dir = os.environ.get('PGINSTALLATION')
         self._pg_ctl = None
         self._daemon_pid = None
         self._daemon_process = None
@@ -374,11 +373,18 @@ class Cluster:
             self.reload()
 
     def _init_env(self):
-        self._pg_config = self._find_pg_config(self._pg_config_path)
-        self._pg_config_data = self._run_pg_config(self._pg_config)
-        self._pg_version = self._get_pg_version()
+        if not self._pg_bin_dir:
+            pg_config = self._find_pg_config(self._pg_config_path)
+            pg_config_data = self._run_pg_config(pg_config)
+
+            self._pg_bin_dir = pg_config_data.get('bindir')
+            if not self._pg_bin_dir:
+                raise ClusterError(
+                    'pg_config output did not provide the BINDIR value')
+
         self._pg_ctl = self._find_pg_binary('pg_ctl')
         self._postgres = self._find_pg_binary('postgres')
+        self._pg_version = self._get_pg_version()
 
     def _connection_addr_from_pidfile(self):
         pidfile = os.path.join(self._data_dir, 'postmaster.pid')
@@ -505,13 +511,7 @@ class Cluster:
         return pg_config_path
 
     def _find_pg_binary(self, binary):
-        bindir = self._pg_config_data.get('bindir')
-        if not bindir:
-            raise ClusterError(
-                'could not find {} executable: '.format(binary) +
-                'pg_config output did not provide the BINDIR value')
-
-        bpath = platform_exe(os.path.join(bindir, binary))
+        bpath = platform_exe(os.path.join(self._pg_bin_dir, binary))
 
         if not os.path.isfile(bpath):
             raise ClusterError(
@@ -521,9 +521,23 @@ class Cluster:
         return bpath
 
     def _get_pg_version(self):
-        version_string = self._pg_config_data.get('version')
-        if not version_string:
-            raise ClusterError('could not determine PostgreSQL version')
+        process = subprocess.run(
+            [self._postgres, '--version'],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = process.stdout, process.stderr
+
+        if process.returncode != 0:
+            raise ClusterError(
+                'postgres --version exited with status {:d}: {}'.format(
+                    process.returncode, stderr))
+
+        version_string = stdout.decode('utf-8').strip(' \n')
+        prefix = 'postgres (PostgreSQL) '
+        if not version_string.startswith(prefix):
+            raise ClusterError(
+                'could not determine server version from {!r}'.format(
+                    version_string))
+        version_string = version_string[len(prefix):]
 
         return serverversion.split_server_version_string(version_string)
 

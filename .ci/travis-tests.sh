@@ -13,6 +13,13 @@ if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
     eval "$(pyenv init -)"
 fi
 
+# Make sure we test with the correct PostgreSQL version.
+if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
+    export PGINSTALLATION="/usr/local/opt/postgresql@${PGVERSION}/bin"
+else
+    export PGINSTALLATION="/usr/lib/postgresql/${PGVERSION}/bin"
+fi
+
 if [[ "${BUILD}" == *quicktests* ]]; then
     make && make quicktest
 else
