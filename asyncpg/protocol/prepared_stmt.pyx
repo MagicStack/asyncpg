@@ -40,6 +40,9 @@ cdef class PreparedStatementState:
     def _get_attributes(self):
         cdef Codec codec
 
+        if not self.row_desc:
+            return ()
+
         result = []
         for d in self.row_desc:
             name = d[0]
