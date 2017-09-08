@@ -418,12 +418,19 @@ class TestCopyTo(tb.ConnectedTestCase):
             )
             f.seek(0)
 
+            if self.con.get_server_version() < (9, 4):
+                force_null = None
+                forced_null_expected = 'n-u-l-l'
+            else:
+                force_null = ('b~',)
+                forced_null_expected = None
+
             res = await self.con.copy_to_table(
                 'copytab', source=f, columns=('a', 'b~'),
                 schema_name='public', format='csv',
                 delimiter='|', null='n-u-l-l', header=True,
                 quote='*', escape='!', force_not_null=('a',),
-                force_null=('b~',))
+                force_null=force_null)
 
             self.assertEqual(res, 'COPY 7')
 
@@ -435,7 +442,7 @@ class TestCopyTo(tb.ConnectedTestCase):
             self.assertEqual(
                 output,
                 [
-                    ('*', None, None),
+                    ('*', forced_null_expected, None),
                     ('a1', 'b1', None),
                     ('a2', 'b2', None),
                     ('a3', 'b3', None),
