@@ -217,7 +217,7 @@ class TestCopyFrom(tb.ConnectedTestCase):
                 )
 
     async def test_copy_from_query_to_bad_output(self):
-        with self.assertRaisesRegexp(TypeError, 'output is expected to be'):
+        with self.assertRaisesRegex(TypeError, 'output is expected to be'):
             await self.con.copy_from_query('''
                 SELECT
                     i, i * 10
@@ -512,7 +512,7 @@ class TestCopyTo(tb.ConnectedTestCase):
                 async def __anext__(self):
                     raise RuntimeError('failure in source')
 
-            with self.assertRaisesRegexp(RuntimeError, 'failure in source'):
+            with self.assertRaisesRegex(RuntimeError, 'failure in source'):
                 await self.con.copy_to_table('copytab', source=_Source())
 
             # Check that the protocol has recovered.
@@ -542,7 +542,7 @@ class TestCopyTo(tb.ConnectedTestCase):
                     else:
                         raise RuntimeError('failure in source')
 
-            with self.assertRaisesRegexp(RuntimeError, 'failure in source'):
+            with self.assertRaisesRegex(RuntimeError, 'failure in source'):
                 await self.con.copy_to_table('copytab', source=_Source())
 
             # Check that the protocol has recovered.
