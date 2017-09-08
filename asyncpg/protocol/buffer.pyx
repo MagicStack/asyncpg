@@ -21,7 +21,7 @@ cdef class Memory:
         return cpython.PyBytes_FromStringAndSize(self.buf, self.length)
 
     @staticmethod
-    cdef inline Memory new(char* buf, object owner, ssize_t length):
+    cdef inline Memory new(const char* buf, object owner, ssize_t length):
         cdef Memory mem
         mem = Memory.__new__(Memory)
         mem.buf = buf
@@ -295,7 +295,7 @@ cdef class ReadBuffer:
                 raise RuntimeError(
                     'debug: second buffer of ReadBuffer is empty')
 
-    cdef inline char* _try_read_bytes(self, ssize_t nbytes):
+    cdef inline const char* _try_read_bytes(self, ssize_t nbytes):
         # Try to read *nbytes* from the first buffer.
         #
         # Returns pointer to data if there is at least *nbytes*
@@ -305,7 +305,7 @@ cdef class ReadBuffer:
         # to calling try_read_bytes, and must not overread
 
         cdef:
-            char * result
+            const char *result
 
         if ASYNCPG_DEBUG:
             if nbytes > self._length:
@@ -353,12 +353,13 @@ cdef class ReadBuffer:
         cdef:
             bytearray result
             ssize_t nread
+            const char *cbuf
             char *buf
 
         self._ensure_first_buf()
-        buf = self._try_read_bytes(nbytes)
-        if buf != NULL:
-            return Memory.new(buf, self._buf0, nbytes)
+        cbuf = self._try_read_bytes(nbytes)
+        if cbuf != NULL:
+            return Memory.new(cbuf, self._buf0, nbytes)
 
         if nbytes > self._length:
             raise BufferError(
@@ -376,7 +377,7 @@ cdef class ReadBuffer:
         return Memory.new(buf, result, nbytes)
 
     cdef inline read_byte(self):
-        cdef char* first_byte
+        cdef const char *first_byte
 
         if ASYNCPG_DEBUG:
             if not self._buf0:
@@ -390,10 +391,10 @@ cdef class ReadBuffer:
 
         return first_byte[0]
 
-    cdef inline read_bytes(self, ssize_t n):
+    cdef inline const char* read_bytes(self, ssize_t n) except NULL:
         cdef:
             Memory mem
-            char *cbuf
+            const char *cbuf
 
         self._ensure_first_buf()
         cbuf = self._try_read_bytes(n)
@@ -406,7 +407,7 @@ cdef class ReadBuffer:
     cdef inline read_int32(self):
         cdef:
             Memory mem
-            char *cbuf
+            const char *cbuf
 
         self._ensure_first_buf()
         cbuf = self._try_read_bytes(4)
@@ -419,7 +420,7 @@ cdef class ReadBuffer:
     cdef inline read_int16(self):
         cdef:
             Memory mem
-            char *cbuf
+            const char *cbuf
 
         self._ensure_first_buf()
         cbuf = self._try_read_bytes(2)
@@ -439,8 +440,8 @@ cdef class ReadBuffer:
             ssize_t pos
             ssize_t nread
             bytes result
-            char* buf
-            char* buf_start
+            const char *buf
+            const char *buf_start
 
         self._ensure_first_buf()
 
@@ -487,7 +488,7 @@ cdef class ReadBuffer:
 
     cdef int32_t has_message(self) except -1:
         cdef:
-            char* cbuf
+            const char *cbuf
 
         if self._current_message_ready:
             return 1
@@ -524,8 +525,10 @@ cdef class ReadBuffer:
     cdef inline int32_t has_message_type(self, char mtype) except -1:
         return self.has_message() and self.get_message_type() == mtype
 
-    cdef inline char* try_consume_message(self, ssize_t* len):
-        cdef ssize_t buf_len
+    cdef inline const char* try_consume_message(self, ssize_t* len):
+        cdef:
+            ssize_t buf_len
+            const char *buf
 
         if not self._current_message_ready:
             return NULL

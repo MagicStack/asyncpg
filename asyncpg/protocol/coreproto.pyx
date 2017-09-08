@@ -394,7 +394,7 @@ cdef class CoreProtocol:
 
     cdef _parse_msg_command_complete(self):
         cdef:
-            char* cbuf
+            const char* cbuf
             ssize_t cbuf_len
 
         cbuf = self.buffer.try_consume_message(&cbuf_len)
@@ -465,7 +465,7 @@ cdef class CoreProtocol:
             list rows
             decode_row_method decoder = <decode_row_method>self._decode_row
 
-            char* cbuf
+            const char* cbuf
             ssize_t cbuf_len
             object row
             Memory mem

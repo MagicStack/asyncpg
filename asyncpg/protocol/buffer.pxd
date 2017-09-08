@@ -7,14 +7,14 @@
 
 cdef class Memory:
     cdef:
-        char* buf
+        const char *buf
         object owner
         ssize_t length
 
     cdef as_bytes(self)
 
     @staticmethod
-    cdef inline Memory new(char* buf, object owner, ssize_t length)
+    cdef inline Memory new(const char *buf, object owner, ssize_t length)
 
 
 cdef class WriteBuffer:
@@ -98,16 +98,16 @@ cdef class ReadBuffer:
     cdef inline _ensure_first_buf(self)
     cdef _switch_to_next_buf(self)
     cdef inline read_byte(self)
-    cdef inline char* _try_read_bytes(self, ssize_t nbytes)
+    cdef inline const char* _try_read_bytes(self, ssize_t nbytes)
     cdef inline _read(self, char *buf, ssize_t nbytes)
     cdef read(self, ssize_t nbytes)
-    cdef inline read_bytes(self, ssize_t n)
+    cdef inline const char* read_bytes(self, ssize_t n) except NULL
     cdef inline read_int32(self)
     cdef inline read_int16(self)
     cdef inline read_cstr(self)
     cdef int32_t has_message(self) except -1
     cdef inline int32_t has_message_type(self, char mtype) except -1
-    cdef inline char* try_consume_message(self, ssize_t* len)
+    cdef inline const char* try_consume_message(self, ssize_t* len)
     cdef Memory consume_message(self)
     cdef bytearray consume_messages(self, char mtype)
     cdef discard_message(self)
