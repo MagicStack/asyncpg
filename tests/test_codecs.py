@@ -1402,3 +1402,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 DROP TABLE testtab;
                 DROP TYPE enum_t;
             ''')
+
+    async def test_no_result(self):
+        st = await self.con.prepare('rollback')
+        self.assertTupleEqual(st.get_attributes(), ())
