@@ -80,10 +80,7 @@ class Connection(metaclass=ConnectionMeta):
         self._server_caps = _detect_server_capabilities(
             self._server_version, settings)
 
-        if self._server_version < (9, 2):
-            self._intro_query = introspection.INTRO_LOOKUP_TYPES_91
-        else:
-            self._intro_query = introspection.INTRO_LOOKUP_TYPES
+        self._intro_query = introspection.INTRO_LOOKUP_TYPES
 
         self._reset_query = None
         self._proxy = None

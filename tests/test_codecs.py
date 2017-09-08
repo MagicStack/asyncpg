@@ -214,7 +214,7 @@ type_samples = [
     ('json', 'json', [
         '[1, 2, 3, 4]',
         '{"a": [1, 2], "b": 0}'
-    ], (9, 2)),
+    ]),
     ('jsonb', 'jsonb', [
         '[1, 2, 3, 4]',
         '{"a": [1, 2], "b": 0}'
@@ -743,10 +743,6 @@ class TestCodecs(tb.ConnectedTestCase):
 
     async def test_range_types(self):
         """Test encoding/decoding of range types."""
-
-        if self.server_version < (9, 2):
-            raise unittest.SkipTest(
-                'PostgreSQL servers < 9.2 do not support range types.')
 
         cases = [
             ('int4range', [

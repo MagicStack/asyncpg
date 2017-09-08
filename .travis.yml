@@ -40,16 +40,6 @@ matrix:
         # Do quick test runs for each supported version of PostgreSQL
         # minus the latest.
         - os: linux
-          dist: precise
-          sudo: false
-          language: python
-          python: "3.5"
-          services: postgresql
-          env: BUILD=quicktests PGVERSION=9.1
-          addons:
-              postgresql: '9.1'
-
-        - os: linux
           dist: trusty
           sudo: false
           language: python
