@@ -39,10 +39,11 @@ class Connection(metaclass=ConnectionMeta):
 
     __slots__ = ('_protocol', '_transport', '_loop', '_types_stmt',
                  '_type_by_name_stmt', '_top_xact', '_uid', '_aborted',
-                 '_stmt_cache', '_stmts_to_close', '_listeners',
-                 '_server_version', '_server_caps', '_intro_query',
-                 '_reset_query', '_proxy', '_stmt_exclusive_section',
-                 '_config', '_params', '_addr', '_log_listeners')
+                 '_pool_release_ctr', '_stmt_cache', '_stmts_to_close',
+                 '_listeners', '_server_version', '_server_caps',
+                 '_intro_query', '_reset_query', '_proxy',
+                 '_stmt_exclusive_section', '_config', '_params', '_addr',
+                 '_log_listeners')
 
     def __init__(self, protocol, transport, loop,
                  addr: (str, int) or str,
@@ -56,6 +57,10 @@ class Connection(metaclass=ConnectionMeta):
         self._top_xact = None
         self._uid = 0
         self._aborted = False
+        # Incremented very time the connection is released back to a pool.
+        # Used to catch invalid references to connection-related resources
+        # post-release (e.g. explicit prepared statements).
+        self._pool_release_ctr = 0
 
         self._addr = addr
         self._config = config
