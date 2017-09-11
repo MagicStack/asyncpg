@@ -175,6 +175,9 @@ class PoolConnectionHolder:
         assert self._in_use
         self._in_use = False
 
+        # Invalidate external references to the connection.
+        self._con._pool_release_ctr += 1
+
         if self._con.is_closed():
             self._con = None
 

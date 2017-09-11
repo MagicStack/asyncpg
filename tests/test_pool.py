@@ -193,6 +193,11 @@ class TestPool(tb.ConnectedTestCase):
         async with pool.acquire() as con:
             self.assertIn(repr(con._con), repr(con))  # Test __repr__.
 
+            ps = await con.prepare('SELECT 1')
+            async with con.transaction():
+                cur = await con.cursor('SELECT 1')
+                ps_cur = await ps.cursor()
+
         self.assertIn('[released]', repr(con))
 
         with self.assertRaisesRegex(
@@ -200,6 +205,32 @@ class TestPool(tb.ConnectedTestCase):
                 r'cannot call Connection\.execute.*released back to the pool'):
 
             con.execute('select 1')
+
+        for meth in ('fetchval', 'fetchrow', 'fetch', 'explain',
+                     'get_query', 'get_statusmsg', 'get_parameters',
+                     'get_attributes'):
+            with self.assertRaisesRegex(
+                    asyncpg.InterfaceError,
+                    r'cannot call PreparedStatement\.{meth}.*released '
+                    r'back to the pool'.format(meth=meth)):
+
+                getattr(ps, meth)()
+
+        for c in (cur, ps_cur):
+            for meth in ('fetch', 'fetchrow'):
+                with self.assertRaisesRegex(
+                        asyncpg.InterfaceError,
+                        r'cannot call Cursor\.{meth}.*released '
+                        r'back to the pool'.format(meth=meth)):
+
+                    getattr(c, meth)()
+
+            with self.assertRaisesRegex(
+                    asyncpg.InterfaceError,
+                    r'cannot call Cursor\.forward.*released '
+                    r'back to the pool'.format(meth=meth)):
+
+                c.forward(1)
 
         await pool.close()
 

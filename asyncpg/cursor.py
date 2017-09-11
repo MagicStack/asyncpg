@@ -8,21 +8,21 @@
 import collections
 
 from . import compat
+from . import connresource
 from . import exceptions
 
 
-class CursorFactory:
+class CursorFactory(connresource.ConnectionResource):
     """A cursor interface for the results of a query.
 
     A cursor interface can be used to initiate efficient traversal of the
     results of a large query.
     """
 
-    __slots__ = ('_state', '_connection', '_args', '_prefetch',
-                 '_query', '_timeout')
+    __slots__ = ('_state', '_args', '_prefetch', '_query', '_timeout')
 
     def __init__(self, connection, query, state, args, prefetch, timeout):
-        self._connection = connection
+        super().__init__(connection)
         self._args = args
         self._prefetch = prefetch
         self._query = query
@@ -32,6 +32,7 @@ class CursorFactory:
             state.attach()
 
     @compat.aiter_compat
+    @connresource.guarded
     def __aiter__(self):
         prefetch = 50 if self._prefetch is None else self._prefetch
         return CursorIterator(self._connection,
@@ -39,6 +40,7 @@ class CursorFactory:
                               self._args, prefetch,
                               self._timeout)
 
+    @connresource.guarded
     def __await__(self):
         if self._prefetch is not None:
             raise exceptions.InterfaceError(
@@ -53,14 +55,13 @@ class CursorFactory:
             self._connection._maybe_gc_stmt(self._state)
 
 
-class BaseCursor:
+class BaseCursor(connresource.ConnectionResource):
 
-    __slots__ = ('_state', '_connection', '_args', '_portal_name',
-                 '_exhausted', '_query')
+    __slots__ = ('_state', '_args', '_portal_name', '_exhausted', '_query')
 
     def __init__(self, connection, query, state, args):
+        super().__init__(connection)
         self._args = args
-        self._connection = connection
         self._state = state
         if state is not None:
             state.attach()
@@ -162,9 +163,11 @@ class CursorIterator(BaseCursor):
         self._timeout = timeout
 
     @compat.aiter_compat
+    @connresource.guarded
     def __aiter__(self):
         return self
 
+    @connresource.guarded
     async def __anext__(self):
         if self._state is None:
             self._state = await self._connection._get_statement(
@@ -199,6 +202,7 @@ class Cursor(BaseCursor):
         await self._bind(timeout)
         return self
 
+    @connresource.guarded
     async def fetch(self, n, *, timeout=None):
         r"""Return the next *n* rows as a list of :class:`Record` objects.
 
@@ -216,6 +220,7 @@ class Cursor(BaseCursor):
             self._exhausted = True
         return recs
 
+    @connresource.guarded
     async def fetchrow(self, *, timeout=None):
         r"""Return the next row.
 
@@ -232,6 +237,7 @@ class Cursor(BaseCursor):
             return None
         return recs[0]
 
+    @connresource.guarded
     async def forward(self, n, *, timeout=None) -> int:
         r"""Skip over the next *n* rows.
 

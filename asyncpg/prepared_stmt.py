@@ -7,22 +7,24 @@
 
 import json
 
+from . import connresource
 from . import cursor
 from . import exceptions
 
 
-class PreparedStatement:
+class PreparedStatement(connresource.ConnectionResource):
     """A representation of a prepared statement."""
 
-    __slots__ = ('_connection', '_state', '_query', '_last_status')
+    __slots__ = ('_state', '_query', '_last_status')
 
     def __init__(self, connection, query, state):
-        self._connection = connection
+        super().__init__(connection)
         self._state = state
         self._query = query
         state.attach()
         self._last_status = None
 
+    @connresource.guarded
     def get_query(self) -> str:
         """Return the text of the query for this prepared statement.
 
@@ -33,6 +35,7 @@ class PreparedStatement:
         """
         return self._query
 
+    @connresource.guarded
     def get_statusmsg(self) -> str:
         """Return the status of the executed command.
 
@@ -46,6 +49,7 @@ class PreparedStatement:
             return self._last_status
         return self._last_status.decode()
 
+    @connresource.guarded
     def get_parameters(self):
         """Return a description of statement parameters types.
 
@@ -60,9 +64,9 @@ class PreparedStatement:
             #   (Type(oid=23, name='int4', kind='scalar', schema='pg_catalog'),
             #    Type(oid=25, name='text', kind='scalar', schema='pg_catalog'))
         """
-        self._check_open()
         return self._state._get_parameters()
 
+    @connresource.guarded
     def get_attributes(self):
         """Return a description of relation attributes (columns).
 
@@ -85,9 +89,9 @@ class PreparedStatement:
             #       type=Type(oid=26, name='oid', kind='scalar',
             #                 schema='pg_catalog')))
         """
-        self._check_open()
         return self._state._get_attributes()
 
+    @connresource.guarded
     def cursor(self, *args, prefetch=None,
                timeout=None) -> cursor.CursorFactory:
         """Return a *cursor factory* for the prepared statement.
@@ -99,11 +103,11 @@ class PreparedStatement:
 
         :return: A :class:`~cursor.CursorFactory` object.
         """
-        self._check_open()
         return cursor.CursorFactory(self._connection, self._query,
                                     self._state, args, prefetch,
                                     timeout)
 
+    @connresource.guarded
     async def explain(self, *args, analyze=False):
         """Return the execution plan of the statement.
 
@@ -145,6 +149,7 @@ class PreparedStatement:
 
         return json.loads(data)
 
+    @connresource.guarded
     async def fetch(self, *args, timeout=None):
         r"""Execute the statement and return a list of :class:`Record` objects.
 
@@ -157,6 +162,7 @@ class PreparedStatement:
         data = await self.__bind_execute(args, 0, timeout)
         return data
 
+    @connresource.guarded
     async def fetchval(self, *args, column=0, timeout=None):
         """Execute the statement and return a value in the first row.
 
@@ -175,6 +181,7 @@ class PreparedStatement:
             return None
         return data[0][column]
 
+    @connresource.guarded
     async def fetchrow(self, *args, timeout=None):
         """Execute the statement and return the first row.
 
@@ -190,16 +197,21 @@ class PreparedStatement:
         return data[0]
 
     async def __bind_execute(self, args, limit, timeout):
-        self._check_open()
         protocol = self._connection._protocol
         data, status, _ = await protocol.bind_execute(
             self._state, args, '', limit, True, timeout)
         self._last_status = status
         return data
 
-    def _check_open(self):
+    def _check_open(self, meth_name):
         if self._state.closed:
-            raise exceptions.InterfaceError('prepared statement is closed')
+            raise exceptions.InterfaceError(
+                'cannot call PreparedStmt.{}(): '
+                'the prepared statement is closed'.format(meth_name))
+
+    def _check_conn_validity(self, meth_name):
+        self._check_open(meth_name)
+        super()._check_conn_validity(meth_name)
 
     def __del__(self):
         self._state.detach()
