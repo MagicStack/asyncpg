@@ -75,6 +75,19 @@ matrix:
           addons:
               apt: {packages: [postgresql-9.5]}
 
+        - os: linux
+          dist: trusty
+          sudo: false
+          language: python
+          python: "3.6"
+          env: BUILD=quicktests PGVERSION=10
+          addons:
+              apt:
+                  sources:
+                      - sourceline: 'deb https://apt.postgresql.org/pub/repos/apt/ trusty-pgdg 10'
+                        key_url: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
+                  packages: [postgresql-10]
+
         # Do a full test run on the latest supported version of PostgreSQL
         # on each supported version of Python.
         - os: linux
