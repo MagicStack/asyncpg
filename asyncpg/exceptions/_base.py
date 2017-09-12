@@ -10,7 +10,7 @@ import sys
 
 
 __all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError',
-           'InterfaceError', 'PostgresLogMessage')
+           'InterfaceError', 'InterfaceWarning', 'PostgresLogMessage')
 
 
 def _is_asyncpg_class(cls):
@@ -159,8 +159,35 @@ class UnknownPostgresError(FatalPostgresError):
     """An error with an unknown SQLSTATE code."""
 
 
-class InterfaceError(Exception):
+class InterfaceMessage:
+    def __init__(self, *, detail=None, hint=None):
+        self.detail = detail
+        self.hint = hint
+
+    def __str__(self):
+        msg = self.args[0]
+        if self.detail:
+            msg += '\nDETAIL:  {}'.format(self.detail)
+        if self.hint:
+            msg += '\nHINT:  {}'.format(self.hint)
+
+        return msg
+
+
+class InterfaceError(InterfaceMessage, Exception):
     """An error caused by improper use of asyncpg API."""
+
+    def __init__(self, msg, *, detail=None, hint=None):
+        InterfaceMessage.__init__(self, detail=detail, hint=hint)
+        Exception.__init__(self, msg)
+
+
+class InterfaceWarning(InterfaceMessage, UserWarning):
+    """A warning caused by an improper use of asyncpg API."""
+
+    def __init__(self, msg, *, detail=None, hint=None):
+        InterfaceMessage.__init__(self, detail=detail, hint=hint)
+        Warning.__init__(self, msg)
 
 
 class PostgresLogMessage(PostgresMessage):

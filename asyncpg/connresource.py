@@ -27,10 +27,10 @@ class ConnectionResource:
 
     def __init__(self, connection):
         self._connection = connection
-        self._con_release_ctr = getattr(connection, '_pool_release_ctr', None)
+        self._con_release_ctr = connection._pool_release_ctr
 
     def _check_conn_validity(self, meth_name):
-        con_release_ctr = getattr(self._connection, '_pool_release_ctr', None)
+        con_release_ctr = self._connection._pool_release_ctr
         if con_release_ctr != self._con_release_ctr:
             raise exceptions.InterfaceError(
                 'cannot call {}.{}(): '
