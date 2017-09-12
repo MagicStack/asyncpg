@@ -513,6 +513,12 @@ class TestConnection(tb.ConnectedTestCase):
                 loop=self.loop,
                 ssl=ssl_context)
 
+    async def test_connection_implicit_host(self):
+        conn_spec = self.cluster.get_connection_spec()
+        con = await asyncpg.connect(
+            port=conn_spec['port'], database='postgres', loop=self.loop)
+        await con.close()
+
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
 class TestSSLConnection(tb.ConnectedTestCase):

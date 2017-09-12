@@ -9,6 +9,7 @@ import asyncio
 import collections
 import getpass
 import os
+import platform
 import socket
 import struct
 import time
@@ -38,6 +39,9 @@ _ClientConfiguration = collections.namedtuple(
         'max_cached_statement_lifetime',
         'max_cacheable_statement_size',
     ])
+
+
+_system = platform.uname().system
 
 
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
@@ -123,9 +127,13 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     if host is None:
         host = os.getenv('PGHOST')
         if not host:
-            host = ['/tmp', '/private/tmp',
-                    '/var/pgsql_socket', '/run/postgresql',
-                    'localhost']
+            if _system == 'Windows':
+                host = ['localhost']
+            else:
+                host = ['/tmp', '/private/tmp',
+                        '/var/pgsql_socket', '/run/postgresql',
+                        'localhost']
+
     if not isinstance(host, list):
         host = [host]
 
