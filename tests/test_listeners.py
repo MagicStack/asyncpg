@@ -76,6 +76,20 @@ class TestListeners(tb.ClusterTestCase):
                     await q1.get(),
                     (con1, con2.get_server_pid(), 'ipc', 'hello'))
 
+                await con1.remove_listener('ipc', listener1)
+
+    async def test_dangling_listener_warns(self):
+        async with self.create_pool(database='postgres') as pool:
+            with self.assertWarnsRegex(
+                    exceptions.InterfaceWarning,
+                    '.*Connection.*is being released to the pool but '
+                    'has 1 active notification listener'):
+                async with pool.acquire() as con:
+                    def listener1(*args):
+                        pass
+
+                    await con.add_listener('ipc', listener1)
+
 
 class TestLogListeners(tb.ConnectedTestCase):
 
@@ -231,3 +245,15 @@ class TestLogListeners(tb.ConnectedTestCase):
         with self.assertRaises(exceptions.InvalidCharacterValueForCastError):
             await raise_message('', '22018')
         self.assertTrue(q1.empty())
+
+    async def test_dangling_log_listener_warns(self):
+        async with self.create_pool(database='postgres') as pool:
+            with self.assertWarnsRegex(
+                    exceptions.InterfaceWarning,
+                    '.*Connection.*is being released to the pool but '
+                    'has 1 active log listener'):
+                async with pool.acquire() as con:
+                    def listener1(*args):
+                        pass
+
+                    con.add_log_listener(listener1)

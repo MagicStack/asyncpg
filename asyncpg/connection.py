@@ -8,6 +8,7 @@
 import asyncio
 import collections
 import collections.abc
+import itertools
 import struct
 import time
 import warnings
@@ -1171,6 +1172,29 @@ class Connection(metaclass=ConnectionMeta):
                 'internal asyncpg error: connection is already proxied')
 
         self._proxy = proxy
+
+    def _check_listeners(self, listeners, listener_type):
+        if listeners:
+            count = len(listeners)
+
+            w = exceptions.InterfaceWarning(
+                '{conn!r} is being released to the pool but has {c} active '
+                '{type} listener{s}'.format(
+                    conn=self, c=count, type=listener_type,
+                    s='s' if count > 1 else ''))
+
+            warnings.warn(w)
+
+    def _on_release(self, stacklevel=1):
+        # Invalidate external references to the connection.
+        self._pool_release_ctr += 1
+        # Called when the connection is about to be released to the pool.
+        # Let's check that the user has not left any listeners on it.
+        self._check_listeners(
+            list(itertools.chain.from_iterable(self._listeners.values())),
+            'notification')
+        self._check_listeners(
+            self._log_listeners, 'log')
 
     def _drop_local_statement_cache(self):
         self._stmt_cache.clear()
