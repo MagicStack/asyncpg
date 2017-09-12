@@ -614,7 +614,7 @@ class TestPool(tb.ConnectedTestCase):
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
-class TestHostStandby(tb.ConnectedTestCase):
+class TestHotStandby(tb.ConnectedTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -681,3 +681,14 @@ class TestHostStandby(tb.ConnectedTestCase):
                 tasks = [worker() for _ in range(n)]
                 await asyncio.gather(*tasks, loop=self.loop)
                 await pool.close()
+
+    async def test_standby_cursors(self):
+        con = await self.standby_cluster.connect(
+            database='postgres', loop=self.loop)
+
+        try:
+            async with con.transaction():
+                cursor = await con.cursor('SELECT 1')
+                self.assertEqual(await cursor.fetchrow(), (1,))
+        finally:
+            await con.close()
