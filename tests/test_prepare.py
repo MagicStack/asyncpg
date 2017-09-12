@@ -11,6 +11,7 @@ import gc
 import unittest
 
 from asyncpg import _testbase as tb
+from asyncpg import exceptions
 
 
 class TestPrepare(tb.ConnectedTestCase):
@@ -540,8 +541,9 @@ class TestPrepare(tb.ConnectedTestCase):
         args = ','.join('${}'.format(i) for i in range(1, N + 1))
         query = 'SELECT ARRAY[{}]'.format(args)
 
-        with self.assertRaisesRegex(ValueError,
-                                    'number of arguments cannot exceed 32767'):
+        with self.assertRaisesRegex(
+                exceptions.InterfaceError,
+                'the number of query arguments cannot exceed 32767'):
             await self.con.fetchval(query, *range(1, N + 1))
 
     async def test_prepare_29_duplicates(self):
@@ -556,3 +558,14 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual(r[0], 1)
         self.assertEqual(r[1], 2)
         self.assertEqual(r[2], 3)
+
+    async def test_prepare_30_invalid_arg_count(self):
+        with self.assertRaisesRegex(
+                exceptions.InterfaceError,
+                'the server expects 1 argument for this query, 0 were passed'):
+            await self.con.fetchval('SELECT $1::int')
+
+        with self.assertRaisesRegex(
+                exceptions.InterfaceError,
+                'the server expects 0 arguments for this query, 1 was passed'):
+            await self.con.fetchval('SELECT 1', 1)

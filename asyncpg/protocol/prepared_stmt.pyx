@@ -5,6 +5,9 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+from asyncpg import exceptions
+
+
 @cython.final
 cdef class PreparedStatementState:
 
@@ -92,18 +95,34 @@ cdef class PreparedStatementState:
             Codec codec
 
         if len(args) > 32767:
-            raise ValueError('number of arguments cannot exceed 32767')
+            raise exceptions.InterfaceError(
+                'the number of query arguments cannot exceed 32767')
 
         self._ensure_args_encoder()
         self._ensure_rows_decoder()
 
         writer = WriteBuffer.new()
 
-        if self.args_num != len(args):
-            raise ValueError(
-                'number of arguments ({}) does not match '
-                'number of parameters ({})'.format(
-                    len(args), self.args_num))
+        num_args_passed = len(args)
+        if self.args_num != num_args_passed:
+            hint = 'Check the query against the passed list of arguments.'
+
+            if self.args_num == 0:
+                # If the server was expecting zero arguments, it is likely
+                # that the user tried to parametrize a statement that does
+                # not support parameters.
+                hint += (r'  Note that parameters are supported only in'
+                         r' SELECT, INSERT, UPDATE, DELETE, and VALUES'
+                         r' statements, and will *not* work in statements '
+                         r' like CREATE VIEW or DECLARE CURSOR.')
+
+            raise exceptions.InterfaceError(
+                'the server expects {x} argument{s} for this query, '
+                '{y} {w} passed'.format(
+                    x=self.args_num, s='s' if self.args_num != 1 else '',
+                    y=num_args_passed,
+                    w='was' if num_args_passed == 1 else 'were'),
+                hint=hint)
 
         if self.have_text_args:
             writer.write_int16(self.args_num)
