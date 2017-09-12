@@ -586,6 +586,15 @@ def create_pool(dsn=None, *,
         finally:
             await pool.release(con)
 
+    .. warning::
+        Prepared statements and cursors returned by
+        :meth:`Connection.prepare() <connection.Connection.prepare>` and
+        :meth:`Connection.cursor() <connection.Connection.cursor>` become
+        invalid once the connection is released.  Likewise, all notification
+        and log listeners are removed, and ``asyncpg`` will issue a warning
+        if there are any listener callbacks registered on a connection that
+        is being released to the pool.
+
     :param str dsn:
         Connection arguments specified using as a single string in
         the following format:
@@ -632,6 +641,19 @@ def create_pool(dsn=None, *,
     .. versionchanged:: 0.10.0
        An :exc:`~asyncpg.exceptions.InterfaceError` will be raised on any
        attempted operation on a released connection.
+
+    .. versionchanged:: 0.13.0
+       An :exc:`~asyncpg.exceptions.InterfaceError` will be raised on any
+       attempted operation on a prepared statement or a cursor created
+       on a connection that has been released to the pool.
+
+    .. versionchanged:: 0.13.0
+       An :exc:`~asyncpg.exceptions.InterfaceWarning` will be produced
+       if there are any active listeners (added via
+       :meth:`Connection.add_listener() <connection.Connection.add_listener>`
+       or :meth:`Connection.add_log_listener()
+       <connection.Connection.add_log_listener>`) present on the connection
+       at the moment of its release to the pool.
     """
     if not issubclass(connection_class, connection.Connection):
         raise TypeError(
