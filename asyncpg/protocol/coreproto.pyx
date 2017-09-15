@@ -125,7 +125,7 @@ cdef class CoreProtocol:
                         self.buffer.consume_message()
 
                 else:
-                    raise RuntimeError(
+                    raise apg_exc.InternalClientError(
                         'protocol is in an unknown state {}'.format(state))
 
             except Exception as ex:
@@ -472,7 +472,7 @@ cdef class CoreProtocol:
 
         if ASYNCPG_DEBUG:
             if buf.get_message_type() != b'D':
-                raise RuntimeError(
+                raise apg_exc.InternalClientError(
                     '_parse_data_msgs: first message is not "D"')
 
         if self._discard_data:
@@ -484,7 +484,7 @@ cdef class CoreProtocol:
 
         if ASYNCPG_DEBUG:
             if type(self.result) is not list:
-                raise RuntimeError(
+                raise apg_exc.InternalClientError(
                     '_parse_data_msgs: result is not a list, but {!r}'.
                     format(self.result))
 
@@ -639,11 +639,11 @@ cdef class CoreProtocol:
     cdef _set_state(self, ProtocolState new_state):
         if new_state == PROTOCOL_IDLE:
             if self.state == PROTOCOL_FAILED:
-                raise RuntimeError(
+                raise apg_exc.InternalClientError(
                     'cannot switch to "idle" state; '
                     'protocol is in the "failed" state')
             elif self.state == PROTOCOL_IDLE:
-                raise RuntimeError(
+                raise apg_exc.InternalClientError(
                     'protocol is already in the "idle" state')
             else:
                 self.state = new_state
@@ -671,18 +671,18 @@ cdef class CoreProtocol:
                 self.state = new_state
 
             elif self.state == PROTOCOL_FAILED:
-                raise RuntimeError(
+                raise apg_exc.InternalClientError(
                     'cannot switch to state {}; '
                     'protocol is in the "failed" state'.format(new_state))
             else:
-                raise RuntimeError(
+                raise apg_exc.InternalClientError(
                     'cannot switch to state {}; '
                     'another operation ({}) is in progress'.format(
                         new_state, self.state))
 
     cdef _ensure_connected(self):
         if self.con_status != CONNECTION_OK:
-            raise RuntimeError('not connected')
+            raise apg_exc.InternalClientError('not connected')
 
     cdef WriteBuffer _build_bind_message(self, str portal_name,
                                          str stmt_name,
@@ -707,7 +707,7 @@ cdef class CoreProtocol:
             WriteBuffer outbuf
 
         if self.con_status != CONNECTION_BAD:
-            raise RuntimeError('already connected')
+            raise apg_exc.InternalClientError('already connected')
 
         self._set_state(PROTOCOL_AUTH)
         self.con_status = CONNECTION_STARTED

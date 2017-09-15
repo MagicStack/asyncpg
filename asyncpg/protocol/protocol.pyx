@@ -156,11 +156,16 @@ cdef class BaseProtocol(CoreProtocol):
         self._check_state()
         timeout = self._get_timeout_impl(timeout)
 
-        self._prepare(stmt_name, query)
-        self.last_query = query
-        self.statement = PreparedStatementState(stmt_name, query, self)
-
-        return await self._new_waiter(timeout)
+        waiter = self._new_waiter(timeout)
+        try:
+            self._prepare(stmt_name, query)  # network op
+            self.last_query = query
+            self.statement = PreparedStatementState(stmt_name, query, self)
+        except Exception as ex:
+            waiter.set_exception(ex)
+            self._coreproto_error()
+        finally:
+            return await waiter
 
     async def bind_execute(self, PreparedStatementState state, args,
                            str portal_name, int limit, return_extra,
@@ -174,19 +179,25 @@ cdef class BaseProtocol(CoreProtocol):
 
         self._check_state()
         timeout = self._get_timeout_impl(timeout)
+        args_buf = state._encode_bind_msg(args)
 
-        self._bind_execute(
-            portal_name,
-            state.name,
-            state._encode_bind_msg(args),
-            limit)
+        waiter = self._new_waiter(timeout)
+        try:
+            self._bind_execute(
+                portal_name,
+                state.name,
+                args_buf,
+                limit)  # network op
 
-        self.last_query = state.query
-        self.statement = state
-        self.return_extra = return_extra
-        self.queries_count += 1
-
-        return await self._new_waiter(timeout)
+            self.last_query = state.query
+            self.statement = state
+            self.return_extra = return_extra
+            self.queries_count += 1
+        except Exception as ex:
+            waiter.set_exception(ex)
+            self._coreproto_error()
+        finally:
+            return await waiter
 
     async def bind_execute_many(self, PreparedStatementState state, args,
                                 str portal_name, timeout):
@@ -207,18 +218,21 @@ cdef class BaseProtocol(CoreProtocol):
         arg_bufs = iter(data_gen)
 
         waiter = self._new_waiter(timeout)
+        try:
+            self._bind_execute_many(
+                portal_name,
+                state.name,
+                arg_bufs)  # network op
 
-        self._bind_execute_many(
-            portal_name,
-            state.name,
-            arg_bufs)
-
-        self.last_query = state.query
-        self.statement = state
-        self.return_extra = False
-        self.queries_count += 1
-
-        return await waiter
+            self.last_query = state.query
+            self.statement = state
+            self.return_extra = False
+            self.queries_count += 1
+        except Exception as ex:
+            waiter.set_exception(ex)
+            self._coreproto_error()
+        finally:
+            return await waiter
 
     async def bind(self, PreparedStatementState state, args,
                    str portal_name, timeout):
@@ -231,16 +245,22 @@ cdef class BaseProtocol(CoreProtocol):
 
         self._check_state()
         timeout = self._get_timeout_impl(timeout)
+        args_buf = state._encode_bind_msg(args)
 
-        self._bind(
-            portal_name,
-            state.name,
-            state._encode_bind_msg(args))
+        waiter = self._new_waiter(timeout)
+        try:
+            self._bind(
+                portal_name,
+                state.name,
+                args_buf)  # network op
 
-        self.last_query = state.query
-        self.statement = state
-
-        return await self._new_waiter(timeout)
+            self.last_query = state.query
+            self.statement = state
+        except Exception as ex:
+            waiter.set_exception(ex)
+            self._coreproto_error()
+        finally:
+            return await waiter
 
     async def execute(self, PreparedStatementState state,
                       str portal_name, int limit, return_extra,
@@ -255,16 +275,21 @@ cdef class BaseProtocol(CoreProtocol):
         self._check_state()
         timeout = self._get_timeout_impl(timeout)
 
-        self._execute(
-            portal_name,
-            limit)
+        waiter = self._new_waiter(timeout)
+        try:
+            self._execute(
+                portal_name,
+                limit)  # network op
 
-        self.last_query = state.query
-        self.statement = state
-        self.return_extra = return_extra
-        self.queries_count += 1
-
-        return await self._new_waiter(timeout)
+            self.last_query = state.query
+            self.statement = state
+            self.return_extra = return_extra
+            self.queries_count += 1
+        except Exception as ex:
+            waiter.set_exception(ex)
+            self._coreproto_error()
+        finally:
+            return await waiter
 
     async def query(self, query, timeout):
         if self.cancel_waiter is not None:
@@ -279,11 +304,16 @@ cdef class BaseProtocol(CoreProtocol):
         # prepare/bind/execute methods.
         timeout = self._get_timeout(timeout)
 
-        self._simple_query(query)
-        self.last_query = query
-        self.queries_count += 1
-
-        return await self._new_waiter(timeout)
+        waiter = self._new_waiter(timeout)
+        try:
+            self._simple_query(query)  # network op
+            self.last_query = query
+            self.queries_count += 1
+        except Exception as ex:
+            waiter.set_exception(ex)
+            self._coreproto_error()
+        finally:
+            return await waiter
 
     async def copy_out(self, copy_stmt, sink, timeout):
         if self.cancel_waiter is not None:
@@ -378,7 +408,7 @@ cdef class BaseProtocol(CoreProtocol):
                 for codec in codecs:
                     if (not codec.has_encoder() or
                             codec.format != PG_FORMAT_BINARY):
-                        raise RuntimeError(
+                        raise apg_exc.InternalClientError(
                             'no binary format encoder for '
                             'type {} (OID {})'.format(codec.name, codec.oid))
 
@@ -439,7 +469,7 @@ cdef class BaseProtocol(CoreProtocol):
             except TimeoutError:
                 raise
             else:
-                raise RuntimeError('TimoutError was not raised')
+                raise apg_exc.InternalClientError('TimoutError was not raised')
 
         except Exception as e:
             self._write_copy_fail_msg(str(e))
@@ -460,16 +490,22 @@ cdef class BaseProtocol(CoreProtocol):
             self.cancel_sent_waiter = None
 
         self._check_state()
-        timeout = self._get_timeout_impl(timeout)
 
         if state.refs != 0:
-            raise RuntimeError(
+            raise apg_exc.InternalClientError(
                 'cannot close prepared statement; refs == {} != 0'.format(
                     state.refs))
 
-        self._close(state.name, False)
-        state.closed = True
-        return await self._new_waiter(timeout)
+        timeout = self._get_timeout_impl(timeout)
+        waiter = self._new_waiter(timeout)
+        try:
+            self._close(state.name, False)  # network op
+            state.closed = True
+        except Exception as ex:
+            waiter.set_exception(ex)
+            self._coreproto_error()
+        finally:
+            return await waiter
 
     def is_closed(self):
         return self.closing
@@ -579,6 +615,17 @@ cdef class BaseProtocol(CoreProtocol):
             raise apg_exc.InterfaceError(
                 'cannot perform operation: another operation is in progress')
 
+    cdef _coreproto_error(self):
+        try:
+            if self.waiter is not None:
+                if not self.waiter.done():
+                    raise apg_exc.InternalClientError(
+                        'waiter is not done while handling critical '
+                        'protocol error')
+                self.waiter = None
+        finally:
+            self.abort()
+
     cdef _new_waiter(self, timeout):
         if self.waiter is not None:
             raise apg_exc.InterfaceError(
@@ -596,7 +643,7 @@ cdef class BaseProtocol(CoreProtocol):
     cdef _on_result__prepare(self, object waiter):
         if ASYNCPG_DEBUG:
             if self.statement is None:
-                raise RuntimeError(
+                raise apg_exc.InternalClientError(
                     '_on_result__prepare: statement is None')
 
         if self.result_param_desc is not None:
@@ -643,7 +690,7 @@ cdef class BaseProtocol(CoreProtocol):
     cdef _decode_row(self, const char* buf, ssize_t buf_len):
         if ASYNCPG_DEBUG:
             if self.statement is None:
-                raise RuntimeError(
+                raise apg_exc.InternalClientError(
                     '_decode_row: statement is None')
 
         return self.statement._decode_row(buf, buf_len)
@@ -654,13 +701,13 @@ cdef class BaseProtocol(CoreProtocol):
 
         if ASYNCPG_DEBUG:
             if waiter is None:
-                raise RuntimeError('_on_result: waiter is None')
+                raise apg_exc.InternalClientError('_on_result: waiter is None')
 
         if waiter.cancelled():
             return
 
         if waiter.done():
-            raise RuntimeError('_on_result: waiter is done')
+            raise apg_exc.InternalClientError('_on_result: waiter is done')
 
         if self.result_type == RESULT_FAILED:
             if isinstance(self.result, dict):
@@ -704,7 +751,7 @@ cdef class BaseProtocol(CoreProtocol):
                 self._on_result__copy_in(waiter)
 
             else:
-                raise RuntimeError(
+                raise apg_exc.InternalClientError(
                     'got result for unknown protocol state {}'.
                     format(self.state))
 

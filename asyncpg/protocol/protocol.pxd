@@ -51,6 +51,7 @@ cdef class BaseProtocol(CoreProtocol):
     cdef _get_timeout_impl(self, timeout)
     cdef _check_state(self)
     cdef _new_waiter(self, timeout)
+    cdef _coreproto_error(self)
 
     cdef _on_result__connect(self, object waiter)
     cdef _on_result__prepare(self, object waiter)
