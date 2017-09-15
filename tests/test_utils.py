@@ -26,12 +26,12 @@ class TestUtils(tb.ConnectedTestCase):
         for typename, data, expected in cases:
             with self.subTest(value=data, type=typename):
                 mogrified = await utils._mogrify(
-                    self.con, 'SELECT $1::{}'.format(typename), [data])
+                    self.con, 'SELECT $1::{}'.format(typename), [data], None)
                 self.assertEqual(mogrified, expected)
 
     async def test_mogrify_multiple(self):
         mogrified = await utils._mogrify(
             self.con, 'SELECT $1::int, $2::int[]',
-            [1, [2, 3, 4, 5]])
+            [1, [2, 3, 4, 5]], None)
         expected = "SELECT '1'::int, '{2,3,4,5}'::int[]"
         self.assertEqual(mogrified, expected)

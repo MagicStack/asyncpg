@@ -15,12 +15,11 @@ from . import exceptions
 class PreparedStatement(connresource.ConnectionResource):
     """A representation of a prepared statement."""
 
-    __slots__ = ('_state', '_query', '_last_status')
+    __slots__ = ('_state', '_last_status')
 
-    def __init__(self, connection, query, state):
+    def __init__(self, connection, state):
         super().__init__(connection)
         self._state = state
-        self._query = query
         state.attach()
         self._last_status = None
 
@@ -33,7 +32,7 @@ class PreparedStatement(connresource.ConnectionResource):
             stmt = await connection.prepare('SELECT $1::int')
             assert stmt.get_query() == "SELECT $1::int"
         """
-        return self._query
+        return self._state.query
 
     @connresource.guarded
     def get_statusmsg(self) -> str:
@@ -92,7 +91,7 @@ class PreparedStatement(connresource.ConnectionResource):
         return self._state._get_attributes()
 
     @connresource.guarded
-    def cursor(self, *args, prefetch=None,
+    def cursor(self, *args, kwargs=None, prefetch=None,
                timeout=None) -> cursor.CursorFactory:
         """Return a *cursor factory* for the prepared statement.
 
@@ -103,12 +102,12 @@ class PreparedStatement(connresource.ConnectionResource):
 
         :return: A :class:`~cursor.CursorFactory` object.
         """
-        return cursor.CursorFactory(self._connection, self._query,
-                                    self._state, args, prefetch,
+        return cursor.CursorFactory(self._connection, self._state.query,
+                                    self._state, args, kwargs, prefetch,
                                     timeout)
 
     @connresource.guarded
-    async def explain(self, *args, analyze=False):
+    async def explain(self, *args, kwargs=None, analyze=False):
         """Return the execution plan of the statement.
 
         :param args: Query arguments.
@@ -141,16 +140,18 @@ class PreparedStatement(connresource.ConnectionResource):
             tr = self._connection.transaction()
             await tr.start()
             try:
-                data = await self._connection.fetchval(query, *args)
+                data = await self._connection.fetchval(
+                    query, *args, kwargs=kwargs)
             finally:
                 await tr.rollback()
         else:
-            data = await self._connection.fetchval(query, *args)
+            data = await self._connection.fetchval(
+                query, *args, kwargs=kwargs)
 
         return json.loads(data)
 
     @connresource.guarded
-    async def fetch(self, *args, timeout=None):
+    async def fetch(self, *args, kwargs=None, timeout=None):
         r"""Execute the statement and return a list of :class:`Record` objects.
 
         :param str query: Query text
@@ -159,11 +160,11 @@ class PreparedStatement(connresource.ConnectionResource):
 
         :return: A list of :class:`Record` instances.
         """
-        data = await self.__bind_execute(args, 0, timeout)
+        data = await self.__bind_execute(args, kwargs, 0, timeout)
         return data
 
     @connresource.guarded
-    async def fetchval(self, *args, column=0, timeout=None):
+    async def fetchval(self, *args, kwargs=None, column=0, timeout=None):
         """Execute the statement and return a value in the first row.
 
         :param args: Query arguments.
@@ -176,13 +177,13 @@ class PreparedStatement(connresource.ConnectionResource):
 
         :return: The value of the specified column of the first record.
         """
-        data = await self.__bind_execute(args, 1, timeout)
+        data = await self.__bind_execute(args, kwargs, 1, timeout)
         if not data:
             return None
         return data[0][column]
 
     @connresource.guarded
-    async def fetchrow(self, *args, timeout=None):
+    async def fetchrow(self, *args, kwargs=None, timeout=None):
         """Execute the statement and return the first row.
 
         :param str query: Query text
@@ -191,15 +192,15 @@ class PreparedStatement(connresource.ConnectionResource):
 
         :return: The first row as a :class:`Record` instance.
         """
-        data = await self.__bind_execute(args, 1, timeout)
+        data = await self.__bind_execute(args, kwargs, 1, timeout)
         if not data:
             return None
         return data[0]
 
-    async def __bind_execute(self, args, limit, timeout):
+    async def __bind_execute(self, args, kwargs, limit, timeout):
         protocol = self._connection._protocol
         data, status, _ = await protocol.bind_execute(
-            self._state, args, '', limit, True, timeout)
+            self._state, args, kwargs, '', limit, True, timeout)
         self._last_status = status
         return data
 

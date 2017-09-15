@@ -19,11 +19,14 @@ class CursorFactory(connresource.ConnectionResource):
     results of a large query.
     """
 
-    __slots__ = ('_state', '_args', '_prefetch', '_query', '_timeout')
+    __slots__ = ('_state', '_args', '_kwargs', '_prefetch',
+                 '_query', '_timeout')
 
-    def __init__(self, connection, query, state, args, prefetch, timeout):
+    def __init__(self, connection, query, state, args, kwargs,
+                 prefetch, timeout):
         super().__init__(connection)
         self._args = args
+        self._kwargs = kwargs
         self._prefetch = prefetch
         self._query = query
         self._timeout = timeout
@@ -37,7 +40,7 @@ class CursorFactory(connresource.ConnectionResource):
         prefetch = 50 if self._prefetch is None else self._prefetch
         return CursorIterator(self._connection,
                               self._query, self._state,
-                              self._args, prefetch,
+                              self._args, self._kwargs, prefetch,
                               self._timeout)
 
     @connresource.guarded
@@ -46,7 +49,7 @@ class CursorFactory(connresource.ConnectionResource):
             raise exceptions.InterfaceError(
                 'prefetch argument can only be specified for iterable cursor')
         cursor = Cursor(self._connection, self._query,
-                        self._state, self._args)
+                        self._state, self._args, self._kwargs)
         return cursor._init(self._timeout).__await__()
 
     def __del__(self):
@@ -57,11 +60,13 @@ class CursorFactory(connresource.ConnectionResource):
 
 class BaseCursor(connresource.ConnectionResource):
 
-    __slots__ = ('_state', '_args', '_portal_name', '_exhausted', '_query')
+    __slots__ = ('_state', '_args', '_kwargs', '_portal_name',
+                 '_exhausted', '_query')
 
-    def __init__(self, connection, query, state, args):
+    def __init__(self, connection, query, state, args, kwargs):
         super().__init__(connection)
         self._args = args
+        self._kwargs = kwargs
         self._state = state
         if state is not None:
             state.attach()
@@ -94,7 +99,8 @@ class BaseCursor(connresource.ConnectionResource):
 
         self._portal_name = con._get_unique_id('portal')
         buffer, _, self._exhausted = await protocol.bind_execute(
-            self._state, self._args, self._portal_name, n, True, timeout)
+            self._state, self._args, self._kwargs, self._portal_name,
+            n, True, timeout)
         return buffer
 
     async def _bind(self, timeout):
@@ -108,7 +114,7 @@ class BaseCursor(connresource.ConnectionResource):
         protocol = con._protocol
 
         self._portal_name = con._get_unique_id('portal')
-        buffer = await protocol.bind(self._state, self._args,
+        buffer = await protocol.bind(self._state, self._args, self._kwargs,
                                      self._portal_name,
                                      timeout)
         return buffer
@@ -151,8 +157,9 @@ class CursorIterator(BaseCursor):
 
     __slots__ = ('_buffer', '_prefetch', '_timeout')
 
-    def __init__(self, connection, query, state, args, prefetch, timeout):
-        super().__init__(connection, query, state, args)
+    def __init__(self, connection, query, state, args, kwargs,
+                 prefetch, timeout):
+        super().__init__(connection, query, state, args, kwargs)
 
         if prefetch <= 0:
             raise exceptions.InterfaceError(

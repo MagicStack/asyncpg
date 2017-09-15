@@ -11,9 +11,12 @@ from asyncpg import exceptions
 @cython.final
 cdef class PreparedStatementState:
 
-    def __cinit__(self, str name, str query, BaseProtocol protocol):
+    def __cinit__(self, str name, str query, BaseProtocol protocol,
+                  bint have_query_pp, tuple kwargs_order):
         self.name = name
         self.query = query
+        self.have_query_pp = have_query_pp
+        self.kwargs_order = kwargs_order
         self.protocol = protocol
         self.settings = protocol.settings
         self.row_desc = self.parameters_desc = None
@@ -91,7 +94,51 @@ cdef class PreparedStatementState:
     def mark_closed(self):
         self.closed = True
 
-    cdef _encode_bind_msg(self, args):
+    cpdef apply_kwargs(self, args, kwargs):
+        cdef:
+            bint has_args = bool(args)
+            bint has_kwargs = bool(kwargs)
+
+        if has_args and has_kwargs:
+            raise exceptions.InterfaceError(
+                'got both `kwargs` and positional arguments')
+
+        if not self.have_query_pp:
+            if has_kwargs:
+                raise exceptions.InterfaceError(
+                    'no query preprocessor is defined on the connection '
+                    'to enable support for the `kwargs` argument')
+        else:
+            if self.kwargs_order:
+                if not has_kwargs:
+                    raise exceptions.InterfaceError(
+                        'query has keyword parameters but no `kwargs` '
+                        'argument was provided')
+
+                if len(kwargs) != len(self.kwargs_order):
+                    missing_kwargs = set(self.kwargs_order) - set(kwargs)
+                    raise exceptions.InterfaceError(
+                        'missing values for the following keyword '
+                        'arguments: {!r}'.format(missing_kwargs))
+
+                args = []
+                for name in self.kwargs_order:
+                    try:
+                        val = kwargs[name]
+                    except KeyError:
+                        raise exceptions.InterfaceError(
+                            'missing a value for the {!r} keyword '
+                            'argument'.format(name)) from None
+                    args.append(val)
+            else:
+                if has_kwargs:
+                    raise exceptions.InterfaceError(
+                        'cannot use `kwargs`: query preprocessor found no '
+                        'keyword parameters in the query')
+
+        return args
+
+    cdef _encode_bind_msg(self, args, kwargs):
         cdef:
             int idx
             WriteBuffer writer
@@ -103,6 +150,8 @@ cdef class PreparedStatementState:
 
         self._ensure_args_encoder()
         self._ensure_rows_decoder()
+
+        args = self.apply_kwargs(args, kwargs)
 
         writer = WriteBuffer.new()
 

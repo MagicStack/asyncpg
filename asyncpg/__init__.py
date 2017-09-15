@@ -10,6 +10,7 @@ from .exceptions import *  # NOQA
 from .pool import create_pool  # NOQA
 from .protocol import Record  # NOQA
 from .types import *  # NOQA
+from .query_pp import keyword_parameters  # NOQA
 
 
 __all__ = ('connect', 'create_pool', 'Record', 'Connection') + \

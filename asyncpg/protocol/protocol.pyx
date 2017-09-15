@@ -117,6 +117,9 @@ cdef class BaseProtocol(CoreProtocol):
 
         self.queries_count = 0
 
+        self.connection = None
+        self.query_pp = None
+
         try:
             self.create_future = loop.create_future
         except AttributeError:
@@ -124,6 +127,7 @@ cdef class BaseProtocol(CoreProtocol):
 
     def set_connection(self, connection):
         self.connection = connection
+        self.query_pp = connection._query_pp
 
     def get_server_pid(self):
         return self.backend_pid
@@ -156,18 +160,28 @@ cdef class BaseProtocol(CoreProtocol):
         self._check_state()
         timeout = self._get_timeout_impl(timeout)
 
+        kwargs_order = None
+        if self.query_pp is not None:
+            try:
+                query, kwargs_order = self.query_pp(query)
+            except Exception as ex:
+                raise apg_exc.InternalClientError(
+                    'exception while calling query preprocessor') from ex
+
         waiter = self._new_waiter(timeout)
         try:
             self._prepare(stmt_name, query)  # network op
             self.last_query = query
-            self.statement = PreparedStatementState(stmt_name, query, self)
+            self.statement = PreparedStatementState(
+                stmt_name, query, self,
+                self.query_pp is not None, kwargs_order)
         except Exception as ex:
             waiter.set_exception(ex)
             self._coreproto_error()
         finally:
             return await waiter
 
-    async def bind_execute(self, PreparedStatementState state, args,
+    async def bind_execute(self, PreparedStatementState state, args, kwargs,
                            str portal_name, int limit, return_extra,
                            timeout):
 
@@ -179,7 +193,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         self._check_state()
         timeout = self._get_timeout_impl(timeout)
-        args_buf = state._encode_bind_msg(args)
+        args_buf = state._encode_bind_msg(args, kwargs)
 
         waiter = self._new_waiter(timeout)
         try:
@@ -214,7 +228,7 @@ cdef class BaseProtocol(CoreProtocol):
         # Make sure the argument sequence is encoded lazily with
         # this generator expression to keep the memory pressure under
         # control.
-        data_gen = (state._encode_bind_msg(b) for b in args)
+        data_gen = (state._encode_bind_msg(b, None) for b in args)
         arg_bufs = iter(data_gen)
 
         waiter = self._new_waiter(timeout)
@@ -234,7 +248,7 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             return await waiter
 
-    async def bind(self, PreparedStatementState state, args,
+    async def bind(self, PreparedStatementState state, args, kwargs,
                    str portal_name, timeout):
 
         if self.cancel_waiter is not None:
@@ -245,7 +259,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         self._check_state()
         timeout = self._get_timeout_impl(timeout)
-        args_buf = state._encode_bind_msg(args)
+        args_buf = state._encode_bind_msg(args, kwargs)
 
         waiter = self._new_waiter(timeout)
         try:

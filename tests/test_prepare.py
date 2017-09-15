@@ -241,7 +241,7 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual(len(cache), cache_max)
         self.assertEqual(len(self.con._stmts_to_close), 1)
 
-    async def test_prepare_13_connect(self):
+    async def test_prepare_13_fetch_methods(self):
         v = await self.con.fetchval(
             'SELECT $1::smallint AS foo', 10, column='foo')
         self.assertEqual(v, 10)
@@ -569,3 +569,13 @@ class TestPrepare(tb.ConnectedTestCase):
                 exceptions.InterfaceError,
                 'the server expects 0 arguments for this query, 1 was passed'):
             await self.con.fetchval('SELECT 1', 1)
+
+    @tb.with_connection_options(query_pp=asyncpg.keyword_parameters)
+    async def test_prepare_31_fetch_methods_kwargs(self):
+        r = await self.con.fetchrow(
+            'SELECT $r::smallint * 2 AS test', kwargs=dict(r=10))
+        self.assertEqual(r['test'], 20)
+
+        rows = await self.con.fetch(
+            'SELECT generate_series(0,$r::int)', kwargs=dict(r=3))
+        self.assertEqual([r[0] for r in rows], [0, 1, 2, 3])

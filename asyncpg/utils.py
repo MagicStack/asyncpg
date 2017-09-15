@@ -16,11 +16,17 @@ def _quote_literal(string):
     return "'{}'".format(string.replace("'", "''"))
 
 
-async def _mogrify(conn, query, args):
+async def _mogrify(conn, query, args, kwargs):
     """Safely inline arguments to query text."""
     # Introspect the target query for argument types and
     # build a list of safely-quoted fully-qualified type names.
     ps = await conn.prepare(query)
+
+    # Get the query from the prepared statement, as it potentially
+    # could be preprocessed.
+    query = ps.get_query()
+    args = ps._state.apply_kwargs(args, kwargs)
+
     paramtypes = []
     for t in ps.get_parameters():
         if t.name.endswith('[]'):

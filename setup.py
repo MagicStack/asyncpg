@@ -211,6 +211,12 @@ setuptools.setup(
             ["asyncpg/protocol/record/recordobj.c",
              "asyncpg/protocol/protocol.pyx"],
             extra_compile_args=CFLAGS,
+            extra_link_args=LDFLAGS),
+
+        setuptools.Extension(
+            "asyncpg.query_pp",
+            ["asyncpg/query_pp.pyx"],
+            extra_compile_args=CFLAGS,
             extra_link_args=LDFLAGS)
     ],
     cmdclass={'build_ext': build_ext},

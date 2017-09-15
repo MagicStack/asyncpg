@@ -37,6 +37,7 @@ cdef class BaseProtocol(CoreProtocol):
         object timeout_callback
         object completed_callback
         object connection
+        object query_pp
         bint is_reading
 
         str last_query

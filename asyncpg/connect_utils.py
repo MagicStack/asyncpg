@@ -38,6 +38,7 @@ _ClientConfiguration = collections.namedtuple(
         'statement_cache_size',
         'max_cached_statement_lifetime',
         'max_cacheable_statement_size',
+        'query_pp'
     ])
 
 
@@ -210,7 +211,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, database,
                              timeout, command_timeout, statement_cache_size,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
-                             ssl, server_settings):
+                             ssl, server_settings, query_pp):
 
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
@@ -245,7 +246,8 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, database,
         command_timeout=command_timeout,
         statement_cache_size=statement_cache_size,
         max_cached_statement_lifetime=max_cached_statement_lifetime,
-        max_cacheable_statement_size=max_cacheable_statement_size,)
+        max_cacheable_statement_size=max_cacheable_statement_size,
+        query_pp=query_pp)
 
     return addrs, params, config
 

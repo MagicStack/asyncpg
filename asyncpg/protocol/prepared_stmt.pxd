@@ -29,9 +29,14 @@ cdef class PreparedStatementState:
         bint         have_text_cols
         tuple        rows_codecs
 
-    cdef _encode_bind_msg(self, args)
+        bint         have_query_pp
+        tuple        kwargs_order
+
+    cdef _encode_bind_msg(self, args, kwargs)
     cdef _ensure_rows_decoder(self)
     cdef _ensure_args_encoder(self)
     cdef _set_row_desc(self, object desc)
     cdef _set_args_desc(self, object desc)
     cdef _decode_row(self, const char* cbuf, ssize_t buf_len)
+
+    cpdef apply_kwargs(self, args, kwargs)

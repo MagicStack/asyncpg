@@ -165,6 +165,30 @@ class TestCopyFrom(tb.ConnectedTestCase):
             ]
         )
 
+    @tb.with_connection_options(query_pp=asyncpg.keyword_parameters)
+    async def test_copy_from_query_with_kwargs(self):
+        f = io.BytesIO()
+
+        res = await self.con.copy_from_query('''
+            SELECT
+                i, i * 10
+            FROM
+                generate_series(1, 5) AS i
+            WHERE
+                i = $i
+        ''', kwargs=dict(i=3), output=f)
+
+        self.assertEqual(res, 'COPY 1')
+
+        output = f.getvalue().decode().split('\n')
+        self.assertEqual(
+            output,
+            [
+                '3\t30',
+                ''
+            ]
+        )
+
     async def test_copy_from_query_to_path(self):
         with tempfile.NamedTemporaryFile() as f:
             f.close()

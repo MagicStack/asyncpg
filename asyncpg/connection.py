@@ -18,6 +18,7 @@ from . import connect_utils
 from . import cursor
 from . import exceptions
 from . import introspection
+from . import query_pp
 from . import prepared_stmt
 from . import protocol
 from . import serverversion
@@ -44,7 +45,7 @@ class Connection(metaclass=ConnectionMeta):
                  '_listeners', '_server_version', '_server_caps',
                  '_intro_query', '_reset_query', '_proxy',
                  '_stmt_exclusive_section', '_config', '_params', '_addr',
-                 '_log_listeners')
+                 '_log_listeners', '_query_pp')
 
     def __init__(self, protocol, transport, loop,
                  addr: (str, int) or str,
@@ -66,6 +67,7 @@ class Connection(metaclass=ConnectionMeta):
         self._addr = addr
         self._config = config
         self._params = params
+        self._query_pp = config.query_pp
 
         self._stmt_cache = _StatementCache(
             loop=loop,
@@ -206,7 +208,8 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
         return transaction.Transaction(self, isolation, readonly, deferrable)
 
-    async def execute(self, query: str, *args, timeout: float=None) -> str:
+    async def execute(self, query: str, *args, kwargs=None,
+                      timeout: float=None) -> str:
         """Execute an SQL command (or commands).
 
         This method can execute many SQL commands at once, when no arguments
@@ -239,7 +242,8 @@ class Connection(metaclass=ConnectionMeta):
         if not args:
             return await self._protocol.query(query, timeout)
 
-        _, status, _ = await self._execute(query, args, 0, timeout, True)
+        _, status, _ = await self._execute(
+            query, args, kwargs, 0, timeout, True)
         return status.decode()
 
     async def executemany(self, command: str, args, *, timeout: float=None):
@@ -305,7 +309,7 @@ class Connection(metaclass=ConnectionMeta):
 
         return statement
 
-    def cursor(self, query, *args, prefetch=None, timeout=None):
+    def cursor(self, query, *args, kwargs=None, prefetch=None, timeout=None):
         """Return a *cursor factory* for the specified query.
 
         :param args: Query arguments.
@@ -316,7 +320,7 @@ class Connection(metaclass=ConnectionMeta):
         :return: A :class:`~cursor.CursorFactory` object.
         """
         self._check_open()
-        return cursor.CursorFactory(self, query, None, args,
+        return cursor.CursorFactory(self, query, None, args, kwargs,
                                     prefetch, timeout)
 
     async def prepare(self, query, *, timeout=None):
@@ -329,9 +333,9 @@ class Connection(metaclass=ConnectionMeta):
         """
         self._check_open()
         stmt = await self._get_statement(query, timeout, named=True)
-        return prepared_stmt.PreparedStatement(self, query, stmt)
+        return prepared_stmt.PreparedStatement(self, stmt)
 
-    async def fetch(self, query, *args, timeout=None) -> list:
+    async def fetch(self, query, *args, kwargs=None, timeout=None) -> list:
         """Run a query and return the results as a list of :class:`Record`.
 
         :param str query: Query text.
@@ -341,9 +345,10 @@ class Connection(metaclass=ConnectionMeta):
         :return list: A list of :class:`Record` instances.
         """
         self._check_open()
-        return await self._execute(query, args, 0, timeout)
+        return await self._execute(query, args, kwargs, 0, timeout)
 
-    async def fetchval(self, query, *args, column=0, timeout=None):
+    async def fetchval(self, query, *args, kwargs=None,
+                       column=0, timeout=None):
         """Run a query and return a value in the first row.
 
         :param str query: Query text.
@@ -359,12 +364,12 @@ class Connection(metaclass=ConnectionMeta):
                  None if no records were returned by the query.
         """
         self._check_open()
-        data = await self._execute(query, args, 1, timeout)
+        data = await self._execute(query, args, kwargs, 1, timeout)
         if not data:
             return None
         return data[0][column]
 
-    async def fetchrow(self, query, *args, timeout=None):
+    async def fetchrow(self, query, *args, kwargs=None, timeout=None):
         """Run a query and return the first row.
 
         :param str query: Query text
@@ -375,7 +380,7 @@ class Connection(metaclass=ConnectionMeta):
                  no records were returned by the query.
         """
         self._check_open()
-        data = await self._execute(query, args, 1, timeout)
+        data = await self._execute(query, args, kwargs, 1, timeout)
         if not data:
             return None
         return data[0]
@@ -451,7 +456,7 @@ class Connection(metaclass=ConnectionMeta):
 
         return await self._copy_out(copy_stmt, output, timeout)
 
-    async def copy_from_query(self, query, *args, output,
+    async def copy_from_query(self, query, *args, kwargs=None, output,
                               timeout=None, format=None, oids=None,
                               delimiter=None, null=None, header=None,
                               quote=None, escape=None, force_quote=None,
@@ -504,8 +509,8 @@ class Connection(metaclass=ConnectionMeta):
             force_quote=force_quote, encoding=encoding
         )
 
-        if args:
-            query = await utils._mogrify(self, query, args)
+        if args or kwargs:
+            query = await utils._mogrify(self, query, args, kwargs)
 
         copy_stmt = 'COPY ({query}) TO STDOUT {opts}'.format(
             query=query, opts=opts)
@@ -1208,9 +1213,10 @@ class Connection(metaclass=ConnectionMeta):
         else:
             self._drop_local_statement_cache()
 
-    async def _execute(self, query, args, limit, timeout, return_status=False):
+    async def _execute(self, query, args, kwargs,
+                       limit, timeout, return_status=False):
         executor = lambda stmt, timeout: self._protocol.bind_execute(
-            stmt, args, '', limit, return_status, timeout)
+            stmt, args, kwargs, '', limit, return_status, timeout)
         timeout = self._protocol._get_timeout(timeout)
         with self._stmt_exclusive_section:
             return await self._do_execute(query, executor, timeout)
@@ -1287,7 +1293,8 @@ async def connect(dsn=None, *,
                   command_timeout=None,
                   ssl=None,
                   connection_class=Connection,
-                  server_settings=None):
+                  server_settings=None,
+                  query_pp=None):
     r"""A coroutine to establish a connection to a PostgreSQL server.
 
     Returns a new :class:`~asyncpg.connection.Connection` object.
@@ -1403,7 +1410,8 @@ async def connect(dsn=None, *,
         command_timeout=command_timeout,
         statement_cache_size=statement_cache_size,
         max_cached_statement_lifetime=max_cached_statement_lifetime,
-        max_cacheable_statement_size=max_cacheable_statement_size)
+        max_cacheable_statement_size=max_cacheable_statement_size,
+        query_pp=query_pp)
 
 
 class _StatementCacheEntry:

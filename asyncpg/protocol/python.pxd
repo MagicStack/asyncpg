@@ -31,3 +31,8 @@ cdef extern from "Python.h":
         int kind, const void *buffer, Py_ssize_t size)
 
     int PyUnicode_4BYTE_KIND
+
+    int PyUnicode_KIND(object o)
+    void *PyUnicode_DATA(object o)
+    Py_UCS4 PyUnicode_READ(int kind, void *data, ssize_t index)
+    void PyUnicode_WRITE(int kind, void *data, Py_ssize_t index, Py_UCS4 value)
