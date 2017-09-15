@@ -10,6 +10,7 @@ import datetime
 import io
 import tempfile
 
+import asyncpg
 from asyncpg import _testbase as tb
 from asyncpg import compat
 
@@ -625,7 +626,7 @@ class TestCopyTo(tb.ConnectedTestCase):
             records = [('2975ab9a-f79c-4ab4-9be5-7bc134d952f0',)]
 
             with self.assertRaisesRegex(
-                    RuntimeError, 'no binary format encoder'):
+                    asyncpg.InternalClientError, 'no binary format encoder'):
                 await self.con.copy_records_to_table(
                     'copytab', records=records)
 

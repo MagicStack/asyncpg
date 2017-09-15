@@ -10,7 +10,8 @@ import sys
 
 
 __all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError',
-           'InterfaceError', 'InterfaceWarning', 'PostgresLogMessage')
+           'InterfaceError', 'InterfaceWarning', 'PostgresLogMessage',
+           'InternalClientError')
 
 
 def _is_asyncpg_class(cls):
@@ -188,6 +189,10 @@ class InterfaceWarning(InterfaceMessage, UserWarning):
     def __init__(self, msg, *, detail=None, hint=None):
         InterfaceMessage.__init__(self, detail=detail, hint=hint)
         Warning.__init__(self, msg)
+
+
+class InternalClientError(Exception):
+    pass
 
 
 class PostgresLogMessage(PostgresMessage):
