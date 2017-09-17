@@ -14,3 +14,5 @@ from .types import *  # NOQA
 
 __all__ = ('connect', 'create_pool', 'Record', 'Connection') + \
           exceptions.__all__  # NOQA
+
+__version__ = '0.12.0'
