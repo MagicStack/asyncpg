@@ -18,7 +18,6 @@ from setuptools.command import build_ext as _build_ext
 if sys.version_info < (3, 5):
     raise RuntimeError('asyncpg requires Python 3.5 or greater')
 
-VERSION = '0.12.0'
 CFLAGS = ['-O2']
 LDFLAGS = []
 
@@ -179,6 +178,16 @@ class build_ext(_build_ext.build_ext):
 
 with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as f:
     readme = f.read()
+
+
+with open(os.path.join(os.path.dirname(__file__), 'asyncpg', '__init__.py')) as f:
+    for line in f:
+        if line.startswith('__version__ ='):
+            _, _, version = line.partition('=')
+            VERSION = version.strip(" \n'\"")
+            break
+    else:
+        raise RuntimeError('unable to read the version from asyncpg/__init__.py')
 
 
 setuptools.setup(
