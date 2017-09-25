@@ -188,7 +188,7 @@ class InterfaceWarning(InterfaceMessage, UserWarning):
 
     def __init__(self, msg, *, detail=None, hint=None):
         InterfaceMessage.__init__(self, detail=detail, hint=hint)
-        Warning.__init__(self, msg)
+        UserWarning.__init__(self, msg)
 
 
 class InternalClientError(Exception):
