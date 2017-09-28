@@ -11,7 +11,6 @@ import ipaddress
 import math
 import random
 import struct
-import unittest
 import uuid
 
 import asyncpg

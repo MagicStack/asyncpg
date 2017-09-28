@@ -7,8 +7,6 @@
 
 import asyncio
 import asyncpg
-import inspect
-import warnings
 
 from asyncpg import _testbase as tb
 
