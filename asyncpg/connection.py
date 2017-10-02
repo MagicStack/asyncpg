@@ -38,8 +38,8 @@ class Connection(metaclass=ConnectionMeta):
     Connections are created by calling :func:`~asyncpg.connection.connect`.
     """
 
-    __slots__ = ('_protocol', '_transport', '_loop', '_types_stmt',
-                 '_type_by_name_stmt', '_top_xact', '_uid', '_aborted',
+    __slots__ = ('_protocol', '_transport', '_loop',
+                 '_top_xact', '_uid', '_aborted',
                  '_pool_release_ctr', '_stmt_cache', '_stmts_to_close',
                  '_listeners', '_server_version', '_server_caps',
                  '_intro_query', '_reset_query', '_proxy',
@@ -53,8 +53,6 @@ class Connection(metaclass=ConnectionMeta):
         self._protocol = protocol
         self._transport = transport
         self._loop = loop
-        self._types_stmt = None
-        self._type_by_name_stmt = None
         self._top_xact = None
         self._uid = 0
         self._aborted = False
@@ -286,14 +284,17 @@ class Connection(metaclass=ConnectionMeta):
             stmt_name = ''
 
         statement = await self._protocol.prepare(stmt_name, query, timeout)
-
         ready = statement._init_types()
         if ready is not True:
-            if self._types_stmt is None:
-                self._types_stmt = await self.prepare(self._intro_query)
-
-            types = await self._types_stmt.fetch(list(ready))
+            types, intro_stmt = await self.__execute(
+                self._intro_query, (list(ready),), 0, timeout)
             self._protocol.get_settings().register_data_types(types)
+            if not intro_stmt.name and not statement.name:
+                # The introspection query has used an anonymous statement,
+                # which has blown away the anonymous statement we've prepared
+                # for the query, so we need to re-prepare it.
+                statement = await self._protocol.prepare(
+                    stmt_name, query, timeout)
 
         if use_cache:
             self._stmt_cache.put(query, statement)
@@ -886,12 +887,8 @@ class Connection(metaclass=ConnectionMeta):
                 "asyncpg 0.13.0.  Use the `format` keyword argument instead.",
                 DeprecationWarning, stacklevel=2)
 
-        if self._type_by_name_stmt is None:
-            self._type_by_name_stmt = await self.prepare(
-                introspection.TYPE_BY_NAME)
-
-        typeinfo = await self._type_by_name_stmt.fetchrow(
-            typename, schema)
+        typeinfo = await self.fetchrow(
+            introspection.TYPE_BY_NAME, typename, schema)
         if not typeinfo:
             raise ValueError('unknown type: {}.{}'.format(schema, typename))
 
@@ -921,12 +918,8 @@ class Connection(metaclass=ConnectionMeta):
         .. versionadded:: 0.12.0
         """
 
-        if self._type_by_name_stmt is None:
-            self._type_by_name_stmt = await self.prepare(
-                introspection.TYPE_BY_NAME)
-
-        typeinfo = await self._type_by_name_stmt.fetchrow(
-            typename, schema)
+        typeinfo = await self.fetchrow(
+            introspection.TYPE_BY_NAME, typename, schema)
         if not typeinfo:
             raise ValueError('unknown type: {}.{}'.format(schema, typename))
 
@@ -949,12 +942,8 @@ class Connection(metaclass=ConnectionMeta):
         """
         self._check_open()
 
-        if self._type_by_name_stmt is None:
-            self._type_by_name_stmt = await self.prepare(
-                introspection.TYPE_BY_NAME)
-
-        typeinfo = await self._type_by_name_stmt.fetchrow(
-            typename, schema)
+        typeinfo = await self.fetchrow(
+            introspection.TYPE_BY_NAME, typename, schema)
         if not typeinfo:
             raise ValueError('unknown type: {}.{}'.format(schema, typename))
 
@@ -1209,18 +1198,25 @@ class Connection(metaclass=ConnectionMeta):
             self._drop_local_statement_cache()
 
     async def _execute(self, query, args, limit, timeout, return_status=False):
+        with self._stmt_exclusive_section:
+            result, _ = await self.__execute(
+                query, args, limit, timeout, return_status=return_status)
+        return result
+
+    async def __execute(self, query, args, limit, timeout,
+                        return_status=False):
         executor = lambda stmt, timeout: self._protocol.bind_execute(
             stmt, args, '', limit, return_status, timeout)
         timeout = self._protocol._get_timeout(timeout)
-        with self._stmt_exclusive_section:
-            return await self._do_execute(query, executor, timeout)
+        return await self._do_execute(query, executor, timeout)
 
     async def _executemany(self, query, args, timeout):
         executor = lambda stmt, timeout: self._protocol.bind_execute_many(
             stmt, args, '', timeout)
         timeout = self._protocol._get_timeout(timeout)
         with self._stmt_exclusive_section:
-            return await self._do_execute(query, executor, timeout)
+            result, _ = await self._do_execute(query, executor, timeout)
+        return result
 
     async def _do_execute(self, query, executor, timeout, retry=True):
         if timeout is None:
@@ -1269,10 +1265,10 @@ class Connection(metaclass=ConnectionMeta):
             if self._protocol.is_in_transaction() or not retry:
                 raise
             else:
-                result = await self._do_execute(
+                return await self._do_execute(
                     query, executor, timeout, retry=False)
 
-        return result
+        return result, stmt
 
 
 async def connect(dsn=None, *,
