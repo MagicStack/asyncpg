@@ -302,7 +302,32 @@ type_samples = [
             output=ipaddress.IPv4Network('127.0.0.0/8')),
         dict(
             input='127.0.0.1/32',
-            output=ipaddress.IPv4Network('127.0.0.1/32')),
+            output=ipaddress.IPv4Address('127.0.0.1')),
+        # Postgres appends /32 when casting to text explicitly, but
+        # *not* in inet_out.
+        dict(
+            input='10.11.12.13',
+            textoutput='10.11.12.13/32'
+        ),
+        dict(
+            input=ipaddress.IPv4Address('10.11.12.13'),
+            textoutput='10.11.12.13/32'
+        ),
+        dict(
+            input=ipaddress.IPv4Network('10.11.12.13'),
+            textoutput='10.11.12.13/32'
+        ),
+        dict(
+            textinput='10.11.12.13',
+            output=ipaddress.IPv4Address('10.11.12.13'),
+        ),
+        dict(
+            # Non-zero address bits after the network prefix are permitted
+            # by postgres, but are invalid in Python
+            # (and zeroed out by supernet()).
+            textinput='10.11.12.13/0',
+            output=ipaddress.IPv4Network('0.0.0.0/0'),
+        ),
     ]),
     ('macaddr', 'macaddr', [
         '00:00:00:00:00:00',
@@ -369,8 +394,12 @@ class TestCodecs(tb.ConnectedTestCase):
                 "SELECT $1::" + typname
             )
 
-            textst = await self.con.prepare(
+            text_in = await self.con.prepare(
                 "SELECT $1::text::" + typname
+            )
+
+            text_out = await self.con.prepare(
+                "SELECT $1::" + typname + "::text"
             )
 
             for sample in sample_data:
@@ -379,10 +408,19 @@ class TestCodecs(tb.ConnectedTestCase):
                     if isinstance(sample, dict):
                         if 'textinput' in sample:
                             inputval = sample['textinput']
-                            stmt = textst
+                            stmt = text_in
                         else:
                             inputval = sample['input']
-                        outputval = sample['output']
+
+                        if 'textoutput' in sample:
+                            outputval = sample['textoutput']
+                            if stmt is text_in:
+                                raise ValueError(
+                                    'cannot test "textin" and'
+                                    ' "textout" simultaneously')
+                            stmt = text_out
+                        else:
+                            outputval = sample['output']
                     else:
                         inputval = outputval = sample
 
