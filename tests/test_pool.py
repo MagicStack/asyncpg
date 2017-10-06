@@ -258,6 +258,11 @@ class TestPool(tb.ConnectedTestCase):
 
         await pool.close()
 
+    def test_pool_init_run_until_complete(self):
+        pool_init = self.create_pool(database='postgres')
+        pool = self.loop.run_until_complete(pool_init)
+        self.assertIsInstance(pool, asyncpg.pool.Pool)
+
     async def test_pool_exception_in_setup_and_init(self):
         class Error(Exception):
             pass
