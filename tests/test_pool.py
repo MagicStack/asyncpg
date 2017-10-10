@@ -612,6 +612,27 @@ class TestPool(tb.ConnectedTestCase):
 
         self.assertGreaterEqual(N, 50)
 
+    async def test_pool_handles_inactive_connection_errors(self):
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
+
+        con = await pool.acquire(timeout=POOL_NOMINAL_TIMEOUT)
+
+        true_con = con._con
+
+        await pool.release(con)
+
+        # we simulate network error by terminating the connection
+        true_con.terminate()
+
+        # now pool should reopen terminated connection
+        con = await pool.acquire(timeout=POOL_NOMINAL_TIMEOUT)
+
+        self.assertEqual(await con.fetchval('SELECT 1'), 1)
+
+        await con.close()
+        await pool.close()
+
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
 class TestHotStandby(tb.ConnectedTestCase):
