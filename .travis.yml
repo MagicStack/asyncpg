@@ -80,13 +80,9 @@ matrix:
           sudo: false
           language: python
           python: "3.6"
-          env: BUILD=quicktests PGVERSION=10
+          env: BUILD=quicktests PGVERSION=9.6
           addons:
-              apt:
-                  sources:
-                      - sourceline: 'deb https://apt.postgresql.org/pub/repos/apt/ trusty-pgdg 10'
-                        key_url: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
-                  packages: [postgresql-10]
+              apt: {packages: [postgresql-9.6]}
 
         # Do a full test run on the latest supported version of PostgreSQL
         # on each supported version of Python.
@@ -95,27 +91,27 @@ matrix:
           sudo: false
           language: python
           python: "3.5"
-          env: BUILD=tests PGVERSION=9.6
+          env: BUILD=tests PGVERSION=10
           addons:
-              apt: {packages: [postgresql-9.6]}
+              apt: {packages: [postgresql-10]}
 
         - os: linux
           dist: trusty
           sudo: false
           language: python
           python: "3.6"
-          env: BUILD=tests PGVERSION=9.6
+          env: BUILD=tests PGVERSION=10
           addons:
-              apt: {packages: [postgresql-9.6]}
+              apt: {packages: [postgresql-10]}
 
         - os: linux
           dist: trusty
           sudo: false
           language: python
           python: "3.7-dev"
-          env: BUILD=tests PGVERSION=9.6
+          env: BUILD=tests PGVERSION=10
           addons:
-              apt: {packages: [postgresql-9.6]}
+              apt: {packages: [postgresql-10]}
 
         # Build manylinux wheels.  Each wheel will be tested,
         # so there is no need for BUILD=tests here.
@@ -126,10 +122,10 @@ matrix:
           sudo: required
           language: python
           python: "3.5"
-          env: BUILD=wheels,docs,release PGVERSION=9.6
+          env: BUILD=wheels,docs,release PGVERSION=10
           services: [docker]
           addons:
-              apt: {packages: [postgresql-9.6]}
+              apt: {packages: [postgresql-10]}
 
         - os: osx
           env: BUILD=tests,wheels PYTHON_VERSION=3.5.2 PIP_USER=1 PGVERSION=9.6
