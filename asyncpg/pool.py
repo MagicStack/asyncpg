@@ -143,7 +143,8 @@ class PoolConnectionHolder:
         self._con = con
 
     async def acquire(self) -> PoolConnectionProxy:
-        if self._con is None:
+        if self._con is None or self._con.is_closed():
+            self._con = None
             await self.connect()
 
         self._maybe_cancel_inactive_callback()
