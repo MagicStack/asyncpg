@@ -180,14 +180,16 @@ with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as f:
     readme = f.read()
 
 
-with open(os.path.join(os.path.dirname(__file__), 'asyncpg', '__init__.py')) as f:
+with open(os.path.join(
+        os.path.dirname(__file__), 'asyncpg', '__init__.py')) as f:
     for line in f:
         if line.startswith('__version__ ='):
             _, _, version = line.partition('=')
             VERSION = version.strip(" \n'\"")
             break
     else:
-        raise RuntimeError('unable to read the version from asyncpg/__init__.py')
+        raise RuntimeError(
+            'unable to read the version from asyncpg/__init__.py')
 
 
 setuptools.setup(

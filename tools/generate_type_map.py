@@ -28,10 +28,12 @@ async def runner(args):
     conn = await asyncpg.connect(host=args.pghost, port=args.pgport,
                                  user=args.pguser)
 
-    buf = '# GENERATED FROM pg_catalog.pg_type\n' + \
-          '# DO NOT MODIFY, use tools/generate_type_map.py to update\n\n' + \
-          'DEF INVALIDOID = {}\nDEF MAXBUILTINOID = {}\n'.format(
-                _INVALIDOID, _MAXBUILTINOID)
+    buf = (
+        '# GENERATED FROM pg_catalog.pg_type\n' +
+        '# DO NOT MODIFY, use tools/generate_type_map.py to update\n\n' +
+        'DEF INVALIDOID = {}\n'.format(_INVALIDOID) +
+        'DEF MAXBUILTINOID = {}\n'.format(_MAXBUILTINOID)
+    )
 
     pg_types = await conn.fetch('''
         SELECT

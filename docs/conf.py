@@ -16,7 +16,8 @@ with open(version_file, 'r') as f:
             version = version.strip(" \n'\"")
             break
     else:
-        raise RuntimeError('unable to read the version from asyncpg/__init__.py')
+        raise RuntimeError(
+            'unable to read the version from asyncpg/__init__.py')
 
 # -- General configuration ------------------------------------------------
 

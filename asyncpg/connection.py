@@ -1238,7 +1238,7 @@ class Connection(metaclass=ConnectionMeta):
                     after = time.monotonic()
                     timeout -= after - before
 
-        except exceptions.InvalidCachedStatementError as e:
+        except exceptions.InvalidCachedStatementError:
             # PostgreSQL will raise an exception when it detects
             # that the result type of the query has changed from
             # when the statement was prepared.  This may happen,

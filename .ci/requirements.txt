@@ -1,4 +1,5 @@
 cython>=0.24
+flake8>=3.4.1
 uvloop>=0.5.0
 tinys3
 twine

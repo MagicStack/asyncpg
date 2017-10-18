@@ -27,15 +27,14 @@ class TestFlake8(unittest.TestCase):
         except ImportError:
             raise unittest.SkipTest('flake8 module is missing')
 
-        for subdir in ['asyncpg', 'tests']:
-            try:
-                subprocess.run(
-                    [sys.executable, '-m', 'flake8', '--config', config_path],
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    cwd=os.path.join(root_path, subdir))
-            except subprocess.CalledProcessError as ex:
-                output = ex.output.decode()
-                raise AssertionError(
-                    'flake8 validation failed:\n{}'.format(output)) from None
+        try:
+            subprocess.run(
+                [sys.executable, '-m', 'flake8', '--config', config_path],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                cwd=root_path)
+        except subprocess.CalledProcessError as ex:
+            output = ex.output.decode()
+            raise AssertionError(
+                'flake8 validation failed:\n{}'.format(output)) from None
