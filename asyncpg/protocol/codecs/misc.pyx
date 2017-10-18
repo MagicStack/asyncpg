@@ -68,6 +68,7 @@ cdef init_pseudo_codecs():
         ANYOID, TRIGGEROID, EVENT_TRIGGEROID, LANGUAGE_HANDLEROID,
         FDW_HANDLEROID, TSM_HANDLEROID, INTERNALOID, OPAQUEOID,
         ANYELEMENTOID, ANYNONARRAYOID, PG_DDL_COMMANDOID,
+        INDEX_AM_HANDLEROID,
     ]
 
     register_core_codec(ANYENUMOID,
@@ -104,5 +105,16 @@ cdef init_pseudo_codecs():
                         <decode_func>&text_decode,
                         PG_FORMAT_TEXT)
 
+    # pg_dependencies and pg_ndistinct are special types
+    # used in pg_statistic_ext columns.
+    register_core_codec(PG_DEPENDENCIESOID,
+                        <encode_func>&text_encode,
+                        <decode_func>&text_decode,
+                        PG_FORMAT_TEXT)
+
+    register_core_codec(PG_NDISTINCTOID,
+                        <encode_func>&text_encode,
+                        <decode_func>&text_decode,
+                        PG_FORMAT_TEXT)
 
 init_pseudo_codecs()

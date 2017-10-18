@@ -29,6 +29,12 @@ async def runner(args):
                                  user=args.pguser)
 
     buf = (
+        '# Copyright (C) 2016-present the asyncpg authors and contributors\n'
+        '# <see AUTHORS file>\n'
+        '#\n'
+        '# This module is part of asyncpg and is released under\n'
+        '# the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0'
+        '\n\n\n'
         '# GENERATED FROM pg_catalog.pg_type\n' +
         '# DO NOT MODIFY, use tools/generate_type_map.py to update\n\n' +
         'DEF INVALIDOID = {}\n'.format(_INVALIDOID) +
@@ -70,7 +76,7 @@ async def runner(args):
 
     buf += '\n'.join(defs)
 
-    buf += '\n\nARRAY_TYPES = ({},)'.format(', '.join(array_types))
+    buf += '\n\ncdef ARRAY_TYPES = ({},)'.format(', '.join(array_types))
 
     f_typemap = ('{}: {!r}'.format(dn, n) for dn, n in sorted(typemap.items()))
     buf += '\n\nTYPEMAP = {{\n    {}}}'.format(',\n    '.join(f_typemap))

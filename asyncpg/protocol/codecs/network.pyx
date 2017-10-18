@@ -135,5 +135,10 @@ cdef init_network_codecs():
                         <decode_func>&text_decode,
                         PG_FORMAT_TEXT)
 
+    register_core_codec(MACADDR8OID,
+                        <encode_func>&text_encode,
+                        <decode_func>&text_decode,
+                        PG_FORMAT_TEXT)
+
 
 init_network_codecs()
