@@ -833,9 +833,6 @@ class Connection(metaclass=ConnectionMeta):
             Callable accepting a single argument encoded according to *format*
             and returning a decoded Python object.
 
-        :param binary:
-            **Deprecated**.  Use *format* instead.
-
         Example:
 
         .. code-block:: pycon
@@ -876,16 +873,11 @@ class Connection(metaclass=ConnectionMeta):
             The ``binary`` keyword argument is deprecated in favor of
             ``format``.
 
+        .. versionchanged:: 0.13.0
+            The ``binary`` keyword argument was removed in favor of
+            ``format``.
         """
         self._check_open()
-
-        if binary is not None:
-            format = 'binary' if binary else 'text'
-            warnings.warn(
-                "The `binary` keyword argument to "
-                "set_type_codec() is deprecated and will be removed in "
-                "asyncpg 0.13.0.  Use the `format` keyword argument instead.",
-                DeprecationWarning, stacklevel=2)
 
         typeinfo = await self.fetchrow(
             introspection.TYPE_BY_NAME, typename, schema)

@@ -1129,30 +1129,6 @@ class TestCodecs(tb.ConnectedTestCase):
         finally:
             await conn.close()
 
-    async def test_custom_codec_override_deprecation(self):
-        conn = await self.cluster.connect(database='postgres', loop=self.loop)
-        try:
-            def _encoder(value):
-                return value
-
-            def _decoder(value):
-                return value
-
-            with self.assertWarnsRegex(DeprecationWarning,
-                                       r"The `binary` keyword argument to "
-                                       r"set_type_codec\(\) is deprecated"):
-                await conn.set_type_codec(
-                    'uuid', encoder=_encoder, decoder=_decoder,
-                    schema='pg_catalog', binary=False
-                )
-
-                data = '14058ad9-0118-4b7e-ac15-01bc13e2ccd1'
-                res = await conn.fetchval('SELECT $1::uuid', data)
-                self.assertEqual(res, data)
-
-        finally:
-            await conn.close()
-
     async def test_composites_in_arrays(self):
         await self.con.execute('''
             CREATE TYPE t AS (a text, b int);
