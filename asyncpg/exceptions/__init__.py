@@ -780,10 +780,6 @@ class LockNotAvailableError(ObjectNotInPrerequisiteStateError):
     sqlstate = '55P03'
 
 
-class UnsafeNewEnumValueUsageError(ObjectNotInPrerequisiteStateError):
-    sqlstate = '55P04'
-
-
 class OperatorInterventionError(_base.PostgresError):
     sqlstate = '57000'
 
@@ -1102,8 +1098,8 @@ __all__ = _base.__all__ + (
     'UndefinedColumnError', 'UndefinedFileError',
     'UndefinedFunctionError', 'UndefinedObjectError',
     'UndefinedParameterError', 'UndefinedTableError',
-    'UniqueViolationError', 'UnsafeNewEnumValueUsageError',
-    'UnterminatedCStringError', 'UntranslatableCharacterError',
-    'WindowingError', 'WithCheckOptionViolationError',
-    'WrongObjectTypeError', 'ZeroLengthCharacterStringError'
+    'UniqueViolationError', 'UnterminatedCStringError',
+    'UntranslatableCharacterError', 'WindowingError',
+    'WithCheckOptionViolationError', 'WrongObjectTypeError',
+    'ZeroLengthCharacterStringError'
 )
