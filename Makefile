@@ -33,6 +33,11 @@ test:
 	USE_UVLOOP=1 $(PYTHON) setup.py test
 
 
+testinstalled:
+	$(PYTHON) tests/__init__.py
+	USE_UVLOOP=1 $(PYTHON) tests/__init__.py
+
+
 quicktest:
 	$(PYTHON) setup.py test
 

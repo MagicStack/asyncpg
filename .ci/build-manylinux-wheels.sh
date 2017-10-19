@@ -25,5 +25,5 @@ PYTHON="/opt/python/${PYTHON_VERSION}/bin/python"
 PIP="/opt/python/${PYTHON_VERSION}/bin/pip"
 ${PIP} install ${PYMODULE} --no-index -f file:///io/dist
 rm -rf /io/tests/__pycache__
-make -C /io/ PYTHON="${PYTHON}" test
+make -C /io/ PYTHON="${PYTHON}" testinstalled
 rm -rf /io/tests/__pycache__

@@ -516,7 +516,7 @@ class TestConnection(tb.ConnectedTestCase):
     async def test_connection_implicit_host(self):
         conn_spec = self.cluster.get_connection_spec()
         con = await asyncpg.connect(
-            port=conn_spec['port'], database='postgres', loop=self.loop)
+            port=conn_spec.get('port'), database='postgres', loop=self.loop)
         await con.close()
 
 
