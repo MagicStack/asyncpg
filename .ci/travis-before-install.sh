@@ -43,4 +43,7 @@ if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
     else
         brew install postgresql@${PGVERSION}
     fi
+
+    brew cleanup postgresql@${PGVERSION}
+    brew services start postgresql@${PGVERSION}
 fi

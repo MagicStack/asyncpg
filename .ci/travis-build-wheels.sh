@@ -56,6 +56,8 @@ if [ "${TRAVIS_OS_NAME}" == "linux" ]; then
     done
 
 elif [ "${TRAVIS_OS_NAME}" == "osx" ]; then
+    export PGINSTALLATION="/usr/local/opt/postgresql@${PGVERSION}/bin"
+
     make clean && make -C "${_root}"
     pip wheel "${_root}" -w "${_root}/dist/"
 
