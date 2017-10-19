@@ -8,12 +8,19 @@ if [ -z "${PGVERSION}" ]; then
 fi
 
 if [[ "${TRAVIS_OS_NAME}" == "linux" && "${BUILD}" == *wheels* ]]; then
-    # Allow docker guests to connect to the database
     sudo service postgresql stop ${PGVERSION}
-    echo "listen_addresses = '*'" | \
+
+    echo "port = 5432" | \
         sudo tee --append /etc/postgresql/${PGVERSION}/main/postgresql.conf
-    echo "host all all 172.17.0.0/16 trust" | \
-        sudo tee --append /etc/postgresql/${PGVERSION}/main/pg_hba.conf
+
+    if [[ "${BUILD}" == *wheels* ]]; then
+        # Allow docker guests to connect to the database
+        echo "listen_addresses = '*'" | \
+            sudo tee --append /etc/postgresql/${PGVERSION}/main/postgresql.conf
+        echo "host all all 172.17.0.0/16 trust" | \
+            sudo tee --append /etc/postgresql/${PGVERSION}/main/pg_hba.conf
+    fi
+
     sudo service postgresql start ${PGVERSION}
 fi
 
