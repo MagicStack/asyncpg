@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.12.0
+                0.13.0
               </div>
             
           
@@ -211,7 +211,7 @@ regardless of their size.</li>
 (the default is <code class="docutils literal"><span class="pre">None</span></code>: no timeout).</li>
 <li><strong>ssl</strong> – pass <code class="docutils literal"><span class="pre">True</span></code> or an <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.SSLContext">ssl.SSLContext</a> instance to
 require an SSL connection.  If <code class="docutils literal"><span class="pre">True</span></code>, a default SSL context
-returned by <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.create_default_context">ssl.create_default_context()</a>
+returned by <a class="reference external" href="https://docs.python.org/3/library/ssl.html# ssl.create_default_context">ssl.create_default_context()</a>
 will be used.</li>
 <li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – an optional dict of server parameters.</li>
 <li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – class of the returned connection object.  Must be a subclass of
@@ -626,7 +626,8 @@ are provided.</p>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The first row as a <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> instance.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The first row as a <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> instance, or None if
+no records were returned by the query.</p>
 </td>
 </tr>
 </tbody>
@@ -653,7 +654,8 @@ instance constructor.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The value of the specified column of the first record.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The value of the specified column of the first record, or
+None if no records were returned by the query.</p>
 </td>
 </tr>
 </tbody>
@@ -858,7 +860,6 @@ types and their format for this mode.</p>
 returning a value encoded according to <em>format</em>.</li>
 <li><strong>decoder</strong> – Callable accepting a single argument encoded according to <em>format</em>
 and returning a decoded Python object.</li>
-<li><strong>binary</strong> – <strong>Deprecated</strong>.  Use <em>format</em> instead.</li>
 </ul>
 </td>
 </tr>
@@ -900,6 +901,10 @@ format.</p>
 </div>
 <div class="versionchanged">
 <p><span class="versionmodified">Changed in version 0.12.0: </span>The <code class="docutils literal"><span class="pre">binary</span></code> keyword argument is deprecated in favor of
+<code class="docutils literal"><span class="pre">format</span></code>.</p>
+</div>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.13.0: </span>The <code class="docutils literal"><span class="pre">binary</span></code> keyword argument was removed in favor of
 <code class="docutils literal"><span class="pre">format</span></code>.</p>
 </div>
 </dd></dl>
@@ -993,7 +998,7 @@ will prefetch (defaults to <code class="docutils literal"><span class="pre">50</
 
 <dl class="method">
 <dt id="asyncpg.prepared_stmt.PreparedStatement.explain">
-<em class="property">coroutine </em><code class="descname">explain</code><span class="sig-paren">(</span><em>*args</em>, <em>analyze=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.explain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.explain" title="Permalink to this definition">¶</a></dt>
+<code class="descname">explain</code><span class="sig-paren">(</span><em>*args</em>, <em>analyze=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.explain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.explain" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the execution plan of the statement.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1017,7 +1022,7 @@ is actually a deserialized JSON output of the SQL
 
 <dl class="method">
 <dt id="asyncpg.prepared_stmt.PreparedStatement.fetch">
-<em class="property">coroutine </em><code class="descname">fetch</code><span class="sig-paren">(</span><em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetch" title="Permalink to this definition">¶</a></dt>
+<code class="descname">fetch</code><span class="sig-paren">(</span><em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute the statement and return a list of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> objects.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1039,7 +1044,7 @@ is actually a deserialized JSON output of the SQL
 
 <dl class="method">
 <dt id="asyncpg.prepared_stmt.PreparedStatement.fetchrow">
-<em class="property">coroutine </em><code class="descname">fetchrow</code><span class="sig-paren">(</span><em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.fetchrow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetchrow" title="Permalink to this definition">¶</a></dt>
+<code class="descname">fetchrow</code><span class="sig-paren">(</span><em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.fetchrow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetchrow" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute the statement and return the first row.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1061,7 +1066,7 @@ is actually a deserialized JSON output of the SQL
 
 <dl class="method">
 <dt id="asyncpg.prepared_stmt.PreparedStatement.fetchval">
-<em class="property">coroutine </em><code class="descname">fetchval</code><span class="sig-paren">(</span><em>*args</em>, <em>column=0</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.fetchval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetchval" title="Permalink to this definition">¶</a></dt>
+<code class="descname">fetchval</code><span class="sig-paren">(</span><em>*args</em>, <em>column=0</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.fetchval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetchval" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute the statement and return a value in the first row.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1346,7 +1351,7 @@ fetch subsets of the query results.</p>
 <dd><p>An open <em>portal</em> into the results of a query.</p>
 <dl class="method">
 <dt id="asyncpg.cursor.Cursor.fetch">
-<em class="property">coroutine </em><code class="descname">fetch</code><span class="sig-paren">(</span><em>n</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/cursor.html#Cursor.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.cursor.Cursor.fetch" title="Permalink to this definition">¶</a></dt>
+<code class="descname">fetch</code><span class="sig-paren">(</span><em>n</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/cursor.html#Cursor.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.cursor.Cursor.fetch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the next <em>n</em> rows as a list of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> objects.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1362,7 +1367,7 @@ fetch subsets of the query results.</p>
 
 <dl class="method">
 <dt id="asyncpg.cursor.Cursor.fetchrow">
-<em class="property">coroutine </em><code class="descname">fetchrow</code><span class="sig-paren">(</span><em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/cursor.html#Cursor.fetchrow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.cursor.Cursor.fetchrow" title="Permalink to this definition">¶</a></dt>
+<code class="descname">fetchrow</code><span class="sig-paren">(</span><em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/cursor.html#Cursor.fetchrow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.cursor.Cursor.fetchrow" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the next row.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1378,7 +1383,7 @@ fetch subsets of the query results.</p>
 
 <dl class="method">
 <dt id="asyncpg.cursor.Cursor.forward">
-<em class="property">coroutine </em><code class="descname">forward</code><span class="sig-paren">(</span><em>n</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span> &#x2192; int<a class="reference internal" href="../_modules/asyncpg/cursor.html#Cursor.forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.cursor.Cursor.forward" title="Permalink to this definition">¶</a></dt>
+<code class="descname">forward</code><span class="sig-paren">(</span><em>n</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span> &#x2192; int<a class="reference internal" href="../_modules/asyncpg/cursor.html#Cursor.forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.cursor.Cursor.forward" title="Permalink to this definition">¶</a></dt>
 <dd><p>Skip over the next <em>n</em> rows.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1417,6 +1422,16 @@ fetch subsets of the query results.</p>
     <span class="n">await</span> <span class="n">pool</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
 </pre></div>
 </div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Prepared statements and cursors returned by
+<a class="reference internal" href="#asyncpg.connection.Connection.prepare" title="asyncpg.connection.Connection.prepare"><code class="xref py py-meth docutils literal"><span class="pre">Connection.prepare()</span></code></a> and
+<a class="reference internal" href="#asyncpg.connection.Connection.cursor" title="asyncpg.connection.Connection.cursor"><code class="xref py py-meth docutils literal"><span class="pre">Connection.cursor()</span></code></a> become
+invalid once the connection is released.  Likewise, all notification
+and log listeners are removed, and <code class="docutils literal"><span class="pre">asyncpg</span></code> will issue a warning
+if there are any listener callbacks registered on a connection that
+is being released to the pool.</p>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1454,6 +1469,18 @@ event loop will be used.</li>
 <div class="versionchanged">
 <p><span class="versionmodified">Changed in version 0.10.0: </span>An <code class="xref py py-exc docutils literal"><span class="pre">InterfaceError</span></code> will be raised on any
 attempted operation on a released connection.</p>
+</div>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.13.0: </span>An <code class="xref py py-exc docutils literal"><span class="pre">InterfaceError</span></code> will be raised on any
+attempted operation on a prepared statement or a cursor created
+on a connection that has been released to the pool.</p>
+</div>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.13.0: </span>An <code class="xref py py-exc docutils literal"><span class="pre">InterfaceWarning</span></code> will be produced
+if there are any active listeners (added via
+<a class="reference internal" href="#asyncpg.connection.Connection.add_listener" title="asyncpg.connection.Connection.add_listener"><code class="xref py py-meth docutils literal"><span class="pre">Connection.add_listener()</span></code></a>
+or <a class="reference internal" href="#asyncpg.connection.Connection.add_log_listener" title="asyncpg.connection.Connection.add_log_listener"><code class="xref py py-meth docutils literal"><span class="pre">Connection.add_log_listener()</span></code></a>) present on the connection
+at the moment of its release to the pool.</p>
 </div>
 </dd></dl>
 
@@ -1857,7 +1884,7 @@ items either by a numeric index or by a field name:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.12.0',
+            VERSION:'0.13.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

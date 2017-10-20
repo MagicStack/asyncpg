@@ -67,7 +67,7 @@
             
             
               <div class="version">
-                0.12.0
+                0.13.0
               </div>
             
           
@@ -307,7 +307,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="n">con</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">acquire</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PoolConnectionProxy</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_cancel_inactive_callback</span><span class="p">()</span>
@@ -338,6 +339,8 @@
     <span class="k">async</span> <span class="k">def</span> <span class="nf">release</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">_on_release</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="kc">None</span>
@@ -748,6 +751,15 @@
 <span class="sd">        finally:</span>
 <span class="sd">            await pool.release(con)</span>
 
+<span class="sd">    .. warning::</span>
+<span class="sd">        Prepared statements and cursors returned by</span>
+<span class="sd">        :meth:`Connection.prepare() &lt;connection.Connection.prepare&gt;` and</span>
+<span class="sd">        :meth:`Connection.cursor() &lt;connection.Connection.cursor&gt;` become</span>
+<span class="sd">        invalid once the connection is released.  Likewise, all notification</span>
+<span class="sd">        and log listeners are removed, and ``asyncpg`` will issue a warning</span>
+<span class="sd">        if there are any listener callbacks registered on a connection that</span>
+<span class="sd">        is being released to the pool.</span>
+
 <span class="sd">    :param str dsn:</span>
 <span class="sd">        Connection arguments specified using as a single string in</span>
 <span class="sd">        the following format:</span>
@@ -794,6 +806,19 @@
 <span class="sd">    .. versionchanged:: 0.10.0</span>
 <span class="sd">       An :exc:`~asyncpg.exceptions.InterfaceError` will be raised on any</span>
 <span class="sd">       attempted operation on a released connection.</span>
+
+<span class="sd">    .. versionchanged:: 0.13.0</span>
+<span class="sd">       An :exc:`~asyncpg.exceptions.InterfaceError` will be raised on any</span>
+<span class="sd">       attempted operation on a prepared statement or a cursor created</span>
+<span class="sd">       on a connection that has been released to the pool.</span>
+
+<span class="sd">    .. versionchanged:: 0.13.0</span>
+<span class="sd">       An :exc:`~asyncpg.exceptions.InterfaceWarning` will be produced</span>
+<span class="sd">       if there are any active listeners (added via</span>
+<span class="sd">       :meth:`Connection.add_listener() &lt;connection.Connection.add_listener&gt;`</span>
+<span class="sd">       or :meth:`Connection.add_log_listener()</span>
+<span class="sd">       &lt;connection.Connection.add_log_listener&gt;`) present on the connection</span>
+<span class="sd">       at the moment of its release to the pool.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">connection_class</span><span class="p">,</span> <span class="n">connection</span><span class="o">.</span><span class="n">Connection</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
@@ -842,7 +867,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.12.0',
+            VERSION:'0.13.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
