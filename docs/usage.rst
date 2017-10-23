@@ -222,6 +222,8 @@ The most common way to use transactions is through an ``async with`` statement:
 See the :ref:`asyncpg-api-transaction` API documentation for more information.
 
 
+.. _asyncpg-connection-pool:
+
 Connection Pools
 ----------------
 
@@ -232,7 +234,7 @@ pool implementation, which eliminates the need to use an external connection
 pooler such as PgBouncer.
 
 To create a connection pool, use the
-:func:`asyncpg.create_pool <asyncpg.pool.create_pool>` function.
+:func:`asyncpg.create_pool() <asyncpg.pool.create_pool>` function.
 The resulting :class:`Pool <asyncpg.pool.Pool>` object can then be used
 to borrow connections from the pool.
 

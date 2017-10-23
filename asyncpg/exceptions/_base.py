@@ -7,6 +7,7 @@
 
 import asyncpg
 import sys
+import textwrap
 
 
 __all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError',
@@ -120,6 +121,31 @@ class PostgresMessage(metaclass=PostgresMessageMeta):
             exccls = exceptions.InvalidCachedStatementError
             message = ('cached statement plan is invalid due to a database '
                        'schema or configuration change')
+
+        is_prepared_stmt_error = (
+            exccls.__name__ in ('DuplicatePreparedStatementError',
+                                'InvalidSQLStatementNameError') and
+            _is_asyncpg_class(exccls)
+        )
+
+        if is_prepared_stmt_error:
+            hint = dct.get('hint', '')
+            hint += textwrap.dedent("""\
+
+                NOTE: pgbouncer with pool_mode set to "transaction" or
+                "statement" does not support prepared statements properly.
+                You have two options:
+
+                * if you are using pgbouncer for connection pooling to a
+                  single server, switch to the connection pool functionality
+                  provided by asyncpg, it is a much better option for this
+                  purpose;
+
+                * if you have no option of avoiding the use of pgbouncer,
+                  then you must switch pgbouncer's pool_mode to "session".
+            """)
+
+            dct['hint'] = hint
 
         return exccls, message, dct
 
