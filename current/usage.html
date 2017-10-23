@@ -353,14 +353,14 @@ JSON values using the <a class="reference external" href="https://docs.python.or
 
     <span class="k">try</span><span class="p">:</span>
         <span class="k">def</span> <span class="nf">_encoder</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
         <span class="k">def</span> <span class="nf">_decoder</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
         <span class="n">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">set_type_codec</span><span class="p">(</span>
             <span class="s1">&#39;json&#39;</span><span class="p">,</span> <span class="n">encoder</span><span class="o">=</span><span class="n">_encoder</span><span class="p">,</span> <span class="n">decoder</span><span class="o">=</span><span class="n">_decoder</span><span class="p">,</span>
-            <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;pg_catalog&#39;</span><span class="p">,</span> <span class="n">binary</span><span class="o">=</span><span class="bp">True</span>
+            <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;pg_catalog&#39;</span>
         <span class="p">)</span>
 
         <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;foo&#39;</span><span class="p">:</span> <span class="s1">&#39;bar&#39;</span><span class="p">,</span> <span class="s1">&#39;spam&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
