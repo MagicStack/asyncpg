@@ -391,14 +391,14 @@ will be applied immediately.  This is also known as <em>auto-commit</em>.</p>
 <p>See the <a class="reference internal" href="api/index.html#asyncpg-api-transaction"><span class="std std-ref">Transactions</span></a> API documentation for more information.</p>
 </div>
 <div class="section" id="connection-pools">
-<h2>Connection Pools<a class="headerlink" href="#connection-pools" title="Permalink to this headline">¶</a></h2>
+<span id="asyncpg-connection-pool"></span><h2>Connection Pools<a class="headerlink" href="#connection-pools" title="Permalink to this headline">¶</a></h2>
 <p>For server-type type applications, that handle frequent requests and need
 the database connection for a short period time while handling a request,
 the use of a connection pool is recommended.  asyncpg provides an advanced
 pool implementation, which eliminates the need to use an external connection
 pooler such as PgBouncer.</p>
 <p>To create a connection pool, use the
-<a class="reference internal" href="api/index.html#asyncpg.pool.create_pool" title="asyncpg.pool.create_pool"><code class="xref py py-func docutils literal"><span class="pre">asyncpg.create_pool</span></code></a> function.
+<a class="reference internal" href="api/index.html#asyncpg.pool.create_pool" title="asyncpg.pool.create_pool"><code class="xref py py-func docutils literal"><span class="pre">asyncpg.create_pool()</span></code></a> function.
 The resulting <a class="reference internal" href="api/index.html#asyncpg.pool.Pool" title="asyncpg.pool.Pool"><code class="xref py py-class docutils literal"><span class="pre">Pool</span></code></a> object can then be used
 to borrow connections from the pool.</p>
 <p>Below is an example of how <strong>asyncpg</strong> can be used to implement a simple

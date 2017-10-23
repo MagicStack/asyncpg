@@ -969,6 +969,12 @@ a need to run the same query again.</p>
 during calls to the <code class="xref py py-meth docutils literal"><span class="pre">fetch()</span></code>, <code class="xref py py-meth docutils literal"><span class="pre">fetchrow()</span></code>,
 or <code class="xref py py-meth docutils literal"><span class="pre">fetchval()</span></code> methods.</p>
 </div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">If you are using pgbouncer with <code class="docutils literal"><span class="pre">pool_mode</span></code> set to <code class="docutils literal"><span class="pre">transaction</span></code> or
+<code class="docutils literal"><span class="pre">statement</span></code>, prepared statements will not work correctly.  See
+<a class="reference internal" href="../faq.html#asyncpg-prepared-stmt-errors"><span class="std std-ref">Why am I getting prepared statement errors?</span></a> for more information.</p>
+</div>
 <dl class="class">
 <dt id="asyncpg.prepared_stmt.PreparedStatement">
 <em class="property">class </em><code class="descname">PreparedStatement</code><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement" title="Permalink to this definition">¶</a></dt>

@@ -53,6 +53,12 @@ a need to run the same query again.
    during calls to the :meth:`~Connection.fetch`, :meth:`~Connection.fetchrow`,
    or :meth:`~Connection.fetchval` methods.
 
+.. warning::
+
+   If you are using pgbouncer with ``pool_mode`` set to ``transaction`` or
+   ``statement``, prepared statements will not work correctly.  See
+   :ref:`asyncpg-prepared-stmt-errors` for more information.
+
 
 .. autoclass:: asyncpg.prepared_stmt.PreparedStatement()
    :members:
