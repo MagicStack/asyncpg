@@ -39,7 +39,7 @@ class Connection(metaclass=ConnectionMeta):
     """
 
     __slots__ = ('_protocol', '_transport', '_loop',
-                 '_top_xact', '_uid', '_aborted',
+                 '_top_xact', '_aborted',
                  '_pool_release_ctr', '_stmt_cache', '_stmts_to_close',
                  '_listeners', '_server_version', '_server_caps',
                  '_intro_query', '_reset_query', '_proxy',
@@ -54,7 +54,6 @@ class Connection(metaclass=ConnectionMeta):
         self._transport = transport
         self._loop = loop
         self._top_xact = None
-        self._uid = 0
         self._aborted = False
         # Incremented very time the connection is released back to a pool.
         # Used to catch invalid references to connection-related resources
@@ -990,8 +989,9 @@ class Connection(metaclass=ConnectionMeta):
             raise exceptions.InterfaceError('connection is closed')
 
     def _get_unique_id(self, prefix):
-        self._uid += 1
-        return '__asyncpg_{}_{}__'.format(prefix, self._uid)
+        global _uid
+        _uid += 1
+        return '__asyncpg_{}_{:x}__'.format(prefix, _uid)
 
     def _mark_stmts_as_closed(self):
         for stmt in self._stmt_cache.iter_statements():
@@ -1598,3 +1598,6 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_reset=sql_reset,
         sql_close_all=sql_close_all
     )
+
+
+_uid = 0
