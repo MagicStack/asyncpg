@@ -569,3 +569,28 @@ class TestPrepare(tb.ConnectedTestCase):
                 exceptions.InterfaceError,
                 'the server expects 0 arguments for this query, 1 was passed'):
             await self.con.fetchval('SELECT 1', 1)
+
+    async def test_prepare_31_pgbouncer_note(self):
+        try:
+            await self.con.execute("""
+                DO $$ BEGIN
+                    RAISE EXCEPTION
+                        'duplicate statement' USING ERRCODE = '42P05';
+                END; $$ LANGUAGE plpgsql;
+            """)
+        except asyncpg.DuplicatePreparedStatementError as e:
+            self.assertTrue('pgbouncer' in e.hint)
+        else:
+            self.fail('DuplicatePreparedStatementError not raised')
+
+        try:
+            await self.con.execute("""
+                DO $$ BEGIN
+                    RAISE EXCEPTION
+                        'invalid statement' USING ERRCODE = '26000';
+                END; $$ LANGUAGE plpgsql;
+            """)
+        except asyncpg.InvalidSQLStatementNameError as e:
+            self.assertTrue('pgbouncer' in e.hint)
+        else:
+            self.fail('InvalidSQLStatementNameError not raised')

@@ -12,6 +12,8 @@ Thank you!
 
 * **asyncpg version**:
 * **PostgreSQL version**:
+* **Do you use a PostgreSQL SaaS?  If so, which?  Can you reproduce
+  the issue with a local PostgreSQL install?**:
 * **Python version**:
 * **Platform**:
 * **Do you use pgbouncer?**:
