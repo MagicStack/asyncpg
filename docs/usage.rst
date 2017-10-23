@@ -181,14 +181,14 @@ JSON values using the :mod:`json <python:json>` module.
 
         try:
             def _encoder(value):
-                return json.dumps(value).encode('utf-8')
+                return json.dumps(value)
 
             def _decoder(value):
-                return json.loads(value.decode('utf-8'))
+                return json.loads(value)
 
             await conn.set_type_codec(
                 'json', encoder=_encoder, decoder=_decoder,
-                schema='pg_catalog', binary=True
+                schema='pg_catalog'
             )
 
             data = {'foo': 'bar', 'spam': 1}
