@@ -5,7 +5,7 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-from libc.stdint cimport int16_t, int32_t, uint16_t, uint32_t, int64_t, uint64_t
+from libc.stdint cimport uint8_t, int16_t, int32_t, uint16_t, uint32_t, int64_t, uint64_t
 
 
 IF UNAME_SYSNAME == "Windows":
@@ -35,7 +35,10 @@ cdef inline void pack_int32(char* buf, int32_t x):
 
 
 cdef inline int32_t unpack_int32(const char* buf):
-    return <int32_t>ntohl((<uint32_t*>buf)[0])
+    cdef uint32_t hh = (<uint8_t *>buf)[0]
+    hh = (hh << 8) | (<uint8_t *>buf)[1]
+    hh = (hh << 8) | (<uint8_t *>buf)[2]
+    return <int32_t>((hh << 8) | (<uint8_t *>buf)[3])
 
 
 cdef inline void pack_int64(char* buf, int64_t x):
