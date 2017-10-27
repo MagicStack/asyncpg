@@ -17,14 +17,14 @@ cdef inline record_encode_frame(ConnectionSettings settings, WriteBuffer buf,
 cdef anonymous_record_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
         tuple result
-        uint32_t elem_count
+        ssize_t elem_count
+        ssize_t i
         int32_t elem_len
         uint32_t elem_typ
-        uint32_t i
         Codec elem_codec
         FastReadBuffer elem_buf = FastReadBuffer.new()
 
-    elem_count = <uint32_t>hton.unpack_int32(buf.read(4))
+    elem_count = <ssize_t><uint32_t>hton.unpack_int32(buf.read(4))
     result = cpython.PyTuple_New(elem_count)
 
     for i in range(elem_count):

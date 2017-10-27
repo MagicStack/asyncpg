@@ -181,15 +181,15 @@ cdef class Codec:
                           FastReadBuffer buf):
         cdef:
             object result
-            uint32_t elem_count
-            uint32_t i
+            ssize_t elem_count
+            ssize_t i
             int32_t elem_len
             uint32_t elem_typ
             uint32_t received_elem_typ
             Codec elem_codec
             FastReadBuffer elem_buf = FastReadBuffer.new()
 
-        elem_count = <uint32_t>hton.unpack_int32(buf.read(4))
+        elem_count = <ssize_t><uint32_t>hton.unpack_int32(buf.read(4))
         result = record.ApgRecord_New(self.element_names, elem_count)
         for i in range(elem_count):
             elem_typ = self.element_type_oids[i]

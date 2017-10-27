@@ -21,10 +21,8 @@ if sys.version_info < (3, 5):
 CFLAGS = ['-O2']
 LDFLAGS = []
 
-if platform.uname().system == 'Windows':
-    LDFLAGS.append('ws2_32.lib')
-else:
-    CFLAGS.extend(['-Wall', '-Wsign-compare', '-Wconversion'])
+if platform.uname().system != 'Windows':
+    CFLAGS.extend(['-fsigned-char', '-Wall', '-Wsign-compare', '-Wconversion'])
 
 
 class build_ext(_build_ext.build_ext):
