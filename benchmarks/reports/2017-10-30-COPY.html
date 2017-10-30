@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.1.1/normalize.min.css" />
+<script src="https://d3js.org/d3.v3.js" charset="utf-8"></script>
+
+<style>
+    html {
+        background-color: #ffffff;
+    }
+    body {
+        padding: 20px;
+    }
+    .axis path, .axis line {
+        fill: none;
+        stroke: #999;
+        shape-rendering: crispEdges;
+    }
+    .axis.x2 path, .axis.x2 line {
+        display: none;
+    }
+    .axis text, .legend text {
+        font: 12px sans-serif;
+        fill: #333;
+    }
+    .axis.x path {
+        display: none;
+    }
+
+    .axis text {
+        fill: #555;
+    }
+    .axis line, .axis path {
+        stroke: #888;
+    }
+
+    .focus line {
+        stroke: #900;
+    }
+    .focus text {
+        fill: #900;
+        font: 12px sans-serif;
+    }
+    table.results {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    table.results td, table.results th {
+        border: 1px solid #999;
+        padding: 5px;
+    }
+    table.results tr.benchmark td {
+        font-weight: bold;
+        border-bottom: none;
+        text-align: center;
+    }
+    table.results tr.metric td {
+        border-top: none;
+        border-bottom: none;
+        text-align: right;
+    }
+    table.results tr.metric:last-child td {
+        border-bottom: 1px solid #999;
+    }
+</style>
+</head>
+
+<body>
+
+<p><em>Mon Oct 30 15:10:48 2017</em></p>
+
+<h1>PostgreSQL Driver Performance Benchmark Report</h1>
+
+Below are the results of testing PostgreSQL client driver implementations.
+Each client is constrained to run in a single process.
+
+Test environment: Linux 4.13.9-00004-gc7772acb4567 (gentoo 2.4.1, x86_64) on Intel(R) Xeon(R) CPU E3-1505M v5 @ 2.80GHz.
+
+<h2>Overall Results</h2>
+
+<p>The charts below show the geometric average of all benchmark results.</p>
+
+<svg id="mean-bars" style="width: 80vw"></svg>
+<svg id="mean-lats" style="width: 80vw"></svg>
+
+<h2>Individual Benchmarks</h2>
+
+
+                    <h3>5-copyfrom.json x13</h3>
+                    <h4>Test Setup</h4>
+                    <pre style="white-space: pre-wrap;
+                                margin-bottom: 10px;
+                                margin-left: 40px;">CREATE TABLE _test(a int, b int, c int, d text, e float, f int, g text);</pre>
+                    <h4>Test Query</h4>
+                    <pre style="white-space: pre-wrap;
+                                margin-bottom: 10px;
+                                margin-left: 40px;">COPY _test(a, b, c, d, e, f, g) FROM STDIN</pre>
+                    <pre style="white-space: pre-wrap;
+                                margin-bottom: 10px;
+                                margin-left: 40px;">Args: [{&#x27;row&#x27;: [10, 11, 10, &#x27;TESTTESTTEST&#x27;, 10.333, 12341234, &#x27;123412341234&#x27;], &#x27;count&#x27;: 10000}]</pre>
+                    <svg id="query-bars-0" style="width: 80vw"></svg>
+                    <svg id="query-lats-0" style="width: 80vw"></svg>
+                
+
+
+<h2>Detailed Benchmark Data</h2>
+
+
+        <table class="results">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Geometric mean</th>
+<th>5-copyfrom.json x13</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="benchmark">
+                <td>golang-libpq</td>
+                <td></td><td></td>
+            </tr>
+<tr class="metric"><td>Queries/sec</td><td>63.71</td>
+<td>63.71</td></tr>
+<tr class="metric"><td>Rows/sec</td><td>637127.09</td>
+<td>637127.09</td></tr>
+<tr class="metric"><td>Min latency</td><td>92.03ms</td>
+<td>92.03ms</td></tr>
+<tr class="metric"><td>Mean latency</td><td>203.126ms</td>
+<td>203.126ms</td></tr>
+<tr class="metric"><td>Max latency</td><td>325.43ms</td>
+<td>325.43ms</td></tr>
+<tr class="metric"><td>Latency variation</td><td>37.376ms (18.4%)</td>
+<td>37.376ms (18.4%)</td></tr>
+<tr class="benchmark">
+                <td>golang-pgx</td>
+                <td></td><td></td>
+            </tr>
+<tr class="metric"><td>Queries/sec</td><td>180.82</td>
+<td>180.82</td></tr>
+<tr class="metric"><td>Rows/sec</td><td>1808186.6</td>
+<td>1808186.6</td></tr>
+<tr class="metric"><td>Min latency</td><td>20.26ms</td>
+<td>20.26ms</td></tr>
+<tr class="metric"><td>Mean latency</td><td>71.483ms</td>
+<td>71.483ms</td></tr>
+<tr class="metric"><td>Max latency</td><td>497.35ms</td>
+<td>497.35ms</td></tr>
+<tr class="metric"><td>Latency variation</td><td>32.148ms (44.97%)</td>
+<td>32.148ms (44.97%)</td></tr>
+<tr class="benchmark">
+                <td>python-aiopg</td>
+                <td></td><td></td>
+            </tr>
+<tr class="metric"><td>Queries/sec</td><td>44.12</td>
+<td>44.12</td></tr>
+<tr class="metric"><td>Rows/sec</td><td>441156.08</td>
+<td>441156.08</td></tr>
+<tr class="metric"><td>Min latency</td><td>60.77ms</td>
+<td>60.77ms</td></tr>
+<tr class="metric"><td>Mean latency</td><td>290.79ms</td>
+<td>290.79ms</td></tr>
+<tr class="metric"><td>Max latency</td><td>551.52ms</td>
+<td>551.52ms</td></tr>
+<tr class="metric"><td>Latency variation</td><td>72.067ms (24.78%)</td>
+<td>72.067ms (24.78%)</td></tr>
+<tr class="benchmark">
+                <td>python-aiopg-tuples</td>
+                <td></td><td></td>
+            </tr>
+<tr class="metric"><td>Queries/sec</td><td>44.54</td>
+<td>44.54</td></tr>
+<tr class="metric"><td>Rows/sec</td><td>445432.48</td>
+<td>445432.48</td></tr>
+<tr class="metric"><td>Min latency</td><td>58.29ms</td>
+<td>58.29ms</td></tr>
+<tr class="metric"><td>Mean latency</td><td>288.689ms</td>
+<td>288.689ms</td></tr>
+<tr class="metric"><td>Max latency</td><td>491.07ms</td>
+<td>491.07ms</td></tr>
+<tr class="metric"><td>Latency variation</td><td>69.58ms (24.1%)</td>
+<td>69.58ms (24.1%)</td></tr>
+<tr class="benchmark">
+                <td>python-asyncpg</td>
+                <td></td><td></td>
+            </tr>
+<tr class="metric"><td>Queries/sec</td><td>266.09</td>
+<td>266.09</td></tr>
+<tr class="metric"><td>Rows/sec</td><td>2660923.11</td>
+<td>2660923.11</td></tr>
+<tr class="metric"><td>Min latency</td><td>15.95ms</td>
+<td>15.95ms</td></tr>
+<tr class="metric"><td>Mean latency</td><td>48.732ms</td>
+<td>48.732ms</td></tr>
+<tr class="metric"><td>Max latency</td><td>88.48ms</td>
+<td>88.48ms</td></tr>
+<tr class="metric"><td>Latency variation</td><td>9.914ms (20.34%)</td>
+<td>9.914ms (20.34%)</td></tr>
+<tr class="benchmark">
+                <td>nodejs-pg-js</td>
+                <td></td><td></td>
+            </tr>
+<tr class="metric"><td>Queries/sec</td><td>8.25</td>
+<td>8.25</td></tr>
+<tr class="metric"><td>Rows/sec</td><td>82521.23</td>
+<td>82521.23</td></tr>
+<tr class="metric"><td>Min latency</td><td>387.05ms</td>
+<td>387.05ms</td></tr>
+<tr class="metric"><td>Mean latency</td><td>1492.868ms</td>
+<td>1492.868ms</td></tr>
+<tr class="metric"><td>Max latency</td><td>3064.6ms</td>
+<td>3064.6ms</td></tr>
+<tr class="metric"><td>Latency variation</td><td>228.321ms (15.29%)</td>
+<td>228.321ms (15.29%)</td></tr>
+            </tbody>
+        </table>
+    
+
+<script>
+var DEFAULT_COLORS = [
+    "#98abc5", "#6b486b", "#ff8c00", "#8a89a6", "#7b6888", "#a05d56", "#d0743c"
+];
+
+function _humanFileSize(bytes, si) {
+    var thresh = si ? 1000 : 1024;
+    if(Math.abs(bytes) < thresh) {
+        return bytes + ' B';
+    }
+    var units = si
+        ? ['kB','MB','GB','TB','PB','EB','ZB','YB']
+        : ['KiB','MiB','GiB','TiB','PiB','EiB','ZiB','YiB'];
+    var u = -1;
+    do {
+        bytes /= thresh;
+        ++u;
+    } while(Math.abs(bytes) >= thresh && u < units.length - 1);
+    return bytes.toFixed(0)+' '+units[u];
+}
+
+function _drawLegend(chart, width, sizes) {
+    var legend = chart.selectAll('legend')
+            .data(sizes)
+            .enter()
+                .append("g")
+                    .attr('class', 'legend')
+                    .attr("transform", "translate(" + width + ", 20)");
+    legend.append('circle')
+                .style('fill', function(d, i) { return DEFAULT_COLORS[i] })
+                .attr('cx', 0)
+                .attr('cy', function(d, i) { return i * 20 })
+                .attr('r', 5);
+    legend.append('text')
+                .attr('x', 7)
+                .attr('y', function(d, i) { return i * 20 })
+                .attr('alignment-baseline', 'central')
+                .text(function(d) { return d; });
+}
+
+function drawBars(elSelector, data, options) {'use strict';
+options = options || {};
+
+// geometry
+
+var fullWidth = (options.width || 1000),
+    fullHeight = (options.height || 370),
+    margin = {top: 10, right: 100, bottom: 55, left: 100},
+    width = fullWidth - margin.left - margin.right,
+    height = fullHeight - margin.top - margin.bottom,
+    benchmarks = data;
+
+// data reshape
+
+var maxRps = 0;
+benchmarks.forEach(function(bench) {
+    if (bench.data.rps > maxRps) {
+        maxRps = bench.data.rps
+    }
+});
+
+var names = benchmarks.map(function(d) { return d.name });
+
+// charting
+
+var color = d3.scale.ordinal()
+            .range(DEFAULT_COLORS);
+
+var x0 = d3.scale.ordinal()
+            .rangeRoundBands([0, width], .2)
+            .domain(names);
+
+var y = d3.scale.linear()
+            .range([height, 0])
+            .domain([0, maxRps]);
+
+var xAxis = d3.svg.axis()
+            .scale(x0)
+            .orient("bottom")
+            .tickFormat(function(d) { return d.split('-')[0] });
+var xAxis2 = d3.svg.axis()
+            .scale(x0)
+            .orient("bottom")
+            .tickFormat(function(d) { return d.split('-')[1] });
+var xAxis3 = d3.svg.axis()
+            .scale(x0)
+            .orient("bottom")
+            .tickFormat(function(d) { return d.split('-')[2] });
+
+var yAxis = d3.svg.axis()
+            .scale(y)
+            .orient("left");
+
+var chart = d3.select(elSelector)
+            .attr('viewBox', '0 0 ' + fullWidth + ' ' + fullHeight)
+            .append("g")
+                .attr("transform",
+                    "translate(" + margin.left + "," + margin.top + ")");
+
+chart.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(options.showBenchmarkType ? xAxis : xAxis2);
+
+chart.append("g")
+            .attr("class", "x axis x2")
+            .attr("transform", "translate(0," + (height + 14) + ")")
+            .call(options.showBenchmarkType ? xAxis2 : xAxis3);
+
+if (options.showBenchmarkType) {
+    chart.append("g")
+                .attr("class", "x axis x2")
+                .attr("transform", "translate(0," + (height + 28) + ")")
+                .call(xAxis3);
+}
+
+chart.append("g")
+            .attr("class", "y axis")
+            .call(yAxis)
+            .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", ".71em")
+                .style("text-anchor", "end")
+                .text("Rows / sec");
+
+chart.selectAll("rect")
+            .data(benchmarks)
+            .enter().append("rect")
+                .style("fill", function(d, i) { return color(0); })
+                .attr("width", x0.rangeBand())
+                .attr("x", function(d, i) { return x0(d.name); })
+                .attr("y", function(d) { return y(d.data.rps); })
+                .attr("height", function(d) { return height - y(d.data.rps); })
+                .on("mouseover", function(d, i) {
+                    focusRect
+                        .attr('y', y(d.data.rps) - 9);
+
+                    focusLine
+                        .attr('y1', y(d.data.rps))
+                        .attr('y2', y(d.data.rps));
+
+                    focusText
+                        .attr('y', y(d.data.rps))
+                        .text(d3.format("0,000")(Math.round(d.data.rps)));
+
+                    focus.style("display", null);
+                })
+                .on("mouseout", function() { focus.style("display", 'none'); });
+
+var focus = chart.append('g')
+            .attr('class', 'focus')
+            .style('display', 'none');
+var focusRect = focus.append('rect')
+            .attr('x', -margin.left)
+            .attr('width', margin.left - 6)
+            .attr('y', 0)
+            .attr('height', 18)
+            .attr('fill', 'rgba(255, 255, 255, 0.9)');
+var focusLine = focus.append('line')
+            .attr('x1', -6)
+            .attr('x2', width - 20)
+            .attr('y1', 0)
+            .attr('y2', 0)
+            .style("stroke-dasharray", "2,2");
+var focusText = focus.append('text')
+            .attr('y', 0)
+            .attr('x', -9)
+            .attr('text-anchor', 'end')
+            .attr('alignment-baseline', 'middle');
+};
+
+
+function drawLats(elSelector, data) {'use strict';
+options = options || {};
+
+// geometry
+
+var fullWidth = (options.width || 1000),
+    fullHeight = (options.height || 370),
+    margin = {top: 10, right: 65, bottom: 55, left: 65},
+    width = fullWidth - margin.left - margin.right,
+    height = fullHeight - margin.top - margin.bottom,
+    benchmarks = data;
+
+// data reshape
+
+var maxLat = 0;
+benchmarks.forEach(function(bench) {
+    if (bench.data.latency_percentiles[4][1] > maxLat) {
+        maxLat = bench.data.latency_percentiles[4][1];
+    }
+});
+
+var names = benchmarks.map(function(d) { return d.name });
+
+// charting
+
+var color = d3.scale.ordinal()
+            .range(DEFAULT_COLORS);
+
+var x0 = d3.scale.ordinal()
+            .rangeRoundBands([0, width], .2)
+            .domain(names);
+
+var y = d3.scale.linear()
+            .range([height, 0])
+            .domain([0, maxLat]);
+
+var xAxis = d3.svg.axis()
+            .scale(x0)
+            .orient("bottom")
+            .tickFormat(function(d) { return d.split('-')[0] });
+var xAxis2 = d3.svg.axis()
+            .scale(x0)
+            .orient("bottom")
+            .tickFormat(function(d) { return d.split('-')[1] });
+var xAxis3 = d3.svg.axis()
+            .scale(x0)
+            .orient("bottom")
+            .tickFormat(function(d) { return d.split('-')[2] });
+
+
+var yAxis = d3.svg.axis()
+            .scale(y)
+            .orient("left");
+
+var chart = d3.select(elSelector)
+            .attr('viewBox', '0 0 ' + fullWidth + ' ' + fullHeight)
+            .append("g")
+                .attr("transform",
+                    "translate(" + margin.left + "," + margin.top + ")");
+
+chart.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(options.showBenchmarkType ? xAxis : xAxis2);
+
+chart.append("g")
+            .attr("class", "x axis x2")
+            .attr("transform", "translate(0," + (height + 14) + ")")
+            .call(options.showBenchmarkType ? xAxis2 : xAxis3);
+
+if (options.showBenchmarkType) {
+    chart.append("g")
+                .attr("class", "x axis x2")
+                .attr("transform", "translate(0," + (height + 28) + ")")
+                .call(xAxis3);
+}
+
+chart.append("g")
+            .attr("class", "y axis")
+            .call(yAxis)
+            .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", ".71em")
+                .style("text-anchor", "end")
+                .text("Latency (msec)");
+
+var g = chart.selectAll("rect")
+            .data(benchmarks)
+            .enter().append("g")
+                .attr('class', 'sub');
+
+g.append('line')
+            .attr('y1', function(d) { return y(d.data.latency_percentiles[4][1]); })
+            .attr('y2', function(d) { return y(d.data.latency_percentiles[4][1]); })
+            .attr('x1', function(d, i) { return x0(d.name); })
+            .attr('x2', function(d, i) { return x0(d.name) + x0.rangeBand(); })
+            .style("stroke", function(d, i) { return color(0); });
+
+g.append('line')
+            .attr('y1', function(d) { return y(d.data.latency_min); })
+            .attr('y2', function(d) { return y(d.data.latency_min); })
+            .attr('x1', function(d, i) { return x0(d.name); })
+            .attr('x2', function(d, i) { return x0(d.name) + x0.rangeBand(); })
+            .style("stroke", function(d, i) { return color(0); });
+
+g.append('line')
+            .attr('y1', function(d) { return y(d.data.latency_percentiles[1][1]); })
+            .attr('y2', function(d) { return y(d.data.latency_percentiles[1][1]); })
+            .attr('x1', function(d, i) { return x0(d.name); })
+            .attr('x2', function(d, i) { return x0(d.name) + x0.rangeBand(); })
+            .style("stroke", function(d, i) { return color(0); });
+
+g.append('line')
+            .attr('y1', function(d) { return y(d.data.latency_min); })
+            .attr('y2', function(d) { return y(d.data.latency_percentiles[0][1]) })
+            .attr('x1', function(d, i) { return x0(d.name) + x0.rangeBand() / 2; })
+            .attr('x2', function(d, i) { return x0(d.name) + x0.rangeBand() / 2; })
+            .style("stroke", function(d, i) { return color(0); })
+            .style("stroke-dasharray", "2,2");
+
+g.append('line')
+            .attr('y1', function(d) { return y(d.data.latency_percentiles[4][1]); })
+            .attr('y2', function(d) { return y(d.data.latency_percentiles[2][1]) })
+            .attr('x1', function(d, i) { return x0(d.name) + x0.rangeBand() / 2; })
+            .attr('x2', function(d, i) { return x0(d.name) + x0.rangeBand() / 2; })
+            .style("stroke", function(d, i) { return color(0); })
+            .style("stroke-dasharray", "2,2");
+
+g.append('rect')
+            .attr('y', function(d) { return y(d.data.latency_percentiles[2][1]); })
+            .attr('x', function(d, i) { return x0(d.name); })
+            .attr("width", x0.rangeBand())
+            .attr('height', function(d) { return Math.abs(y(d.data.latency_percentiles[2][1]) - y(d.data.latency_percentiles[0][1])) })
+            .style("stroke", function(d, i) { return color(0); })
+            .style("fill", 'rgba(0, 0, 0, 0)');
+
+g.append('rect')
+            .attr('y', 0)
+            .attr('height', height)
+            .attr('x', function(d, i) { return x0(d.name); })
+            .attr('width', function(d) { return x0.rangeBand(); })
+            .style('fill', 'rgba(0, 0, 0, 0)')
+            .on("mouseout", function(d, i) {
+                d3.select(this).style('fill', 'rgba(0, 0, 0, 0)');
+                focus.style('display', 'none');
+            })
+            .on("mouseover", function(d, i) {
+                d3.select(this).style('fill', 'rgba(0, 0, 0, 0.04)');
+
+                var yMedian = y(d.data.latency_percentiles[1][1]);
+
+                focus
+                    .style('display', null);
+
+                focusLine
+                    .attr('y1', yMedian)
+                    .attr('y2', yMedian);
+
+                    focusRect
+                        .attr('y', yMedian - 9);
+
+                    focusLine
+                        .attr('y1', yMedian)
+                        .attr('y2', yMedian);
+
+                    focusText
+                        .attr('y', yMedian)
+                        .text(d3.format(".2f")(d.data.latency_percentiles[1][1]));
+
+            });
+
+var focus = chart.append('g')
+            .attr('class', 'focus')
+            .style('display', 'none');
+var focusRect = focus.append('rect')
+            .attr('x', -margin.left)
+            .attr('width', margin.left - 6)
+            .attr('y', 0)
+            .attr('height', 18)
+            .attr('fill', 'rgba(255, 255, 255, 0.9)');
+var focusLine = focus.append('line')
+            .attr('x1', -6)
+            .attr('x2', width - 20)
+            .attr('y1', 0)
+            .attr('y2', 0)
+            .style("stroke-dasharray", "2,2");
+var focusText = focus.append('text')
+            .attr('y', 0)
+            .attr('x', -9)
+            .attr('text-anchor', 'end')
+            .attr('alignment-baseline', 'middle');
+};
+
+var data = {"date": "%Y-%m-%dT%H:%M:%S%z", "duration": 10, "platform": {"cpu": "Intel(R) Xeon(R) CPU E3-1505M v5 @ 2.80GHz", "arch": "x86_64", "system": "Linux 4.13.9-00004-gc7772acb4567", "distribution": "gentoo 2.4.1"}, "concurrency_levels": [13], "querynames": ["5-copyfrom.json"], "queries": [{"setup": "CREATE TABLE _test(a int, b int, c int, d text, e float, f int, g text);", "teardown": "DROP TABLE _test;", "query": "COPY _test(a, b, c, d, e, f, g) FROM STDIN", "args": [{"row": [10, 11, 10, "TESTTESTTEST", 10.333, 12341234, "123412341234"], "count": 10000}]}], "benchmarks": [{"name": "golang-libpq", "variations": [{"duration": 10.06, "queries": 641, "qps": 63.71, "rps": 637127.09, "latency_min": 92.03, "latency_mean": 203.126, "latency_max": 325.43, "latency_std": 37.376, "latency_cv": 18.4, "latency_percentiles": [[25, 178.415], [50, 201.855], [75, 227.995], [90, 251.338], [99, 296.122], [99.99, 325.439]]}], "mean": {"duration": 10.06, "queries": 641.0, "qps": 63.71, "rps": 637127.09, "latency_min": 92.03, "latency_mean": 203.126, "latency_max": 325.43, "latency_std": 37.376, "latency_cv": 18.4, "latency_percentiles": [[25, 178.415], [50, 201.855], [75, 227.995], [90, 251.338], [99, 296.122], [99.99, 325.439]]}}, {"name": "golang-pgx", "variations": [{"duration": 10.05, "queries": 1817, "qps": 180.82, "rps": 1808186.6, "latency_min": 20.26, "latency_mean": 71.483, "latency_max": 497.35, "latency_std": 32.148, "latency_cv": 44.97, "latency_percentiles": [[25, 57.908], [50, 67.91], [75, 79.065], [90, 91.756], [99, 158.497], [99.99, 497.356]]}], "mean": {"duration": 10.05, "queries": 1817.0, "qps": 180.82, "rps": 1808186.6, "latency_min": 20.26, "latency_mean": 71.483, "latency_max": 497.35, "latency_std": 32.148, "latency_cv": 44.97, "latency_percentiles": [[25, 57.908], [50, 67.91], [75, 79.065], [90, 91.756], [99, 158.497], [99.99, 497.356]]}}, {"name": "python-aiopg", "variations": [{"duration": 10.04, "queries": 443, "qps": 44.12, "rps": 441156.08, "latency_min": 60.77, "latency_mean": 290.79, "latency_max": 551.52, "latency_std": 72.067, "latency_cv": 24.78, "latency_percentiles": [[25, 242.735], [50, 291.4], [75, 335.825], [90, 382.104], [99, 476.571], [99.99, 551.529]]}], "mean": {"duration": 10.04, "queries": 443.0, "qps": 44.12, "rps": 441156.08, "latency_min": 60.77, "latency_mean": 290.79, "latency_max": 551.52, "latency_std": 72.067, "latency_cv": 24.78, "latency_percentiles": [[25, 242.735], [50, 291.4], [75, 335.825], [90, 382.104], [99, 476.571], [99.99, 551.529]]}}, {"name": "python-aiopg-tuples", "variations": [{"duration": 10.06, "queries": 448, "qps": 44.54, "rps": 445432.48, "latency_min": 58.29, "latency_mean": 288.689, "latency_max": 491.07, "latency_std": 69.58, "latency_cv": 24.1, "latency_percentiles": [[25, 242.99], [50, 285.31], [75, 337.34], [90, 376.384], [99, 456.75], [99.99, 491.079]]}], "mean": {"duration": 10.06, "queries": 448.0, "qps": 44.54, "rps": 445432.48, "latency_min": 58.29, "latency_mean": 288.689, "latency_max": 491.07, "latency_std": 69.58, "latency_cv": 24.1, "latency_percentiles": [[25, 242.99], [50, 285.31], [75, 337.34], [90, 376.384], [99, 456.75], [99.99, 491.079]]}}, {"name": "python-asyncpg", "variations": [{"duration": 10.02, "queries": 2665, "qps": 266.09, "rps": 2660923.11, "latency_min": 15.95, "latency_mean": 48.732, "latency_max": 88.48, "latency_std": 9.914, "latency_cv": 20.34, "latency_percentiles": [[25, 42.092], [50, 48.507], [75, 54.625], [90, 61.08], [99, 76.137], [99.99, 88.485]]}], "mean": {"duration": 10.02, "queries": 2665.0, "qps": 266.09, "rps": 2660923.11, "latency_min": 15.95, "latency_mean": 48.732, "latency_max": 88.48, "latency_std": 9.914, "latency_cv": 20.34, "latency_percentiles": [[25, 42.092], [50, 48.507], [75, 54.625], [90, 61.08], [99, 76.137], [99.99, 88.485]]}}, {"name": "nodejs-pg-js", "variations": [{"duration": 11.03, "queries": 91, "qps": 8.25, "rps": 82521.23, "latency_min": 387.05, "latency_mean": 1492.868, "latency_max": 3064.6, "latency_std": 228.321, "latency_cv": 15.29, "latency_percentiles": [[25, 1437.77], [50, 1550.36], [75, 1565.1], [90, 1639.734], [99, 1930.132], [99.99, 1930.15]]}], "mean": {"duration": 11.03, "queries": 91.0, "qps": 8.25, "rps": 82521.23, "latency_min": 387.05, "latency_mean": 1492.868, "latency_max": 3064.6, "latency_std": 228.321, "latency_cv": 15.29, "latency_percentiles": [[25, 1437.77], [50, 1550.36], [75, 1565.1], [90, 1639.734], [99, 1930.132], [99.99, 1930.15]]}}]};
+
+var options = {
+    width: 800,
+    height: 300,
+    showBenchmarkType: true
+}
+
+var meanData = [];
+var order = {};
+for (var i = 0; i < data.benchmarks.length; i += 1) {
+    var benchmark = data.benchmarks[i];
+    meanData.push({
+        'name': benchmark['name'],
+        'data': benchmark['mean']
+    });
+}
+
+meanData.sort(function(e1, e2) {
+    return d3.ascending(e1.data.rps, e2.data.rps);
+})
+
+for (var i = 0; i < meanData.length; i += 1) {
+    order[meanData[i].name] = i;
+}
+
+drawBars('#mean-bars', meanData, options);
+drawLats('#mean-lats', meanData, options);
+
+var queriesSection = document.getElementById("queries");
+var nqueries = data.querynames.length;
+
+for (var i = 0; i < data.concurrency_levels.length; i += 1) {
+    for (var j = 0; j < data.querynames.length; j += 1) {
+        var queryData = [];
+        var offset = i * nqueries + j;
+        for (var k = 0; k < data.benchmarks.length; k += 1) {
+            var benchmark = data.benchmarks[k];
+            queryData.push({
+                'name': benchmark['name'],
+                'data': benchmark['variations'][offset]
+            });
+        }
+
+        queryData.sort(function(e1, e2) {
+            return d3.ascending(order[e1.name], order[e2.name]);
+        });
+
+        drawBars('#query-bars-' + offset, queryData, options);
+        drawLats('#query-lats-' + offset, queryData, options);
+    }
+}
+</script>
+
+</body>
+
+</html>

@@ -1,0 +1,6 @@
+.cache/
+.local/
+asyncpg/
+build/
+docs/
+tests/
