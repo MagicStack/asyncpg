@@ -31,15 +31,16 @@ else:
 
 class SlowResetConnection(pg_connection.Connection):
     """Connection class to simulate races with Connection.reset()."""
-    async def reset(self):
+    async def reset(self, *, timeout=None):
         await asyncio.sleep(0.2, loop=self._loop)
-        return await super().reset()
+        return await super().reset(timeout=timeout)
 
 
-class SlowResetConnectionPool(pg_pool.Pool):
-    async def _connect(self, *args, **kwargs):
-        return await pg_connection.connect(
-            *args, connection_class=SlowResetConnection, **kwargs)
+class SlowCancelConnection(pg_connection.Connection):
+    """Connection class to simulate races with Connection._cancel()."""
+    async def _cancel(self, waiter):
+        await asyncio.sleep(0.2, loop=self._loop)
+        return await super()._cancel(waiter)
 
 
 class TestPool(tb.ConnectedTestCase):
@@ -351,12 +352,12 @@ class TestPool(tb.ConnectedTestCase):
             self.cluster.trust_local_connections()
             self.cluster.reload()
 
-    async def test_pool_handles_cancel_in_release(self):
+    async def test_pool_handles_task_cancel_in_release(self):
         # Use SlowResetConnectionPool to simulate
         # the Task.cancel() and __aexit__ race.
         pool = await self.create_pool(database='postgres',
                                       min_size=1, max_size=1,
-                                      pool_class=SlowResetConnectionPool)
+                                      connection_class=SlowResetConnection)
 
         async def worker():
             async with pool.acquire():
@@ -369,6 +370,27 @@ class TestPool(tb.ConnectedTestCase):
         task.cancel()
         # Wait to make sure the cleanup has completed.
         await asyncio.sleep(0.4, loop=self.loop)
+        # Check that the connection has been returned to the pool.
+        self.assertEqual(pool._queue.qsize(), 1)
+
+    async def test_pool_handles_query_cancel_in_release(self):
+        # Use SlowResetConnectionPool to simulate
+        # the Task.cancel() and __aexit__ race.
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1,
+                                      connection_class=SlowCancelConnection)
+
+        async def worker():
+            async with pool.acquire() as con:
+                await con.execute('SELECT pg_sleep(10)')
+
+        task = self.loop.create_task(worker())
+        # Let the worker() run.
+        await asyncio.sleep(0.1, loop=self.loop)
+        # Cancel the worker.
+        task.cancel()
+        # Wait to make sure the cleanup has completed.
+        await asyncio.sleep(0.5, loop=self.loop)
         # Check that the connection has been returned to the pool.
         self.assertEqual(pool._queue.qsize(), 1)
 
@@ -492,9 +514,10 @@ class TestPool(tb.ConnectedTestCase):
         methods = [test_fetch, test_fetchrow, test_fetchval,
                    test_execute, test_execute_with_arg]
 
-        for method in methods:
-            with self.subTest(method=method.__name__):
-                await run(200, method)
+        with tb.silence_asyncio_long_exec_warning():
+            for method in methods:
+                with self.subTest(method=method.__name__):
+                    await run(200, method)
 
     async def test_pool_connection_execute_many(self):
         async def worker(pool):

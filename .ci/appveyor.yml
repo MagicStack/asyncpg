@@ -32,7 +32,7 @@ build_script:
     - "%PYTHON% setup.py build_ext --inplace"
 
 test_script:
-    - "%PYTHON% -m unittest discover -s tests"
+    - "%PYTHON% setup.py test"
 
 after_test:
     - "%PYTHON% setup.py bdist_wheel"

@@ -353,6 +353,9 @@ cdef class BaseProtocol(CoreProtocol):
                         # Abort the COPY operation on any error in
                         # output sink.
                         self._request_cancel()
+                        # Make asyncio shut up about unretrieved
+                        # QueryCanceledError
+                        waiter.add_done_callback(lambda f: f.exception())
                         raise
 
                 # done will be True upon receipt of CopyDone.
@@ -474,6 +477,8 @@ cdef class BaseProtocol(CoreProtocol):
         except Exception as e:
             self._write_copy_fail_msg(str(e))
             self._request_cancel()
+            # Make asyncio shut up about unretrieved QueryCanceledError
+            waiter.add_done_callback(lambda f: f.exception())
             raise
 
         self._write_copy_done_msg()
@@ -521,24 +526,45 @@ cdef class BaseProtocol(CoreProtocol):
         self._terminate()
         self.transport.abort()
 
-    async def close(self):
-        if self.cancel_waiter is not None:
-            await self.cancel_waiter
+    async def close(self, timeout):
+        if self.closing:
+            return
+
+        self.closing = True
+
         if self.cancel_sent_waiter is not None:
             await self.cancel_sent_waiter
             self.cancel_sent_waiter = None
 
-        self._handle_waiter_on_connection_lost(None)
+        if self.cancel_waiter is not None:
+            await self.cancel_waiter
+
+        if self.waiter is not None:
+            # If there is a query running, cancel it
+            self._request_cancel()
+            await self.cancel_sent_waiter
+            self.cancel_sent_waiter = None
+            if self.cancel_waiter is not None:
+                await self.cancel_waiter
+
         assert self.waiter is None
 
-        if self.closing:
-            return
+        timeout = self._get_timeout_impl(timeout)
 
+        # Ask the server to terminate the connection and wait for it
+        # to drop.
+        self.waiter = self._new_waiter(timeout)
         self._terminate()
-        self.waiter = self.create_future()
-        self.closing = True
+        try:
+            await self.waiter
+        except ConnectionResetError:
+            # There appears to be a difference in behaviour of asyncio
+            # in Windows, where, instead of calling protocol.connection_lost()
+            # a ConnectionResetError will be thrown into the task.
+            pass
+        finally:
+            self.waiter = None
         self.transport.abort()
-        return await self.waiter
 
     def _request_cancel(self):
         self.cancel_waiter = self.create_future()
@@ -614,6 +640,19 @@ cdef class BaseProtocol(CoreProtocol):
         if self.waiter is not None or self.timeout_handle is not None:
             raise apg_exc.InterfaceError(
                 'cannot perform operation: another operation is in progress')
+
+    def _is_cancelling(self):
+        return (
+            self.cancel_waiter is not None or
+            self.cancel_sent_waiter is not None
+        )
+
+    async def _wait_for_cancellation(self):
+        if self.cancel_sent_waiter is not None:
+            await self.cancel_sent_waiter
+            self.cancel_sent_waiter = None
+        if self.cancel_waiter is not None:
+            await self.cancel_waiter
 
     cdef _coreproto_error(self):
         try:
@@ -764,12 +803,16 @@ cdef class BaseProtocol(CoreProtocol):
             self.timeout_handle = None
 
         if self.cancel_waiter is not None:
-            # We have received the result of a cancelled operation.
-            # Simply ignore the result.
-            self.cancel_waiter.set_result(None)
+            # We have received the result of a cancelled command.
+            if not self.cancel_waiter.done():
+                # The cancellation future might have been cancelled
+                # by the cancellation of the entire task running the query.
+                self.cancel_waiter.set_result(None)
             self.cancel_waiter = None
-            self.waiter = None
-            return
+            if self.waiter is not None and self.waiter.done():
+                self.waiter = None
+            if self.waiter is None:
+                return
 
         try:
             self._dispatch_result()

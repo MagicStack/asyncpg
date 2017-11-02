@@ -8,6 +8,7 @@
 import asyncio
 import functools
 import inspect
+import time
 
 from . import connection
 from . import connect_utils
@@ -94,7 +95,7 @@ class PoolConnectionHolder:
                  '_connect_args', '_connect_kwargs',
                  '_max_queries', '_setup', '_init',
                  '_max_inactive_time', '_in_use',
-                 '_inactive_callback')
+                 '_inactive_callback', '_timeout')
 
     def __init__(self, pool, *, connect_args, connect_kwargs,
                  max_queries, setup, init, max_inactive_time):
@@ -110,6 +111,7 @@ class PoolConnectionHolder:
         self._init = init
         self._inactive_callback = None
         self._in_use = False
+        self._timeout = None
 
     async def connect(self):
         assert self._con is None
@@ -172,9 +174,10 @@ class PoolConnectionHolder:
         self._in_use = True
         return proxy
 
-    async def release(self):
+    async def release(self, timeout):
         assert self._in_use
         self._in_use = False
+        self._timeout = None
 
         self._con._on_release()
 
@@ -183,13 +186,25 @@ class PoolConnectionHolder:
 
         elif self._con._protocol.queries_count >= self._max_queries:
             try:
-                await self._con.close()
+                await self._con.close(timeout=timeout)
             finally:
                 self._con = None
 
         else:
             try:
-                await self._con.reset()
+                budget = timeout
+
+                if self._con._protocol._is_cancelling():
+                    # If the connection is in cancellation state,
+                    # wait for the cancellation
+                    started = time.monotonic()
+                    await asyncio.wait_for(
+                        self._con._protocol._wait_for_cancellation(),
+                        budget, loop=self._pool._loop)
+                    if budget is not None:
+                        budget -= time.monotonic() - started
+
+                await self._con.reset(timeout=budget)
             except Exception as ex:
                 # If the `reset` call failed, terminate the connection.
                 # A new one will be created when `acquire` is called
@@ -449,6 +464,9 @@ class Pool:
                 self._queue.put_nowait(ch)
                 raise
             else:
+                # Record the timeout, as we will apply it by default
+                # in release().
+                ch._timeout = timeout
                 return proxy
 
         self._check_init()
@@ -458,11 +476,22 @@ class Pool:
             return await asyncio.wait_for(
                 _acquire_impl(), timeout=timeout, loop=self._loop)
 
-    async def release(self, connection):
-        """Release a database connection back to the pool."""
-        async def _release_impl(ch: PoolConnectionHolder):
+    async def release(self, connection, *, timeout=None):
+        """Release a database connection back to the pool.
+
+        :param Connection connection:
+            A :class:`~asyncpg.connection.Connection` object to release.
+        :param float timeout:
+            A timeout for releasing the connection.  If not specified, defaults
+            to the timeout provided in the corresponding call to the
+            :meth:`Pool.acquire() <asyncpg.pool.Pool.acquire>` method.
+
+        .. versionchanged:: 0.14.0
+            Added the *timeout* parameter.
+        """
+        async def _release_impl(ch: PoolConnectionHolder, timeout: float):
             try:
-                await ch.release()
+                await ch.release(timeout)
             finally:
                 self._queue.put_nowait(ch)
 
@@ -481,11 +510,14 @@ class Pool:
 
         connection._detach()
 
+        if timeout is None:
+            timeout = connection._holder._timeout
+
         # Use asyncio.shield() to guarantee that task cancellation
         # does not prevent the connection from being returned to the
         # pool properly.
-        return await asyncio.shield(_release_impl(connection._holder),
-                                    loop=self._loop)
+        return await asyncio.shield(
+            _release_impl(connection._holder, timeout), loop=self._loop)
 
     async def close(self):
         """Gracefully close all connections in the pool."""
