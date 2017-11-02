@@ -183,7 +183,7 @@ class Cluster:
             # Make sure server certificate key file has correct permissions.
             keyfile = os.path.join(self._data_dir, 'srvkey.pem')
             shutil.copy(ssl_key, keyfile)
-            os.chmod(keyfile, 0o400)
+            os.chmod(keyfile, 0o600)
             server_settings = server_settings.copy()
             server_settings['ssl_key_file'] = keyfile
 
@@ -202,16 +202,24 @@ class Cluster:
             # of postgres daemon under an Administrative account
             # is not permitted and there is no easy way to drop
             # privileges.
+            if os.getenv('ASYNCPG_DEBUG_SERVER'):
+                stdout = sys.stdout
+            else:
+                stdout = subprocess.DEVNULL
+
             process = subprocess.run(
                 [self._pg_ctl, 'start', '-D', self._data_dir,
                  '-o', ' '.join(extra_args)],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            stderr = process.stderr
+                stdout=stdout, stderr=subprocess.STDOUT)
 
             if process.returncode != 0:
+                if process.stderr:
+                    stderr = ':\n{}'.format(process.stderr.decode())
+                else:
+                    stderr = ''
                 raise ClusterError(
-                    'pg_ctl start exited with status {:d}: {}'.format(
-                        process.returncode, stderr.decode()))
+                    'pg_ctl start exited with status {:d}{}'.format(
+                        process.returncode, stderr))
         else:
             if os.getenv('ASYNCPG_DEBUG_SERVER'):
                 stdout = sys.stdout

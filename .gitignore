@@ -5,6 +5,7 @@
 *.ymlc~
 *.scssc
 *.so
+*.pyd
 *~
 .#*
 .DS_Store

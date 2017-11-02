@@ -44,7 +44,7 @@ class Connection(metaclass=ConnectionMeta):
                  '_listeners', '_server_version', '_server_caps',
                  '_intro_query', '_reset_query', '_proxy',
                  '_stmt_exclusive_section', '_config', '_params', '_addr',
-                 '_log_listeners')
+                 '_log_listeners', '_cancellations')
 
     def __init__(self, protocol, transport, loop,
                  addr: (str, int) or str,
@@ -74,6 +74,7 @@ class Connection(metaclass=ConnectionMeta):
 
         self._listeners = {}
         self._log_listeners = set()
+        self._cancellations = set()
 
         settings = self._protocol.get_settings()
         ver_string = settings.server_version
@@ -958,15 +959,30 @@ class Connection(metaclass=ConnectionMeta):
         """
         return not self._protocol.is_connected() or self._aborted
 
-    async def close(self):
-        """Close the connection gracefully."""
+    async def close(self, *, timeout=None):
+        """Close the connection gracefully.
+
+        :param float timeout:
+            Optional timeout value in seconds.
+
+        .. versionchanged:: 0.14.0
+           Added the *timeout* parameter.
+        """
         if self.is_closed():
             return
         self._mark_stmts_as_closed()
         self._listeners.clear()
         self._log_listeners.clear()
         self._aborted = True
-        await self._protocol.close()
+        try:
+            await self._protocol.close(timeout)
+        except Exception:
+            # If we fail to close gracefully, abort the connection.
+            self._aborted = True
+            self._protocol.abort()
+            raise
+        finally:
+            self._clean_tasks()
 
     def terminate(self):
         """Terminate the connection without waiting for pending data."""
@@ -975,14 +991,23 @@ class Connection(metaclass=ConnectionMeta):
         self._log_listeners.clear()
         self._aborted = True
         self._protocol.abort()
+        self._clean_tasks()
 
-    async def reset(self):
+    async def reset(self, *, timeout=None):
         self._check_open()
         self._listeners.clear()
         self._log_listeners.clear()
         reset_query = self._get_reset_query()
         if reset_query:
-            await self.execute(reset_query)
+            await self.execute(reset_query, timeout=timeout)
+
+    def _clean_tasks(self):
+        # Wrap-up any remaining tasks associated with this connection.
+        if self._cancellations:
+            for fut in self._cancellations:
+                if not fut.done():
+                    fut.cancel()
+            self._cancellations.clear()
 
     def _check_open(self):
         if self.is_closed():
@@ -1027,36 +1052,47 @@ class Connection(metaclass=ConnectionMeta):
             # so we ignore the timeout.
             await self._protocol.close_statement(stmt, protocol.NO_TIMEOUT)
 
-    def _cancel_current_command(self, waiter):
-        async def cancel():
-            try:
-                # Open new connection to the server
-                r, w = await connect_utils._open_connection(
-                    loop=self._loop, addr=self._addr, params=self._params)
-            except Exception as ex:
-                waiter.set_exception(ex)
-                return
+    async def _cancel(self, waiter):
+        r = w = None
 
-            try:
-                # Pack CancelRequest message
-                msg = struct.pack('!llll', 16, 80877102,
-                                  self._protocol.backend_pid,
-                                  self._protocol.backend_secret)
+        try:
+            # Open new connection to the server
+            r, w = await connect_utils._open_connection(
+                loop=self._loop, addr=self._addr, params=self._params)
 
-                w.write(msg)
-                await r.read()  # Wait until EOF
-            except ConnectionResetError:
-                # On some systems Postgres will reset the connection
-                # after processing the cancellation command.
-                pass
-            except Exception as ex:
+            # Pack CancelRequest message
+            msg = struct.pack('!llll', 16, 80877102,
+                              self._protocol.backend_pid,
+                              self._protocol.backend_secret)
+
+            w.write(msg)
+            await r.read()  # Wait until EOF
+        except ConnectionResetError as ex:
+            # On some systems Postgres will reset the connection
+            # after processing the cancellation command.
+            if r is None and not waiter.done():
                 waiter.set_exception(ex)
-            finally:
-                if not waiter.done():  # Ensure set_exception wasn't called.
-                    waiter.set_result(None)
+        except asyncio.CancelledError:
+            # There are two scenarios in which the cancellation
+            # itself will be cancelled: 1) the connection is being closed,
+            # 2) the event loop is being shut down.
+            # In either case we do not care about the propagation of
+            # the CancelledError, and don't want the loop to warn about
+            # an unretrieved exception.
+            pass
+        except Exception as ex:
+            if not waiter.done():
+                waiter.set_exception(ex)
+        finally:
+            self._cancellations.discard(
+                asyncio.Task.current_task(self._loop))
+            if not waiter.done():
+                waiter.set_result(None)
+            if w is not None:
                 w.close()
 
-        self._loop.create_task(cancel())
+    def _cancel_current_command(self, waiter):
+        self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
 
     def _process_log_message(self, fields, last_query):
         if not self._log_listeners:

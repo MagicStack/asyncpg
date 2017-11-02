@@ -78,8 +78,7 @@ class TestExecuteScript(tb.ConnectedTestCase):
         await self.con.close()
         self.assertTrue(self.con.is_closed())
 
-        with self.assertRaisesRegex(asyncpg.ConnectionDoesNotExistError,
-                                    'closed in the middle'):
+        with self.assertRaises(asyncpg.QueryCanceledError):
             await fut
 
     async def test_execute_script_interrupted_terminate(self):

@@ -94,8 +94,7 @@ class TestPrepare(tb.ConnectedTestCase):
         await self.con.close()
         self.assertTrue(self.con.is_closed())
 
-        with self.assertRaisesRegex(asyncpg.ConnectionDoesNotExistError,
-                                    'closed in the middle'):
+        with self.assertRaises(asyncpg.QueryCanceledError):
             await fut
 
         # Test that it's OK to call close again
