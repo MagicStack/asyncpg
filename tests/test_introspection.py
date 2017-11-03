@@ -16,8 +16,7 @@ class TestIntrospection(tb.ConnectedTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.adminconn = cls.loop.run_until_complete(
-            cls.cluster.connect(database='postgres', loop=cls.loop))
+        cls.adminconn = cls.loop.run_until_complete(cls.connect())
         cls.loop.run_until_complete(
             cls.adminconn.execute('CREATE DATABASE asyncpg_intro_test'))
 

@@ -128,16 +128,30 @@ class TestCase(unittest.TestCase, metaclass=TestCaseMeta):
 _default_cluster = None
 
 
-def _start_cluster(ClusterCls, cluster_kwargs, server_settings):
+def _start_cluster(ClusterCls, cluster_kwargs, server_settings,
+                   initdb_options=None):
     cluster = ClusterCls(**cluster_kwargs)
-    cluster.init()
+    cluster.init(**(initdb_options or {}))
     cluster.trust_local_connections()
     cluster.start(port='dynamic', server_settings=server_settings)
     atexit.register(_shutdown_cluster, cluster)
     return cluster
 
 
-def _start_default_cluster(server_settings={}):
+def _get_initdb_options(initdb_options=None):
+    if not initdb_options:
+        initdb_options = {}
+    else:
+        initdb_options = dict(initdb_options)
+
+    # Make the default superuser name stable.
+    if 'username' not in initdb_options:
+        initdb_options['username'] = 'postgres'
+
+    return initdb_options
+
+
+def _start_default_cluster(server_settings={}, initdb_options=None):
     global _default_cluster
 
     if _default_cluster is None:
@@ -147,7 +161,9 @@ def _start_default_cluster(server_settings={}):
             _default_cluster = pg_cluster.RunningCluster()
         else:
             _default_cluster = _start_cluster(
-                pg_cluster.TempCluster, {}, server_settings)
+                pg_cluster.TempCluster, cluster_kwargs={},
+                server_settings=server_settings,
+                initdb_options=_get_initdb_options(initdb_options))
 
     return _default_cluster
 
@@ -193,15 +209,33 @@ class ClusterTestCase(TestCase):
         super().setUpClass()
         cls.setup_cluster()
 
-    def create_pool(self, pool_class=pg_pool.Pool, **kwargs):
-        conn_spec = self.cluster.get_connection_spec()
+    @classmethod
+    def get_connection_spec(cls, kwargs={}):
+        conn_spec = cls.cluster.get_connection_spec()
         conn_spec.update(kwargs)
+        if not os.environ.get('PGHOST'):
+            if 'database' not in conn_spec:
+                conn_spec['database'] = 'postgres'
+            if 'user' not in conn_spec:
+                conn_spec['user'] = 'postgres'
+        return conn_spec
+
+    def create_pool(self, pool_class=pg_pool.Pool, **kwargs):
+        conn_spec = self.get_connection_spec(kwargs)
         return create_pool(loop=self.loop, pool_class=pool_class, **conn_spec)
 
     @classmethod
+    def connect(cls, **kwargs):
+        conn_spec = cls.get_connection_spec(kwargs)
+        return pg_connection.connect(**conn_spec, loop=cls.loop)
+
+    @classmethod
     def start_cluster(cls, ClusterCls, *,
-                      cluster_kwargs={}, server_settings={}):
-        return _start_cluster(ClusterCls, cluster_kwargs, server_settings)
+                      cluster_kwargs={}, server_settings={},
+                      initdb_options={}):
+        return _start_cluster(
+            ClusterCls, cluster_kwargs,
+            server_settings, _get_initdb_options(initdb_options))
 
 
 def with_connection_options(**options):
@@ -223,13 +257,7 @@ class ConnectedTestCase(ClusterTestCase):
         # Extract options set up with `with_connection_options`.
         test_func = getattr(self, self._testMethodName).__func__
         opts = getattr(test_func, '__connect_options__', {})
-        if 'database' not in opts:
-            opts = dict(opts)
-            opts['database'] = 'postgres'
-
-        self.con = self.loop.run_until_complete(
-            self.cluster.connect(loop=self.loop, **opts))
-
+        self.con = self.loop.run_until_complete(self.connect(**opts))
         self.server_version = self.con.get_server_version()
 
     def tearDown(self):

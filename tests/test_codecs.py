@@ -1011,7 +1011,7 @@ class TestCodecs(tb.ConnectedTestCase):
         """Test overriding core codecs."""
         import json
 
-        conn = await self.cluster.connect(database='postgres', loop=self.loop)
+        conn = await self.connect()
         try:
             def _encoder(value):
                 return json.dumps(value).encode('utf-8')
@@ -1035,7 +1035,7 @@ class TestCodecs(tb.ConnectedTestCase):
         """Test overriding core codecs."""
         import json
 
-        conn = await self.cluster.connect(database='postgres', loop=self.loop)
+        conn = await self.connect()
         try:
             def _encoder(value):
                 return json.dumps(value)
@@ -1087,7 +1087,7 @@ class TestCodecs(tb.ConnectedTestCase):
             ('interval', (2, 3, 1), '2 mons 3 days 00:00:00.000001')
         ]
 
-        conn = await self.cluster.connect(database='postgres', loop=self.loop)
+        conn = await self.connect()
 
         def _encoder(value):
             return tuple(value)

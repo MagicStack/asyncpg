@@ -137,57 +137,50 @@ class TestAuthentication(tb.ConnectedTestCase):
         if _system == 'Windows':
             for tried in range(3):
                 try:
-                    return await self.cluster.connect(**kwargs)
+                    return await self.connect(**kwargs)
                 except asyncpg.ConnectionDoesNotExistError:
                     pass
 
-        return await self.cluster.connect(**kwargs)
+        return await self.connect(**kwargs)
 
     async def test_auth_bad_user(self):
         with self.assertRaises(
                 asyncpg.InvalidAuthorizationSpecificationError):
-            await self._try_connect(user='__nonexistent__',
-                                    database='postgres',
-                                    loop=self.loop)
+            await self._try_connect(user='__nonexistent__')
 
     async def test_auth_trust(self):
-        conn = await self.cluster.connect(
-            user='trust_user', database='postgres', loop=self.loop)
+        conn = await self.connect(user='trust_user')
         await conn.close()
 
     async def test_auth_reject(self):
         with self.assertRaisesRegex(
                 asyncpg.InvalidAuthorizationSpecificationError,
                 'pg_hba.conf rejects connection'):
-            await self._try_connect(
-                user='reject_user', database='postgres',
-                loop=self.loop)
+            await self._try_connect(user='reject_user')
 
     async def test_auth_password_cleartext(self):
-        conn = await self.cluster.connect(
-            user='password_user', database='postgres',
-            password='correctpassword', loop=self.loop)
+        conn = await self.connect(
+            user='password_user',
+            password='correctpassword')
         await conn.close()
 
         with self.assertRaisesRegex(
                 asyncpg.InvalidPasswordError,
                 'password authentication failed for user "password_user"'):
             await self._try_connect(
-                user='password_user', database='postgres',
-                password='wrongpassword', loop=self.loop)
+                user='password_user',
+                password='wrongpassword')
 
     async def test_auth_password_md5(self):
-        conn = await self.cluster.connect(
-            user='md5_user', database='postgres', password='correctpassword',
-            loop=self.loop)
+        conn = await self.connect(
+            user='md5_user', password='correctpassword')
         await conn.close()
 
         with self.assertRaisesRegex(
                 asyncpg.InvalidPasswordError,
                 'password authentication failed for user "md5_user"'):
             await self._try_connect(
-                user='md5_user', database='postgres', password='wrongpassword',
-                loop=self.loop)
+                user='md5_user', password='wrongpassword')
 
     async def test_auth_unsupported(self):
         pass
@@ -494,11 +487,9 @@ class TestConnection(tb.ConnectedTestCase):
         ssl_context.load_verify_locations(SSL_CA_CERT_FILE)
 
         with self.assertRaisesRegex(ConnectionError, 'rejected SSL'):
-            await self.cluster.connect(
+            await self.connect(
                 host='localhost',
                 user='ssl_user',
-                database='postgres',
-                loop=self.loop,
                 ssl=ssl_context)
 
     async def test_connection_ssl_unix(self):
@@ -507,15 +498,17 @@ class TestConnection(tb.ConnectedTestCase):
 
         with self.assertRaisesRegex(asyncpg.InterfaceError,
                                     'can only be enabled for TCP addresses'):
-            await self.cluster.connect(
+            await self.connect(
                 host='/tmp',
-                loop=self.loop,
                 ssl=ssl_context)
 
     async def test_connection_implicit_host(self):
-        conn_spec = self.cluster.get_connection_spec()
+        conn_spec = self.get_connection_spec()
         con = await asyncpg.connect(
-            port=conn_spec.get('port'), database='postgres', loop=self.loop)
+            port=conn_spec.get('port'),
+            database=conn_spec.get('database'),
+            user=conn_spec.get('user'),
+            loop=self.loop)
         await con.close()
 
 
@@ -576,11 +569,9 @@ class TestSSLConnection(tb.ConnectedTestCase):
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
         ssl_context.load_verify_locations(SSL_CA_CERT_FILE)
 
-        con = await self.cluster.connect(
+        con = await self.connect(
             host='localhost',
             user='ssl_user',
-            database='postgres',
-            loop=self.loop,
             ssl=ssl_context)
 
         try:
@@ -595,11 +586,9 @@ class TestSSLConnection(tb.ConnectedTestCase):
 
     async def test_ssl_connection_default_context(self):
         with self.assertRaisesRegex(ssl.SSLError, 'verify failed'):
-            await self.cluster.connect(
+            await self.connect(
                 host='localhost',
                 user='ssl_user',
-                database='postgres',
-                loop=self.loop,
                 ssl=True)
 
     async def test_ssl_connection_pool(self):

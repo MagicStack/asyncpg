@@ -114,9 +114,7 @@ class TestTimeout(tb.ConnectedTestCase):
             with self.subTest(command_timeout=command_timeout):
                 with self.assertRaisesRegex(ValueError,
                                             'invalid command_timeout'):
-                    await self.cluster.connect(
-                        database='postgres', loop=self.loop,
-                        command_timeout=command_timeout)
+                    await self.connect(command_timeout=command_timeout)
 
         # Note: negative timeouts are OK for method calls.
         for methname in {'fetch', 'fetchrow', 'fetchval', 'execute'}:
