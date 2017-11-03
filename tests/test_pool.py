@@ -656,7 +656,8 @@ class TestHotStandby(tb.ConnectedTestCase):
 
         try:
             con = cls.loop.run_until_complete(
-                cls.master_cluster.connect(database='postgres', loop=cls.loop))
+                cls.master_cluster.connect(
+                    database='postgres', user='postgres', loop=cls.loop))
 
             cls.loop.run_until_complete(
                 con.execute('''
@@ -696,8 +697,9 @@ class TestHotStandby(tb.ConnectedTestCase):
     async def test_standby_pool_01(self):
         for n in {1, 3, 5, 10, 20, 100}:
             with self.subTest(tasksnum=n):
-                pool = await self.create_pool(database='postgres',
-                                              min_size=5, max_size=10)
+                pool = await self.create_pool(
+                    database='postgres', user='postgres',
+                    min_size=5, max_size=10)
 
                 async def worker():
                     con = await pool.acquire()
@@ -710,7 +712,7 @@ class TestHotStandby(tb.ConnectedTestCase):
 
     async def test_standby_cursors(self):
         con = await self.standby_cluster.connect(
-            database='postgres', loop=self.loop)
+            database='postgres', user='postgres', loop=self.loop)
 
         try:
             async with con.transaction():
