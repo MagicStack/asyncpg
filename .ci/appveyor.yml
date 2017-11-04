@@ -26,7 +26,7 @@ branches:
 
 install:
     - "%PYTHON% -m pip install --upgrade pip wheel setuptools"
-    - "%PYTHON% -m pip install -r .ci/requirements-win.txt"
+    - "%PYTHON% -m pip install --upgrade -r .ci/requirements-win.txt"
 
 build_script:
     - "%PYTHON% setup.py build_ext --inplace"

@@ -10,4 +10,4 @@ fi
 
 pip install --upgrade pip wheel
 pip install --upgrade setuptools
-pip install -r .ci/requirements.txt
+pip install --upgrade -r .ci/requirements.txt
