@@ -1129,6 +1129,27 @@ class TestCodecs(tb.ConnectedTestCase):
         finally:
             await conn.close()
 
+    async def test_timetz_encoding(self):
+        try:
+            async with self.con.transaction():
+                await self.con.execute("SET TIME ZONE 'America/Toronto'")
+                # Check decoding:
+                row = await self.con.fetchrow(
+                    'SELECT extract(epoch from now()) AS epoch, '
+                    'now()::date as date, now()::timetz as time')
+                result = datetime.datetime.combine(row['date'], row['time'])
+                expected = datetime.datetime.fromtimestamp(row['epoch'],
+                                                           tz=result.tzinfo)
+                self.assertEqual(result, expected)
+
+                # Check encoding:
+                res = await self.con.fetchval(
+                    'SELECT now() = ($1::date + $2::timetz)',
+                    row['date'], row['time'])
+                self.assertTrue(res)
+        finally:
+            await self.con.execute('RESET ALL')
+
     async def test_composites_in_arrays(self):
         await self.con.execute('''
             CREATE TYPE t AS (a text, b int);

@@ -287,7 +287,10 @@ cdef timetz_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
     buf.write_int32(12)
     _encode_time(buf, seconds, microseconds)
-    buf.write_int32(offset_sec)
+    # In Python utcoffset() is the difference between the local time
+    # and the UTC, whereas in PostgreSQL it's the opposite,
+    # so we need to flip the sign.
+    buf.write_int32(-offset_sec)
 
 
 cdef timetz_encode_tuple(ConnectionSettings settings, WriteBuffer buf, obj):
@@ -311,7 +314,8 @@ cdef timetz_encode_tuple(ConnectionSettings settings, WriteBuffer buf, obj):
 cdef timetz_decode(ConnectionSettings settings, FastReadBuffer buf):
     time = time_decode(settings, buf)
     cdef int32_t offset = <int32_t>(hton.unpack_int32(buf.read(4)) / 60)
-    return time.replace(tzinfo=datetime.timezone(timedelta(minutes=offset)))
+    # See the comment in the `timetz_encode` method.
+    return time.replace(tzinfo=datetime.timezone(timedelta(minutes=-offset)))
 
 
 cdef timetz_decode_tuple(ConnectionSettings settings, FastReadBuffer buf):
