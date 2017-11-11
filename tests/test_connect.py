@@ -53,11 +53,10 @@ class TestSettings(tb.ConnectedTestCase):
             ("9.4beta1", (9, 4, 0, 'beta', 1),),
             ("10devel", (10, 0, 0, 'devel', 0),),
             ("10beta2", (10, 0, 0, 'beta', 2),),
-
-            # Despite the fact after version 10 Postgre's second number
-            # means "micro", it is parsed "as is" to be
-            # less confusing in comparisons.
-            ("10.1", (10, 1, 0, 'final', 0),),
+            # For PostgreSQL versions >=10 we always
+            # set version.minor to 0.
+            ("10.1", (10, 0, 1, 'final', 0),),
+            ("11.1.2", (11, 0, 1, 'final', 0),),
         ]
         for version, expected in versions:
             result = split_server_version_string(version)

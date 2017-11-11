@@ -34,6 +34,15 @@ def split_server_version_string(version_string):
         level = 'final'
         serial = 0
 
+    if int(parts[0]) >= 10:
+        # Since PostgreSQL 10 the versioning scheme has changed.
+        # 10.x really means 10.0.x.  While parsing 10.1
+        # as (10, 1) may seem less confusing, in practice most
+        # version checks are written as version[:2], and we
+        # want to keep that behaviour consistent, i.e not fail
+        # a major version check due to a bugfix release.
+        parts.insert(1, 0)
+
     versions = [int(p) for p in parts][:3]
     if len(versions) < 3:
         versions += [0] * (3 - len(versions))
