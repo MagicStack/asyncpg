@@ -101,7 +101,7 @@ class Range:
             other._empty
         )
 
-    def __hash__(self, other):
+    def __hash__(self):
         return hash((
             self._lower,
             self._upper,
