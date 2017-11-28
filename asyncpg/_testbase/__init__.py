@@ -13,7 +13,9 @@ import inspect
 import logging
 import os
 import re
+import textwrap
 import time
+import traceback
 import unittest
 
 
@@ -109,6 +111,21 @@ class TestCase(unittest.TestCase, metaclass=TestCaseMeta):
         cls.loop.close()
         asyncio.set_event_loop(None)
 
+    def setUp(self):
+        self.loop.set_exception_handler(self.loop_exception_handler)
+        self.__unhandled_exceptions = []
+
+    def tearDown(self):
+        if self.__unhandled_exceptions:
+            formatted = []
+
+            for i, context in enumerate(self.__unhandled_exceptions):
+                formatted.append(self._format_loop_exception(context, i + 1))
+
+            self.fail(
+                'unexpected exceptions in asynchronous code:\n' +
+                '\n'.join(formatted))
+
     @contextlib.contextmanager
     def assertRunUnder(self, delta):
         st = time.monotonic()
@@ -145,6 +162,44 @@ class TestCase(unittest.TestCase, metaclass=TestCaseMeta):
 
         finally:
             self.loop.set_exception_handler(old_handler)
+
+    def loop_exception_handler(self, loop, context):
+        self.__unhandled_exceptions.append(context)
+        loop.default_exception_handler(context)
+
+    def _format_loop_exception(self, context, n):
+        message = context.get('message', 'Unhandled exception in event loop')
+        exception = context.get('exception')
+        if exception is not None:
+            exc_info = (type(exception), exception, exception.__traceback__)
+        else:
+            exc_info = None
+
+        lines = []
+        for key in sorted(context):
+            if key in {'message', 'exception'}:
+                continue
+            value = context[key]
+            if key == 'source_traceback':
+                tb = ''.join(traceback.format_list(value))
+                value = 'Object created at (most recent call last):\n'
+                value += tb.rstrip()
+            else:
+                try:
+                    value = repr(value)
+                except Exception as ex:
+                    value = ('Exception in __repr__ {!r}; '
+                             'value type: {!r}'.format(ex, type(value)))
+            lines.append('[{}]: {}\n\n'.format(key, value))
+
+        if exc_info is not None:
+            lines.append('[exception]:\n')
+            formatted_exc = textwrap.indent(
+                ''.join(traceback.format_exception(*exc_info)), '  ')
+            lines.append(formatted_exc)
+
+        details = textwrap.indent(''.join(lines), '    ')
+        return '{:02d}. {}:\n{}\n'.format(n, message, details)
 
 
 _default_cluster = None

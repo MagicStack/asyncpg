@@ -187,13 +187,14 @@ class Connection:
                 loop=self.loop, return_when=asyncio.FIRST_COMPLETED)
 
         finally:
-            if hasattr(self.loop, 'remove_reader'):
-                # Asyncio *really* doesn't like when the sockets are
-                # closed under it.
-                self.loop.remove_reader(self.client_sock.fileno())
-                self.loop.remove_writer(self.client_sock.fileno())
-                self.loop.remove_reader(self.backend_sock.fileno())
-                self.loop.remove_writer(self.backend_sock.fileno())
+            # Asyncio fails to properly remove the readers and writers
+            # when the task doing recv() or send() is cancelled, so
+            # we must remove the readers and writers manually before
+            # closing the sockets.
+            self.loop.remove_reader(self.client_sock.fileno())
+            self.loop.remove_writer(self.client_sock.fileno())
+            self.loop.remove_reader(self.backend_sock.fileno())
+            self.loop.remove_writer(self.backend_sock.fileno())
 
             self.client_sock.close()
             self.backend_sock.close()
