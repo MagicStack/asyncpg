@@ -817,6 +817,16 @@ class TestCodecs(tb.ConnectedTestCase):
                 ValueError, 'expected 0, 1 or 2 elements'):
             await self.con.fetch("SELECT $1::int4range", (0, 2, 3))
 
+        cases = [(asyncpg.Range(0, 1), asyncpg.Range(0, 1), 1),
+                 (asyncpg.Range(0, 1), asyncpg.Range(0, 2), 2),
+                 (asyncpg.Range(empty=True), asyncpg.Range(0, 2), 2),
+                 (asyncpg.Range(empty=True), asyncpg.Range(empty=True), 1),
+                 (asyncpg.Range(0, 1, upper_inc=True), asyncpg.Range(0, 1), 2),
+                 ]
+        for obj_a, obj_b, count in cases:
+            dic = {obj_a: 1, obj_b: 2}
+            self.assertEqual(len(dic), count)
+
     async def test_extra_codec_alias(self):
         """Test encoding/decoding of a builtin non-pg_catalog codec."""
         await self.con.execute('''
