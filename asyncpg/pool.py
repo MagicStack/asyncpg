@@ -72,13 +72,14 @@ class PoolConnectionProxy(connection._ConnectionProxy,
         # Proxy all unresolved attributes to the wrapped Connection object.
         return getattr(self._con, attr)
 
-    def _detach(self):
+    def _detach(self) -> connection.Connection:
         if self._con is None:
             raise exceptions.InterfaceError(
                 'cannot detach PoolConnectionProxy: already detached')
 
         con, self._con = self._con, None
         con._set_proxy(None)
+        return con
 
     def __repr__(self):
         if self._con is None:
@@ -178,8 +179,6 @@ class PoolConnectionHolder:
         assert self._in_use
         self._in_use = False
         self._timeout = None
-
-        self._con._on_release()
 
         if self._con.is_closed():
             self._con = None
@@ -508,7 +507,8 @@ class Pool:
             # Already released, do nothing.
             return
 
-        connection._detach()
+        con = connection._detach()
+        con._on_release()
 
         if timeout is None:
             timeout = connection._holder._timeout

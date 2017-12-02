@@ -7,6 +7,7 @@
 
 import enum
 
+from . import connresource
 from . import exceptions as apg_errors
 
 
@@ -21,7 +22,7 @@ class TransactionState(enum.Enum):
 ISOLATION_LEVELS = {'read_committed', 'serializable', 'repeatable_read'}
 
 
-class Transaction:
+class Transaction(connresource.ConnectionResource):
     """Represents a transaction or savepoint block.
 
     Transactions are created by calling the
@@ -33,6 +34,8 @@ class Transaction:
                  '_state', '_nested', '_id', '_managed')
 
     def __init__(self, connection, isolation, readonly, deferrable):
+        super().__init__(connection)
+
         if isolation not in ISOLATION_LEVELS:
             raise ValueError(
                 'isolation is expected to be either of {}, '
@@ -49,7 +52,6 @@ class Transaction:
                     '"deferrable" is only supported for '
                     'serializable readonly transactions')
 
-        self._connection = connection
         self._isolation = isolation
         self._readonly = readonly
         self._deferrable = deferrable
@@ -67,6 +69,22 @@ class Transaction:
 
     async def __aexit__(self, extype, ex, tb):
         try:
+            self._check_conn_validity('__aexit__')
+        except apg_errors.InterfaceError:
+            if extype is GeneratorExit:
+                # When a PoolAcquireContext is being exited, and there
+                # is an open transaction in an async generator that has
+                # not been iterated fully, there is a possibility that
+                # Pool.release() would race with this __aexit__(), since
+                # both would be in concurrent tasks.  In such case we
+                # yield to Pool.release() to do the ROLLBACK for us.
+                # See https://github.com/MagicStack/asyncpg/issues/232
+                # for an example.
+                return
+            else:
+                raise
+
+        try:
             if extype is not None:
                 await self.__rollback()
             else:
@@ -74,6 +92,7 @@ class Transaction:
         finally:
             self._managed = False
 
+    @connresource.guarded
     async def start(self):
         """Enter the transaction or savepoint block."""
         self.__check_state_base('start')
@@ -183,6 +202,7 @@ class Transaction:
         else:
             self._state = TransactionState.ROLLEDBACK
 
+    @connresource.guarded
     async def commit(self):
         """Exit the transaction or savepoint block and commit changes."""
         if self._managed:
@@ -190,6 +210,7 @@ class Transaction:
                 'cannot manually commit from within an `async with` block')
         await self.__commit()
 
+    @connresource.guarded
     async def rollback(self):
         """Exit the transaction or savepoint block and rollback changes."""
         if self._managed:

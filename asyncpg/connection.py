@@ -998,6 +998,19 @@ class Connection(metaclass=ConnectionMeta):
         self._listeners.clear()
         self._log_listeners.clear()
         reset_query = self._get_reset_query()
+
+        if self._protocol.is_in_transaction() or self._top_xact is not None:
+            if self._top_xact is None or not self._top_xact._managed:
+                # Managed transactions are guaranteed to __aexit__
+                # correctly.
+                self._loop.call_exception_handler({
+                    'message': 'Resetting connection with an '
+                               'active transaction {!r}'.format(self)
+                })
+
+            self._top_xact = None
+            reset_query = 'ROLLBACK;\n' + reset_query
+
         if reset_query:
             await self.execute(reset_query, timeout=timeout)
 
@@ -1152,13 +1165,6 @@ class Connection(metaclass=ConnectionMeta):
         caps = self._server_caps
 
         _reset_query = []
-        if self._protocol.is_in_transaction() or self._top_xact is not None:
-            self._loop.call_exception_handler({
-                'message': 'Resetting connection with an '
-                           'active transaction {!r}'.format(self)
-            })
-            self._top_xact = None
-            _reset_query.append('ROLLBACK;')
         if caps.advisory_locks:
             _reset_query.append('SELECT pg_advisory_unlock_all();')
         if caps.sql_close_all:
