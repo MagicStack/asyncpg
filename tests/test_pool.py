@@ -11,6 +11,8 @@ import inspect
 import os
 import platform
 import random
+import sys
+import textwrap
 import time
 import unittest
 
@@ -195,6 +197,7 @@ class TestPool(tb.ConnectedTestCase):
             self.assertIn(repr(con._con), repr(con))  # Test __repr__.
 
             ps = await con.prepare('SELECT 1')
+            txn = con.transaction()
             async with con.transaction():
                 cur = await con.cursor('SELECT 1')
                 ps_cur = await ps.cursor()
@@ -232,6 +235,14 @@ class TestPool(tb.ConnectedTestCase):
                     r'back to the pool'.format(meth=meth)):
 
                 c.forward(1)
+
+        for meth in ('start', 'commit', 'rollback'):
+            with self.assertRaisesRegex(
+                    asyncpg.InterfaceError,
+                    r'cannot call Transaction\.{meth}.*released '
+                    r'back to the pool'.format(meth=meth)):
+
+                getattr(txn, meth)()
 
         await pool.close()
 
@@ -660,6 +671,75 @@ class TestPool(tb.ConnectedTestCase):
 
         await con.close()
         await pool.close()
+
+    @unittest.skipIf(sys.version_info[:2] < (3, 6), 'no asyncgen support')
+    async def test_pool_handles_transaction_exit_in_asyncgen_1(self):
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
+
+        locals_ = {}
+        exec(textwrap.dedent('''\
+            async def iterate(con):
+                async with con.transaction():
+                    for record in await con.fetch("SELECT 1"):
+                        yield record
+        '''), globals(), locals_)
+        iterate = locals_['iterate']
+
+        class MyException(Exception):
+            pass
+
+        with self.assertRaises(MyException):
+            async with pool.acquire() as con:
+                async for _ in iterate(con):  # noqa
+                    raise MyException()
+
+    @unittest.skipIf(sys.version_info[:2] < (3, 6), 'no asyncgen support')
+    async def test_pool_handles_transaction_exit_in_asyncgen_2(self):
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
+
+        locals_ = {}
+        exec(textwrap.dedent('''\
+            async def iterate(con):
+                async with con.transaction():
+                    for record in await con.fetch("SELECT 1"):
+                        yield record
+        '''), globals(), locals_)
+        iterate = locals_['iterate']
+
+        class MyException(Exception):
+            pass
+
+        with self.assertRaises(MyException):
+            async with pool.acquire() as con:
+                iterator = iterate(con)
+                async for _ in iterator:  # noqa
+                    raise MyException()
+
+            del iterator
+
+    @unittest.skipIf(sys.version_info[:2] < (3, 6), 'no asyncgen support')
+    async def test_pool_handles_asyncgen_finalization(self):
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
+
+        locals_ = {}
+        exec(textwrap.dedent('''\
+            async def iterate(con):
+                for record in await con.fetch("SELECT 1"):
+                    yield record
+        '''), globals(), locals_)
+        iterate = locals_['iterate']
+
+        class MyException(Exception):
+            pass
+
+        with self.assertRaises(MyException):
+            async with pool.acquire() as con:
+                async with con.transaction():
+                    async for _ in iterate(con):  # noqa
+                        raise MyException()
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')

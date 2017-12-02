@@ -36,3 +36,9 @@ class ConnectionResource:
                 'cannot call {}.{}(): '
                 'the underlying connection has been released back '
                 'to the pool'.format(self.__class__.__name__, meth_name))
+
+        if self._connection.is_closed():
+            raise exceptions.InterfaceError(
+                'cannot call {}.{}(): '
+                'the underlying connection is closed'.format(
+                    self.__class__.__name__, meth_name))
