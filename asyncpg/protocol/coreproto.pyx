@@ -494,8 +494,7 @@ cdef class CoreProtocol:
             if cbuf != NULL:
                 row = decoder(self, cbuf, cbuf_len)
             else:
-                mem = buf.consume_message()
-                row = decoder(self, mem.buf, mem.length)
+                1/0
 
             cpython.PyList_Append(rows, row)
 
