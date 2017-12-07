@@ -32,7 +32,8 @@ from asyncpg.protocol.python cimport (
                      PyByteArray_FromStringAndSize,
                      PyUnicode_FromKindAndData, PyUnicode_4BYTE_KIND)
 
-from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
+from cpython cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE, \
+                     Py_buffer, PyBuffer_FillInfo, PyBytes_AsString
 
 from asyncpg.exceptions import _base as apg_exc_base
 from asyncpg import compat

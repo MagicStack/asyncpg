@@ -225,6 +225,230 @@ cdef class WriteBuffer:
         return buf
 
 
+DEF BUF_LEN = 1024 * 1024 * 50
+
+
+cdef class ReadBuffer2:
+
+    def __cinit__(self):
+        self.len = 0
+        self.pos = 0
+
+        self._current_message_type = 0
+        self._current_message_len = 0
+        self._current_message_len_unread = 0
+        self._current_message_ready = 0
+
+    def __getbuffer__(self, Py_buffer *buffer, int flags):
+        buffer.buf = self.buf + self.len
+        buffer.format = 'B'
+        buffer.itemsize = 1
+        buffer.len = BUF_LEN - self.len
+        buffer.ndim = 1
+        buffer.obj = self
+        buffer.readonly = 0
+        buffer.shape = NULL
+        buffer.strides = NULL
+        buffer.suboffsets = NULL
+        buffer.internal = NULL
+
+    def __releasebuffer__(self, Py_buffer *buffer):
+        pass
+
+    cdef buffer_updated(self, ssize_t nbytes):
+        self.len += nbytes
+
+    cdef inline ssize_t _length(self):
+        return self.len - self.pos
+
+    cdef inline const char* _try_read_bytes(self, ssize_t nbytes):
+        cdef:
+            ssize_t old_pos = self.pos
+
+        if self._length() >= nbytes:
+            self.pos += nbytes
+            if self._current_message_ready:
+                self._current_message_len_unread -= nbytes
+            return self.buf + old_pos
+
+        return NULL
+
+    cdef inline read_byte(self):
+        cdef const char *first_byte
+
+        first_byte = self._try_read_bytes(1)
+        if first_byte is NULL:
+            raise BufferError('not enough data to read one byte')
+
+        return first_byte[0]
+
+    cdef inline read_int32(self):
+        cdef:
+            Memory mem
+            const char *cbuf
+
+        cbuf = self._try_read_bytes(4)
+        if cbuf != NULL:
+            return hton.unpack_int32(cbuf)
+
+        raise BufferError('xxx read_int32')
+
+    cdef inline read_int16(self):
+        cdef:
+            Memory mem
+            const char *cbuf
+
+        cbuf = self._try_read_bytes(2)
+        if cbuf != NULL:
+            return hton.unpack_int16(cbuf)
+
+        raise BufferError('xxx read_int16')
+
+    cdef inline read_cstr(self):
+        if not self._current_message_ready:
+            raise BufferError(
+                'read_cstr only works when the message guaranteed '
+                'to be in the buffer')
+
+        cdef:
+            ssize_t pos
+            ssize_t nread
+            bytes result
+            const char *buf
+            const char *buf_start
+
+        buf_start = self.buf
+        buf = buf_start + self.pos
+        while buf - buf_start < self.len:
+            if buf[0] == 0:
+                pos = buf - buf_start
+                nread = pos - self.pos
+                buf = self._try_read_bytes(nread + 1)
+                if buf != NULL:
+                    return cpython.PyBytes_FromStringAndSize(buf, nread)
+                else:
+                    break
+            else:
+                buf += 1
+
+        raise BufferError('xxx read_cstr')
+
+    cdef int32_t has_message(self) except -1:
+        cdef:
+            const char *cbuf
+
+        if self._current_message_ready:
+            return 1
+
+        if self._current_message_type == 0:
+            if self._length() < 1:
+                return 0
+
+            cbuf = self._try_read_bytes(1)
+            if cbuf == NULL:
+                raise BufferError(
+                    'failed to read one byte on a non-empty buffer')
+            self._current_message_type = cbuf[0]
+
+        if self._current_message_len == 0:
+            if self._length() < 4:
+                return 0
+
+            cbuf = self._try_read_bytes(4)
+            if cbuf == NULL:
+                raise BufferError(
+                    'failed to read four bytes on a non-empty buffer')
+            self._current_message_len = hton.unpack_int32(cbuf)
+            self._current_message_len_unread = self._current_message_len - 4
+
+        if self._length() < self._current_message_len_unread:
+            return 0
+
+        self._current_message_ready = 1
+        return 1
+
+    cdef inline char get_message_type(self):
+        return self._current_message_type
+
+    cdef inline int32_t get_message_length(self):
+        return self._current_message_len
+
+    cdef inline int32_t has_message_type(self, char mtype) except -1:
+        return self.has_message() and self.get_message_type() == mtype
+
+    cdef inline const char* try_consume_message(self, ssize_t* len):
+        cdef:
+            ssize_t buf_len
+            const char *buf
+
+        if not self._current_message_ready:
+            return NULL
+
+        buf_len = self._current_message_len_unread
+        buf = self._try_read_bytes(buf_len)
+        if buf != NULL:
+            len[0] = buf_len
+            self._discard_message()
+        return buf
+
+    cdef discard_message(self):
+        cdef:
+            ssize_t tmp
+
+        if self._current_message_type == 0:
+            # Already discarded
+            return
+
+        if not self._current_message_ready:
+            raise BufferError('no message to discard')
+
+        if self._current_message_len_unread:
+            if ASYNCPG_DEBUG:
+                mtype = chr(self._current_message_type)
+
+            discarded = self.consume_message()
+
+            if ASYNCPG_DEBUG:
+                print('!!! discarding message {!r} unread data: {!r}'.format(
+                    mtype,
+                    (<Memory>discarded).as_bytes()))
+
+        self._discard_message()
+        if self.pos == self.len:
+            self.pos = 0
+            self.len = 0
+
+    cdef read(self, ssize_t nbytes):
+        cdef:
+            bytearray result
+            ssize_t nread
+            const char *cbuf
+            char *buf
+
+        cbuf = self._try_read_bytes(nbytes)
+        if cbuf != NULL:
+            return Memory.new(cbuf, None, nbytes)
+
+        raise BufferError(
+            'not enough data to read {} bytes'.format(nbytes))
+
+    cdef Memory consume_message(self):
+        if not self._current_message_ready:
+            raise BufferError('no message to consume')
+        if self._current_message_len_unread > 0:
+            mem = self.read(self._current_message_len_unread)
+        else:
+            mem = None
+        self._discard_message()
+        return mem
+
+    cdef inline _discard_message(self):
+        self._current_message_type = 0
+        self._current_message_len = 0
+        self._current_message_ready = 0
+        self._current_message_len_unread = 0
+
+
 @cython.no_gc_clear
 @cython.final
 @cython.freelist(_BUFFER_FREELIST_SIZE)

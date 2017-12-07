@@ -71,7 +71,7 @@ ctypedef object (*decode_row_method)(object, const char*, ssize_t)
 
 cdef class CoreProtocol:
     cdef:
-        ReadBuffer buffer
+        ReadBuffer2 buffer
         bint _skip_discard
         bint _discard_data
 

@@ -62,6 +62,43 @@ cdef class WriteBuffer:
     cdef WriteBuffer new()
 
 
+DEF BUF_LEN = 1024 * 1024 * 50
+
+
+cdef class ReadBuffer2:
+    cdef:
+        char buf[BUF_LEN]
+        ssize_t pos
+        ssize_t len
+
+        char _current_message_type
+        int _current_message_len
+        ssize_t _current_message_len_unread
+        bint _current_message_ready
+
+    cdef buffer_updated(self, ssize_t nbytes)
+
+    cdef inline ssize_t _length(self)
+    cdef inline const char* _try_read_bytes(self, ssize_t nbytes)
+
+    cdef int32_t has_message(self) except -1
+    cdef inline char get_message_type(self)
+    cdef inline int32_t get_message_length(self)
+    cdef inline int32_t has_message_type(self, char mtype) except -1
+
+    cdef inline const char* try_consume_message(self, ssize_t* len)
+    cdef discard_message(self)
+    cdef inline _discard_message(self)
+
+    cdef Memory consume_message(self)
+    cdef read(self, ssize_t nbytes)
+    cdef inline read_cstr(self)
+
+    cdef inline read_int16(self)
+    cdef inline read_int32(self)
+    cdef inline read_byte(self)
+
+
 cdef class ReadBuffer:
     cdef:
         # A deque of buffers (bytes objects)

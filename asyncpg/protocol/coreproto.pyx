@@ -12,7 +12,7 @@ cdef class CoreProtocol:
 
     def __init__(self, con_params):
         # type of `con_params` is `_ConnectionParameters`
-        self.buffer = ReadBuffer()
+        self.buffer = ReadBuffer2()
         self.user = con_params.user
         self.password = con_params.password
         self.auth_msg = None
@@ -461,7 +461,7 @@ cdef class CoreProtocol:
 
     cdef _parse_data_msgs(self):
         cdef:
-            ReadBuffer buf = self.buffer
+            ReadBuffer2 buf = self.buffer
             list rows
             decode_row_method decoder = <decode_row_method>self._decode_row
 
@@ -502,6 +502,10 @@ cdef class CoreProtocol:
             if not buf.has_message() or buf.get_message_type() != b'D':
                 self._skip_discard = True
                 return
+
+            if buf.pos == buf.len:
+                buf.pos = 0
+                buf.len = 0
 
     cdef _parse_msg_backend_key_data(self):
         self.backend_pid = self.buffer.read_int32()
@@ -926,9 +930,16 @@ cdef class CoreProtocol:
 
     # asyncio callbacks:
 
-    def data_received(self, data):
-        self.buffer.feed_data(data)
+    def get_buffer(self):
+        return self.buffer
+
+    def buffer_updated(self, nbytes):
+        self.buffer.buffer_updated(nbytes)
         self._read_server_messages()
+
+    # def data_received(self, data):
+    #     self.buffer.feed_data(data)
+    #     self._read_server_messages()
 
     def connection_made(self, transport):
         self.transport = transport
