@@ -1236,6 +1236,51 @@ class Connection(metaclass=ConnectionMeta):
         else:
             self._drop_local_statement_cache()
 
+    async def reload_schema_state(self):
+        """Indicate that the database schema information must be reloaded.
+
+        For performance reasons, asyncpg caches certain aspects of the
+        database schema, such as the layout of composite types.  Consequently,
+        when the database schema changes, and asyncpg is not able to
+        gracefully recover from an error caused by outdated schema
+        assumptions, an :exc:`~asyncpg.exceptions.OutdatedSchemaCacheError`
+        is raised.  To prevent the exception, this method may be used to inform
+        asyncpg that the database schema has changed.
+
+        Example:
+
+        .. code-block:: pycon
+
+            >>> import asyncpg
+            >>> import asyncio
+            >>> async def change_type(con):
+            ...     result = await con.fetch('SELECT id, info FROM tbl')
+            ...     # Change composite's attribute type "int"=>"text"
+            ...     await con.execute('ALTER TYPE custom DROP ATTRIBUTE y')
+            ...     await con.execute('ALTER TYPE custom ADD ATTRIBUTE y text')
+            ...     await con.reload_schema_state()
+            ...     for id_, info in result:
+            ...         new = (info['x'], str(info['y']))
+            ...         await con.execute(
+            ...             'UPDATE tbl SET info=$2 WHERE id=$1', id_, new)
+            ...
+            >>> async def run():
+            ...     # Initial schema:
+            ...     # CREATE TYPE custom AS (x int, y int);
+            ...     # CREATE TABLE tbl(id int, info custom);
+            ...     con = await asyncpg.connect(user='postgres')
+            ...     async with con.transaction():
+            ...         # Prevent concurrent changes in the table
+            ...         await con.execute('LOCK TABLE tbl')
+            ...         await change_type(con)
+            ...
+            >>> asyncio.get_event_loop().run_until_complete(run())
+        """
+        # It is enough to clear the type cache only once, not in each
+        # connection in the pool.
+        self._protocol.get_settings().clear_type_cache()
+        self._drop_global_statement_cache()
+
     async def _execute(self, query, args, limit, timeout, return_status=False):
         with self._stmt_exclusive_section:
             result, _ = await self.__execute(
@@ -1277,6 +1322,15 @@ class Connection(metaclass=ConnectionMeta):
                     after = time.monotonic()
                     timeout -= after - before
 
+        except exceptions.OutdatedSchemaCacheError:
+            # This exception is raised when we detect a difference between
+            # cached type's info and incoming tuple from the DB (when a type is
+            # changed by the ALTER TYPE).
+            # It is not possible to recover (the statement is already done at
+            # the server's side), the only way is to drop our caches and
+            # reraise the exception to the caller.
+            await self.reload_schema_state()
+            raise
         except exceptions.InvalidCachedStatementError:
             # PostgreSQL will raise an exception when it detects
             # that the result type of the query has changed from
@@ -1516,7 +1570,8 @@ class _StatementCache:
 
         if entry._statement.closed:
             # Happens in unittests when we call `stmt._state.mark_closed()`
-            # manually.
+            # manually or when a prepared statement closes itself on type
+            # cache error.
             self._entries.pop(query)
             self._clear_entry_callback(entry)
             return

@@ -22,6 +22,7 @@ cdef class ConnectionSettings:
         decoder, format)
     cpdef inline remove_python_codec(
         self, typeoid, typename, typeschema)
+    cpdef inline clear_type_cache(self)
     cpdef inline set_builtin_type_codec(
         self, typeoid, typename, typeschema, typekind, alias_to)
     cpdef inline Codec get_data_codec(self, uint32_t oid, ServerDataFormat format=*)

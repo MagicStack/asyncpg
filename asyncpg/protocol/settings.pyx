@@ -60,6 +60,9 @@ cdef class ConnectionSettings:
     cpdef inline remove_python_codec(self, typeoid, typename, typeschema):
         self._data_codecs.remove_python_codec(typeoid, typename, typeschema)
 
+    cpdef inline clear_type_cache(self):
+        self._data_codecs.clear_type_cache()
+
     cpdef inline set_builtin_type_codec(self, typeoid, typename, typeschema,
                                         typekind, alias_to):
         self._data_codecs.set_builtin_type_codec(typeoid, typename, typeschema,
