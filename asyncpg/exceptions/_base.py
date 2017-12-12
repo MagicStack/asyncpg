@@ -12,7 +12,7 @@ import textwrap
 
 __all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError',
            'InterfaceError', 'InterfaceWarning', 'PostgresLogMessage',
-           'InternalClientError')
+           'InternalClientError', 'OutdatedSchemaCacheError')
 
 
 def _is_asyncpg_class(cls):
@@ -219,6 +219,16 @@ class InterfaceWarning(InterfaceMessage, UserWarning):
 
 class InternalClientError(Exception):
     pass
+
+
+class OutdatedSchemaCacheError(InternalClientError):
+    """A value decoding error caused by a schema change before row fetching."""
+
+    def __init__(self, msg, *, schema=None, data_type=None, position=None):
+        super().__init__(msg)
+        self.schema_name = schema
+        self.data_type_name = data_type
+        self.position = position
 
 
 class PostgresLogMessage(PostgresMessage):

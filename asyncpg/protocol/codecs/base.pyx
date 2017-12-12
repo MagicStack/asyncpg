@@ -5,6 +5,9 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+from asyncpg.exceptions import OutdatedSchemaCacheError
+
+
 cdef void* binary_codec_map[(MAXSUPPORTEDOID + 1) * 2]
 cdef void* text_codec_map[(MAXSUPPORTEDOID + 1) * 2]
 cdef dict TYPE_CODECS_CACHE = {}
@@ -190,20 +193,34 @@ cdef class Codec:
             FastReadBuffer elem_buf = FastReadBuffer.new()
 
         elem_count = <ssize_t><uint32_t>hton.unpack_int32(buf.read(4))
+        if elem_count != len(self.element_type_oids):
+            raise OutdatedSchemaCacheError(
+                'unexpected number of attributes of composite type: '
+                '{}, expected {}'
+                    .format(
+                        elem_count,
+                        len(self.element_type_oids),
+                    ),
+                schema=self.schema,
+                data_type=self.name,
+            )
         result = record.ApgRecord_New(self.element_names, elem_count)
         for i in range(elem_count):
             elem_typ = self.element_type_oids[i]
             received_elem_typ = <uint32_t>hton.unpack_int32(buf.read(4))
 
             if received_elem_typ != elem_typ:
-                raise RuntimeError(
+                raise OutdatedSchemaCacheError(
                     'unexpected data type of composite type attribute {}: '
                     '{!r}, expected {!r}'
                         .format(
                             i,
                             TYPEMAP.get(received_elem_typ, received_elem_typ),
                             TYPEMAP.get(elem_typ, elem_typ)
-                        )
+                        ),
+                    schema=self.schema,
+                    data_type=self.name,
+                    position=i,
                 )
 
             elem_len = hton.unpack_int32(buf.read(4))

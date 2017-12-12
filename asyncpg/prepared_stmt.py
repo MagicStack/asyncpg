@@ -198,8 +198,17 @@ class PreparedStatement(connresource.ConnectionResource):
 
     async def __bind_execute(self, args, limit, timeout):
         protocol = self._connection._protocol
-        data, status, _ = await protocol.bind_execute(
-            self._state, args, '', limit, True, timeout)
+        try:
+            data, status, _ = await protocol.bind_execute(
+                self._state, args, '', limit, True, timeout)
+        except exceptions.OutdatedSchemaCacheError:
+            await self._connection.reload_schema_state()
+            # We can not find all manually created prepared statements, so just
+            # drop known cached ones in the `self._connection`.
+            # Other manually created prepared statements will fail and
+            # invalidate themselves (unfortunately, clearing caches again).
+            self._state.mark_closed()
+            raise
         self._last_status = status
         return data
 
