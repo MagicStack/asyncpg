@@ -423,6 +423,7 @@ class Connection(metaclass=ConnectionMeta):
             ...         'mytable', columns=('foo', 'bar'),
             ...         output='file.csv', format='csv')
             ...     print(result)
+            ...
             >>> asyncio.get_event_loop().run_until_complete(run())
             'COPY 100'
 
@@ -491,6 +492,7 @@ class Connection(metaclass=ConnectionMeta):
             ...         'SELECT foo, bar FROM mytable WHERE foo > $1', 10,
             ...         output='file.csv', format='csv')
             ...     print(result)
+            ...
             >>> asyncio.get_event_loop().run_until_complete(run())
             'COPY 10'
 
@@ -556,7 +558,8 @@ class Connection(metaclass=ConnectionMeta):
             ...     con = await asyncpg.connect(user='postgres')
             ...     result = await con.copy_to_table(
             ...         'mytable', source='datafile.tbl')
-            ....    print(result)
+            ...     print(result)
+            ...
             >>> asyncio.get_event_loop().run_until_complete(run())
             'COPY 140000'
 
@@ -621,7 +624,8 @@ class Connection(metaclass=ConnectionMeta):
             ...         'mytable', records=[
             ...             (1, 'foo', 'bar'),
             ...             (2, 'ham', 'spam')])
-            ....    print(result)
+            ...     print(result)
+            ...
             >>> asyncio.get_event_loop().run_until_complete(run())
             'COPY 2'
 
@@ -861,6 +865,7 @@ class Connection(metaclass=ConnectionMeta):
             ...         "SELECT '2 years 3 mons 1 day'::interval")
             ...     print(result)
             ...     print(datetime.datetime(2002, 1, 1) + result)
+            ...
             >>> asyncio.get_event_loop().run_until_complete(run())
             relativedelta(years=+2, months=+3, days=+1)
             2004-04-02 00:00:00
@@ -1399,6 +1404,7 @@ async def connect(dsn=None, *,
         ...     con = await asyncpg.connect(user='postgres')
         ...     types = await con.fetch('SELECT * FROM pg_type')
         ...     print(types)
+        ...
         >>> asyncio.get_event_loop().run_until_complete(run())
         [<Record typname='bool' typnamespace=11 ...
 
