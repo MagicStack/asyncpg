@@ -1275,6 +1275,8 @@ class Connection(metaclass=ConnectionMeta):
             ...         await change_type(con)
             ...
             >>> asyncio.get_event_loop().run_until_complete(run())
+
+        .. versionadded:: 0.14.0
         """
         # It is enough to clear the type cache only once, not in each
         # connection in the pool.
