@@ -67,7 +67,7 @@
             
             
               <div class="version">
-                0.13.0
+                0.14.0
               </div>
             
           
@@ -362,8 +362,17 @@
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">__bind_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
         <span class="n">protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_protocol</span>
-        <span class="n">data</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">OutdatedSchemaCacheError</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">reload_schema_state</span><span class="p">()</span>
+            <span class="c1"># We can not find all manually created prepared statements, so just</span>
+            <span class="c1"># drop known cached ones in the `self._connection`.</span>
+            <span class="c1"># Other manually created prepared statements will fail and</span>
+            <span class="c1"># invalidate themselves (unfortunately, clearing caches again).</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">mark_closed</span><span class="p">()</span>
+            <span class="k">raise</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_last_status</span> <span class="o">=</span> <span class="n">status</span>
         <span class="k">return</span> <span class="n">data</span>
 
@@ -415,7 +424,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.13.0',
+            VERSION:'0.14.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

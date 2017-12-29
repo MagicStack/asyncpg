@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.13.0
+                0.14.0
               </div>
             
           
@@ -231,6 +231,7 @@ will be used.</li>
 <span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
 <span class="gp">... </span>    <span class="n">types</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT * FROM pg_type&#39;</span><span class="p">)</span>
 <span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">types</span><span class="p">)</span>
+<span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
 <span class="go">[&lt;Record typname=&#39;bool&#39; typnamespace=11 ...</span>
 </pre></div>
@@ -299,8 +300,19 @@ DEBUG, INFO, or LOG.</p>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.close">
-<em class="property">coroutine </em><code class="descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.close" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">close</code><span class="sig-paren">(</span><em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.close" title="Permalink to this definition">¶</a></dt>
 <dd><p>Close the connection gracefully.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</td>
+</tr>
+</tbody>
+</table>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.14.0: </span>Added the <em>timeout</em> parameter.</p>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -343,6 +355,7 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <span class="gp">... </span>        <span class="s1">&#39;SELECT foo, bar FROM mytable WHERE foo &gt; $1&#39;</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span>
 <span class="gp">... </span>        <span class="n">output</span><span class="o">=</span><span class="s1">&#39;file.csv&#39;</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="s1">&#39;csv&#39;</span><span class="p">)</span>
 <span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
 <span class="go">&#39;COPY 10&#39;</span>
 </pre></div>
@@ -393,6 +406,7 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <span class="gp">... </span>        <span class="s1">&#39;mytable&#39;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">,</span> <span class="s1">&#39;bar&#39;</span><span class="p">),</span>
 <span class="gp">... </span>        <span class="n">output</span><span class="o">=</span><span class="s1">&#39;file.csv&#39;</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="s1">&#39;csv&#39;</span><span class="p">)</span>
 <span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
 <span class="go">&#39;COPY 100&#39;</span>
 </pre></div>
@@ -433,7 +447,8 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <span class="gp">... </span>        <span class="s1">&#39;mytable&#39;</span><span class="p">,</span> <span class="n">records</span><span class="o">=</span><span class="p">[</span>
 <span class="gp">... </span>            <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;foo&#39;</span><span class="p">,</span> <span class="s1">&#39;bar&#39;</span><span class="p">),</span>
 <span class="gp">... </span>            <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;ham&#39;</span><span class="p">,</span> <span class="s1">&#39;spam&#39;</span><span class="p">)])</span>
-<span class="go">....    print(result)</span>
+<span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
 <span class="go">&#39;COPY 2&#39;</span>
 </pre></div>
@@ -483,7 +498,8 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
 <span class="gp">... </span>    <span class="n">result</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">copy_to_table</span><span class="p">(</span>
 <span class="gp">... </span>        <span class="s1">&#39;mytable&#39;</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s1">&#39;datafile.tbl&#39;</span><span class="p">)</span>
-<span class="go">....    print(result)</span>
+<span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
 <span class="go">&#39;COPY 140000&#39;</span>
 </pre></div>
@@ -509,7 +525,7 @@ will prefetch (defaults to <code class="docutils literal"><span class="pre">50</
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A <a class="reference internal" href="#asyncpg.cursor.CursorFactory" title="asyncpg.cursor.CursorFactory"><code class="xref py py-class docutils literal"><span class="pre">CursorFactory</span></code></a> object.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A <code class="xref py py-class docutils literal"><span class="pre">CursorFactory</span></code> object.</p>
 </td>
 </tr>
 </tbody>
@@ -592,7 +608,7 @@ are provided.</p>
 <dl class="method">
 <dt id="asyncpg.connection.Connection.fetch">
 <em class="property">coroutine </em><code class="descname">fetch</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.fetch" title="Permalink to this definition">¶</a></dt>
-<dd><p>Run a query and return the results as a list of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a>.</p>
+<dd><p>Run a query and return the results as a list of <code class="xref py py-class docutils literal"><span class="pre">Record</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -604,7 +620,7 @@ are provided.</p>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Return list:</th><td class="field-body"><p class="first last">A list of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> instances.</p>
+<tr class="field-even field"><th class="field-name">Return list:</th><td class="field-body"><p class="first last">A list of <code class="xref py py-class docutils literal"><span class="pre">Record</span></code> instances.</p>
 </td>
 </tr>
 </tbody>
@@ -626,7 +642,7 @@ are provided.</p>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The first row as a <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> instance, or None if
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The first row as a <code class="xref py py-class docutils literal"><span class="pre">Record</span></code> instance, or None if
 no records were returned by the query.</p>
 </td>
 </tr>
@@ -727,11 +743,54 @@ otherwise.</td>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A <a class="reference internal" href="#asyncpg.prepared_stmt.PreparedStatement" title="asyncpg.prepared_stmt.PreparedStatement"><code class="xref py py-class docutils literal"><span class="pre">PreparedStatement</span></code></a> instance.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A <code class="xref py py-class docutils literal"><span class="pre">PreparedStatement</span></code> instance.</p>
 </td>
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.reload_schema_state">
+<em class="property">coroutine </em><code class="descname">reload_schema_state</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.reload_schema_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.reload_schema_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Indicate that the database schema information must be reloaded.</p>
+<p>For performance reasons, asyncpg caches certain aspects of the
+database schema, such as the layout of composite types.  Consequently,
+when the database schema changes, and asyncpg is not able to
+gracefully recover from an error caused by outdated schema
+assumptions, an <code class="xref py py-exc docutils literal"><span class="pre">OutdatedSchemaCacheError</span></code>
+is raised.  To prevent the exception, this method may be used to inform
+asyncpg that the database schema has changed.</p>
+<p>Example:</p>
+<div class="highlight-pycon"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncpg</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">async</span> <span class="k">def</span> <span class="nf">change_type</span><span class="p">(</span><span class="n">con</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">result</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT id, info FROM tbl&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="c1"># Change composite&#39;s attribute type &quot;int&quot;=&gt;&quot;text&quot;</span>
+<span class="gp">... </span>    <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;ALTER TYPE custom DROP ATTRIBUTE y&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;ALTER TYPE custom ADD ATTRIBUTE y text&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">reload_schema_state</span><span class="p">()</span>
+<span class="gp">... </span>    <span class="k">for</span> <span class="n">id_</span><span class="p">,</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">new</span> <span class="o">=</span> <span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">],</span> <span class="nb">str</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">]))</span>
+<span class="gp">... </span>        <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="gp">... </span>            <span class="s1">&#39;UPDATE tbl SET info=$2 WHERE id=$1&#39;</span><span class="p">,</span> <span class="n">id_</span><span class="p">,</span> <span class="n">new</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="c1"># Initial schema:</span>
+<span class="gp">... </span>    <span class="c1"># CREATE TYPE custom AS (x int, y int);</span>
+<span class="gp">... </span>    <span class="c1"># CREATE TABLE tbl(id int, info custom);</span>
+<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">async</span> <span class="k">with</span> <span class="n">con</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
+<span class="gp">... </span>        <span class="c1"># Prevent concurrent changes in the table</span>
+<span class="gp">... </span>        <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;LOCK TABLE tbl&#39;</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="n">await</span> <span class="n">change_type</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.14.0.</span></p>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -890,6 +949,7 @@ and returning a decoded Python object.</li>
 <span class="gp">... </span>        <span class="s2">&quot;SELECT &#39;2 years 3 mons 1 day&#39;::interval&quot;</span><span class="p">)</span>
 <span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
 <span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2002</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">result</span><span class="p">)</span>
+<span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
 <span class="go">relativedelta(years=+2, months=+3, days=+1)</span>
 <span class="go">2004-04-02 00:00:00</span>
@@ -918,7 +978,7 @@ format.</p>
 <dl class="method">
 <dt id="asyncpg.connection.Connection.transaction">
 <code class="descname">transaction</code><span class="sig-paren">(</span><em>*</em>, <em>isolation='read_committed'</em>, <em>readonly=False</em>, <em>deferrable=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.transaction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.transaction" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a <a class="reference internal" href="#asyncpg.transaction.Transaction" title="asyncpg.transaction.Transaction"><code class="xref py py-class docutils literal"><span class="pre">Transaction</span></code></a> object.</p>
+<dd><p>Create a <code class="xref py py-class docutils literal"><span class="pre">Transaction</span></code> object.</p>
 <p>Refer to <a class="reference external" href="https://www.postgresql.org/docs/current/static/sql-set-transaction.html">PostgreSQL documentation</a> on the meaning of transaction
 parameters.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -995,7 +1055,7 @@ will prefetch (defaults to <code class="docutils literal"><span class="pre">50</
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A <a class="reference internal" href="#asyncpg.cursor.CursorFactory" title="asyncpg.cursor.CursorFactory"><code class="xref py py-class docutils literal"><span class="pre">CursorFactory</span></code></a> object.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A <code class="xref py py-class docutils literal"><span class="pre">CursorFactory</span></code> object.</p>
 </td>
 </tr>
 </tbody>
@@ -1029,7 +1089,7 @@ is actually a deserialized JSON output of the SQL
 <dl class="method">
 <dt id="asyncpg.prepared_stmt.PreparedStatement.fetch">
 <code class="descname">fetch</code><span class="sig-paren">(</span><em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.fetch" title="Permalink to this definition">¶</a></dt>
-<dd><p>Execute the statement and return a list of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> objects.</p>
+<dd><p>Execute the statement and return a list of <code class="xref py py-class docutils literal"><span class="pre">Record</span></code> objects.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1041,7 +1101,7 @@ is actually a deserialized JSON output of the SQL
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A list of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> instances.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A list of <code class="xref py py-class docutils literal"><span class="pre">Record</span></code> instances.</p>
 </td>
 </tr>
 </tbody>
@@ -1063,7 +1123,7 @@ is actually a deserialized JSON output of the SQL
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The first row as a <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> instance.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The first row as a <code class="xref py py-class docutils literal"><span class="pre">Record</span></code> instance.</p>
 </td>
 </tr>
 </tbody>
@@ -1223,7 +1283,7 @@ function.</p>
 <em class="property">class </em><code class="descname">Transaction</code><a class="reference internal" href="../_modules/asyncpg/transaction.html#Transaction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.transaction.Transaction" title="Permalink to this definition">¶</a></dt>
 <dd><p>Represents a transaction or savepoint block.</p>
 <p>Transactions are created by calling the
-<a class="reference internal" href="#asyncpg.connection.Connection.transaction" title="asyncpg.connection.Connection.transaction"><code class="xref py py-meth docutils literal"><span class="pre">Connection.transaction()</span></code></a>
+<code class="xref py py-meth docutils literal"><span class="pre">Connection.transaction()</span></code>
 function.</p>
 <dl class="describe">
 <dt>
@@ -1235,19 +1295,19 @@ context manager block.</p>
 
 <dl class="method">
 <dt id="asyncpg.transaction.Transaction.commit">
-<em class="property">coroutine </em><code class="descname">commit</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/transaction.html#Transaction.commit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.transaction.Transaction.commit" title="Permalink to this definition">¶</a></dt>
+<code class="descname">commit</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/transaction.html#Transaction.commit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.transaction.Transaction.commit" title="Permalink to this definition">¶</a></dt>
 <dd><p>Exit the transaction or savepoint block and commit changes.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="asyncpg.transaction.Transaction.rollback">
-<em class="property">coroutine </em><code class="descname">rollback</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/transaction.html#Transaction.rollback"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.transaction.Transaction.rollback" title="Permalink to this definition">¶</a></dt>
+<code class="descname">rollback</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/transaction.html#Transaction.rollback"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.transaction.Transaction.rollback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Exit the transaction or savepoint block and rollback changes.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="asyncpg.transaction.Transaction.start">
-<em class="property">coroutine </em><code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/transaction.html#Transaction.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.transaction.Transaction.start" title="Permalink to this definition">¶</a></dt>
+<code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/transaction.html#Transaction.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.transaction.Transaction.start" title="Permalink to this definition">¶</a></dt>
 <dd><p>Enter the transaction or savepoint block.</p>
 </dd></dl>
 
@@ -1358,14 +1418,14 @@ fetch subsets of the query results.</p>
 <dl class="method">
 <dt id="asyncpg.cursor.Cursor.fetch">
 <code class="descname">fetch</code><span class="sig-paren">(</span><em>n</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/cursor.html#Cursor.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.cursor.Cursor.fetch" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the next <em>n</em> rows as a list of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> objects.</p>
+<dd><p>Return the next <em>n</em> rows as a list of <code class="xref py py-class docutils literal"><span class="pre">Record</span></code> objects.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A list of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> instances.</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A list of <code class="xref py py-class docutils literal"><span class="pre">Record</span></code> instances.</td>
 </tr>
 </tbody>
 </table>
@@ -1381,7 +1441,7 @@ fetch subsets of the query results.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a> instance.</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A <code class="xref py py-class docutils literal"><span class="pre">Record</span></code> instance.</td>
 </tr>
 </tbody>
 </table>
@@ -1431,8 +1491,8 @@ fetch subsets of the query results.</p>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
 <p class="last">Prepared statements and cursors returned by
-<a class="reference internal" href="#asyncpg.connection.Connection.prepare" title="asyncpg.connection.Connection.prepare"><code class="xref py py-meth docutils literal"><span class="pre">Connection.prepare()</span></code></a> and
-<a class="reference internal" href="#asyncpg.connection.Connection.cursor" title="asyncpg.connection.Connection.cursor"><code class="xref py py-meth docutils literal"><span class="pre">Connection.cursor()</span></code></a> become
+<code class="xref py py-meth docutils literal"><span class="pre">Connection.prepare()</span></code> and
+<code class="xref py py-meth docutils literal"><span class="pre">Connection.cursor()</span></code> become
 invalid once the connection is released.  Likewise, all notification
 and log listeners are removed, and <code class="docutils literal"><span class="pre">asyncpg</span></code> will issue a warning
 if there are any listener callbacks registered on a connection that
@@ -1455,7 +1515,7 @@ with a new connection.</li>
 <li><strong>max_inactive_connection_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Number of seconds after which inactive connections in the
 pool will be closed.  Pass <code class="docutils literal"><span class="pre">0</span></code> to disable this mechanism.</li>
 <li><strong>setup</strong> (<em>coroutine</em>) – A coroutine to prepare a connection right before it is returned
-from <a class="reference internal" href="#asyncpg.pool.Pool.acquire" title="asyncpg.pool.Pool.acquire"><code class="xref py py-meth docutils literal"><span class="pre">Pool.acquire()</span></code></a>.  An example use
+from <code class="xref py py-meth docutils literal"><span class="pre">Pool.acquire()</span></code>.  An example use
 case would be to automatically set up notifications listeners for
 all connections of a pool.</li>
 <li><strong>init</strong> (<em>coroutine</em>) – A coroutine to initialize a connection when it is created.
@@ -1484,8 +1544,8 @@ on a connection that has been released to the pool.</p>
 <div class="versionchanged">
 <p><span class="versionmodified">Changed in version 0.13.0: </span>An <code class="xref py py-exc docutils literal"><span class="pre">InterfaceWarning</span></code> will be produced
 if there are any active listeners (added via
-<a class="reference internal" href="#asyncpg.connection.Connection.add_listener" title="asyncpg.connection.Connection.add_listener"><code class="xref py py-meth docutils literal"><span class="pre">Connection.add_listener()</span></code></a>
-or <a class="reference internal" href="#asyncpg.connection.Connection.add_log_listener" title="asyncpg.connection.Connection.add_log_listener"><code class="xref py py-meth docutils literal"><span class="pre">Connection.add_log_listener()</span></code></a>) present on the connection
+<code class="xref py py-meth docutils literal"><span class="pre">Connection.add_listener()</span></code>
+or <code class="xref py py-meth docutils literal"><span class="pre">Connection.add_log_listener()</span></code>) present on the connection
 at the moment of its release to the pool.</p>
 </div>
 </dd></dl>
@@ -1540,7 +1600,7 @@ open cursors and other resources <em>except</em> prepared statements.</p>
 <dd><p>Execute an SQL command (or commands).</p>
 <p>Pool performs this operation using one of its connections.  Other than
 that, it behaves identically to
-<a class="reference internal" href="#asyncpg.connection.Connection.execute" title="asyncpg.connection.Connection.execute"><code class="xref py py-meth docutils literal"><span class="pre">Connection.execute()</span></code></a>.</p>
+<code class="xref py py-meth docutils literal"><span class="pre">Connection.execute()</span></code>.</p>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.10.0.</span></p>
 </div>
@@ -1552,7 +1612,7 @@ that, it behaves identically to
 <dd><p>Execute an SQL <em>command</em> for each sequence of arguments in <em>args</em>.</p>
 <p>Pool performs this operation using one of its connections.  Other than
 that, it behaves identically to
-<a class="reference internal" href="#asyncpg.connection.Connection.executemany" title="asyncpg.connection.Connection.executemany"><code class="xref py py-meth docutils literal"><span class="pre">Connection.executemany()</span></code></a>.</p>
+<code class="xref py py-meth docutils literal"><span class="pre">Connection.executemany()</span></code>.</p>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.10.0.</span></p>
 </div>
@@ -1561,10 +1621,10 @@ that, it behaves identically to
 <dl class="method">
 <dt id="asyncpg.pool.Pool.fetch">
 <em class="property">coroutine </em><code class="descname">fetch</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.fetch" title="Permalink to this definition">¶</a></dt>
-<dd><p>Run a query and return the results as a list of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">Record</span></code></a>.</p>
+<dd><p>Run a query and return the results as a list of <code class="xref py py-class docutils literal"><span class="pre">Record</span></code>.</p>
 <p>Pool performs this operation using one of its connections.  Other than
 that, it behaves identically to
-<a class="reference internal" href="#asyncpg.connection.Connection.fetch" title="asyncpg.connection.Connection.fetch"><code class="xref py py-meth docutils literal"><span class="pre">Connection.fetch()</span></code></a>.</p>
+<code class="xref py py-meth docutils literal"><span class="pre">Connection.fetch()</span></code>.</p>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.10.0.</span></p>
 </div>
@@ -1576,7 +1636,7 @@ that, it behaves identically to
 <dd><p>Run a query and return the first row.</p>
 <p>Pool performs this operation using one of its connections.  Other than
 that, it behaves identically to
-<a class="reference internal" href="#asyncpg.connection.Connection.fetchrow" title="asyncpg.connection.Connection.fetchrow"><code class="xref py py-meth docutils literal"><span class="pre">Connection.fetchrow()</span></code></a>.</p>
+<code class="xref py py-meth docutils literal"><span class="pre">Connection.fetchrow()</span></code>.</p>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.10.0.</span></p>
 </div>
@@ -1588,7 +1648,7 @@ that, it behaves identically to
 <dd><p>Run a query and return a value in the first row.</p>
 <p>Pool performs this operation using one of its connections.  Other than
 that, it behaves identically to
-<a class="reference internal" href="#asyncpg.connection.Connection.fetchval" title="asyncpg.connection.Connection.fetchval"><code class="xref py py-meth docutils literal"><span class="pre">Connection.fetchval()</span></code></a>.</p>
+<code class="xref py py-meth docutils literal"><span class="pre">Connection.fetchval()</span></code>.</p>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.10.0.</span></p>
 </div>
@@ -1596,8 +1656,25 @@ that, it behaves identically to
 
 <dl class="method">
 <dt id="asyncpg.pool.Pool.release">
-<em class="property">coroutine </em><code class="descname">release</code><span class="sig-paren">(</span><em>connection</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.release"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.release" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">release</code><span class="sig-paren">(</span><em>connection</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.release"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.release" title="Permalink to this definition">¶</a></dt>
 <dd><p>Release a database connection back to the pool.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>connection</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – A <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal"><span class="pre">Connection</span></code></a> object to release.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – A timeout for releasing the connection.  If not specified, defaults
+to the timeout provided in the corresponding call to the
+<a class="reference internal" href="#asyncpg.pool.Pool.acquire" title="asyncpg.pool.Pool.acquire"><code class="xref py py-meth docutils literal"><span class="pre">Pool.acquire()</span></code></a> method.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.14.0: </span>Added the <em>timeout</em> parameter.</p>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -1890,7 +1967,7 @@ items either by a numeric index or by a field name:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.13.0',
+            VERSION:'0.14.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
