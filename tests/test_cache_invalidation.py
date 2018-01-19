@@ -151,7 +151,8 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
 
         try:
             await self.con.execute('INSERT INTO tab1 VALUES (1, (2, 3))')
-            prep = await self.con.prepare('SELECT * FROM tab1')
+            prep = await self.con._prepare('SELECT * FROM tab1',
+                                           use_cache=True)
             result = await prep.fetchrow()
             self.assertEqual(result, (1, (2, 3)))
 
@@ -170,7 +171,8 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
                             'the prepared statement is closed'):
                         await prep.fetchrow()
 
-                    prep = await self.con.prepare('SELECT * FROM tab1')
+                    prep = await self.con._prepare('SELECT * FROM tab1',
+                                                   use_cache=True)
                     # The second PS must be correct (cache was dropped):
                     result = await prep.fetchrow()
                     self.assertEqual(result, (1, (2, 3, None)))
@@ -183,7 +185,8 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
                 await prep.fetchrow()
 
             # Reprepare it again after dropping cache.
-            prep = await self.con.prepare('SELECT * FROM tab1')
+            prep = await self.con._prepare('SELECT * FROM tab1',
+                                           use_cache=True)
             # This is now OK, the cache is filled after being dropped.
             result = await prep.fetchrow()
             self.assertEqual(result, (1, (2, 3)))
