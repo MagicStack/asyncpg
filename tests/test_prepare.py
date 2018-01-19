@@ -153,7 +153,7 @@ class TestPrepare(tb.ConnectedTestCase):
 
         stmts = []
         for i in range(iter_max):
-            s = await self.con.prepare(query.format(i))
+            s = await self.con._prepare(query.format(i), use_cache=True)
             self.assertEqual(await s.fetchval(), i)
             stmts.append(s)
 
@@ -207,7 +207,7 @@ class TestPrepare(tb.ConnectedTestCase):
         # The prepared statement that we'll create will be GCed
         # right await.  However, its state should be still in
         # in the statements LRU cache.
-        await self.con.prepare('select 1')
+        await self.con._prepare('select 1', use_cache=True)
         gc.collect()
 
         self.assertEqual(len(cache), 1)
@@ -224,12 +224,12 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual(len(cache), 0)
         self.assertEqual(len(self.con._stmts_to_close), 0)
 
-        stmt = await self.con.prepare('select 100000000')
+        stmt = await self.con._prepare('select 100000000', use_cache=True)
         self.assertEqual(len(cache), 1)
         self.assertEqual(len(self.con._stmts_to_close), 0)
 
         for i in range(cache_max):
-            await self.con.prepare('select {}'.format(i))
+            await self.con._prepare('select {}'.format(i), use_cache=True)
 
         self.assertEqual(len(cache), cache_max)
         self.assertEqual(len(self.con._stmts_to_close), 0)
@@ -293,7 +293,7 @@ class TestPrepare(tb.ConnectedTestCase):
         # Disable cache
         cache.set_max_size(0)
 
-        stmt = await self.con.prepare('select 100000000')
+        stmt = await self.con._prepare('select 100000000', use_cache=True)
         self.assertEqual(len(cache), 0)
         self.assertEqual(len(self.con._stmts_to_close), 0)
 
@@ -305,7 +305,7 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual(len(self.con._stmts_to_close), 1)
 
         # Next "prepare" call will trigger a cleanup
-        stmt = await self.con.prepare('select 1')
+        stmt = await self.con._prepare('select 1', use_cache=True)
         self.assertEqual(len(cache), 0)
         self.assertEqual(len(self.con._stmts_to_close), 0)
 
@@ -468,25 +468,25 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual(cache.get_max_lifetime(), 142)
         cache.set_max_lifetime(1)
 
-        s = await self.con.prepare('SELECT 1')
+        s = await self.con._prepare('SELECT 1', use_cache=True)
         state = s._state
 
-        s = await self.con.prepare('SELECT 1')
+        s = await self.con._prepare('SELECT 1', use_cache=True)
         self.assertIs(s._state, state)
 
-        s = await self.con.prepare('SELECT 1')
+        s = await self.con._prepare('SELECT 1', use_cache=True)
         self.assertIs(s._state, state)
 
         await asyncio.sleep(1, loop=self.loop)
 
-        s = await self.con.prepare('SELECT 1')
+        s = await self.con._prepare('SELECT 1', use_cache=True)
         self.assertIsNot(s._state, state)
 
     @tb.with_connection_options(max_cached_statement_lifetime=0.5)
     async def test_prepare_25_max_lifetime_reset(self):
         cache = self.con._stmt_cache
 
-        s = await self.con.prepare('SELECT 1')
+        s = await self.con._prepare('SELECT 1', use_cache=True)
         state = s._state
 
         # Disable max_lifetime
@@ -495,20 +495,20 @@ class TestPrepare(tb.ConnectedTestCase):
         await asyncio.sleep(1, loop=self.loop)
 
         # The statement should still be cached (as we disabled the timeout).
-        s = await self.con.prepare('SELECT 1')
+        s = await self.con._prepare('SELECT 1', use_cache=True)
         self.assertIs(s._state, state)
 
     @tb.with_connection_options(max_cached_statement_lifetime=0.5)
     async def test_prepare_26_max_lifetime_max_size(self):
         cache = self.con._stmt_cache
 
-        s = await self.con.prepare('SELECT 1')
+        s = await self.con._prepare('SELECT 1', use_cache=True)
         state = s._state
 
         # Disable max_lifetime
         cache.set_max_size(0)
 
-        s = await self.con.prepare('SELECT 1')
+        s = await self.con._prepare('SELECT 1', use_cache=True)
         self.assertIsNot(s._state, state)
 
         # Check that nothing crashes after the initial timeout
@@ -518,12 +518,12 @@ class TestPrepare(tb.ConnectedTestCase):
     async def test_prepare_27_max_cacheable_statement_size(self):
         cache = self.con._stmt_cache
 
-        await self.con.prepare('SELECT 1')
+        await self.con._prepare('SELECT 1', use_cache=True)
         self.assertEqual(len(cache), 1)
 
         # Test that long and explicitly created prepared statements
         # are not cached.
-        await self.con.prepare("SELECT \'" + "a" * 50 + "\'")
+        await self.con._prepare("SELECT \'" + "a" * 50 + "\'", use_cache=True)
         self.assertEqual(len(cache), 1)
 
         # Test that implicitly created long prepared statements
@@ -532,7 +532,7 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual(len(cache), 1)
 
         # Test that short prepared statements can still be cached.
-        await self.con.prepare('SELECT 2')
+        await self.con._prepare('SELECT 2', use_cache=True)
         self.assertEqual(len(cache), 2)
 
     async def test_prepare_28_max_args(self):
@@ -593,3 +593,10 @@ class TestPrepare(tb.ConnectedTestCase):
             self.assertTrue('pgbouncer' in e.hint)
         else:
             self.fail('InvalidSQLStatementNameError not raised')
+
+    async def test_prepare_does_not_use_cache(self):
+        cache = self.con._stmt_cache
+
+        # prepare with disabled cache
+        await self.con.prepare('select 1')
+        self.assertEqual(len(cache), 0)

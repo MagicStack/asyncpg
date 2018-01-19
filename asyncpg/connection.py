@@ -264,19 +264,21 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
         return await self._executemany(command, args, timeout)
 
-    async def _get_statement(self, query, timeout, *, named: bool=False):
-        statement = self._stmt_cache.get(query)
-        if statement is not None:
-            return statement
+    async def _get_statement(self, query, timeout, *, named: bool=False,
+                             use_cache: bool=True):
+        if use_cache:
+            statement = self._stmt_cache.get(query)
+            if statement is not None:
+                return statement
 
-        # Only use the cache when:
-        #  * `statement_cache_size` is greater than 0;
-        #  * query size is less than `max_cacheable_statement_size`.
-        use_cache = self._stmt_cache.get_max_size() > 0
-        if (use_cache and
-                self._config.max_cacheable_statement_size and
-                len(query) > self._config.max_cacheable_statement_size):
-            use_cache = False
+            # Only use the cache when:
+            #  * `statement_cache_size` is greater than 0;
+            #  * query size is less than `max_cacheable_statement_size`.
+            use_cache = self._stmt_cache.get_max_size() > 0
+            if (use_cache and
+                    self._config.max_cacheable_statement_size and
+                    len(query) > self._config.max_cacheable_statement_size):
+                use_cache = False
 
         if use_cache or named:
             stmt_name = self._get_unique_id('stmt')
@@ -328,8 +330,12 @@ class Connection(metaclass=ConnectionMeta):
 
         :return: A :class:`~prepared_stmt.PreparedStatement` instance.
         """
+        return await self._prepare(query, timeout=timeout, use_cache=False)
+
+    async def _prepare(self, query, *, timeout=None, use_cache: bool=False):
         self._check_open()
-        stmt = await self._get_statement(query, timeout, named=True)
+        stmt = await self._get_statement(query, timeout, named=True,
+                                         use_cache=use_cache)
         return prepared_stmt.PreparedStatement(self, query, stmt)
 
     async def fetch(self, query, *args, timeout=None) -> list:
@@ -645,7 +651,7 @@ class Connection(metaclass=ConnectionMeta):
         intro_query = 'SELECT {cols} FROM {tab} LIMIT 1'.format(
             tab=tabname, cols=col_list)
 
-        intro_ps = await self.prepare(intro_query)
+        intro_ps = await self._prepare(intro_query, use_cache=True)
 
         opts = '(FORMAT binary)'
 
