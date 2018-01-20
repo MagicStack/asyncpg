@@ -55,7 +55,7 @@ class Connection(metaclass=ConnectionMeta):
         self._loop = loop
         self._top_xact = None
         self._aborted = False
-        # Incremented very time the connection is released back to a pool.
+        # Incremented every time the connection is released back to a pool.
         # Used to catch invalid references to connection-related resources
         # post-release (e.g. explicit prepared statements).
         self._pool_release_ctr = 0
