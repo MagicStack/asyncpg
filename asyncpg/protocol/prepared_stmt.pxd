@@ -30,6 +30,7 @@ cdef class PreparedStatementState:
         tuple        rows_codecs
 
     cdef _encode_bind_msg(self, args)
+    cpdef _init_codecs(self)
     cdef _ensure_rows_decoder(self)
     cdef _ensure_args_encoder(self)
     cdef _set_row_desc(self, object desc)

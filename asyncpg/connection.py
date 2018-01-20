@@ -291,12 +291,20 @@ class Connection(metaclass=ConnectionMeta):
             types, intro_stmt = await self.__execute(
                 self._intro_query, (list(ready),), 0, timeout)
             self._protocol.get_settings().register_data_types(types)
-            if not intro_stmt.name and not statement.name:
-                # The introspection query has used an anonymous statement,
-                # which has blown away the anonymous statement we've prepared
-                # for the query, so we need to re-prepare it.
-                statement = await self._protocol.prepare(
-                    stmt_name, query, timeout)
+            # The introspection query has used an anonymous statement,
+            # which has blown away the anonymous statement we've prepared
+            # for the query, so we need to re-prepare it.
+            need_reprepare = not intro_stmt.name and not statement.name
+        else:
+            need_reprepare = False
+
+        # Now that types have been resolved, populate the codec pipeline
+        # for the statement.
+        statement._init_codecs()
+
+        if need_reprepare:
+            await self._protocol.prepare(
+                stmt_name, query, timeout, state=statement)
 
         if use_cache:
             self._stmt_cache.put(query, statement)
