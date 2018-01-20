@@ -146,7 +146,8 @@ cdef class BaseProtocol(CoreProtocol):
             self.is_reading = False
             self.transport.pause_reading()
 
-    async def prepare(self, stmt_name, query, timeout):
+    async def prepare(self, stmt_name, query, timeout,
+                      PreparedStatementState state=None):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
         if self.cancel_sent_waiter is not None:
@@ -160,7 +161,9 @@ cdef class BaseProtocol(CoreProtocol):
         try:
             self._prepare(stmt_name, query)  # network op
             self.last_query = query
-            self.statement = PreparedStatementState(stmt_name, query, self)
+            if state is None:
+                state = PreparedStatementState(stmt_name, query, self)
+            self.statement = state
         except Exception as ex:
             waiter.set_exception(ex)
             self._coreproto_error()

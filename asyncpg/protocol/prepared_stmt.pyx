@@ -82,6 +82,10 @@ cdef class PreparedStatementState:
         else:
             return True
 
+    cpdef _init_codecs(self):
+        self._ensure_args_encoder()
+        self._ensure_rows_decoder()
+
     def attach(self):
         self.refs += 1
 
@@ -100,9 +104,6 @@ cdef class PreparedStatementState:
         if len(args) > 32767:
             raise exceptions.InterfaceError(
                 'the number of query arguments cannot exceed 32767')
-
-        self._ensure_args_encoder()
-        self._ensure_rows_decoder()
 
         writer = WriteBuffer.new()
 

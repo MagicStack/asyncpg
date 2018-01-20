@@ -5,6 +5,8 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+import json
+
 from asyncpg import _testbase as tb
 from asyncpg import connection as apg_con
 
@@ -98,3 +100,28 @@ class TestIntrospection(tb.ConnectedTestCase):
             "SELECT $1::int[], '{foo}'".format(foo='a' * 10000), [1, 2])
 
         self.assertEqual(apg_con._uid, old_uid + 1)
+
+    async def test_introspection_sticks_for_ps(self):
+        # Test that the introspected codec pipeline for a prepared
+        # statement is not affected by a subsequent codec cache bust.
+
+        ps = await self.con._prepare('SELECT $1::json[]', use_cache=True)
+
+        try:
+            # Setting a custom codec blows the codec cache for derived types.
+            await self.con.set_type_codec(
+                'json', encoder=lambda v: v, decoder=json.loads,
+                schema='pg_catalog', format='text'
+            )
+
+            # The originally prepared statement should still be OK and
+            # use the previously selected codec.
+            self.assertEqual(await ps.fetchval(['{"foo": 1}']), ['{"foo": 1}'])
+
+            # The new query uses the custom codec.
+            v = await self.con.fetchval('SELECT $1::json[]', ['{"foo": 1}'])
+            self.assertEqual(v, [{'foo': 1}])
+
+        finally:
+            await self.con.reset_type_codec(
+                'json', schema='pg_catalog')
