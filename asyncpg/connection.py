@@ -44,7 +44,7 @@ class Connection(metaclass=ConnectionMeta):
                  '_listeners', '_server_version', '_server_caps',
                  '_intro_query', '_reset_query', '_proxy',
                  '_stmt_exclusive_section', '_config', '_params', '_addr',
-                 '_log_listeners', '_cancellations')
+                 '_log_listeners', '_cancellations', '_consecutive_exceptions')
 
     def __init__(self, protocol, transport, loop,
                  addr: (str, int) or str,
@@ -97,6 +97,7 @@ class Connection(metaclass=ConnectionMeta):
         # Used for `con.fetchval()`, `con.fetch()`, `con.fetchrow()`,
         # `con.execute()`, and `con.executemany()`.
         self._stmt_exclusive_section = _Atomic()
+        self._consecutive_exceptions = 0
 
     async def add_listener(self, channel, callback):
         """Add a listener for Postgres notifications.
@@ -1331,6 +1332,8 @@ class Connection(metaclass=ConnectionMeta):
             # It is not possible to recover (the statement is already done at
             # the server's side), the only way is to drop our caches and
             # reraise the exception to the caller.
+            #
+            await self._maybe_close_bad_connection()
             await self.reload_schema_state()
             raise
         except exceptions.InvalidCachedStatementError:
@@ -1356,14 +1359,26 @@ class Connection(metaclass=ConnectionMeta):
             # and https://github.com/MagicStack/asyncpg/issues/76
             # for discussion.
             #
+            await self._maybe_close_bad_connection()
             self._drop_global_statement_cache()
             if self._protocol.is_in_transaction() or not retry:
                 raise
             else:
                 return await self._do_execute(
                     query, executor, timeout, retry=False)
+        except:
+            logging.warning('exception - maybe closing bad connection')
+            await self._maybe_close_bad_connection()
+            raise
 
+        self._consecutive_exceptions = 0
         return result, stmt
+
+    async def _maybe_close_bad_connection(self):
+        self._consecutive_exceptions += 1
+        if self._consecutive_exceptions > \
+                self._config.max_consecutive_exceptions:
+            await self.close()
 
 
 async def connect(dsn=None, *,
@@ -1375,6 +1390,7 @@ async def connect(dsn=None, *,
                   statement_cache_size=100,
                   max_cached_statement_lifetime=300,
                   max_cacheable_statement_size=1024 * 15,
+                  max_consecutive_exceptions=5,
                   command_timeout=None,
                   ssl=None,
                   connection_class=Connection,
@@ -1430,6 +1446,11 @@ async def connect(dsn=None, *,
         the maximum size of a statement that can be cached (15KiB by
         default).  Pass ``0`` to allow all statements to be cached
         regardless of their size.
+
+    :param int max_consecutive_exceptions:
+        the maximum number of consecutive exceptions that may be raised by a
+        single connection before that connection is assumed corrupt (ex.
+        pointing to an old DB after a failover)
 
     :param float command_timeout:
         the default timeout for operations on this connection
@@ -1495,7 +1516,8 @@ async def connect(dsn=None, *,
         command_timeout=command_timeout,
         statement_cache_size=statement_cache_size,
         max_cached_statement_lifetime=max_cached_statement_lifetime,
-        max_cacheable_statement_size=max_cacheable_statement_size)
+        max_cacheable_statement_size=max_cacheable_statement_size,
+        max_consecutive_exceptions=max_consecutive_exceptions)
 
 
 class _StatementCacheEntry:
