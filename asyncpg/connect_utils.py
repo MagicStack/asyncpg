@@ -38,6 +38,7 @@ _ClientConfiguration = collections.namedtuple(
         'statement_cache_size',
         'max_cached_statement_lifetime',
         'max_cacheable_statement_size',
+        'max_consecutive_exceptions',
     ])
 
 
@@ -210,6 +211,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, database,
                              timeout, command_timeout, statement_cache_size,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
+                             max_consecutive_exceptions,
                              ssl, server_settings):
 
     local_vars = locals()
@@ -245,7 +247,8 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, database,
         command_timeout=command_timeout,
         statement_cache_size=statement_cache_size,
         max_cached_statement_lifetime=max_cached_statement_lifetime,
-        max_cacheable_statement_size=max_cacheable_statement_size,)
+        max_cacheable_statement_size=max_cacheable_statement_size,
+        max_consecutive_exceptions=max_consecutive_exceptions,)
 
     return addrs, params, config
 
