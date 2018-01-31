@@ -1333,7 +1333,6 @@ class Connection(metaclass=ConnectionMeta):
             # the server's side), the only way is to drop our caches and
             # reraise the exception to the caller.
             #
-            await self._maybe_close_bad_connection()
             await self.reload_schema_state()
             raise
         except exceptions.InvalidCachedStatementError:
@@ -1359,7 +1358,6 @@ class Connection(metaclass=ConnectionMeta):
             # and https://github.com/MagicStack/asyncpg/issues/76
             # for discussion.
             #
-            await self._maybe_close_bad_connection()
             self._drop_global_statement_cache()
             if self._protocol.is_in_transaction() or not retry:
                 raise
@@ -1367,7 +1365,6 @@ class Connection(metaclass=ConnectionMeta):
                 return await self._do_execute(
                     query, executor, timeout, retry=False)
         except:
-            logging.warning('exception - maybe closing bad connection')
             await self._maybe_close_bad_connection()
             raise
 
