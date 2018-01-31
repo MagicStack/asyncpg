@@ -1372,10 +1372,12 @@ class Connection(metaclass=ConnectionMeta):
         return result, stmt
 
     async def _maybe_close_bad_connection(self):
-        self._consecutive_exceptions += 1
-        if self._consecutive_exceptions > \
-                self._config.max_consecutive_exceptions:
-            await self.close()
+        if self._config.max_consecutive_exceptions > 0:
+            self._consecutive_exceptions += 1
+
+            if self._consecutive_exceptions > \
+                    self._config.max_consecutive_exceptions:
+                await self.close()
 
 
 async def connect(dsn=None, *,
@@ -1387,7 +1389,7 @@ async def connect(dsn=None, *,
                   statement_cache_size=100,
                   max_cached_statement_lifetime=300,
                   max_cacheable_statement_size=1024 * 15,
-                  max_consecutive_exceptions=5,
+                  max_consecutive_exceptions=0,
                   command_timeout=None,
                   ssl=None,
                   connection_class=Connection,
@@ -1447,7 +1449,7 @@ async def connect(dsn=None, *,
     :param int max_consecutive_exceptions:
         the maximum number of consecutive exceptions that may be raised by a
         single connection before that connection is assumed corrupt (ex.
-        pointing to an old DB after a failover)
+        pointing to an old DB after a failover). Pass ``0`` to disable.
 
     :param float command_timeout:
         the default timeout for operations on this connection
