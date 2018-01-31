@@ -13,8 +13,12 @@ def split_server_version_string(version_string):
     if version_string.startswith('PostgreSQL '):
         version_string = version_string[len('PostgreSQL '):]
     if version_string.startswith('Postgres-XL'):
-        version_string = version_string[len('Postgre-XL '):]
+        version_string = version_string[len('Postgres-XL '):]
 
+    # Some distros (e.g Debian) like may inject their branding
+    # into the numeric version string, so make sure to only look
+    # at stuff before the first space.
+    version_string = version_string.split(' ')[0]
     parts = version_string.strip().split('.')
     if not parts[-1].isdigit():
         # release level specified

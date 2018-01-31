@@ -49,7 +49,7 @@ class TestSettings(tb.ConnectedTestCase):
     def test_server_version_02(self):
         versions = [
             ("9.2", (9, 2, 0, 'final', 0),),
-            ("9.2.1", (9, 2, 1, 'final', 0),),
+            ("Postgres-XL 9.2.1", (9, 2, 1, 'final', 0),),
             ("9.4beta1", (9, 4, 0, 'beta', 1),),
             ("10devel", (10, 0, 0, 'devel', 0),),
             ("10beta2", (10, 0, 0, 'beta', 2),),
@@ -57,6 +57,7 @@ class TestSettings(tb.ConnectedTestCase):
             # set version.minor to 0.
             ("10.1", (10, 0, 1, 'final', 0),),
             ("11.1.2", (11, 0, 1, 'final', 0),),
+            ("PostgreSQL 10.1 (Debian 10.1-3)", (10, 0, 1, 'final', 0),),
         ]
         for version, expected in versions:
             result = split_server_version_string(version)
