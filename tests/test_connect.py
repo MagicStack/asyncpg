@@ -316,6 +316,14 @@ class TestConnectParams(tb.TestCase):
             'dsn': 'pq:///dbname?host=/unix_sock/test&user=spam',
             'error': (ValueError, 'invalid DSN')
         },
+
+        {
+            'dsn': 'postgres://user3:123123@localhost,127.0.0.1:5555/abcdef',
+            'result': ([('localhost', 5555), ('127.0.0.1', 5555)], {
+                'user': 'user3',
+                'password': '123123',
+                'database': 'abcdef'})
+        },
     ]
 
     @contextlib.contextmanager

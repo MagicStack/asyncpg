@@ -64,7 +64,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             port = int(parsed.port)
 
         if parsed.hostname and host is None:
-            host = parsed.hostname
+            host = parsed.hostname.split(',')
 
         if parsed.path and database is None:
             database = parsed.path
