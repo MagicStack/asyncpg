@@ -793,7 +793,7 @@ class Connection(metaclass=ConnectionMeta):
 
     async def set_type_codec(self, typename, *,
                              schema='public', encoder, decoder,
-                             binary=None, format='text'):
+                             format='text'):
         """Set an encoder/decoder pair for the specified data type.
 
         :param typename:
