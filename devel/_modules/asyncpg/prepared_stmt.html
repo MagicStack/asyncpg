@@ -67,7 +67,7 @@
             
             
               <div class="version">
-                0.14.0
+                0.15.0
               </div>
             
           
@@ -196,8 +196,8 @@
 
 <span class="sd">            stmt = await connection.prepare(&#39;SELECT $1::int&#39;)</span>
 <span class="sd">            assert stmt.get_query() == &quot;SELECT $1::int&quot;</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_query</span></div>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_query</span>
 
 <div class="viewcode-block" id="PreparedStatement.get_statusmsg"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.get_statusmsg">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">def</span> <span class="nf">get_statusmsg</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -210,8 +210,8 @@
 <span class="sd">            assert stmt.get_statusmsg() == &quot;CREATE TABLE&quot;</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_status</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_status</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_status</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span></div>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_status</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_status</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
 
 <div class="viewcode-block" id="PreparedStatement.get_parameters"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.get_parameters">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">def</span> <span class="nf">get_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -227,8 +227,8 @@
 <span class="sd">            # Will print:</span>
 <span class="sd">            #   (Type(oid=23, name=&#39;int4&#39;, kind=&#39;scalar&#39;, schema=&#39;pg_catalog&#39;),</span>
 <span class="sd">            #    Type(oid=25, name=&#39;text&#39;, kind=&#39;scalar&#39;, schema=&#39;pg_catalog&#39;))</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">_get_parameters</span><span class="p">()</span></div>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">_get_parameters</span><span class="p">()</span>
 
 <div class="viewcode-block" id="PreparedStatement.get_attributes"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.get_attributes">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">def</span> <span class="nf">get_attributes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -252,8 +252,8 @@
 <span class="sd">            #       name=&#39;typnamespace&#39;,</span>
 <span class="sd">            #       type=Type(oid=26, name=&#39;oid&#39;, kind=&#39;scalar&#39;,</span>
 <span class="sd">            #                 schema=&#39;pg_catalog&#39;)))</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">_get_attributes</span><span class="p">()</span></div>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">_get_attributes</span><span class="p">()</span>
 
 <div class="viewcode-block" id="PreparedStatement.cursor"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.cursor">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">def</span> <span class="nf">cursor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">prefetch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -268,8 +268,8 @@
 <span class="sd">        :return: A :class:`~cursor.CursorFactory` object.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">CursorFactory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span>
-                                    <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">prefetch</span><span class="p">,</span>
-                                    <span class="n">timeout</span><span class="p">)</span></div>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">prefetch</span><span class="p">,</span></div>
+                                    <span class="n">timeout</span><span class="p">)</span>
 
 <div class="viewcode-block" id="PreparedStatement.explain"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.explain">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">explain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">analyze</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
@@ -310,8 +310,8 @@
                 <span class="k">await</span> <span class="n">tr</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></div>
+</div>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
 <div class="viewcode-block" id="PreparedStatement.fetch"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.fetch">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">fetch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -323,8 +323,8 @@
 
 <span class="sd">        :return: A list of :class:`Record` instances.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__bind_execute</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">data</span></div>
+        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__bind_execute</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">data</span>
 
 <div class="viewcode-block" id="PreparedStatement.fetchval"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.fetchval">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -342,8 +342,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__bind_execute</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">column</span><span class="p">]</span></div>
+            <span class="k">return</span> <span class="kc">None</span></div>
+        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">column</span><span class="p">]</span>
 
 <div class="viewcode-block" id="PreparedStatement.fetchrow"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.fetchrow">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchrow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -357,8 +357,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__bind_execute</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+            <span class="k">return</span> <span class="kc">None</span></div>
+        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">__bind_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
         <span class="n">protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_protocol</span>
@@ -387,8 +387,8 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_check_conn_validity</span><span class="p">(</span><span class="n">meth_name</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_maybe_gc_stmt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_maybe_gc_stmt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">)</span>
 </pre></div>
 
            </div>
@@ -424,7 +424,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.14.0',
+            VERSION:'0.15.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

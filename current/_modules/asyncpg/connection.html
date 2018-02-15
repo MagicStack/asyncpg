@@ -67,7 +67,7 @@
             
             
               <div class="version">
-                0.14.0
+                0.15.0
               </div>
             
           
@@ -219,7 +219,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span> <span class="o">=</span> <span class="n">loop</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_top_xact</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_aborted</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="c1"># Incremented very time the connection is released back to a pool.</span>
+        <span class="c1"># Incremented every time the connection is released back to a pool.</span>
         <span class="c1"># Used to catch invalid references to connection-related resources</span>
         <span class="c1"># post-release (e.g. explicit prepared statements).</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_pool_release_ctr</span> <span class="o">=</span> <span class="mi">0</span>
@@ -277,8 +277,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">channel</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">:</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;LISTEN </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">channel</span><span class="p">))</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Connection.remove_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.remove_listener">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">remove_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Remove a listening callback on the specified channel.&quot;&quot;&quot;</span>
@@ -290,8 +290,8 @@
             <span class="k">return</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]:</span>
-            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;UNLISTEN </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">channel</span><span class="p">))</span></div>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span></div>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;UNLISTEN </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">channel</span><span class="p">))</span>
 
 <div class="viewcode-block" id="Connection.add_log_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.add_log_listener">[docs]</a>    <span class="k">def</span> <span class="nf">add_log_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Add a listener for Postgres log messages.</span>
@@ -308,19 +308,19 @@
 <span class="sd">        .. versionadded:: 0.12.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
-            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span><span class="s1">&#39;connection is closed&#39;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_log_listeners</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span><span class="s1">&#39;connection is closed&#39;</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_listeners</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Connection.remove_log_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.remove_log_listener">[docs]</a>    <span class="k">def</span> <span class="nf">remove_log_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Remove a listening callback for log messages.</span>
 
 <span class="sd">        .. versionadded:: 0.12.0</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_log_listeners</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_listeners</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Connection.get_server_pid"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.get_server_pid">[docs]</a>    <span class="k">def</span> <span class="nf">get_server_pid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return the PID of the Postgres server the connection is bound to.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_server_pid</span><span class="p">()</span></div>
+        <span class="sd">&quot;&quot;&quot;Return the PID of the Postgres server the connection is bound to.&quot;&quot;&quot;</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_server_pid</span><span class="p">()</span>
 
 <div class="viewcode-block" id="Connection.get_server_version"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.get_server_version">[docs]</a>    <span class="k">def</span> <span class="nf">get_server_version</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return the version of the connected PostgreSQL server.</span>
@@ -335,15 +335,15 @@
 <span class="sd">                          releaselevel=&#39;final&#39;, serial=0)</span>
 
 <span class="sd">        .. versionadded:: 0.8.0</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_version</span></div>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_version</span>
 
 <div class="viewcode-block" id="Connection.get_settings"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.get_settings">[docs]</a>    <span class="k">def</span> <span class="nf">get_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return connection settings.</span>
 
 <span class="sd">        :return: :class:`~asyncpg.ConnectionSettings`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span></div>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
 
 <div class="viewcode-block" id="Connection.transaction"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.transaction">[docs]</a>    <span class="k">def</span> <span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">isolation</span><span class="o">=</span><span class="s1">&#39;read_committed&#39;</span><span class="p">,</span> <span class="n">readonly</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                     <span class="n">deferrable</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
@@ -365,8 +365,8 @@
 <span class="sd">        .. _`PostgreSQL documentation`: https://www.postgresql.org/docs/\</span>
 <span class="sd">                                        current/static/sql-set-transaction.html</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
-        <span class="k">return</span> <span class="n">transaction</span><span class="o">.</span><span class="n">Transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">isolation</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">deferrable</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span></div>
+        <span class="k">return</span> <span class="n">transaction</span><span class="o">.</span><span class="n">Transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">isolation</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">deferrable</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Connection.execute"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.execute">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Execute an SQL command (or commands).</span>
@@ -401,8 +401,8 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="p">:</span>
             <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
 
-        <span class="n">_</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">status</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span></div>
+        <span class="n">_</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">status</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
 
 <div class="viewcode-block" id="Connection.executemany"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.executemany">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">executemany</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Execute an SQL *command* for each sequence of arguments in *args*.</span>
@@ -425,22 +425,24 @@
 <span class="sd">        .. versionchanged:: 0.11.0</span>
 <span class="sd">           `timeout` became a keyword-only parameter.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_executemany</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span></div>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_executemany</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">_get_statement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">named</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="n">statement</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">statement</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">statement</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_get_statement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">named</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                             <span class="n">use_cache</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">use_cache</span><span class="p">:</span>
+            <span class="n">statement</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">statement</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">statement</span>
 
-        <span class="c1"># Only use the cache when:</span>
-        <span class="c1">#  * `statement_cache_size` is greater than 0;</span>
-        <span class="c1">#  * query size is less than `max_cacheable_statement_size`.</span>
-        <span class="n">use_cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">get_max_size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">use_cache</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">max_cacheable_statement_size</span> <span class="ow">and</span>
-                <span class="nb">len</span><span class="p">(</span><span class="n">query</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">max_cacheable_statement_size</span><span class="p">):</span>
-            <span class="n">use_cache</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="c1"># Only use the cache when:</span>
+            <span class="c1">#  * `statement_cache_size` is greater than 0;</span>
+            <span class="c1">#  * query size is less than `max_cacheable_statement_size`.</span>
+            <span class="n">use_cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">get_max_size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">use_cache</span> <span class="ow">and</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">max_cacheable_statement_size</span> <span class="ow">and</span>
+                    <span class="nb">len</span><span class="p">(</span><span class="n">query</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">max_cacheable_statement_size</span><span class="p">):</span>
+                <span class="n">use_cache</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="k">if</span> <span class="n">use_cache</span> <span class="ow">or</span> <span class="n">named</span><span class="p">:</span>
             <span class="n">stmt_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">(</span><span class="s1">&#39;stmt&#39;</span><span class="p">)</span>
@@ -453,12 +455,20 @@
             <span class="n">types</span><span class="p">,</span> <span class="n">intro_stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__execute</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">ready</span><span class="p">),),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">register_data_types</span><span class="p">(</span><span class="n">types</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">intro_stmt</span><span class="o">.</span><span class="n">name</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">statement</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
-                <span class="c1"># The introspection query has used an anonymous statement,</span>
-                <span class="c1"># which has blown away the anonymous statement we&#39;ve prepared</span>
-                <span class="c1"># for the query, so we need to re-prepare it.</span>
-                <span class="n">statement</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span>
-                    <span class="n">stmt_name</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+            <span class="c1"># The introspection query has used an anonymous statement,</span>
+            <span class="c1"># which has blown away the anonymous statement we&#39;ve prepared</span>
+            <span class="c1"># for the query, so we need to re-prepare it.</span>
+            <span class="n">need_reprepare</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">intro_stmt</span><span class="o">.</span><span class="n">name</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">statement</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">need_reprepare</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Now that types have been resolved, populate the codec pipeline</span>
+        <span class="c1"># for the statement.</span>
+        <span class="n">statement</span><span class="o">.</span><span class="n">_init_codecs</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">need_reprepare</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span>
+                <span class="n">stmt_name</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="n">statement</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">use_cache</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">statement</span><span class="p">)</span>
@@ -481,8 +491,8 @@
 <span class="sd">        :return: A :class:`~cursor.CursorFactory` object.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
-        <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">CursorFactory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span>
-                                    <span class="n">prefetch</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">CursorFactory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span></div>
+                                    <span class="n">prefetch</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Connection.prepare"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.prepare">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create a *prepared statement* for the specified query.</span>
@@ -491,10 +501,14 @@
 <span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 
 <span class="sd">        :return: A :class:`~prepared_stmt.PreparedStatement` instance.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span> <span class="n">use_cache</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_prepare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_cache</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
-        <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">named</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">prepared_stmt</span><span class="o">.</span><span class="n">PreparedStatement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">stmt</span><span class="p">)</span></div>
+        <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">named</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                         <span class="n">use_cache</span><span class="o">=</span><span class="n">use_cache</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">prepared_stmt</span><span class="o">.</span><span class="n">PreparedStatement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">stmt</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Connection.fetch"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.fetch">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Run a query and return the results as a list of :class:`Record`.</span>
@@ -505,8 +519,8 @@
 
 <span class="sd">        :return list: A list of :class:`Record` instances.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span></div>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Connection.fetchval"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.fetchval">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Run a query and return a value in the first row.</span>
@@ -526,8 +540,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
         <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">column</span><span class="p">]</span></div>
+            <span class="k">return</span> <span class="kc">None</span></div>
+        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">column</span><span class="p">]</span>
 
 <div class="viewcode-block" id="Connection.fetchrow"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.fetchrow">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchrow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Run a query and return the first row.</span>
@@ -542,8 +556,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
         <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+            <span class="k">return</span> <span class="kc">None</span></div>
+        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
 <div class="viewcode-block" id="Connection.copy_from_table"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.copy_from_table">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">copy_from_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span>
                               <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">schema_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -614,8 +628,8 @@
 
         <span class="n">copy_stmt</span> <span class="o">=</span> <span class="s1">&#39;COPY </span><span class="si">{tab}{cols}</span><span class="s1"> TO STDOUT </span><span class="si">{opts}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
             <span class="n">tab</span><span class="o">=</span><span class="n">tabname</span><span class="p">,</span> <span class="n">cols</span><span class="o">=</span><span class="n">cols</span><span class="p">,</span> <span class="n">opts</span><span class="o">=</span><span class="n">opts</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy_out</span><span class="p">(</span><span class="n">copy_stmt</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+</div>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy_out</span><span class="p">(</span><span class="n">copy_stmt</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Connection.copy_from_query"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.copy_from_query">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">copy_from_query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span>
                               <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">oids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -676,8 +690,8 @@
 
         <span class="n">copy_stmt</span> <span class="o">=</span> <span class="s1">&#39;COPY (</span><span class="si">{query}</span><span class="s1">) TO STDOUT </span><span class="si">{opts}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
             <span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">,</span> <span class="n">opts</span><span class="o">=</span><span class="n">opts</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy_out</span><span class="p">(</span><span class="n">copy_stmt</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+</div>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy_out</span><span class="p">(</span><span class="n">copy_stmt</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Connection.copy_to_table"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.copy_to_table">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">copy_to_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span>
                             <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">schema_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -751,8 +765,8 @@
 
         <span class="n">copy_stmt</span> <span class="o">=</span> <span class="s1">&#39;COPY </span><span class="si">{tab}{cols}</span><span class="s1"> FROM STDIN </span><span class="si">{opts}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
             <span class="n">tab</span><span class="o">=</span><span class="n">tabname</span><span class="p">,</span> <span class="n">cols</span><span class="o">=</span><span class="n">cols</span><span class="p">,</span> <span class="n">opts</span><span class="o">=</span><span class="n">opts</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy_in</span><span class="p">(</span><span class="n">copy_stmt</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+</div>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy_in</span><span class="p">(</span><span class="n">copy_stmt</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Connection.copy_records_to_table"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.copy_records_to_table">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">copy_records_to_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span>
                                     <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">schema_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -809,15 +823,15 @@
         <span class="n">intro_query</span> <span class="o">=</span> <span class="s1">&#39;SELECT </span><span class="si">{cols}</span><span class="s1"> FROM </span><span class="si">{tab}</span><span class="s1"> LIMIT 1&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
             <span class="n">tab</span><span class="o">=</span><span class="n">tabname</span><span class="p">,</span> <span class="n">cols</span><span class="o">=</span><span class="n">col_list</span><span class="p">)</span>
 
-        <span class="n">intro_ps</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="n">intro_query</span><span class="p">)</span>
+        <span class="n">intro_ps</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare</span><span class="p">(</span><span class="n">intro_query</span><span class="p">,</span> <span class="n">use_cache</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="n">opts</span> <span class="o">=</span> <span class="s1">&#39;(FORMAT binary)&#39;</span>
 
         <span class="n">copy_stmt</span> <span class="o">=</span> <span class="s1">&#39;COPY </span><span class="si">{tab}{cols}</span><span class="s1"> FROM STDIN </span><span class="si">{opts}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
             <span class="n">tab</span><span class="o">=</span><span class="n">tabname</span><span class="p">,</span> <span class="n">cols</span><span class="o">=</span><span class="n">cols</span><span class="p">,</span> <span class="n">opts</span><span class="o">=</span><span class="n">opts</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy_in_records</span><span class="p">(</span>
-            <span class="n">copy_stmt</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">intro_ps</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy_in_records</span><span class="p">(</span></div>
+            <span class="n">copy_stmt</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">intro_ps</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_format_copy_opts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">oids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">freeze</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                           <span class="n">delimiter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -943,7 +957,7 @@
 
 <div class="viewcode-block" id="Connection.set_type_codec"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.set_type_codec">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">set_type_codec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                              <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;public&#39;</span><span class="p">,</span> <span class="n">encoder</span><span class="p">,</span> <span class="n">decoder</span><span class="p">,</span>
-                             <span class="n">binary</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;text&#39;</span><span class="p">):</span>
+                             <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;text&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Set an encoder/decoder pair for the specified data type.</span>
 
 <span class="sd">        :param typename:</span>
@@ -1063,8 +1077,8 @@
             <span class="n">oid</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">,</span> <span class="s1">&#39;scalar&#39;</span><span class="p">,</span>
             <span class="n">encoder</span><span class="p">,</span> <span class="n">decoder</span><span class="p">,</span> <span class="nb">format</span><span class="p">)</span>
 
-        <span class="c1"># Statement cache is no longer valid due to codec changes.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_statement_cache</span><span class="p">()</span></div>
+        <span class="c1"># Statement cache is no longer valid due to codec changes.</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_statement_cache</span><span class="p">()</span>
 
 <div class="viewcode-block" id="Connection.reset_type_codec"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.reset_type_codec">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">reset_type_codec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;public&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Reset *typename* codec to the default implementation.</span>
@@ -1089,8 +1103,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">remove_python_codec</span><span class="p">(</span>
             <span class="n">oid</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
 
-        <span class="c1"># Statement cache is no longer valid due to codec changes.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_statement_cache</span><span class="p">()</span></div>
+        <span class="c1"># Statement cache is no longer valid due to codec changes.</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_statement_cache</span><span class="p">()</span>
 
 <div class="viewcode-block" id="Connection.set_builtin_type_codec"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.set_builtin_type_codec">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">set_builtin_type_codec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                                      <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;public&#39;</span><span class="p">,</span> <span class="n">codec_name</span><span class="p">):</span>
@@ -1117,16 +1131,16 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">set_builtin_type_codec</span><span class="p">(</span>
             <span class="n">oid</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">,</span> <span class="s1">&#39;scalar&#39;</span><span class="p">,</span> <span class="n">codec_name</span><span class="p">)</span>
 
-        <span class="c1"># Statement cache is no longer valid due to codec changes.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_statement_cache</span><span class="p">()</span></div>
+        <span class="c1"># Statement cache is no longer valid due to codec changes.</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_statement_cache</span><span class="p">()</span>
 
 <div class="viewcode-block" id="Connection.is_closed"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.is_closed">[docs]</a>    <span class="k">def</span> <span class="nf">is_closed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return ``True`` if the connection is closed, ``False`` otherwise.</span>
 
 <span class="sd">        :return bool: ``True`` if the connection is closed, ``False``</span>
 <span class="sd">                      otherwise.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">is_connected</span><span class="p">()</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_aborted</span></div>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">is_connected</span><span class="p">()</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_aborted</span>
 
 <div class="viewcode-block" id="Connection.close"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.close">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Close the connection gracefully.</span>
@@ -1150,8 +1164,8 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_aborted</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>
             <span class="k">raise</span>
-        <span class="k">finally</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_clean_tasks</span><span class="p">()</span></div>
+        <span class="k">finally</span><span class="p">:</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_clean_tasks</span><span class="p">()</span>
 
 <div class="viewcode-block" id="Connection.terminate"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.terminate">[docs]</a>    <span class="k">def</span> <span class="nf">terminate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Terminate the connection without waiting for pending data.&quot;&quot;&quot;</span>
@@ -1159,8 +1173,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_listeners</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_aborted</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_clean_tasks</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clean_tasks</span><span class="p">()</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
@@ -1444,8 +1458,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># It is enough to clear the type cache only once, not in each</span>
         <span class="c1"># connection in the pool.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">clear_type_cache</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_drop_global_statement_cache</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">clear_type_cache</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_drop_global_statement_cache</span><span class="p">()</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">return_status</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_exclusive_section</span><span class="p">:</span>
@@ -1526,8 +1540,8 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_do_execute</span><span class="p">(</span>
                     <span class="n">query</span><span class="p">,</span> <span class="n">executor</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">retry</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">stmt</span></div>
+</div>
+        <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">stmt</span>
 
 
 <div class="viewcode-block" id="connect"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.connect">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="n">dsn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
@@ -1658,8 +1672,8 @@
         <span class="n">server_settings</span><span class="o">=</span><span class="n">server_settings</span><span class="p">,</span>
         <span class="n">command_timeout</span><span class="o">=</span><span class="n">command_timeout</span><span class="p">,</span>
         <span class="n">statement_cache_size</span><span class="o">=</span><span class="n">statement_cache_size</span><span class="p">,</span>
-        <span class="n">max_cached_statement_lifetime</span><span class="o">=</span><span class="n">max_cached_statement_lifetime</span><span class="p">,</span>
-        <span class="n">max_cacheable_statement_size</span><span class="o">=</span><span class="n">max_cacheable_statement_size</span><span class="p">)</span></div>
+        <span class="n">max_cached_statement_lifetime</span><span class="o">=</span><span class="n">max_cached_statement_lifetime</span><span class="p">,</span></div>
+        <span class="n">max_cacheable_statement_size</span><span class="o">=</span><span class="n">max_cacheable_statement_size</span><span class="p">)</span>
 
 
 <span class="k">class</span> <span class="nc">_StatementCacheEntry</span><span class="p">:</span>
@@ -1912,7 +1926,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.14.0',
+            VERSION:'0.15.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

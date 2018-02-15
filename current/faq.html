@@ -67,7 +67,7 @@
             
             
               <div class="version">
-                0.14.0
+                0.15.0
               </div>
             
           
@@ -98,10 +98,10 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Frequently Asked Questions</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#does-asyncpg-support-db-api">Does asyncpg support DB-API?</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#can-i-use-asyncpg-with-sqlalchemy-orm">Can I use asyncpg with SQLAlchemy ORM?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#can-i-use-dot-notation-with-asyncpg-record-it-looks-cleaner">Can I use dot-notation with <code class="docutils literal"><span class="pre">asyncpg.Record</span></code>?  It looks cleaner.</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#why-can-t-i-use-a-cursor-outside-of-a-transaction">Why can’t I use a <code class="docutils literal"><span class="pre">cursor</span></code> outside of a transaction?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#can-i-use-dot-notation-with-asyncpg-record-it-looks-cleaner">Can I use dot-notation with <code class="docutils literal notranslate"><span class="pre">asyncpg.Record</span></code>?  It looks cleaner.</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#why-can-t-i-use-a-cursor-outside-of-a-transaction">Why can’t I use a <code class="docutils literal notranslate"><span class="pre">cursor</span></code> outside of a transaction?</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#why-am-i-getting-prepared-statement-errors">Why am I getting prepared statement errors?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#why-do-i-get-postgressyntaxerror-when-using-expression-in-1">Why do I get <code class="docutils literal"><span class="pre">PostgresSyntaxError</span></code> when using <code class="docutils literal"><span class="pre">expression</span> <span class="pre">IN</span> <span class="pre">$1</span></code>?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#why-do-i-get-postgressyntaxerror-when-using-expression-in-1">Why do I get <code class="docutils literal notranslate"><span class="pre">PostgresSyntaxError</span></code> when using <code class="docutils literal notranslate"><span class="pre">expression</span> <span class="pre">IN</span> <span class="pre">$1</span></code>?</a></li>
 </ul>
 </li>
 </ul>
@@ -184,29 +184,29 @@ However, it is possible to use asyncpg and SQLAlchemy Core
 with the help of a third-party adapter, such as <a class="reference external" href="https://github.com/CanopyTax/asyncpgsa">asyncpgsa</a>.</p>
 </div>
 <div class="section" id="can-i-use-dot-notation-with-asyncpg-record-it-looks-cleaner">
-<h2>Can I use dot-notation with <a class="reference internal" href="api/index.html#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">asyncpg.Record</span></code></a>?  It looks cleaner.<a class="headerlink" href="#can-i-use-dot-notation-with-asyncpg-record-it-looks-cleaner" title="Permalink to this headline">¶</a></h2>
-<p>We decided against making <a class="reference internal" href="api/index.html#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal"><span class="pre">asyncpg.Record</span></code></a> a named tuple
-because we want to keep the <code class="docutils literal"><span class="pre">Record</span></code> method namespace separate
+<h2>Can I use dot-notation with <a class="reference internal" href="api/index.html#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Record</span></code></a>?  It looks cleaner.<a class="headerlink" href="#can-i-use-dot-notation-with-asyncpg-record-it-looks-cleaner" title="Permalink to this headline">¶</a></h2>
+<p>We decided against making <a class="reference internal" href="api/index.html#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Record</span></code></a> a named tuple
+because we want to keep the <code class="docutils literal notranslate"><span class="pre">Record</span></code> method namespace separate
 from the column namespace.</p>
 </div>
 <div class="section" id="why-can-t-i-use-a-cursor-outside-of-a-transaction">
 <h2>Why can’t I use a <a class="reference internal" href="api/index.html#asyncpg-api-cursor"><span class="std std-ref">cursor</span></a> outside of a transaction?<a class="headerlink" href="#why-can-t-i-use-a-cursor-outside-of-a-transaction" title="Permalink to this headline">¶</a></h2>
 <p>Cursors created by a call to
-<a class="reference internal" href="api/index.html#asyncpg.connection.Connection.cursor" title="asyncpg.connection.Connection.cursor"><code class="xref py py-meth docutils literal"><span class="pre">Connection.cursor()</span></code></a> or
-<a class="reference internal" href="api/index.html#asyncpg.prepared_stmt.PreparedStatement.cursor" title="asyncpg.prepared_stmt.PreparedStatement.cursor"><code class="xref py py-meth docutils literal"><span class="pre">PreparedStatement.cursor()</span> </code></a>
+<a class="reference internal" href="api/index.html#asyncpg.connection.Connection.cursor" title="asyncpg.connection.Connection.cursor"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Connection.cursor()</span></code></a> or
+<a class="reference internal" href="api/index.html#asyncpg.prepared_stmt.PreparedStatement.cursor" title="asyncpg.prepared_stmt.PreparedStatement.cursor"><code class="xref py py-meth docutils literal notranslate"><span class="pre">PreparedStatement.cursor()</span> </code></a>
 cannot be used outside of a transaction.  Any such attempt will result in
-<code class="docutils literal"><span class="pre">InterfaceError</span></code>.
+<code class="docutils literal notranslate"><span class="pre">InterfaceError</span></code>.
 To create a cursor usable outside of a transaction, use the
-<code class="docutils literal"><span class="pre">DECLARE</span> <span class="pre">...</span> <span class="pre">CURSOR</span> <span class="pre">WITH</span> <span class="pre">HOLD</span></code> SQL statement directly.</p>
+<code class="docutils literal notranslate"><span class="pre">DECLARE</span> <span class="pre">...</span> <span class="pre">CURSOR</span> <span class="pre">WITH</span> <span class="pre">HOLD</span></code> SQL statement directly.</p>
 </div>
 <div class="section" id="why-am-i-getting-prepared-statement-errors">
 <span id="asyncpg-prepared-stmt-errors"></span><h2>Why am I getting prepared statement errors?<a class="headerlink" href="#why-am-i-getting-prepared-statement-errors" title="Permalink to this headline">¶</a></h2>
-<p>If you are getting intermittent <code class="docutils literal"><span class="pre">prepared</span> <span class="pre">statement</span> <span class="pre">&quot;__asyncpg_stmt_xx__&quot;</span>
-<span class="pre">does</span> <span class="pre">not</span> <span class="pre">exist</span></code> or <code class="docutils literal"><span class="pre">prepared</span> <span class="pre">statement</span> <span class="pre">“__asyncpg_stmt_xx__”</span>
+<p>If you are getting intermittent <code class="docutils literal notranslate"><span class="pre">prepared</span> <span class="pre">statement</span> <span class="pre">&quot;__asyncpg_stmt_xx__&quot;</span>
+<span class="pre">does</span> <span class="pre">not</span> <span class="pre">exist</span></code> or <code class="docutils literal notranslate"><span class="pre">prepared</span> <span class="pre">statement</span> <span class="pre">“__asyncpg_stmt_xx__”</span>
 <span class="pre">already</span> <span class="pre">exists</span></code> errors, you are most likely not connecting to the
 PostgreSQL server directly, but via
 <a class="reference external" href="https://pgbouncer.github.io/">pgbouncer</a>.  pgbouncer, when
-in the <code class="docutils literal"><span class="pre">&quot;transaction&quot;</span></code> or <code class="docutils literal"><span class="pre">&quot;statement&quot;</span></code> pooling mode, does not support
+in the <code class="docutils literal notranslate"><span class="pre">&quot;transaction&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;statement&quot;</span></code> pooling mode, does not support
 prepared statements.  You have two options:</p>
 <ul class="simple">
 <li>if you are using pgbouncer for connection pooling to a single server,
@@ -214,14 +214,14 @@ switch to the <a class="reference internal" href="usage.html#asyncpg-connection-
 functionality provided by asyncpg, it is a much better option for this
 purpose;</li>
 <li>if you have no option of avoiding the use of pgbouncer, then you need to
-switch pgbouncer’s <code class="docutils literal"><span class="pre">pool_mode</span></code> to <code class="docutils literal"><span class="pre">session</span></code>.</li>
+switch pgbouncer’s <code class="docutils literal notranslate"><span class="pre">pool_mode</span></code> to <code class="docutils literal notranslate"><span class="pre">session</span></code>.</li>
 </ul>
 </div>
 <div class="section" id="why-do-i-get-postgressyntaxerror-when-using-expression-in-1">
-<h2>Why do I get <code class="docutils literal"><span class="pre">PostgresSyntaxError</span></code> when using <code class="docutils literal"><span class="pre">expression</span> <span class="pre">IN</span> <span class="pre">$1</span></code>?<a class="headerlink" href="#why-do-i-get-postgressyntaxerror-when-using-expression-in-1" title="Permalink to this headline">¶</a></h2>
-<p><code class="docutils literal"><span class="pre">expression</span> <span class="pre">IN</span> <span class="pre">$1</span></code> is not a valid PostgreSQL syntax.  To check
-a value against a sequence use <code class="docutils literal"><span class="pre">expression</span> <span class="pre">=</span> <span class="pre">any($1::mytype[])</span></code>,
-where <code class="docutils literal"><span class="pre">mytype</span></code> is the array element type.</p>
+<h2>Why do I get <code class="docutils literal notranslate"><span class="pre">PostgresSyntaxError</span></code> when using <code class="docutils literal notranslate"><span class="pre">expression</span> <span class="pre">IN</span> <span class="pre">$1</span></code>?<a class="headerlink" href="#why-do-i-get-postgressyntaxerror-when-using-expression-in-1" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">expression</span> <span class="pre">IN</span> <span class="pre">$1</span></code> is not a valid PostgreSQL syntax.  To check
+a value against a sequence use <code class="docutils literal notranslate"><span class="pre">expression</span> <span class="pre">=</span> <span class="pre">any($1::mytype[])</span></code>,
+where <code class="docutils literal notranslate"><span class="pre">mytype</span></code> is the array element type.</p>
 </div>
 </div>
 
@@ -266,7 +266,7 @@ where <code class="docutils literal"><span class="pre">mytype</span></code> is t
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.14.0',
+            VERSION:'0.15.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

@@ -166,6 +166,11 @@ and user-defined types using the :meth:`Connection.set_type_codec() \
 <asyncpg.connection.Connection.set_type_codec>` and
 :meth:`Connection.set_builtin_type_codec() \
 <asyncpg.connection.Connection.set_builtin_type_codec>` methods.
+
+
+Example: automatic JSON conversion
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 The example below shows how to configure asyncpg to encode and decode
 JSON values using the :mod:`json <python:json>` module.
 
@@ -177,22 +182,76 @@ JSON values using the :mod:`json <python:json>` module.
 
 
     async def main():
-        conn = await asyncpg.connect('postgresql://postgres@localhost/test')
+        conn = await asyncpg.connect()
 
         try:
-            def _encoder(value):
-                return json.dumps(value)
-
-            def _decoder(value):
-                return json.loads(value)
-
             await conn.set_type_codec(
-                'json', encoder=_encoder, decoder=_decoder,
+                'json',
+                encoder=json.dumps,
+                decoder=json.loads,
                 schema='pg_catalog'
             )
 
             data = {'foo': 'bar', 'spam': 1}
             res = await conn.fetchval('SELECT $1::json', data)
+
+        finally:
+            await conn.close()
+
+    asyncio.get_event_loop().run_until_complete(main())
+
+
+Example: automatic conversion of PostGIS types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The example below shows how to configure asyncpg to encode and decode
+the PostGIS ``geometry`` type.  It works for any Python object that
+conforms to the `geo interface specification`_ and relies on Shapely_,
+although any library that supports reading and writing the WKB format
+will work.
+
+.. _Shapely: https://github.com/Toblerity/Shapely
+.. _geo interface specification: https://gist.github.com/sgillies/2217756
+
+.. code-block:: python
+
+    import asyncio
+    import asyncpg
+
+    import shapely.geometry
+    import shapely.wkb
+    from shapely.geometry.base import BaseGeometry
+
+
+    async def main():
+        conn = await asyncpg.connect()
+
+        try:
+            def encode_geometry(geometry):
+                if not hasattr(geometry, '__geo_interface__'):
+                    raise TypeError('{g} does not conform to '
+                                    'the geo interface'.format(g=geometry))
+                shape = shapely.geometry.asShape(geometry)
+                return shapely.wkb.dumps(shape)
+
+            def decode_geometry(wkb):
+                return shapely.wkb.loads(wkb)
+
+            await conn.set_type_codec(
+                'geometry',  # also works for 'geography'
+                encoder=encode_geometry,
+                decoder=decode_geometry,
+                format='binary',
+            )
+
+            data = shapely.geometry.Point(-73.985661, 40.748447)
+            res = await conn.fetchrow(
+                '''SELECT 'Empire State Building' AS name,
+                          $1::geometry            AS coordinates
+                ''',
+                data)
+
+            print(res)
 
         finally:
             await conn.close()
