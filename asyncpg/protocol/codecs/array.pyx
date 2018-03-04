@@ -5,7 +5,7 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-from collections.abc import Container as ContainerABC
+from collections.abc import Iterable as IterableABC, Sized as SizedABC
 
 
 DEF ARRAY_MAXDIM = 6  # defined in postgresql/src/includes/c.h
@@ -30,13 +30,18 @@ cdef inline bint _is_trivial_container(object obj):
             PyByteArray_Check(obj) or PyMemoryView_Check(obj)
 
 
-cdef inline _is_container(object obj):
-    return not _is_trivial_container(obj) and isinstance(obj, ContainerABC)
+cdef inline _is_array_iterable(object obj):
+    return (
+        isinstance(obj, IterableABC) and
+        isinstance(obj, SizedABC) and
+        not _is_trivial_container(obj)
+    )
 
 
-cdef inline _is_sub_array(object obj):
-    return not _is_trivial_container(obj) and isinstance(obj, ContainerABC) \
-            and not cpython.PyTuple_Check(obj)
+cdef inline _is_sub_array_iterable(object obj):
+    # Sub-arrays have a specialized check, because we treat
+    # nested tuples as records.
+    return _is_array_iterable(obj) and not cpython.PyTuple_Check(obj)
 
 
 cdef _get_array_shape(object obj, int32_t *dims, int32_t *ndims):
@@ -56,7 +61,7 @@ cdef _get_array_shape(object obj, int32_t *dims, int32_t *ndims):
     dims[ndims[0] - 1] = <int32_t>mylen
 
     for elem in obj:
-        if _is_sub_array(elem):
+        if _is_sub_array_iterable(elem):
             if elemlen == -2:
                 elemlen = len(elem)
                 if elemlen > _MAXINT32:
@@ -101,9 +106,9 @@ cdef inline array_encode(ConnectionSettings settings, WriteBuffer buf,
         int32_t ndims = 1
         int32_t i
 
-    if not _is_container(obj):
+    if not _is_array_iterable(obj):
         raise TypeError(
-            'a non-trivial iterable expected (got type {!r})'.format(
+            'a sized iterable container expected (got type {!r})'.format(
                 type(obj).__name__))
 
     _get_array_shape(obj, dims, &ndims)
@@ -247,9 +252,9 @@ cdef inline textarray_encode(ConnectionSettings settings, WriteBuffer buf,
         int32_t ndims = 1
         int32_t i
 
-    if not _is_container(obj):
+    if not _is_array_iterable(obj):
         raise TypeError(
-            'a non-trivial iterable expected (got type {!r})'.format(
+            'a sized iterable container expected (got type {!r})'.format(
                 type(obj).__name__))
 
     _get_array_shape(obj, dims, &ndims)
