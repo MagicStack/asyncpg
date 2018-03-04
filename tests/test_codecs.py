@@ -661,6 +661,27 @@ class TestCodecs(tb.ConnectedTestCase):
 
                 self.assertEqual(result, case, err_msg)
 
+        # A sized iterable is fine as array input.
+        class Iterable:
+            def __iter__(self):
+                return iter([1, 2, 3])
+
+            def __len__(self):
+                return 3
+
+        result = await self.con.fetchval("SELECT $1::int[]", Iterable())
+        self.assertEqual(result, [1, 2, 3])
+
+        # A pure container is _not_ OK for array input.
+        class SomeContainer:
+            def __contains__(self, item):
+                return False
+
+        with self.assertRaisesRegex(TypeError,
+                                    'sized iterable container expected'):
+            result = await self.con.fetchval("SELECT $1::int[]",
+                                             SomeContainer())
+
         with self.assertRaisesRegex(ValueError, 'dimensions'):
             await self.con.fetchval(
                 "SELECT $1::int[]",
@@ -687,7 +708,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 [[1], ['t'], [2]])
 
         with self.assertRaisesRegex(TypeError,
-                                    'non-trivial iterable expected'):
+                                    'sized iterable container expected'):
             await self.con.fetchval(
                 "SELECT $1::int[]",
                 1)
