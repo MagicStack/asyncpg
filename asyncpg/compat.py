@@ -7,10 +7,13 @@
 
 import functools
 import os
+import pathlib
+import platform
 import sys
 
 
 PY_36 = sys.version_info >= (3, 6)
+SYSTEM = platform.uname().system
 
 
 if sys.version_info < (3, 5, 2):
@@ -45,3 +48,24 @@ else:
                     type(path).__name__
                 )
             )
+
+
+if SYSTEM == 'Windows':
+    import ctypes.wintypes
+
+    CSIDL_APPDATA = 0x001a
+
+    def get_pg_home_directory() -> pathlib.Path:
+        # We cannot simply use expanduser() as that returns the user's
+        # home directory, whereas Postgres stores its config in
+        # %AppData% on Windows.
+        buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
+        r = ctypes.windll.shell32.SHGetFolderPathW(0, CSIDL_APPDATA, 0, 0, buf)
+        if r:
+            return None
+        else:
+            return pathlib.Path(buf.value) / 'postgresql'
+
+else:
+    def get_pg_home_directory() -> pathlib.Path:
+        return pathlib.Path.home()
