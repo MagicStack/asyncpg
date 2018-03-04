@@ -9,12 +9,18 @@ import asyncio
 import collections
 import getpass
 import os
+import pathlib
 import platform
+import re
 import socket
+import stat
 import struct
 import time
+import typing
 import urllib.parse
+import warnings
 
+from . import compat
 from . import exceptions
 from . import protocol
 
@@ -44,9 +50,92 @@ _ClientConfiguration = collections.namedtuple(
 _system = platform.uname().system
 
 
+if _system == 'Windows':
+    PGPASSFILE = 'pgpass.conf'
+else:
+    PGPASSFILE = '.pgpass'
+
+
+def _read_password_file(passfile: pathlib.Path) \
+        -> typing.List[typing.Tuple[str, ...]]:
+
+    if not passfile.is_file():
+        warnings.warn(
+            'password file {!r} is not a plain file'.format(passfile))
+
+        return None
+
+    if _system != 'Windows':
+        if passfile.stat().st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+            warnings.warn(
+                'password file {!r} has group or world access; '
+                'permissions should be u=rw (0600) or less'.format(passfile))
+
+            return None
+
+    passtab = []
+
+    try:
+        with passfile.open('rt') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    # Skip empty lines and comments.
+                    continue
+                # Backslash escapes both itself and the colon,
+                # which is a record separator.
+                line = line.replace(R'\\', '\n')
+                passtab.append(tuple(
+                    p.replace('\n', R'\\')
+                    for p in re.split(r'(?<!\\):', line, maxsplit=4)
+                ))
+    except IOError:
+        pass
+
+    return passtab
+
+
+def _read_password_from_pgpass(
+        *, passfile: typing.Optional[pathlib.Path],
+        hosts: typing.List[typing.Union[str, typing.Tuple[str, int]]],
+        port: int, database: str, user: str):
+    """Parse the pgpass file and return the matching password.
+
+    :return:
+        Password string, if found, ``None`` otherwise.
+    """
+
+    if not passfile.exists():
+        return None
+
+    passtab = _read_password_file(passfile)
+    if not passtab:
+        return None
+
+    for host in hosts:
+        if host.startswith('/'):
+            # Unix sockets get normalized into 'localhost'
+            host = 'localhost'
+
+        for phost, pport, pdatabase, puser, ppassword in passtab:
+            if phost != '*' and phost != host:
+                continue
+            if pport != '*' and pport != str(port):
+                continue
+            if pdatabase != '*' and pdatabase != database:
+                continue
+            if puser != '*' and puser != user:
+                continue
+
+            # Found a match.
+            return ppassword
+
+    return None
+
+
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
-                                password, database, ssl, connect_timeout,
-                                server_settings):
+                                password, passfile, database, ssl,
+                                connect_timeout, server_settings):
     if host is not None and not isinstance(host, str):
         raise TypeError(
             'host argument is expected to be str, got {!r}'.format(
@@ -113,6 +202,11 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 if password is None:
                     password = val
 
+            if 'passfile' in query:
+                val = query.pop('passfile')
+                if passfile is None:
+                    passfile = val
+
             if query:
                 if server_settings is None:
                     server_settings = query
@@ -123,10 +217,14 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     # https://www.postgresql.org/docs/current/static/libpq-envars.html
     # Note that env values may be an empty string in cases when
     # the variable is "unset" by setting it to an empty value
-    #
+    # `auth_hosts` is the version of host information for the purposes
+    # of reading the pgpass file.
+    auth_hosts = None
     if host is None:
         host = os.getenv('PGHOST')
         if not host:
+            auth_hosts = ['localhost']
+
             if _system == 'Windows':
                 host = ['localhost']
             else:
@@ -136,6 +234,9 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
     if not isinstance(host, list):
         host = [host]
+
+    if auth_hosts is None:
+        auth_hosts = host
 
     if port is None:
         port = os.getenv('PGPORT')
@@ -167,6 +268,24 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     if database is None:
         raise exceptions.InterfaceError(
             'could not determine database name to connect to')
+
+    if password is None:
+        if passfile is None:
+            passfile = os.getenv('PGPASSFILE')
+
+        if passfile is None:
+            homedir = compat.get_pg_home_directory()
+            if homedir:
+                passfile = homedir / PGPASSFILE
+            else:
+                passfile = None
+        else:
+            passfile = pathlib.Path(passfile)
+
+        if passfile is not None:
+            password = _read_password_from_pgpass(
+                hosts=auth_hosts, port=port, database=database, user=user,
+                passfile=passfile)
 
     addrs = []
     for h in host:
@@ -206,8 +325,9 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     return addrs, params
 
 
-def _parse_connect_arguments(*, dsn, host, port, user, password, database,
-                             timeout, command_timeout, statement_cache_size,
+def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
+                             database, timeout, command_timeout,
+                             statement_cache_size,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
                              ssl, server_settings):
@@ -237,7 +357,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, database,
 
     addrs, params = _parse_connect_dsn_and_args(
         dsn=dsn, host=host, port=port, user=user,
-        password=password, ssl=ssl,
+        password=password, passfile=passfile, ssl=ssl,
         database=database, connect_timeout=timeout,
         server_settings=server_settings)
 

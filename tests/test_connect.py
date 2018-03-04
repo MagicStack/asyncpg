@@ -11,6 +11,9 @@ import ipaddress
 import os
 import platform
 import ssl
+import stat
+import tempfile
+import textwrap
 import unittest
 
 import asyncpg
@@ -354,6 +357,7 @@ class TestConnectParams(tb.TestCase):
         port = testcase.get('port')
         host = testcase.get('host')
         password = testcase.get('password')
+        passfile = testcase.get('passfile')
         database = testcase.get('database')
         server_settings = testcase.get('server_settings')
 
@@ -377,8 +381,8 @@ class TestConnectParams(tb.TestCase):
 
             addrs, params = connect_utils._parse_connect_dsn_and_args(
                 dsn=dsn, host=host, port=port, user=user, password=password,
-                database=database, ssl=None, connect_timeout=None,
-                server_settings=server_settings)
+                passfile=passfile, database=database, ssl=None,
+                connect_timeout=None, server_settings=server_settings)
 
             params = {k: v for k, v in params._asdict().items()
                       if v is not None}
@@ -430,6 +434,230 @@ class TestConnectParams(tb.TestCase):
     def test_connect_params(self):
         for testcase in self.TESTS:
             self.run_testcase(testcase)
+
+    def test_connect_pgpass_regular(self):
+        passfile = tempfile.NamedTemporaryFile('w+t', delete=False)
+        passfile.write(textwrap.dedent(R'''
+            abc:*:*:user:password from pgpass for user@abc
+            localhost:*:*:*:password from pgpass for localhost
+            cde:5433:*:*:password from pgpass for cde:5433
+
+            *:*:*:testuser:password from pgpass for testuser
+            *:*:testdb:*:password from pgpass for testdb
+            # comment
+            *:*:test\:db:test\\:password from pgpass with escapes
+        '''))
+        passfile.close()
+        os.chmod(passfile.name, stat.S_IWUSR | stat.S_IRUSR)
+
+        try:
+            # passfile path in env
+            self.run_testcase({
+                'env': {
+                    'PGPASSFILE': passfile.name
+                },
+                'host': 'abc',
+                'user': 'user',
+                'database': 'db',
+                'result': (
+                    [('abc', 5432)],
+                    {
+                        'password': 'password from pgpass for user@abc',
+                        'user': 'user',
+                        'database': 'db',
+                    }
+                )
+            })
+
+            # passfile path as explicit arg
+            self.run_testcase({
+                'host': 'abc',
+                'user': 'user',
+                'database': 'db',
+                'passfile': passfile.name,
+                'result': (
+                    [('abc', 5432)],
+                    {
+                        'password': 'password from pgpass for user@abc',
+                        'user': 'user',
+                        'database': 'db',
+                    }
+                )
+            })
+
+            # passfile path in dsn
+            self.run_testcase({
+                'dsn': 'postgres://user@abc/db?passfile={}'.format(
+                    passfile.name),
+                'result': (
+                    [('abc', 5432)],
+                    {
+                        'password': 'password from pgpass for user@abc',
+                        'user': 'user',
+                        'database': 'db',
+                    }
+                )
+            })
+
+            self.run_testcase({
+                'host': 'localhost',
+                'user': 'user',
+                'database': 'db',
+                'passfile': passfile.name,
+                'result': (
+                    [('localhost', 5432)],
+                    {
+                        'password': 'password from pgpass for localhost',
+                        'user': 'user',
+                        'database': 'db',
+                    }
+                )
+            })
+
+            if _system != 'Windows':
+                # unix socket gets normalized as localhost
+                self.run_testcase({
+                    'host': '/tmp',
+                    'user': 'user',
+                    'database': 'db',
+                    'passfile': passfile.name,
+                    'result': (
+                        ['/tmp/.s.PGSQL.5432'],
+                        {
+                            'password': 'password from pgpass for localhost',
+                            'user': 'user',
+                            'database': 'db',
+                        }
+                    )
+                })
+
+            # port matching (also tests that `:` can be part of password)
+            self.run_testcase({
+                'host': 'cde',
+                'port': 5433,
+                'user': 'user',
+                'database': 'db',
+                'passfile': passfile.name,
+                'result': (
+                    [('cde', 5433)],
+                    {
+                        'password': 'password from pgpass for cde:5433',
+                        'user': 'user',
+                        'database': 'db',
+                    }
+                )
+            })
+
+            # user matching
+            self.run_testcase({
+                'host': 'def',
+                'user': 'testuser',
+                'database': 'db',
+                'passfile': passfile.name,
+                'result': (
+                    [('def', 5432)],
+                    {
+                        'password': 'password from pgpass for testuser',
+                        'user': 'testuser',
+                        'database': 'db',
+                    }
+                )
+            })
+
+            # database matching
+            self.run_testcase({
+                'host': 'efg',
+                'user': 'user',
+                'database': 'testdb',
+                'passfile': passfile.name,
+                'result': (
+                    [('efg', 5432)],
+                    {
+                        'password': 'password from pgpass for testdb',
+                        'user': 'user',
+                        'database': 'testdb',
+                    }
+                )
+            })
+
+            # test escaping
+            self.run_testcase({
+                'host': 'fgh',
+                'user': R'test\\',
+                'database': R'test\:db',
+                'passfile': passfile.name,
+                'result': (
+                    [('fgh', 5432)],
+                    {
+                        'password': 'password from pgpass with escapes',
+                        'user': R'test\\',
+                        'database': R'test\:db',
+                    }
+                )
+            })
+
+        finally:
+            os.unlink(passfile.name)
+
+    @unittest.skipIf(_system == 'Windows', 'no mode checking on Windows')
+    def test_connect_pgpass_badness_mode(self):
+        # Verify that .pgpass permissions are checked
+        with tempfile.NamedTemporaryFile('w+t') as passfile:
+            os.chmod(passfile.name,
+                     stat.S_IWUSR | stat.S_IRUSR | stat.S_IWGRP | stat.S_IRGRP)
+
+            with self.assertWarnsRegex(
+                    UserWarning,
+                    'password file .* has group or world access'):
+                self.run_testcase({
+                    'host': 'abc',
+                    'user': 'user',
+                    'database': 'db',
+                    'passfile': passfile.name,
+                    'result': (
+                        [('abc', 5432)],
+                        {
+                            'user': 'user',
+                            'database': 'db',
+                        }
+                    )
+                })
+
+    def test_connect_pgpass_badness_non_file(self):
+        # Verify warnings when .pgpass is not a file
+        with tempfile.TemporaryDirectory() as passfile:
+            with self.assertWarnsRegex(
+                    UserWarning,
+                    'password file .* is not a plain file'):
+                self.run_testcase({
+                    'host': 'abc',
+                    'user': 'user',
+                    'database': 'db',
+                    'passfile': passfile,
+                    'result': (
+                        [('abc', 5432)],
+                        {
+                            'user': 'user',
+                            'database': 'db',
+                        }
+                    )
+                })
+
+    def test_connect_pgpass_nonexistent(self):
+        # nonexistent passfile is OK
+        self.run_testcase({
+            'host': 'abc',
+            'user': 'user',
+            'database': 'db',
+            'passfile': 'totally nonexistent',
+            'result': (
+                [('abc', 5432)],
+                {
+                    'user': 'user',
+                    'database': 'db',
+                }
+            )
+        })
 
     async def test_connect_args_validation(self):
         for val in {-1, 'a', True, False, 0}:

@@ -1382,7 +1382,7 @@ class Connection(metaclass=ConnectionMeta):
 
 async def connect(dsn=None, *,
                   host=None, port=None,
-                  user=None, password=None,
+                  user=None, password=None, passfile=None,
                   database=None,
                   loop=None,
                   timeout=60,
@@ -1423,6 +1423,11 @@ async def connect(dsn=None, *,
 
     :param password:
         password used for authentication
+
+    :param passfile:
+        the name of the file used to store passwords
+        (defaults to ``~/.pgpass``, or ``%APPDATA%\postgresql\pgpass.conf``
+         on Windows)
 
     :param loop:
         An asyncio event loop instance.  If ``None``, the default
@@ -1489,6 +1494,10 @@ async def connect(dsn=None, *,
     .. versionadded:: 0.11.0
        Added ``connection_class`` parameter.
 
+    .. versionadded:: 0.16.0
+       Added ``passfile`` parameter
+       (and support for password files in general).
+
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context: https://docs.python.org/3/library/ssl.html#\
                                 ssl.create_default_context
@@ -1503,7 +1512,8 @@ async def connect(dsn=None, *,
 
     return await connect_utils._connect(
         loop=loop, timeout=timeout, connection_class=connection_class,
-        dsn=dsn, host=host, port=port, user=user, password=password,
+        dsn=dsn, host=host, port=port, user=user,
+        password=password, passfile=passfile,
         ssl=ssl, database=database,
         server_settings=server_settings,
         command_timeout=command_timeout,
