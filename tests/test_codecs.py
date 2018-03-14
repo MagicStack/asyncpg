@@ -1467,3 +1467,33 @@ class TestCodecs(tb.ConnectedTestCase):
     async def test_no_result(self):
         st = await self.con.prepare('rollback')
         self.assertTupleEqual(st.get_attributes(), ())
+
+    async def test_jsonb_decode(self):
+        from json import dumps
+
+        obj = {"c": {"d": "e", "f": [0, 1, {"foo": "bar"}]}}
+
+        await self.con.execute('''
+            CREATE TABLE testjsonb (
+                id serial,
+                o jsonb
+            );
+        ''')
+
+        q_put = await self.con.prepare(
+            "INSERT INTO testjsonb (o) VALUES ($1)"
+        )
+
+        q_get = await self.con.prepare(
+            "SELECT o from testjsonb"
+        )
+
+        try:
+            await q_put.fetch(dumps(obj))
+
+            row = await q_get.fetchrow()
+
+            assert isinstance(row['o'], dict)
+            assert row['o'] == obj
+        finally:
+            await self.con.execute('''DROP TABLE testjsonb''')
