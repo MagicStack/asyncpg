@@ -161,7 +161,7 @@ cdef numeric_decode_binary(ConnectionSettings settings, FastReadBuffer buf):
 
     if num_pgdigits == 0:
         # Zero
-        return _Dec()
+        return _Dec('0e-' + str(dscale))
 
     pgdigit0 = hton.unpack_int16(buf.read(2))
     if weight >= 0:
