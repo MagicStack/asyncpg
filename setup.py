@@ -197,6 +197,7 @@ setuptools.setup(
     long_description=readme,
     classifiers=[
         'License :: OSI Approved :: Apache Software License',
+        'Framework :: AsyncIO',
         'Intended Audience :: Developers',
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3.5',
