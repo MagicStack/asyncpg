@@ -1427,7 +1427,7 @@ async def connect(dsn=None, *,
     :param passfile:
         the name of the file used to store passwords
         (defaults to ``~/.pgpass``, or ``%APPDATA%\postgresql\pgpass.conf``
-         on Windows)
+        on Windows)
 
     :param loop:
         An asyncio event loop instance.  If ``None``, the default
