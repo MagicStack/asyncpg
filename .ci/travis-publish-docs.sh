@@ -13,6 +13,9 @@ if [ "${TRAVIS_PULL_REQUEST}" != "false" ]; then
     exit 0
 fi
 
+pip install -r docs/requirements.txt
+make htmldocs
+
 git config --global user.email "infra@magic.io"
 git config --global user.name "Travis CI"
 
