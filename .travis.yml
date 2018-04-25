@@ -128,11 +128,11 @@ matrix:
               apt: {packages: [postgresql-10]}
 
         - os: osx
-          env: BUILD=tests,wheels PYTHON_VERSION=3.5.2 PIP_USER=1 PGVERSION=9.6
+          env: BUILD=tests,wheels PYTHON_VERSION=3.5.5 PGVERSION=9.6
 
         - os: osx
           osx_image: xcode8.3
-          env: BUILD=tests,wheels PYTHON_VERSION=3.6.1 PIP_USER=1 PGVERSION=9.6
+          env: BUILD=tests,wheels PYTHON_VERSION=3.6.5 PGVERSION=9.6
 
     allow_failures:
         - python: "3.7-dev"

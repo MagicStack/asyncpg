@@ -25,9 +25,8 @@ if [[ "${TRAVIS_OS_NAME}" == "linux" && "${BUILD}" == *wheels* ]]; then
 fi
 
 if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
-    git clone --depth 1 https://github.com/yyuu/pyenv.git ~/.pyenv
-    PYENV_ROOT="$HOME/.pyenv"
-    PATH="$PYENV_ROOT/bin:$PATH"
+    brew update >/dev/null
+    brew upgrade pyenv
     eval "$(pyenv init -)"
 
     if ! (pyenv versions | grep "${PYTHON_VERSION}$"); then
@@ -37,7 +36,6 @@ if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
     pyenv rehash
 
     # Install PostgreSQL
-    brew update >/dev/null
     if brew ls --versions postgresql@${PGVERSION} > /dev/null; then
         brew upgrade postgresql@${PGVERSION}
     else
