@@ -152,8 +152,14 @@ script:
     - .ci/travis-build-wheels.sh
 
 deploy:
-    provider: script
-    script: .ci/travis-release.sh
-    on:
-        tags: true
-        condition: '"${BUILD}" == *release*'
+    - provider: script
+      script: .ci/travis-release.sh
+      on:
+          tags: true
+          condition: '"${BUILD}" == *release*'
+
+    - provider: script
+      script: .ci/travis-publish-docs.sh
+      on:
+          branch: master
+          condition: '"${BUILD}" == *docs*'

@@ -8,13 +8,10 @@ SOURCE_BRANCH="master"
 TARGET_BRANCH="gh-pages"
 DOC_BUILD_DIR="_build/html/"
 
-if [ "${TRAVIS_PULL_REQUEST}" != "false" -o -z "${TRAVIS_TAG}" ]; then
+if [ "${TRAVIS_PULL_REQUEST}" != "false" ]; then
     echo "Skipping documentation deploy."
     exit 0
 fi
-
-pip install -r docs/requirements.txt
-make htmldocs
 
 git config --global user.email "infra@magic.io"
 git config --global user.name "Travis CI"
@@ -29,13 +26,14 @@ cd docs/gh-pages
 git checkout "${TARGET_BRANCH}" || git checkout --orphan "${TARGET_BRANCH}"
 cd ..
 
-rm -r gh-pages/devel/
-rsync -a "${DOC_BUILD_DIR}/" gh-pages/devel/
-
-if [ -n "${TRAVIS_TAG}" ]; then
-    rm -r gh-pages/current/
-    rsync -a "${DOC_BUILD_DIR}/" gh-pages/current/
+if [ -z "${TRAVIS_TAG}" ]; then
+    VERSION="devel"
+else
+    VERSION="current"
 fi
+
+rm -r "gh-pages/${VERSION}/"
+rsync -a "${DOC_BUILD_DIR}/" "gh-pages/${VERSION}/"
 
 cd gh-pages
 
