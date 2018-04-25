@@ -259,6 +259,37 @@ will work.
     asyncio.get_event_loop().run_until_complete(main())
 
 
+Example: decoding numeric columns as floats
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default asyncpg decodes numeric columns as Python
+:class:`Decimal <python:decimal.Decimal>` instances.  The example below
+shows how to instruct asyncpg to use floats instead.
+
+.. code-block:: python
+
+    import asyncio
+    import asyncpg
+
+
+    async def main():
+        conn = await asyncpg.connect()
+
+        try:
+            await conn.set_type_codec(
+                'numeric', encoder=str, decoder=float,
+                schema='pg_catalog', format='text'
+            )
+
+            res = await conn.fetchval("SELECT $1::numeric", 11.123)
+            print(res, type(res))
+
+        finally:
+            await conn.close()
+
+    asyncio.get_event_loop().run_until_complete(main())
+
+
 Transactions
 ------------
 

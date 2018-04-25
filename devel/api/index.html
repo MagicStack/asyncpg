@@ -25,28 +25,20 @@
   
 
   
-  
     <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  
-
-  
-    <link rel="stylesheet" href="../_static/theme_overrides.css" type="text/css" />
-  
-
-  
-        <link rel="index" title="Index"
-              href="../genindex.html"/>
-        <link rel="search" title="Search" href="../search.html"/>
-    <link rel="top" title="asyncpg Documentation" href="../index.html"/>
-        <link rel="next" title="Frequently Asked Questions" href="../faq.html"/>
-        <link rel="prev" title="asyncpg Usage" href="../usage.html"/> 
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Frequently Asked Questions" href="../faq.html" />
+    <link rel="prev" title="asyncpg Usage" href="../usage.html" /> 
 
   
   <script src="../_static/js/modernizr.min.js"></script>
 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
@@ -68,7 +60,7 @@
             
             
               <div class="version">
-                0.15.0
+                0.16.0.dev0
               </div>
             
           
@@ -117,7 +109,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../index.html">asyncpg</a>
@@ -125,9 +117,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -173,7 +166,7 @@
 <span id="asyncpg-api-connection"></span><h2>Connection<a class="headerlink" href="#connection" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="asyncpg.connection.connect">
-<code class="descname">connect</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>host=None</em>, <em>port=None</em>, <em>user=None</em>, <em>password=None</em>, <em>database=None</em>, <em>loop=None</em>, <em>timeout=60</em>, <em>statement_cache_size=100</em>, <em>max_cached_statement_lifetime=300</em>, <em>max_cacheable_statement_size=15360</em>, <em>command_timeout=None</em>, <em>ssl=None</em>, <em>connection_class=&lt;class 'asyncpg.connection.Connection'&gt;</em>, <em>server_settings=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.connect" title="Permalink to this definition">¶</a></dt>
+<code class="descname">connect</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>host=None</em>, <em>port=None</em>, <em>user=None</em>, <em>password=None</em>, <em>passfile=None</em>, <em>database=None</em>, <em>loop=None</em>, <em>timeout=60</em>, <em>statement_cache_size=100</em>, <em>max_cached_statement_lifetime=300</em>, <em>max_cacheable_statement_size=15360</em>, <em>command_timeout=None</em>, <em>ssl=None</em>, <em>connection_class=&lt;class 'asyncpg.connection.Connection'&gt;</em>, <em>server_settings=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.connect" title="Permalink to this definition">¶</a></dt>
 <dd><p>A coroutine to establish a connection to a PostgreSQL server.</p>
 <p>Returns a new <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a> object.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -196,6 +189,9 @@ variable, if set)</li>
 <li><strong>database</strong> – the name of the database (defaults to the value of <code class="docutils literal notranslate"><span class="pre">PGDATABASE</span></code>
 environment variable, if set.)</li>
 <li><strong>password</strong> – password used for authentication</li>
+<li><strong>passfile</strong> – the name of the file used to store passwords
+(defaults to <code class="docutils literal notranslate"><span class="pre">~/.pgpass</span></code>, or <code class="docutils literal notranslate"><span class="pre">%APPDATA%\postgresql\pgpass.conf</span></code>
+on Windows)</li>
 <li><strong>loop</strong> – An asyncio event loop instance.  If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the default
 event loop will be used.</li>
 <li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – connection timeout in seconds.</li>
@@ -246,6 +242,10 @@ for that.</p>
 </div>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.11.0: </span>Added <code class="docutils literal notranslate"><span class="pre">connection_class</span></code> parameter.</p>
+</div>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.16.0: </span>Added <code class="docutils literal notranslate"><span class="pre">passfile</span></code> parameter
+(and support for password files in general).</p>
 </div>
 </dd></dl>
 
@@ -300,7 +300,7 @@ DEBUG, INFO, or LOG.</p>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.close">
-<em class="property">coroutine </em><code class="descname">close</code><span class="sig-paren">(</span><em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.close" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">close</code><span class="sig-paren">(</span><em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.close" title="Permalink to this definition">¶</a></dt>
 <dd><p>Close the connection gracefully.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -977,7 +977,7 @@ format.</p>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.transaction">
-<code class="descname">transaction</code><span class="sig-paren">(</span><em>isolation='read_committed'</em>, <em>readonly=False</em>, <em>deferrable=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.transaction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.transaction" title="Permalink to this definition">¶</a></dt>
+<code class="descname">transaction</code><span class="sig-paren">(</span><em>*</em>, <em>isolation='read_committed'</em>, <em>readonly=False</em>, <em>deferrable=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.transaction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.transaction" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a <code class="xref py py-class docutils literal notranslate"><span class="pre">Transaction</span></code> object.</p>
 <p>Refer to <a class="reference external" href="https://www.postgresql.org/docs/current/static/sql-set-transaction.html">PostgreSQL documentation</a> on the meaning of transaction
 parameters.</p>
@@ -1433,7 +1433,7 @@ fetch subsets of the query results.</p>
 
 <dl class="method">
 <dt id="asyncpg.cursor.Cursor.fetchrow">
-<code class="descname">fetchrow</code><span class="sig-paren">(</span><em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/cursor.html#Cursor.fetchrow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.cursor.Cursor.fetchrow" title="Permalink to this definition">¶</a></dt>
+<code class="descname">fetchrow</code><span class="sig-paren">(</span><em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/cursor.html#Cursor.fetchrow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.cursor.Cursor.fetchrow" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the next row.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1561,7 +1561,7 @@ open cursors and other resources <em>except</em> prepared statements.</p>
 <p>Pools are created by calling <a class="reference internal" href="#asyncpg.pool.create_pool" title="asyncpg.pool.create_pool"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_pool()</span></code></a>.</p>
 <dl class="method">
 <dt id="asyncpg.pool.Pool.acquire">
-<code class="descname">acquire</code><span class="sig-paren">(</span><em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.acquire"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.acquire" title="Permalink to this definition">¶</a></dt>
+<code class="descname">acquire</code><span class="sig-paren">(</span><em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.acquire"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.acquire" title="Permalink to this definition">¶</a></dt>
 <dd><p>Acquire a database connection from the pool.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1926,9 +1926,7 @@ items either by a numeric index or by a field name:</p>
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
@@ -1967,7 +1965,8 @@ items either by a numeric index or by a field name:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.15.0',
+            VERSION:'0.16.0.dev0',
+            LANGUAGE:'None',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
@@ -1985,14 +1984,13 @@ items either by a numeric index or by a field name:</p>
     <script type="text/javascript" src="../_static/js/theme.js"></script>
   
 
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          
+          SphinxRtdTheme.Navigation.enableSticky();
+          
       });
-  </script>
-   
+  </script> 
 
 </body>
 </html>
