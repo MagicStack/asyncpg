@@ -152,6 +152,8 @@ The table below shows the correspondence between PostgreSQL and Python types.
 +----------------------+-----------------------------------------------------+
 | ``uuid``             | :class:`uuid.UUID <python:uuid.UUID>`               |
 +----------------------+-----------------------------------------------------+
+| ``tid``              | :class:`tuple <python:tuple>`                       |
++----------------------+-----------------------------------------------------+
 
 All other types are encoded and decoded as text by default.
 
