@@ -31,7 +31,7 @@ cdef init_pseudo_codecs():
 
     # OID and friends
     oid_types = [
-        OIDOID, TIDOID, XIDOID, CIDOID
+        OIDOID, XIDOID, CIDOID
     ]
 
     for oid_type in oid_types:
