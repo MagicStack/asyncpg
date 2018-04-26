@@ -379,6 +379,9 @@ type_samples = [
     ('circle', 'circle', [
         asyncpg.Circle((0.0, 0.0), 100),
     ]),
+    ('tid', 'tid', [
+        (0, 2),
+    ]),
 ]
 
 
@@ -598,7 +601,31 @@ class TestCodecs(tb.ConnectedTestCase):
             ]),
             ('text', TypeError, 'expected str, got list', [
                 [1]
-            ])
+            ]),
+            ('tid', TypeError, 'list or tuple expected', [
+                b'foo'
+            ]),
+            ('tid', ValueError, 'invalid number of elements in tid tuple', [
+                [],
+                (),
+                [1, 2, 3],
+                (4,),
+            ]),
+            ('tid', OverflowError, 'block too big to be encoded as INT4', [
+                (2**256, 0),
+                (decimal.Decimal("2000000000000000000000000000000"), 0),
+                (0xffffffff, 0),
+                (2**31, 0),
+                (-2**31 - 1, 0),
+            ]),
+            ('tid', OverflowError, 'offset too big to be encoded as INT2', [
+                (0, 2**256),
+                (0, decimal.Decimal("2000000000000000000000000000000")),
+                (0, 0xffff),
+                (0, 0xffffffff),
+                (0, 32768),
+                (0, -32769),
+            ]),
         ]
 
         for typname, errcls, errmsg, data in cases:
