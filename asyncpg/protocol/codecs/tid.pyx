@@ -7,7 +7,7 @@
 
 cdef tid_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     cdef int overflow = 0
-    cdef long block, offset
+    cdef unsigned long block, offset
 
     if not (cpython.PyTuple_Check(obj) or cpython.PyList_Check(obj)):
         raise TypeError(
@@ -18,25 +18,24 @@ cdef tid_encode(ConnectionSettings settings, WriteBuffer buf, obj):
             'invalid number of elements in tid tuple, expecting 2')
 
     try:
-        block = cpython.PyLong_AsLong(obj[0])
+        block = cpython.PyLong_AsUnsignedLong(obj[0])
     except OverflowError:
         overflow = 1
 
     # "long" and "long long" have the same size for x86_64, need an extra check
-    if overflow or (sizeof(block) > 4 and (block < -2147483648 or
-                                                 block > 2147483647)):
+    if overflow or (sizeof(block) > 4 and block > 4294967295):
         raise OverflowError(
-            'block too big to be encoded as INT4: {!r}'.format(obj[0]))
+            'block too big to be encoded as UINT4: {!r}'.format(obj[0]))
 
     try:
-        offset = cpython.PyLong_AsLong(obj[1])
+        offset = cpython.PyLong_AsUnsignedLong(obj[1])
         overflow = 0
     except OverflowError:
         overflow = 1
 
-    if overflow or offset < -32768 or offset > 32767:
+    if overflow or offset > 65535:
         raise OverflowError(
-            'offset too big to be encoded as INT2: {!r}'.format(obj[1]))
+            'offset too big to be encoded as UINT2: {!r}'.format(obj[1]))
 
     buf.write_int32(6)
     buf.write_int32(<int32_t>block)
@@ -45,11 +44,11 @@ cdef tid_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
 cdef tid_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
-        int32_t block
-        int16_t offset
+        uint32_t block
+        uint16_t offset
 
-    block = hton.unpack_int32(buf.read(4))
-    offset = hton.unpack_int16(buf.read(2))
+    block = <uint32_t>hton.unpack_int32(buf.read(4))
+    offset = <uint16_t>hton.unpack_int16(buf.read(2))
 
     return (block, offset)
 

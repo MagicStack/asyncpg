@@ -380,7 +380,13 @@ type_samples = [
         asyncpg.Circle((0.0, 0.0), 100),
     ]),
     ('tid', 'tid', [
-        (0, 2),
+        (100, 200),
+        (0, 0),
+        (2147483647, 0),
+        (4294967295, 0),
+        (0, 32767),
+        (0, 65535),
+        (4294967295, 65535),
     ]),
 ]
 
@@ -611,20 +617,18 @@ class TestCodecs(tb.ConnectedTestCase):
                 [1, 2, 3],
                 (4,),
             ]),
-            ('tid', OverflowError, 'block too big to be encoded as INT4', [
+            ('tid', OverflowError, 'block too big to be encoded as UINT4', [
+                (-1, 0),
                 (2**256, 0),
-                (decimal.Decimal("2000000000000000000000000000000"), 0),
-                (0xffffffff, 0),
-                (2**31, 0),
-                (-2**31 - 1, 0),
+                (0xffffffff + 1, 0),
+                (2**32, 0),
             ]),
-            ('tid', OverflowError, 'offset too big to be encoded as INT2', [
+            ('tid', OverflowError, 'offset too big to be encoded as UINT2', [
+                (0, -1),
                 (0, 2**256),
-                (0, decimal.Decimal("2000000000000000000000000000000")),
-                (0, 0xffff),
+                (0, 0xffff + 1),
                 (0, 0xffffffff),
-                (0, 32768),
-                (0, -32769),
+                (0, 65536),
             ]),
         ]
 
