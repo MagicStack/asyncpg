@@ -260,6 +260,15 @@ class Connection(metaclass=ConnectionMeta):
 
         .. versionchanged:: 0.11.0
            `timeout` became a keyword-only parameter.
+
+        .. versionchanged:: 0.16.0
+           The execution was changed to be in a implicit transaction if there
+           was no explicit transaction, so that it will no longer end up with
+           partial success. It also combined all args into one network packet
+           to reduce round-trip time, therefore you should make sure not to
+           blow up your memory with a super long iterable. If you still need
+           the previous behavior to progressively execute many args, please use
+           prepared statement instead.
         """
         self._check_open()
         return await self._executemany(command, args, timeout)
