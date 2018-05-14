@@ -75,11 +75,6 @@ cdef class CoreProtocol:
         bint _skip_discard
         bint _discard_data
 
-        # executemany support data
-        object _execute_iter
-        str _execute_portal_name
-        str _execute_stmt_name
-
         ConnectionStatus con_status
         ProtocolState state
         TransactionStatus xact_status
