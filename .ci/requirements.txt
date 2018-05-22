@@ -1,4 +1,4 @@
-cython>=0.27.2
+cython>=0.28.2
 flake8>=3.4.1
 uvloop>=0.8.0
 tinys3

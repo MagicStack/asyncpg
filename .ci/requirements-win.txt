@@ -1,2 +1,2 @@
-cython>=0.27.2
+cython>=0.28.2
 tinys3
