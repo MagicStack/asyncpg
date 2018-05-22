@@ -30,3 +30,4 @@ __pycache__/
 docs/_build
 *,cover
 .coverage
+/.pytest_cache/
