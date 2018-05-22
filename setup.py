@@ -8,7 +8,6 @@
 import os
 import os.path
 import platform
-import re
 import sys
 
 import setuptools
@@ -101,77 +100,7 @@ class build_ext(_build_ext.build_ext):
                 compiler_directives=directives,
                 annotate=self.cython_annotate)
 
-            for cfile, timestamp in cfiles.items():
-                if os.path.getmtime(cfile) != timestamp:
-                    # The file was recompiled, patch
-                    self._patch_cfile(cfile)
-
         super(build_ext, self).finalize_options()
-
-    def _patch_cfile(self, cfile):
-        # Script to patch Cython 'async def' coroutines to have a 'tp_iter'
-        # slot, which makes them compatible with 'yield from' without the
-        # `asyncio.coroutine` decorator.
-
-        with open(cfile, 'rt') as f:
-            src = f.read()
-
-        src = re.sub(
-            r'''
-            \s* offsetof\(__pyx_CoroutineObject,\s*gi_weakreflist\),
-            \s* 0,
-            \s* 0,
-            \s* __pyx_Coroutine_methods,
-            \s* __pyx_Coroutine_memberlist,
-            \s* __pyx_Coroutine_getsets,
-            ''',
-
-            r'''
-            offsetof(__pyx_CoroutineObject, gi_weakreflist),
-            __Pyx_Coroutine_await, /* tp_iter */
-            (iternextfunc) __Pyx_Generator_Next, /* tp_iternext */
-            __pyx_Coroutine_methods,
-            __pyx_Coroutine_memberlist,
-            __pyx_Coroutine_getsets,
-            ''',
-
-            src, flags=re.X)
-
-        # Fix a segfault in Cython.
-        src = re.sub(
-            r'''
-            \s* __Pyx_Coroutine_get_qualname\(__pyx_CoroutineObject\s+\*self\)
-            \s* {
-            \s* Py_INCREF\(self->gi_qualname\);
-            ''',
-
-            r'''
-            __Pyx_Coroutine_get_qualname(__pyx_CoroutineObject *self)
-            {
-                if (self->gi_qualname == NULL) { return __pyx_empty_unicode; }
-                Py_INCREF(self->gi_qualname);
-            ''',
-
-            src, flags=re.X)
-
-        src = re.sub(
-            r'''
-            \s* __Pyx_Coroutine_get_name\(__pyx_CoroutineObject\s+\*self\)
-            \s* {
-            \s* Py_INCREF\(self->gi_name\);
-            ''',
-
-            r'''
-            __Pyx_Coroutine_get_name(__pyx_CoroutineObject *self)
-            {
-                if (self->gi_name == NULL) { return __pyx_empty_unicode; }
-                Py_INCREF(self->gi_name);
-            ''',
-
-            src, flags=re.X)
-
-        with open(cfile, 'wt') as f:
-            f.write(src)
 
 
 with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as f:
