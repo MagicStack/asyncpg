@@ -513,6 +513,19 @@ class TestCodecs(tb.ConnectedTestCase):
 
             self.assertEqual(str(res), case)
 
+        try:
+            await self.con.execute(
+                '''
+                    CREATE TABLE tab (v numeric(3, 2));
+                    INSERT INTO tab VALUES (0), (1);
+                ''')
+            res = await self.con.fetchval("SELECT v FROM tab WHERE v = $1", 0)
+            self.assertEqual(str(res), '0.00')
+            res = await self.con.fetchval("SELECT v FROM tab WHERE v = $1", 1)
+            self.assertEqual(str(res), '1.00')
+        finally:
+            await self.con.execute('DROP TABLE tab')
+
         res = await self.con.fetchval(
             "SELECT $1::numeric", decimal.Decimal('NaN'))
         self.assertTrue(res.is_nan())
