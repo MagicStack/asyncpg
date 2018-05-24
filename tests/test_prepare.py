@@ -600,3 +600,38 @@ class TestPrepare(tb.ConnectedTestCase):
         # prepare with disabled cache
         await self.con.prepare('select 1')
         self.assertEqual(len(cache), 0)
+
+    async def test_prepare_executemany(self):
+        await self.con.execute('CREATE TEMP TABLE exmany (a text, b int)')
+
+        try:
+            stmt = await self.con.prepare('''
+                INSERT INTO exmany VALUES($1, $2)
+            ''')
+
+            result = await stmt.executemany([
+                ('a', 1), ('b', 2), ('c', 3), ('d', 4)
+            ])
+
+            self.assertIsNone(result)
+
+            result = await self.con.fetch('''
+                SELECT * FROM exmany
+            ''')
+
+            self.assertEqual(result, [
+                ('a', 1), ('b', 2), ('c', 3), ('d', 4)
+            ])
+
+            # Empty set
+            await stmt.executemany(())
+
+            result = await self.con.fetch('''
+                SELECT * FROM exmany
+            ''')
+
+            self.assertEqual(result, [
+                ('a', 1), ('b', 2), ('c', 3), ('d', 4)
+            ])
+        finally:
+            await self.con.execute('DROP TABLE exmany')

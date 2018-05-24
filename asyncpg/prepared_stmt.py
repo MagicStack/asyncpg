@@ -196,6 +196,28 @@ class PreparedStatement(connresource.ConnectionResource):
             return None
         return data[0]
 
+    @connresource.guarded
+    async def executemany(self, args, *, timeout: float=None):
+        """Execute the statement for each sequence of arguments in *args*.
+
+        This combines all args into one network packet, thus reduces round-trip
+        time than executing one by one.
+
+        :param args: An iterable containing sequences of arguments.
+        :param float timeout: Optional timeout value in seconds.
+        :return None: This method discards the results of the operations.
+
+        .. versionadded:: 0.16.0
+        """
+        protocol = self._connection._protocol
+        try:
+            return await protocol.bind_execute_many(
+                self._state, args, '', timeout)
+        except exceptions.OutdatedSchemaCacheError:
+            await self._connection.reload_schema_state()
+            self._state.mark_closed()
+            raise
+
     async def __bind_execute(self, args, limit, timeout):
         protocol = self._connection._protocol
         try:

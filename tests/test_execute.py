@@ -151,3 +151,25 @@ class TestExecuteScript(tb.ConnectedTestCase):
                 ''', good_data)
         finally:
             await self.con.execute('DROP TABLE exmany')
+
+    async def test_execute_many_atomic(self):
+        from asyncpg.exceptions import UniqueViolationError
+
+        await self.con.execute('CREATE TEMP TABLE exmany '
+                               '(a text, b int PRIMARY KEY)')
+
+        try:
+            with self.assertRaises(UniqueViolationError):
+                await self.con.executemany('''
+                    INSERT INTO exmany VALUES($1, $2)
+                ''', [
+                    ('a', 1), ('b', 2), ('c', 2), ('d', 4)
+                ])
+
+            result = await self.con.fetch('''
+                SELECT * FROM exmany
+            ''')
+
+            self.assertEqual(result, [])
+        finally:
+            await self.con.execute('DROP TABLE exmany')
