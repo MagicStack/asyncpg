@@ -208,6 +208,7 @@ class Connection(metaclass=ConnectionMeta):
         """Return True if Connection is currently inside a transaction
 
         :return bool: True if inside transaction, False otherwise
+        .. versionadded:: 0.16.0
         """
         return self._top_xact is not None or self._protocol.is_in_transaction()
 
