@@ -204,6 +204,14 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
         return transaction.Transaction(self, isolation, readonly, deferrable)
 
+    def is_in_transaction(self):
+        """Return True if Connection is currently inside a transaction.
+
+        :return bool: True if inside transaction, False otherwise.
+        .. versionadded:: 0.16.0
+        """
+        return self._protocol.is_in_transaction()
+
     async def execute(self, query: str, *args, timeout: float=None) -> str:
         """Execute an SQL command (or commands).
 

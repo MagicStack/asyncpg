@@ -14,12 +14,15 @@ class TestTransaction(tb.ConnectedTestCase):
 
     async def test_transaction_regular(self):
         self.assertIsNone(self.con._top_xact)
+        self.assertFalse(self.con.is_in_transaction())
         tr = self.con.transaction()
         self.assertIsNone(self.con._top_xact)
+        self.assertFalse(self.con.is_in_transaction())
 
         with self.assertRaises(ZeroDivisionError):
             async with tr as with_tr:
                 self.assertIs(self.con._top_xact, tr)
+                self.assertTrue(self.con.is_in_transaction())
 
                 # We don't return the transaction object from __aenter__,
                 # to make it harder for people to use '.rollback()' and
@@ -33,6 +36,7 @@ class TestTransaction(tb.ConnectedTestCase):
                 1 / 0
 
         self.assertIsNone(self.con._top_xact)
+        self.assertFalse(self.con.is_in_transaction())
 
         with self.assertRaisesRegex(asyncpg.PostgresError,
                                     '"mytab" does not exist'):
@@ -42,12 +46,17 @@ class TestTransaction(tb.ConnectedTestCase):
 
     async def test_transaction_nested(self):
         self.assertIsNone(self.con._top_xact)
+        self.assertFalse(self.con.is_in_transaction())
+
         tr = self.con.transaction()
+
         self.assertIsNone(self.con._top_xact)
+        self.assertFalse(self.con.is_in_transaction())
 
         with self.assertRaises(ZeroDivisionError):
             async with tr:
                 self.assertIs(self.con._top_xact, tr)
+                self.assertTrue(self.con.is_in_transaction())
 
                 await self.con.execute('''
                     CREATE TABLE mytab (a int);
@@ -55,18 +64,21 @@ class TestTransaction(tb.ConnectedTestCase):
 
                 async with self.con.transaction():
                     self.assertIs(self.con._top_xact, tr)
+                    self.assertTrue(self.con.is_in_transaction())
 
                     await self.con.execute('''
                         INSERT INTO mytab (a) VALUES (1), (2);
                     ''')
 
                 self.assertIs(self.con._top_xact, tr)
+                self.assertTrue(self.con.is_in_transaction())
 
                 with self.assertRaises(ZeroDivisionError):
                     in_tr = self.con.transaction()
                     async with in_tr:
 
                         self.assertIs(self.con._top_xact, tr)
+                        self.assertTrue(self.con.is_in_transaction())
 
                         await self.con.execute('''
                             INSERT INTO mytab (a) VALUES (3), (4);
@@ -85,10 +97,12 @@ class TestTransaction(tb.ConnectedTestCase):
                 self.assertEqual(recs[1][0], 2)
 
                 self.assertIs(self.con._top_xact, tr)
+                self.assertTrue(self.con.is_in_transaction())
 
                 1 / 0
 
         self.assertIs(self.con._top_xact, None)
+        self.assertFalse(self.con.is_in_transaction())
 
         with self.assertRaisesRegex(asyncpg.PostgresError,
                                     '"mytab" does not exist'):
@@ -98,6 +112,7 @@ class TestTransaction(tb.ConnectedTestCase):
 
     async def test_transaction_interface_errors(self):
         self.assertIsNone(self.con._top_xact)
+        self.assertFalse(self.con.is_in_transaction())
 
         tr = self.con.transaction(readonly=True, isolation='serializable')
         with self.assertRaisesRegex(asyncpg.InterfaceError,
@@ -109,6 +124,7 @@ class TestTransaction(tb.ConnectedTestCase):
             '<asyncpg.Transaction state:rolledback serializable readonly'))
 
         self.assertIsNone(self.con._top_xact)
+        self.assertFalse(self.con.is_in_transaction())
 
         with self.assertRaisesRegex(asyncpg.InterfaceError,
                                     'cannot start; .* already rolled back'):
@@ -116,6 +132,7 @@ class TestTransaction(tb.ConnectedTestCase):
                 pass
 
         self.assertIsNone(self.con._top_xact)
+        self.assertFalse(self.con.is_in_transaction())
 
         tr = self.con.transaction()
         with self.assertRaisesRegex(asyncpg.InterfaceError,
@@ -124,6 +141,7 @@ class TestTransaction(tb.ConnectedTestCase):
                 await tr.commit()
 
         self.assertIsNone(self.con._top_xact)
+        self.assertFalse(self.con.is_in_transaction())
 
         tr = self.con.transaction()
         with self.assertRaisesRegex(asyncpg.InterfaceError,
@@ -132,6 +150,7 @@ class TestTransaction(tb.ConnectedTestCase):
                 await tr.rollback()
 
         self.assertIsNone(self.con._top_xact)
+        self.assertFalse(self.con.is_in_transaction())
 
         tr = self.con.transaction()
         with self.assertRaisesRegex(asyncpg.InterfaceError,
@@ -142,11 +161,13 @@ class TestTransaction(tb.ConnectedTestCase):
 
     async def test_transaction_within_manual_transaction(self):
         self.assertIsNone(self.con._top_xact)
+        self.assertFalse(self.con.is_in_transaction())
 
         await self.con.execute('BEGIN')
 
         tr = self.con.transaction()
         self.assertIsNone(self.con._top_xact)
+        self.assertTrue(self.con.is_in_transaction())
 
         with self.assertRaisesRegex(asyncpg.InterfaceError,
                                     'cannot use Connection.transaction'):
@@ -157,3 +178,4 @@ class TestTransaction(tb.ConnectedTestCase):
             await self.con.reset()
 
         self.assertIsNone(self.con._top_xact)
+        self.assertFalse(self.con.is_in_transaction())
