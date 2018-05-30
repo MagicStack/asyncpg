@@ -198,8 +198,9 @@ class Connection(metaclass=ConnectionMeta):
         :param deferrable: Specifies whether or not this transaction is
                            deferrable.
 
-        .. _`PostgreSQL documentation`: https://www.postgresql.org/docs/\
-                                        current/static/sql-set-transaction.html
+        .. _`PostgreSQL documentation`:
+                https://www.postgresql.org/docs/
+                current/static/sql-set-transaction.html
         """
         self._check_open()
         return transaction.Transaction(self, isolation, readonly, deferrable)
@@ -208,6 +209,7 @@ class Connection(metaclass=ConnectionMeta):
         """Return True if Connection is currently inside a transaction.
 
         :return bool: True if inside transaction, False otherwise.
+
         .. versionadded:: 0.16.0
         """
         return self._protocol.is_in_transaction()
@@ -449,8 +451,8 @@ class Connection(metaclass=ConnectionMeta):
             >>> asyncio.get_event_loop().run_until_complete(run())
             'COPY 100'
 
-        .. _`COPY statement documentation`: https://www.postgresql.org/docs/\
-                                            current/static/sql-copy.html
+        .. _`COPY statement documentation`:
+            https://www.postgresql.org/docs/current/static/sql-copy.html
 
         .. versionadded:: 0.11.0
         """
@@ -518,8 +520,8 @@ class Connection(metaclass=ConnectionMeta):
             >>> asyncio.get_event_loop().run_until_complete(run())
             'COPY 10'
 
-        .. _`COPY statement documentation`: https://www.postgresql.org/docs/\
-                                            current/static/sql-copy.html
+        .. _`COPY statement documentation`:
+            https://www.postgresql.org/docs/current/static/sql-copy.html
 
         .. versionadded:: 0.11.0
         """
@@ -585,8 +587,8 @@ class Connection(metaclass=ConnectionMeta):
             >>> asyncio.get_event_loop().run_until_complete(run())
             'COPY 140000'
 
-        .. _`COPY statement documentation`: https://www.postgresql.org/docs/\
-                                            current/static/sql-copy.html
+        .. _`COPY statement documentation`:
+            https://www.postgresql.org/docs/current/static/sql-copy.html
 
         .. versionadded:: 0.11.0
         """
@@ -1469,7 +1471,8 @@ async def connect(dsn=None, *,
         will be used.
 
     :param dict server_settings:
-        an optional dict of server parameters.
+        an optional dict of server runtime parameters.  Refer to
+        PostgreSQL documentation for a `list of supported options`_.
 
     :param Connection connection_class:
         class of the returned connection object.  Must be a subclass of
@@ -1507,8 +1510,10 @@ async def connect(dsn=None, *,
        (and support for password files in general).
 
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
-    .. _create_default_context: https://docs.python.org/3/library/ssl.html#\
-                                ssl.create_default_context
+    .. _create_default_context:
+        https://docs.python.org/3/library/ssl.html#ssl.create_default_context
+    .. _list of supported options:
+        https://www.postgresql.org/docs/current/static/runtime-config.html
     """
     if not issubclass(connection_class, Connection):
         raise TypeError(

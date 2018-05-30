@@ -8,4 +8,4 @@ if [[ "${BUILD}" != *docs* ]]; then
 fi
 
 pip install -r docs/requirements.txt
-make htmldocs
+make htmldocs SPHINXOPTS="-q -W -j4"
