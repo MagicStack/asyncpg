@@ -32,7 +32,7 @@ class TestConnectionLoss(tb.ProxiedClusterTestCase):
                     self.proxy.trigger_connectivity_loss()
         finally:
             self.proxy.restore_connectivity()
-            await pool.close()
+            pool.terminate()
 
     @tb.with_timeout(30.0)
     async def test_pool_handles_abrupt_connection_loss(self):
@@ -57,8 +57,11 @@ class TestConnectionLoss(tb.ProxiedClusterTestCase):
             timeout=cmd_timeout, command_timeout=cmd_timeout)
 
         with self.assertRunUnder(worst_runtime):
-            async with new_pool as pool:
+            pool = await new_pool
+            try:
                 workers = [worker(pool) for _ in range(concurrency)]
                 self.loop.call_later(1, kill_connectivity)
                 await asyncio.gather(
                     *workers, loop=self.loop, return_exceptions=True)
+            finally:
+                pool.terminate()

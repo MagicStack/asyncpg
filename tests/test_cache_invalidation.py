@@ -85,6 +85,8 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
 
         finally:
             await self.con.execute('DROP TABLE tab1')
+            await pool.release(con2)
+            await pool.release(con1)
             await pool.close()
 
     async def test_type_cache_invalidation_in_transaction(self):
@@ -303,6 +305,9 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
         finally:
             await self.con.execute('DROP TABLE tab1')
             await self.con.execute('DROP TYPE typ1')
+            await pool.release(con2)
+            await pool.release(con1)
             await pool.close()
+            await pool_chk.release(con_chk)
             await pool_chk.close()
             await self.con.execute('DROP DATABASE testdb')
