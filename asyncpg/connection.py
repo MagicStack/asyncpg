@@ -205,9 +205,9 @@ class Connection(metaclass=ConnectionMeta):
         return transaction.Transaction(self, isolation, readonly, deferrable)
 
     def is_in_transaction(self):
-        """Return True if Connection is currently inside a transaction
+        """Return True if Connection is currently inside a transaction.
 
-        :return bool: True if inside transaction, False otherwise
+        :return bool: True if inside transaction, False otherwise.
         .. versionadded:: 0.16.0
         """
         return self._protocol.is_in_transaction()
