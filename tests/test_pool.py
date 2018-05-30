@@ -6,7 +6,6 @@
 
 
 import asyncio
-import asyncpg
 import inspect
 import os
 import platform
@@ -16,6 +15,7 @@ import textwrap
 import time
 import unittest
 
+import asyncpg
 from asyncpg import _testbase as tb
 from asyncpg import connection as pg_connection
 from asyncpg import cluster as pg_cluster
@@ -92,16 +92,23 @@ class TestPool(tb.ConnectedTestCase):
                                       min_size=1, max_size=1)
 
         con = await pool.acquire(timeout=POOL_NOMINAL_TIMEOUT)
-        con.terminate()
-        await pool.release(con)
 
-        async with pool.acquire(timeout=POOL_NOMINAL_TIMEOUT) as con:
-            con.terminate()
+        # Manual termination of pool connections releases the
+        # pool item immediately.
+        con.terminate()
+        self.assertIsNone(pool._holders[0]._con)
+        self.assertIsNone(pool._holders[0]._in_use)
 
         con = await pool.acquire(timeout=POOL_NOMINAL_TIMEOUT)
         self.assertEqual(await con.fetchval('SELECT 1'), 1)
 
-        await pool.close()
+        await con.close()
+        self.assertIsNone(pool._holders[0]._con)
+        self.assertIsNone(pool._holders[0]._in_use)
+        # Calling release should not hurt.
+        await pool.release(con)
+
+        pool.terminate()
 
     async def test_pool_05(self):
         for n in {1, 3, 5, 10, 20, 100}:
@@ -126,7 +133,8 @@ class TestPool(tb.ConnectedTestCase):
         async with self.create_pool(database='postgres',
                                     min_size=5, max_size=5,
                                     setup=setup) as pool:
-            con = await pool.acquire()
+            async with pool.acquire() as con:
+                pass
 
         self.assertIs(con, await fut)
 
@@ -172,9 +180,13 @@ class TestPool(tb.ConnectedTestCase):
         pool2 = await self.create_pool(database='postgres',
                                        min_size=1, max_size=1)
 
-        con = await pool1.acquire(timeout=POOL_NOMINAL_TIMEOUT)
-        with self.assertRaisesRegex(asyncpg.InterfaceError, 'is not a member'):
-            await pool2.release(con)
+        try:
+            con = await pool1.acquire(timeout=POOL_NOMINAL_TIMEOUT)
+            with self.assertRaisesRegex(asyncpg.InterfaceError,
+                                        'is not a member'):
+                await pool2.release(con)
+        finally:
+            await pool1.release(con)
 
         await pool1.close()
         await pool2.close()
@@ -297,8 +309,8 @@ class TestPool(tb.ConnectedTestCase):
                 with self.assertRaises(Error):
                     await pool.acquire()
 
-                con = await pool.acquire()
-                self.assertEqual(cons, ['error', con])
+                async with pool.acquire() as con:
+                    self.assertEqual(cons, ['error', con])
 
         with self.subTest(method='init'):
             setup_calls = 0
@@ -309,9 +321,9 @@ class TestPool(tb.ConnectedTestCase):
                 with self.assertRaises(Error):
                     await pool.acquire()
 
-                con = await pool.acquire()
-                self.assertEqual(await con.fetchval('select 1::int'), 1)
-                self.assertEqual(cons, ['error', con._con])
+                async with pool.acquire() as con:
+                    self.assertEqual(await con.fetchval('select 1::int'), 1)
+                    self.assertEqual(cons, ['error', con._con])
 
     async def test_pool_auth(self):
         if not self.cluster.is_managed():
@@ -665,11 +677,10 @@ class TestPool(tb.ConnectedTestCase):
         true_con.terminate()
 
         # now pool should reopen terminated connection
-        con = await pool.acquire(timeout=POOL_NOMINAL_TIMEOUT)
+        async with pool.acquire(timeout=POOL_NOMINAL_TIMEOUT) as con:
+            self.assertEqual(await con.fetchval('SELECT 1'), 1)
+            await con.close()
 
-        self.assertEqual(await con.fetchval('SELECT 1'), 1)
-
-        await con.close()
         await pool.close()
 
     @unittest.skipIf(sys.version_info[:2] < (3, 6), 'no asyncgen support')
@@ -740,6 +751,48 @@ class TestPool(tb.ConnectedTestCase):
                 async with con.transaction():
                     async for _ in iterate(con):  # noqa
                         raise MyException()
+
+    async def test_pool_close_waits_for_release(self):
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
+
+        flag = self.loop.create_future()
+        conn_released = False
+
+        async def worker():
+            nonlocal conn_released
+
+            async with pool.acquire() as connection:
+                async with connection.transaction():
+                    flag.set_result(True)
+                    await asyncio.sleep(0.1, loop=self.loop)
+
+            conn_released = True
+
+        self.loop.create_task(worker())
+
+        await flag
+        await pool.close()
+        self.assertTrue(conn_released)
+
+    async def test_pool_close_timeout(self):
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
+
+        flag = self.loop.create_future()
+
+        async def worker():
+            async with pool.acquire():
+                flag.set_result(True)
+                await asyncio.sleep(0.5, loop=self.loop)
+
+        task = self.loop.create_task(worker())
+
+        with self.assertRaises(asyncio.TimeoutError):
+            await flag
+            await asyncio.wait_for(pool.close(), timeout=0.1)
+
+        await task
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')

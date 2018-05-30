@@ -984,7 +984,7 @@ class Connection(metaclass=ConnectionMeta):
         :return bool: ``True`` if the connection is closed, ``False``
                       otherwise.
         """
-        return not self._protocol.is_connected() or self._aborted
+        return self._aborted or not self._protocol.is_connected()
 
     async def close(self, *, timeout=None):
         """Close the connection gracefully.
@@ -995,30 +995,21 @@ class Connection(metaclass=ConnectionMeta):
         .. versionchanged:: 0.14.0
            Added the *timeout* parameter.
         """
-        if self.is_closed():
-            return
-        self._mark_stmts_as_closed()
-        self._listeners.clear()
-        self._log_listeners.clear()
-        self._aborted = True
         try:
-            await self._protocol.close(timeout)
+            if not self.is_closed():
+                await self._protocol.close(timeout)
         except Exception:
             # If we fail to close gracefully, abort the connection.
-            self._aborted = True
-            self._protocol.abort()
+            self._abort()
             raise
         finally:
-            self._clean_tasks()
+            self._cleanup()
 
     def terminate(self):
         """Terminate the connection without waiting for pending data."""
-        self._mark_stmts_as_closed()
-        self._listeners.clear()
-        self._log_listeners.clear()
-        self._aborted = True
-        self._protocol.abort()
-        self._clean_tasks()
+        if not self.is_closed():
+            self._abort()
+        self._cleanup()
 
     async def reset(self, *, timeout=None):
         self._check_open()
@@ -1040,6 +1031,26 @@ class Connection(metaclass=ConnectionMeta):
 
         if reset_query:
             await self.execute(reset_query, timeout=timeout)
+
+    def _abort(self):
+        # Put the connection into the aborted state.
+        self._aborted = True
+        self._protocol.abort()
+        self._protocol = None
+
+    def _cleanup(self):
+        # Free the resources associated with this connection.
+        # This must be called when a connection is terminated.
+
+        if self._proxy is not None:
+            # Connection is a member of a pool, so let the pool
+            # know that this connection is dead.
+            self._proxy._holder._release_on_close()
+
+        self._mark_stmts_as_closed()
+        self._listeners.clear()
+        self._log_listeners.clear()
+        self._clean_tasks()
 
     def _clean_tasks(self):
         # Wrap-up any remaining tasks associated with this connection.
