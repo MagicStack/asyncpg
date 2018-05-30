@@ -210,7 +210,7 @@ class Connection(metaclass=ConnectionMeta):
         :return bool: True if inside transaction, False otherwise
         .. versionadded:: 0.16.0
         """
-        return self._top_xact is not None or self._protocol.is_in_transaction()
+        return self._protocol.is_in_transaction()
 
     async def execute(self, query: str, *args, timeout: float=None) -> str:
         """Execute an SQL command (or commands).
