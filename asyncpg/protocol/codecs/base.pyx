@@ -10,7 +10,6 @@ from asyncpg.exceptions import OutdatedSchemaCacheError
 
 cdef void* binary_codec_map[(MAXSUPPORTEDOID + 1) * 2]
 cdef void* text_codec_map[(MAXSUPPORTEDOID + 1) * 2]
-cdef dict TYPE_CODECS_CACHE = {}
 cdef dict EXTRA_CODECS = {}
 
 
@@ -391,12 +390,11 @@ cdef uint32_t pylong_as_oid(val) except? 0xFFFFFFFFl:
 
 cdef class DataCodecConfig:
     def __init__(self, cache_key):
-        try:
-            self._type_codecs_cache = TYPE_CODECS_CACHE[cache_key]
-        except KeyError:
-            self._type_codecs_cache = TYPE_CODECS_CACHE[cache_key] = {}
-
-        self._local_type_codecs = {}
+        # Codec instance cache for derived types:
+        # composites, arrays, ranges, domains and their combinations.
+        self._derived_type_codecs = {}
+        # Codec instances set up by the user for the connection.
+        self._custom_type_codecs = {}
 
     def add_types(self, types):
         cdef:
@@ -451,7 +449,7 @@ cdef class DataCodecConfig:
 
                 elem_delim = <Py_UCS4>ti['elemdelim'][0]
 
-                self._type_codecs_cache[oid, elem_format] = \
+                self._derived_type_codecs[oid, elem_format] = \
                     Codec.new_array_codec(
                         oid, name, schema, elem_codec, elem_delim)
 
@@ -483,7 +481,7 @@ cdef class DataCodecConfig:
                 if has_text_elements:
                     format = PG_FORMAT_TEXT
 
-                self._type_codecs_cache[oid, format] = \
+                self._derived_type_codecs[oid, format] = \
                     Codec.new_composite_codec(
                         oid, name, schema, format, comp_elem_codecs,
                         comp_type_attrs, element_names)
@@ -502,7 +500,7 @@ cdef class DataCodecConfig:
                     elem_codec = self.declare_fallback_codec(
                         base_type, name, schema)
 
-                self._type_codecs_cache[oid, format] = elem_codec
+                self._derived_type_codecs[oid, format] = elem_codec
 
             elif ti['kind'] == b'r':
                 # Range type
@@ -523,7 +521,7 @@ cdef class DataCodecConfig:
                     elem_codec = self.declare_fallback_codec(
                         range_subtype_oid, name, schema)
 
-                self._type_codecs_cache[oid, elem_format] = \
+                self._derived_type_codecs[oid, elem_format] = \
                     Codec.new_range_codec(oid, name, schema, elem_codec)
 
             elif ti['kind'] == b'e':
@@ -554,13 +552,13 @@ cdef class DataCodecConfig:
         # Clear all previous overrides (this also clears type cache).
         self.remove_python_codec(typeoid, typename, typeschema)
 
-        self._local_type_codecs[typeoid] = \
+        self._custom_type_codecs[typeoid] = \
             Codec.new_python_codec(oid, typename, typeschema, typekind,
                                    encoder, decoder, c_encoder, c_decoder,
                                    format, xformat)
 
     def remove_python_codec(self, typeoid, typename, typeschema):
-        self._local_type_codecs.pop(typeoid, None)
+        self._custom_type_codecs.pop(typeoid, None)
         self.clear_type_cache()
 
     def _set_builtin_type_codec(self, typeoid, typename, typeschema, typekind,
@@ -592,7 +590,7 @@ cdef class DataCodecConfig:
             codec.schema = typeschema
             codec.kind = typekind
 
-            self._local_type_codecs[typeoid] = codec
+            self._custom_type_codecs[typeoid] = codec
             break
         else:
             raise ValueError('unknown alias target: {}'.format(alias_to))
@@ -604,7 +602,7 @@ cdef class DataCodecConfig:
         self.clear_type_cache()
 
     def clear_type_cache(self):
-        self._type_codecs_cache.clear()
+        self._derived_type_codecs.clear()
 
     def declare_fallback_codec(self, uint32_t oid, str name, str schema):
         cdef Codec codec
@@ -654,12 +652,12 @@ cdef class DataCodecConfig:
             return codec
         else:
             try:
-                return self._type_codecs_cache[oid, format]
+                return self._derived_type_codecs[oid, format]
             except KeyError:
                 return None
 
     cdef inline Codec get_local_codec(self, uint32_t oid):
-        return self._local_type_codecs.get(oid)
+        return self._custom_type_codecs.get(oid)
 
 
 cdef inline Codec get_core_codec(

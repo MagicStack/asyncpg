@@ -5,6 +5,7 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+import asyncio
 import json
 
 from asyncpg import _testbase as tb
@@ -12,6 +13,16 @@ from asyncpg import connection as apg_con
 
 
 MAX_RUNTIME = 0.1
+
+
+class SlowIntrospectionConnection(apg_con.Connection):
+    """Connection class to test introspection races."""
+    introspect_count = 0
+
+    async def _introspect_types(self, *args, **kwargs):
+        self.introspect_count += 1
+        await asyncio.sleep(0.4, loop=self._loop)
+        return await super()._introspect_types(*args, **kwargs)
 
 
 class TestIntrospection(tb.ConnectedTestCase):
@@ -125,3 +136,42 @@ class TestIntrospection(tb.ConnectedTestCase):
         finally:
             await self.con.reset_type_codec(
                 'json', schema='pg_catalog')
+
+    async def test_introspection_retries_after_cache_bust(self):
+        # Test that codec cache bust racing with the introspection
+        # query would cause introspection to retry.
+        slow_intro_conn = await self.connect(
+            connection_class=SlowIntrospectionConnection)
+        try:
+            await self.con.execute('''
+                CREATE DOMAIN intro_1_t AS int;
+                CREATE DOMAIN intro_2_t AS int;
+            ''')
+
+            await slow_intro_conn.fetchval('''
+                SELECT $1::intro_1_t
+            ''', 10)
+            # slow_intro_conn cache is now populated with intro_1_t
+
+            async def wait_and_drop():
+                await asyncio.sleep(0.1, loop=self.loop)
+                await slow_intro_conn.reload_schema_state()
+
+            # Now, in parallel, run another query that
+            # references both intro_1_t and intro_2_t.
+            await asyncio.gather(
+                slow_intro_conn.fetchval('''
+                    SELECT $1::intro_1_t, $2::intro_2_t
+                ''', 10, 20),
+                wait_and_drop()
+            )
+
+            # Initial query + two tries for the second query.
+            self.assertEqual(slow_intro_conn.introspect_count, 3)
+
+        finally:
+            await self.con.execute('''
+                DROP DOMAIN intro_1_t;
+                DROP DOMAIN intro_2_t;
+            ''')
+            await slow_intro_conn.close()

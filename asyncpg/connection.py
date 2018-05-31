@@ -296,17 +296,34 @@ class Connection(metaclass=ConnectionMeta):
             stmt_name = ''
 
         statement = await self._protocol.prepare(stmt_name, query, timeout)
-        ready = statement._init_types()
-        if ready is not True:
-            types, intro_stmt = await self.__execute(
-                self._intro_query, (list(ready),), 0, timeout)
-            self._protocol.get_settings().register_data_types(types)
+        need_reprepare = False
+        types_with_missing_codecs = statement._init_types()
+        tries = 0
+        while types_with_missing_codecs:
+            settings = self._protocol.get_settings()
+
+            # Introspect newly seen types and populate the
+            # codec cache.
+            types, intro_stmt = await self._introspect_types(
+                types_with_missing_codecs, timeout)
+
+            settings.register_data_types(types)
+
             # The introspection query has used an anonymous statement,
             # which has blown away the anonymous statement we've prepared
             # for the query, so we need to re-prepare it.
             need_reprepare = not intro_stmt.name and not statement.name
-        else:
-            need_reprepare = False
+            types_with_missing_codecs = statement._init_types()
+            tries += 1
+            if tries > 5:
+                # In the vast majority of cases there will be only
+                # one iteration.  In rare cases, there might be a race
+                # with reload_schema_state(), which would cause a
+                # second try.  More than five is clearly a bug.
+                raise exceptions.InternalClientError(
+                    'could not resolve query result and/or argument types '
+                    'in {} attempts'.format(tries)
+                )
 
         # Now that types have been resolved, populate the codec pipeline
         # for the statement.
@@ -325,6 +342,10 @@ class Connection(metaclass=ConnectionMeta):
             await self._cleanup_stmts()
 
         return statement
+
+    async def _introspect_types(self, typeoids, timeout):
+        return await self.__execute(
+            self._intro_query, (list(typeoids),), 0, timeout)
 
     def cursor(self, query, *args, prefetch=None, timeout=None):
         """Return a *cursor factory* for the specified query.
@@ -1271,6 +1292,18 @@ class Connection(metaclass=ConnectionMeta):
         else:
             self._drop_local_statement_cache()
 
+    def _drop_local_type_cache(self):
+        self._protocol.get_settings().clear_type_cache()
+
+    def _drop_global_type_cache(self):
+        if self._proxy is not None:
+            # This connection is a member of a pool, so we delegate
+            # the cache drop to the pool.
+            pool = self._proxy._holder._pool
+            pool._drop_type_cache()
+        else:
+            self._drop_local_type_cache()
+
     async def reload_schema_state(self):
         """Indicate that the database schema information must be reloaded.
 
@@ -1313,9 +1346,7 @@ class Connection(metaclass=ConnectionMeta):
 
         .. versionadded:: 0.14.0
         """
-        # It is enough to clear the type cache only once, not in each
-        # connection in the pool.
-        self._protocol.get_settings().clear_type_cache()
+        self._drop_global_type_cache()
         self._drop_global_statement_cache()
 
     async def _execute(self, query, args, limit, timeout, return_status=False):
