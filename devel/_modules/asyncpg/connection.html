@@ -352,8 +352,9 @@
 <span class="sd">        :param deferrable: Specifies whether or not this transaction is</span>
 <span class="sd">                           deferrable.</span>
 
-<span class="sd">        .. _`PostgreSQL documentation`: https://www.postgresql.org/docs/\</span>
-<span class="sd">                                        current/static/sql-set-transaction.html</span>
+<span class="sd">        .. _`PostgreSQL documentation`:</span>
+<span class="sd">                https://www.postgresql.org/docs/</span>
+<span class="sd">                current/static/sql-set-transaction.html</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">transaction</span><span class="o">.</span><span class="n">Transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">isolation</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">deferrable</span><span class="p">)</span></div>
@@ -362,6 +363,7 @@
         <span class="sd">&quot;&quot;&quot;Return True if Connection is currently inside a transaction.</span>
 
 <span class="sd">        :return bool: True if inside transaction, False otherwise.</span>
+
 <span class="sd">        .. versionadded:: 0.16.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">is_in_transaction</span><span class="p">()</span></div>
@@ -603,8 +605,8 @@
 <span class="sd">            &gt;&gt;&gt; asyncio.get_event_loop().run_until_complete(run())</span>
 <span class="sd">            &#39;COPY 100&#39;</span>
 
-<span class="sd">        .. _`COPY statement documentation`: https://www.postgresql.org/docs/\</span>
-<span class="sd">                                            current/static/sql-copy.html</span>
+<span class="sd">        .. _`COPY statement documentation`:</span>
+<span class="sd">            https://www.postgresql.org/docs/current/static/sql-copy.html</span>
 
 <span class="sd">        .. versionadded:: 0.11.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -672,8 +674,8 @@
 <span class="sd">            &gt;&gt;&gt; asyncio.get_event_loop().run_until_complete(run())</span>
 <span class="sd">            &#39;COPY 10&#39;</span>
 
-<span class="sd">        .. _`COPY statement documentation`: https://www.postgresql.org/docs/\</span>
-<span class="sd">                                            current/static/sql-copy.html</span>
+<span class="sd">        .. _`COPY statement documentation`:</span>
+<span class="sd">            https://www.postgresql.org/docs/current/static/sql-copy.html</span>
 
 <span class="sd">        .. versionadded:: 0.11.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -739,8 +741,8 @@
 <span class="sd">            &gt;&gt;&gt; asyncio.get_event_loop().run_until_complete(run())</span>
 <span class="sd">            &#39;COPY 140000&#39;</span>
 
-<span class="sd">        .. _`COPY statement documentation`: https://www.postgresql.org/docs/\</span>
-<span class="sd">                                            current/static/sql-copy.html</span>
+<span class="sd">        .. _`COPY statement documentation`:</span>
+<span class="sd">            https://www.postgresql.org/docs/current/static/sql-copy.html</span>
 
 <span class="sd">        .. versionadded:: 0.11.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1623,7 +1625,8 @@
 <span class="sd">        will be used.</span>
 
 <span class="sd">    :param dict server_settings:</span>
-<span class="sd">        an optional dict of server parameters.</span>
+<span class="sd">        an optional dict of server runtime parameters.  Refer to</span>
+<span class="sd">        PostgreSQL documentation for a `list of supported options`_.</span>
 
 <span class="sd">    :param Connection connection_class:</span>
 <span class="sd">        class of the returned connection object.  Must be a subclass of</span>
@@ -1661,8 +1664,10 @@
 <span class="sd">       (and support for password files in general).</span>
 
 <span class="sd">    .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext</span>
-<span class="sd">    .. _create_default_context: https://docs.python.org/3/library/ssl.html#\</span>
-<span class="sd">                                ssl.create_default_context</span>
+<span class="sd">    .. _create_default_context:</span>
+<span class="sd">        https://docs.python.org/3/library/ssl.html#ssl.create_default_context</span>
+<span class="sd">    .. _list of supported options:</span>
+<span class="sd">        https://www.postgresql.org/docs/current/static/runtime-config.html</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">connection_class</span><span class="p">,</span> <span class="n">Connection</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>

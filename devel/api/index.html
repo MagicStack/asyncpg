@@ -207,9 +207,10 @@ regardless of their size.</li>
 (the default is <code class="docutils literal notranslate"><span class="pre">None</span></code>: no timeout).</li>
 <li><strong>ssl</strong> – pass <code class="docutils literal notranslate"><span class="pre">True</span></code> or an <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.SSLContext">ssl.SSLContext</a> instance to
 require an SSL connection.  If <code class="docutils literal notranslate"><span class="pre">True</span></code>, a default SSL context
-returned by <a class="reference external" href="https://docs.python.org/3/library/ssl.html# ssl.create_default_context">ssl.create_default_context()</a>
+returned by <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.create_default_context">ssl.create_default_context()</a>
 will be used.</li>
-<li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – an optional dict of server parameters.</li>
+<li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – an optional dict of server runtime parameters.  Refer to
+PostgreSQL documentation for a <a class="reference external" href="https://www.postgresql.org/docs/current/static/runtime-config.html">list of supported options</a>.</li>
 <li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – class of the returned connection object.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</li>
 </ul>
