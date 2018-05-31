@@ -18,7 +18,9 @@ import socket
 import time
 
 from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, \
-                         int32_t, uint32_t, int64_t, uint64_t
+                         int32_t, uint32_t, int64_t, uint64_t, \
+                         INT16_MIN, INT16_MAX, INT32_MIN, INT32_MAX, \
+                         UINT32_MAX, INT64_MIN, INT64_MAX
 
 from asyncpg.protocol cimport record
 

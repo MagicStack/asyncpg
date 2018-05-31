@@ -97,13 +97,13 @@ cdef class ReadBuffer:
     cdef feed_data(self, data)
     cdef inline _ensure_first_buf(self)
     cdef _switch_to_next_buf(self)
-    cdef inline read_byte(self)
+    cdef inline char read_byte(self) except? -1
     cdef inline const char* _try_read_bytes(self, ssize_t nbytes)
     cdef inline _read(self, char *buf, ssize_t nbytes)
     cdef read(self, ssize_t nbytes)
     cdef inline const char* read_bytes(self, ssize_t n) except NULL
-    cdef inline read_int32(self)
-    cdef inline read_int16(self)
+    cdef inline int32_t read_int32(self) except? -1
+    cdef inline int16_t read_int16(self) except? -1
     cdef inline read_cstr(self)
     cdef int32_t has_message(self) except -1
     cdef inline int32_t has_message_type(self, char mtype) except -1

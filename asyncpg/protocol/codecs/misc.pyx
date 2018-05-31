@@ -36,8 +36,8 @@ cdef init_pseudo_codecs():
 
     for oid_type in oid_types:
         register_core_codec(oid_type,
-                            <encode_func>&int4_encode,
-                            <decode_func>&int4_decode,
+                            <encode_func>&uint4_encode,
+                            <decode_func>&uint4_decode,
                             PG_FORMAT_BINARY)
 
     # reg* types -- these are really system catalog OIDs, but

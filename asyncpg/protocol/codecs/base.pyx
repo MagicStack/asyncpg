@@ -373,6 +373,22 @@ cdef codec_decode_func_ex(ConnectionSettings settings, FastReadBuffer buf,
     return (<Codec>arg).decode(settings, buf)
 
 
+cdef uint32_t pylong_as_oid(val) except? 0xFFFFFFFFl:
+    cdef:
+        int64_t oid = 0
+        bint overflow = False
+
+    try:
+        oid = cpython.PyLong_AsLongLong(val)
+    except OverflowError:
+        overflow = True
+
+    if overflow or (oid < 0 or oid > UINT32_MAX):
+        raise OverflowError('OID value too large: {!r}'.format(val))
+
+    return <uint32_t>val
+
+
 cdef class DataCodecConfig:
     def __init__(self, cache_key):
         try:
@@ -523,9 +539,10 @@ cdef class DataCodecConfig:
             Codec core_codec
             encode_func c_encoder = NULL
             decode_func c_decoder = NULL
+            uint32_t oid = pylong_as_oid(typeoid)
 
         if xformat == PG_XFORMAT_TUPLE:
-            core_codec = get_any_core_codec(typeoid, format, xformat)
+            core_codec = get_any_core_codec(oid, format, xformat)
             if core_codec is None:
                 raise ValueError(
                     "{} type does not support 'tuple' exchange format".format(
@@ -538,7 +555,7 @@ cdef class DataCodecConfig:
         self.remove_python_codec(typeoid, typename, typeschema)
 
         self._local_type_codecs[typeoid] = \
-            Codec.new_python_codec(typeoid, typename, typeschema, typekind,
+            Codec.new_python_codec(oid, typename, typeschema, typekind,
                                    encoder, decoder, c_encoder, c_decoder,
                                    format, xformat)
 
@@ -551,6 +568,8 @@ cdef class DataCodecConfig:
         cdef:
             Codec codec
             Codec target_codec
+            uint32_t oid = pylong_as_oid(typeoid)
+            uint32_t alias_pid
 
         if format == PG_FORMAT_ANY:
             formats = (PG_FORMAT_BINARY, PG_FORMAT_TEXT)
@@ -558,12 +577,9 @@ cdef class DataCodecConfig:
             formats = (format,)
 
         for format in formats:
-            if self.get_codec(typeoid, format) is not None:
-                raise ValueError('cannot override codec for type {}'.format(
-                    typeoid))
-
             if isinstance(alias_to, int):
-                target_codec = self.get_codec(alias_to, format)
+                alias_oid = pylong_as_oid(alias_to)
+                target_codec = self.get_codec(alias_oid, format)
             else:
                 target_codec = get_extra_codec(alias_to, format)
 

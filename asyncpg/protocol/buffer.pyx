@@ -376,7 +376,7 @@ cdef class ReadBuffer:
 
         return Memory.new(buf, result, nbytes)
 
-    cdef inline read_byte(self):
+    cdef inline char read_byte(self) except? -1:
         cdef const char *first_byte
 
         if ASYNCPG_DEBUG:
@@ -404,7 +404,7 @@ cdef class ReadBuffer:
             mem = <Memory>(self.read(n))
             return mem.buf
 
-    cdef inline read_int32(self):
+    cdef inline int32_t read_int32(self) except? -1:
         cdef:
             Memory mem
             const char *cbuf
@@ -417,7 +417,7 @@ cdef class ReadBuffer:
             mem = <Memory>(self.read(4))
             return hton.unpack_int32(mem.buf)
 
-    cdef inline read_int16(self):
+    cdef inline int16_t read_int16(self) except? -1:
         cdef:
             Memory mem
             const char *cbuf
