@@ -300,6 +300,42 @@ class Cluster:
     def override_connection_spec(self, **kwargs):
         self._connection_spec_override = kwargs
 
+    def reset_wal(self, *, oid=None, xid=None):
+        status = self.get_status()
+        if status == 'not-initialized':
+            raise ClusterError(
+                'cannot modify WAL status: cluster is not initialized')
+
+        if status == 'running':
+            raise ClusterError(
+                'cannot modify WAL status: cluster is running')
+
+        opts = []
+        if oid is not None:
+            opts.extend(['-o', str(oid)])
+        if xid is not None:
+            opts.extend(['-x', str(xid)])
+        if not opts:
+            return
+
+        opts.append(self._data_dir)
+
+        try:
+            reset_wal = self._find_pg_binary('pg_resetwal')
+        except ClusterError:
+            reset_wal = self._find_pg_binary('pg_resetxlog')
+
+        process = subprocess.run(
+            [reset_wal] + opts,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        stderr = process.stderr
+
+        if process.returncode != 0:
+            raise ClusterError(
+                'pg_resetwal exited with status {:d}: {}'.format(
+                    process.returncode, stderr.decode()))
+
     def reset_hba(self):
         """Remove all records from pg_hba.conf."""
         status = self.get_status()

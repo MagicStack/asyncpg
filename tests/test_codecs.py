@@ -9,12 +9,15 @@ import datetime
 import decimal
 import ipaddress
 import math
+import os
 import random
 import struct
+import unittest
 import uuid
 
 import asyncpg
 from asyncpg import _testbase as tb
+from asyncpg import cluster as pg_cluster
 
 
 def _timezone(offset):
@@ -388,6 +391,11 @@ type_samples = [
         (0, 65535),
         (4294967295, 65535),
     ]),
+    ('oid', 'oid', [
+        0,
+        10,
+        4294967295
+    ])
 ]
 
 
@@ -581,7 +589,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 '2',
                 'aa',
             ]),
-            ('smallint', OverflowError, 'int too big to be encoded as INT2', [
+            ('smallint', OverflowError, 'int16 value out of range', [
                 2**256,  # check for the same exception for any big numbers
                 decimal.Decimal("2000000000000000000000000000000"),
                 0xffff,
@@ -597,7 +605,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 '2',
                 'aa',
             ]),
-            ('int', OverflowError, 'int too big to be encoded as INT4', [
+            ('int', OverflowError, 'int32 value out of range', [
                 2**256,  # check for the same exception for any big numbers
                 decimal.Decimal("2000000000000000000000000000000"),
                 0xffffffff,
@@ -608,7 +616,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 '2',
                 'aa',
             ]),
-            ('bigint', OverflowError, 'int too big to be encoded as INT8', [
+            ('bigint', OverflowError, 'int64 value out of range', [
                 2**256,  # check for the same exception for any big numbers
                 decimal.Decimal("2000000000000000000000000000000"),
                 0xffffffffffffffff,
@@ -630,18 +638,22 @@ class TestCodecs(tb.ConnectedTestCase):
                 [1, 2, 3],
                 (4,),
             ]),
-            ('tid', OverflowError, 'block too big to be encoded as UINT4', [
+            ('tid', OverflowError, 'tuple id block value out of range', [
                 (-1, 0),
                 (2**256, 0),
                 (0xffffffff + 1, 0),
                 (2**32, 0),
             ]),
-            ('tid', OverflowError, 'offset too big to be encoded as UINT2', [
+            ('tid', OverflowError, 'tuple id offset value out of range', [
                 (0, -1),
                 (0, 2**256),
                 (0, 0xffff + 1),
                 (0, 0xffffffff),
                 (0, 65536),
+            ]),
+            ('oid', OverflowError, 'uint32 value out of range', [
+                2 ** 32,
+                -1,
             ]),
         ]
 
@@ -1545,3 +1557,31 @@ class TestCodecs(tb.ConnectedTestCase):
     async def test_no_result(self):
         st = await self.con.prepare('rollback')
         self.assertTupleEqual(st.get_attributes(), ())
+
+
+@unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
+class TestCodecsLargeOIDs(tb.ConnectedTestCase):
+    @classmethod
+    def setup_cluster(cls):
+        cls.cluster = cls.new_cluster(pg_cluster.TempCluster)
+        cls.cluster.reset_wal(oid=2147483648)
+        cls.start_cluster(cls.cluster)
+
+    async def test_custom_codec_large_oid(self):
+        await self.con.execute('CREATE DOMAIN test_domain_t AS int')
+        try:
+            oid = await self.con.fetchval('''
+                SELECT oid FROM pg_type WHERE typname = 'test_domain_t'
+            ''')
+            self.assertEqual(oid, 2147483648)
+
+            await self.con.set_type_codec(
+                'test_domain_t',
+                encoder=lambda v: str(v),
+                decoder=lambda v: int(v))
+
+            v = await self.con.fetchval('SELECT $1::test_domain_t', 10)
+            self.assertEqual(v, 10)
+
+        finally:
+            await self.con.execute('DROP DOMAIN test_domain_t')

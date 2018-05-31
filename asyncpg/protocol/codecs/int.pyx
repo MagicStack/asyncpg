@@ -27,9 +27,9 @@ cdef int2_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     except OverflowError:
         overflow = 1
 
-    if overflow or val < -32768 or val > 32767:
+    if overflow or val < INT16_MIN or val > INT16_MAX:
         raise OverflowError(
-            'int too big to be encoded as INT2: {!r}'.format(obj))
+            'int16 value out of range: {!r}'.format(obj))
 
     buf.write_int32(2)
     buf.write_int16(<int16_t>val)
@@ -49,10 +49,9 @@ cdef int4_encode(ConnectionSettings settings, WriteBuffer buf, obj):
         overflow = 1
 
     # "long" and "long long" have the same size for x86_64, need an extra check
-    if overflow or (sizeof(val) > 4 and (val < -2147483648 or
-                                         val > 2147483647)):
+    if overflow or (sizeof(val) > 4 and (val < INT32_MIN or val > INT32_MAX)):
         raise OverflowError(
-            'int too big to be encoded as INT4: {!r}'.format(obj))
+            'int32 value out of range: {!r}'.format(obj))
 
     buf.write_int32(4)
     buf.write_int32(<int32_t>val)
@@ -60,6 +59,29 @@ cdef int4_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
 cdef int4_decode(ConnectionSettings settings, FastReadBuffer buf):
     return cpython.PyLong_FromLong(hton.unpack_int32(buf.read(4)))
+
+
+cdef uint4_encode(ConnectionSettings settings, WriteBuffer buf, obj):
+    cdef int overflow = 0
+    cdef unsigned long val = 0
+
+    try:
+        val = cpython.PyLong_AsUnsignedLong(obj)
+    except OverflowError:
+        overflow = 1
+
+    # "long" and "long long" have the same size for x86_64, need an extra check
+    if overflow or (sizeof(val) > 4 and val > UINT32_MAX):
+        raise OverflowError(
+            'uint32 value out of range: {!r}'.format(obj))
+
+    buf.write_int32(4)
+    buf.write_int32(<int32_t>val)
+
+
+cdef uint4_decode(ConnectionSettings settings, FastReadBuffer buf):
+    return cpython.PyLong_FromUnsignedLong(
+        <uint32_t>hton.unpack_int32(buf.read(4)))
 
 
 cdef int8_encode(ConnectionSettings settings, WriteBuffer buf, obj):
@@ -72,10 +94,9 @@ cdef int8_encode(ConnectionSettings settings, WriteBuffer buf, obj):
         overflow = 1
 
     # Just in case for systems with "long long" bigger than 8 bytes
-    if overflow or (sizeof(val) > 8 and (val < -9223372036854775808 or
-                                         val > 9223372036854775807)):
+    if overflow or (sizeof(val) > 8 and (val < INT64_MIN or val > INT64_MAX)):
         raise OverflowError(
-            'int too big to be encoded as INT8: {!r}'.format(obj))
+            'int64 value out of range: {!r}'.format(obj))
 
     buf.write_int32(8)
     buf.write_int64(<int64_t>val)

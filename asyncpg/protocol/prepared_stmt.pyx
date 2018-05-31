@@ -163,7 +163,7 @@ cdef class PreparedStatementState:
             list cols_names
             object cols_mapping
             tuple row
-            int oid
+            uint32_t oid
             Codec codec
             list codecs
 
@@ -183,7 +183,7 @@ cdef class PreparedStatementState:
             cols_mapping[col_name] = i
             cols_names.append(col_name)
             oid = row[3]
-            codec = self.settings.get_data_codec(<uint32_t>oid)
+            codec = self.settings.get_data_codec(oid)
             if codec is None or not codec.has_decoder():
                 raise RuntimeError('no decoder for OID {}'.format(oid))
             if not codec.is_binary():
@@ -198,7 +198,7 @@ cdef class PreparedStatementState:
 
     cdef _ensure_args_encoder(self):
         cdef:
-            int p_oid
+            uint32_t p_oid
             Codec codec
             list codecs = []
 
@@ -207,7 +207,7 @@ cdef class PreparedStatementState:
 
         for i from 0 <= i < self.args_num:
             p_oid = self.parameters_desc[i]
-            codec = self.settings.get_data_codec(<uint32_t>p_oid)
+            codec = self.settings.get_data_codec(p_oid)
             if codec is None or not codec.has_encoder():
                 raise RuntimeError('no encoder for OID {}'.format(p_oid))
             if codec.type not in {}:
@@ -290,14 +290,14 @@ cdef _decode_parameters_desc(object desc):
     cdef:
         ReadBuffer reader
         int16_t nparams
-        int32_t p_oid
+        uint32_t p_oid
         list result = []
 
     reader = ReadBuffer.new_message_parser(desc)
     nparams = reader.read_int16()
 
     for i from 0 <= i < nparams:
-        p_oid = reader.read_int32()
+        p_oid = <uint32_t>reader.read_int32()
         result.append(p_oid)
 
     return result
@@ -310,9 +310,9 @@ cdef _decode_row_desc(object desc):
         int16_t nfields
 
         bytes f_name
-        int32_t f_table_oid
+        uint32_t f_table_oid
         int16_t f_column_num
-        int32_t f_dt_oid
+        uint32_t f_dt_oid
         int16_t f_dt_size
         int32_t f_dt_mod
         int16_t f_format
@@ -325,9 +325,9 @@ cdef _decode_row_desc(object desc):
 
     for i from 0 <= i < nfields:
         f_name = reader.read_cstr()
-        f_table_oid = reader.read_int32()
+        f_table_oid = <uint32_t>reader.read_int32()
         f_column_num = reader.read_int16()
-        f_dt_oid = reader.read_int32()
+        f_dt_oid = <uint32_t>reader.read_int32()
         f_dt_size = reader.read_int16()
         f_dt_mod = reader.read_int32()
         f_format = reader.read_int16()
