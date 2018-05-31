@@ -106,7 +106,8 @@ class Cluster:
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = process.stdout, process.stderr
 
-        if process.returncode == 4 or not os.listdir(self._data_dir):
+        if (process.returncode == 4 or not os.path.exists(self._data_dir) or
+                not os.listdir(self._data_dir)):
             return 'not-initialized'
         elif process.returncode == 3:
             return 'stopped'
