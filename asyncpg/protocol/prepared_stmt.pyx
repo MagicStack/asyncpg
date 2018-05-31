@@ -63,24 +63,21 @@ cdef class PreparedStatementState:
     def _init_types(self):
         cdef:
             Codec codec
-            set result = set()
+            set missing = set()
 
         if self.parameters_desc:
             for p_oid in self.parameters_desc:
                 codec = self.settings.get_data_codec(<uint32_t>p_oid)
                 if codec is None or not codec.has_encoder():
-                    result.add(p_oid)
+                    missing.add(p_oid)
 
         if self.row_desc:
             for rdesc in self.row_desc:
                 codec = self.settings.get_data_codec(<uint32_t>(rdesc[3]))
                 if codec is None or not codec.has_decoder():
-                    result.add(rdesc[3])
+                    missing.add(rdesc[3])
 
-        if len(result):
-            return result
-        else:
-            return True
+        return missing
 
     cpdef _init_codecs(self):
         self._ensure_args_encoder()

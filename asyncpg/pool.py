@@ -614,6 +614,12 @@ class Pool:
             if ch._con is not None:
                 ch._con._drop_local_statement_cache()
 
+    def _drop_type_cache(self):
+        # Drop type codec cache for all connections in the pool.
+        for ch in self._holders:
+            if ch._con is not None:
+                ch._con._drop_local_type_cache()
+
     def __await__(self):
         return self._async__init__().__await__()
 

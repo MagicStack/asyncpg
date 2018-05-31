@@ -167,8 +167,8 @@ cdef class Codec:
 
 cdef class DataCodecConfig:
     cdef:
-        dict _type_codecs_cache
-        dict _local_type_codecs
+        dict _derived_type_codecs
+        dict _custom_type_codecs
 
     cdef inline Codec get_codec(self, uint32_t oid, ServerDataFormat format)
     cdef inline Codec get_local_codec(self, uint32_t oid)
