@@ -228,8 +228,7 @@
 
     <span class="k">def</span> <span class="nf">_detach</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">connection</span><span class="o">.</span><span class="n">Connection</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
-                <span class="s1">&#39;cannot detach PoolConnectionProxy: already detached&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
 
         <span class="n">con</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="p">,</span> <span class="kc">None</span>
         <span class="n">con</span><span class="o">.</span><span class="n">_set_proxy</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
@@ -246,7 +245,7 @@
 
 <span class="k">class</span> <span class="nc">PoolConnectionHolder</span><span class="p">:</span>
 
-    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_con&#39;</span><span class="p">,</span> <span class="s1">&#39;_pool&#39;</span><span class="p">,</span> <span class="s1">&#39;_loop&#39;</span><span class="p">,</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_con&#39;</span><span class="p">,</span> <span class="s1">&#39;_pool&#39;</span><span class="p">,</span> <span class="s1">&#39;_loop&#39;</span><span class="p">,</span> <span class="s1">&#39;_proxy&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_connect_args&#39;</span><span class="p">,</span> <span class="s1">&#39;_connect_kwargs&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_max_queries&#39;</span><span class="p">,</span> <span class="s1">&#39;_setup&#39;</span><span class="p">,</span> <span class="s1">&#39;_init&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_max_inactive_time&#39;</span><span class="p">,</span> <span class="s1">&#39;_in_use&#39;</span><span class="p">,</span>
@@ -257,6 +256,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span> <span class="o">=</span> <span class="n">pool</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_connect_args</span> <span class="o">=</span> <span class="n">connect_args</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_connect_kwargs</span> <span class="o">=</span> <span class="n">connect_kwargs</span>
@@ -265,11 +265,14 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_setup</span> <span class="o">=</span> <span class="n">setup</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_init</span> <span class="o">=</span> <span class="n">init</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_inactive_callback</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># type: asyncio.Future</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InternalClientError</span><span class="p">(</span>
+                <span class="s1">&#39;PoolConnectionHolder.connect() called while another &#39;</span>
+                <span class="s1">&#39;connection already exists&#39;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_working_addr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># First connection attempt on this pool.</span>
@@ -306,7 +309,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_cancel_inactive_callback</span><span class="p">()</span>
 
-        <span class="n">proxy</span> <span class="o">=</span> <span class="n">PoolConnectionProxy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span> <span class="o">=</span> <span class="n">proxy</span> <span class="o">=</span> <span class="n">PoolConnectionProxy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_setup</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
@@ -317,101 +320,138 @@
                 <span class="c1"># we close it.  A new connection will be created</span>
                 <span class="c1"># when `acquire` is called again.</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">proxy</span><span class="o">.</span><span class="n">_detach</span><span class="p">()</span>
-                    <span class="c1"># Use `close` to close the connection gracefully.</span>
+                    <span class="c1"># Use `close()` to close the connection gracefully.</span>
                     <span class="c1"># An exception in `setup` isn&#39;t necessarily caused</span>
-                    <span class="c1"># by an IO or a protocol error.</span>
+                    <span class="c1"># by an IO or a protocol error.  close() will</span>
+                    <span class="c1"># do the necessary cleanup via _release_on_close().</span>
                     <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
                 <span class="k">finally</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="kc">None</span>
                     <span class="k">raise</span> <span class="n">ex</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">create_future</span><span class="p">()</span>
+
         <span class="k">return</span> <span class="n">proxy</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">release</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InternalClientError</span><span class="p">(</span>
+                <span class="s1">&#39;PoolConnectionHolder.release() called on &#39;</span>
+                <span class="s1">&#39;a free connection holder&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
+            <span class="c1"># When closing, pool connections perform the necessary</span>
+            <span class="c1"># cleanup, so we don&#39;t have to do anything else here.</span>
+            <span class="k">return</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">queries_count</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_queries</span><span class="p">:</span>
+            <span class="c1"># The connection has reached its maximum utilization limit,</span>
+            <span class="c1"># so close it.  Connection.close() will call _release().</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+            <span class="k">return</span>
 
-        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">queries_count</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_queries</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">budget</span> <span class="o">=</span> <span class="n">timeout</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">_is_cancelling</span><span class="p">():</span>
+                <span class="c1"># If the connection is in cancellation state,</span>
+                <span class="c1"># wait for the cancellation</span>
+                <span class="n">started</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">_wait_for_cancellation</span><span class="p">(),</span>
+                    <span class="n">budget</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">budget</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">budget</span> <span class="o">-=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">-</span> <span class="n">started</span>
+
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">budget</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="c1"># If the `reset` call failed, terminate the connection.</span>
+            <span class="c1"># A new one will be created when `acquire` is called</span>
+            <span class="c1"># again.</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+                <span class="c1"># An exception in `reset` is most likely caused by</span>
+                <span class="c1"># an IO error, so terminate the connection.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
             <span class="k">finally</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">raise</span> <span class="n">ex</span>
 
+        <span class="c1"># Free this connection holder and invalidate the</span>
+        <span class="c1"># connection proxy.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_release</span><span class="p">()</span>
+
+        <span class="c1"># Rearm the connection inactivity timer.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_inactive_callback</span><span class="p">()</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">wait_until_released</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">budget</span> <span class="o">=</span> <span class="n">timeout</span>
-
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">_is_cancelling</span><span class="p">():</span>
-                    <span class="c1"># If the connection is in cancellation state,</span>
-                    <span class="c1"># wait for the cancellation</span>
-                    <span class="n">started</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
-                    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">_wait_for_cancellation</span><span class="p">(),</span>
-                        <span class="n">budget</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="n">budget</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                        <span class="n">budget</span> <span class="o">-=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">-</span> <span class="n">started</span>
-
-                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">budget</span><span class="p">)</span>
-            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
-                <span class="c1"># If the `reset` call failed, terminate the connection.</span>
-                <span class="c1"># A new one will be created when `acquire` is called</span>
-                <span class="c1"># again.</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="c1"># An exception in `reset` is most likely caused by</span>
-                    <span class="c1"># an IO error, so terminate the connection.</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
-                <span class="k">finally</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="kc">None</span>
-                    <span class="k">raise</span> <span class="n">ex</span>
-
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inactive_callback</span> <span class="ow">is</span> <span class="kc">None</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_inactive_time</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_inactive_callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_later</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_max_inactive_time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deactivate_connection</span><span class="p">)</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_cancel_inactive_callback</span><span class="p">()</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="k">return</span>
-
-        <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Connection.close() will call _release_on_close() to</span>
+            <span class="c1"># finish holder cleanup.</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-        <span class="k">finally</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span> <span class="nf">terminate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_cancel_inactive_callback</span><span class="p">()</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="k">return</span>
-
-        <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Connection.terminate() will call _release_on_close() to</span>
+            <span class="c1"># finish holder cleanup.</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
-        <span class="k">finally</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">_setup_inactive_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inactive_callback</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InternalClientError</span><span class="p">(</span>
+                <span class="s1">&#39;pool connection inactivity timer already exists&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_inactive_time</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_inactive_callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_later</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_max_inactive_time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deactivate_inactive_connection</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_maybe_cancel_inactive_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inactive_callback</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_inactive_callback</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_inactive_callback</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="k">def</span> <span class="nf">_deactivate_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
-            <span class="k">return</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">_deactivate_inactive_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InternalClientError</span><span class="p">(</span>
+                <span class="s1">&#39;attempting to deactivate an acquired connection&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># The connection is idle and not in use, so it&#39;s fine to</span>
+            <span class="c1"># use terminate() instead of close().</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+            <span class="c1"># Must call clear_connection, because _deactivate_connection</span>
+            <span class="c1"># is called when the connection is *not* checked out, and</span>
+            <span class="c1"># so terminate() above will not call the below.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_release_on_close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_release_on_close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_cancel_inactive_callback</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_release</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">_release</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Release this connection holder.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># The holder is not checked out.</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Deinitialize the connection proxy.  All subsequent</span>
+        <span class="c1"># operations on it will fail.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span><span class="o">.</span><span class="n">_detach</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Put ourselves back to the pool queue.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_queue</span><span class="o">.</span><span class="n">put_nowait</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="Pool"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool">[docs]</a><span class="k">class</span> <span class="nc">Pool</span><span class="p">:</span>
@@ -427,7 +467,7 @@
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_queue&#39;</span><span class="p">,</span> <span class="s1">&#39;_loop&#39;</span><span class="p">,</span> <span class="s1">&#39;_minsize&#39;</span><span class="p">,</span> <span class="s1">&#39;_maxsize&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_working_addr&#39;</span><span class="p">,</span> <span class="s1">&#39;_working_config&#39;</span><span class="p">,</span> <span class="s1">&#39;_working_params&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;_holders&#39;</span><span class="p">,</span> <span class="s1">&#39;_initialized&#39;</span><span class="p">,</span> <span class="s1">&#39;_closed&#39;</span><span class="p">,</span>
+                 <span class="s1">&#39;_holders&#39;</span><span class="p">,</span> <span class="s1">&#39;_initialized&#39;</span><span class="p">,</span> <span class="s1">&#39;_closing&#39;</span><span class="p">,</span> <span class="s1">&#39;_closed&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_connection_class&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">connect_args</span><span class="p">,</span>
@@ -476,6 +516,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_connection_class</span> <span class="o">=</span> <span class="n">connection_class</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">_closing</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_size</span><span class="p">):</span>
@@ -622,7 +663,10 @@
                 <span class="n">ch</span><span class="o">.</span><span class="n">_timeout</span> <span class="o">=</span> <span class="n">timeout</span>
                 <span class="k">return</span> <span class="n">proxy</span>
 
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closing</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span><span class="s1">&#39;pool is closing&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_init</span><span class="p">()</span>
+
         <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="k">await</span> <span class="n">_acquire_impl</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
@@ -642,14 +686,6 @@
 <span class="sd">        .. versionchanged:: 0.14.0</span>
 <span class="sd">            Added the *timeout* parameter.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">async</span> <span class="k">def</span> <span class="nf">_release_impl</span><span class="p">(</span><span class="n">ch</span><span class="p">:</span> <span class="n">PoolConnectionHolder</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="k">await</span> <span class="n">ch</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="n">timeout</span><span class="p">)</span>
-            <span class="k">finally</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_queue</span><span class="o">.</span><span class="n">put_nowait</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_check_init</span><span class="p">()</span>
-
         <span class="k">if</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">PoolConnectionProxy</span> <span class="ow">or</span>
                 <span class="n">connection</span><span class="o">.</span><span class="n">_holder</span><span class="o">.</span><span class="n">_pool</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
@@ -661,35 +697,64 @@
             <span class="c1"># Already released, do nothing.</span>
             <span class="k">return</span>
 
-        <span class="n">con</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">_detach</span><span class="p">()</span>
-        <span class="n">con</span><span class="o">.</span><span class="n">_on_release</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_init</span><span class="p">()</span>
 
+        <span class="c1"># Let the connection do its internal housekeeping when its released.</span>
+        <span class="n">connection</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">_on_release</span><span class="p">()</span>
+
+        <span class="n">ch</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">_holder</span>
         <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">timeout</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">_holder</span><span class="o">.</span><span class="n">_timeout</span>
+            <span class="n">timeout</span> <span class="o">=</span> <span class="n">ch</span><span class="o">.</span><span class="n">_timeout</span>
 
         <span class="c1"># Use asyncio.shield() to guarantee that task cancellation</span>
         <span class="c1"># does not prevent the connection from being returned to the</span>
         <span class="c1"># pool properly.</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">shield</span><span class="p">(</span>
-            <span class="n">_release_impl</span><span class="p">(</span><span class="n">connection</span><span class="o">.</span><span class="n">_holder</span><span class="p">,</span> <span class="n">timeout</span><span class="p">),</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">shield</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="n">timeout</span><span class="p">),</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Pool.close"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.close">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Gracefully close all connections in the pool.&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Attempt to gracefully close all connections in the pool.</span>
+
+<span class="sd">        Wait until all pool connections are released, close them and</span>
+<span class="sd">        shut down the pool.  If any error (including cancellation) occurs</span>
+<span class="sd">        in ``close()`` the pool will terminate by calling</span>
+<span class="sd">        :meth:&#39;Pool.terminate() &lt;pool.Pool.terminate&gt;`.</span>
+
+<span class="sd">        .. versionchanged:: 0.16.0</span>
+<span class="sd">            ``close()`` now waits until all pool connections are released</span>
+<span class="sd">            before closing them and the pool.  Errors raised in ``close()``</span>
+<span class="sd">            will cause immediate pool termination.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span><span class="p">:</span>
             <span class="k">return</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_init</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="n">coros</span> <span class="o">=</span> <span class="p">[</span><span class="n">ch</span><span class="o">.</span><span class="n">close</span><span class="p">()</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_holders</span><span class="p">]</span>
-        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">coros</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span></div>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_closing</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">release_coros</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">ch</span><span class="o">.</span><span class="n">wait_until_released</span><span class="p">()</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_holders</span><span class="p">]</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">release_coros</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span>
+
+            <span class="n">close_coros</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">ch</span><span class="o">.</span><span class="n">close</span><span class="p">()</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_holders</span><span class="p">]</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">close_coros</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+            <span class="k">raise</span>
+
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_closing</span> <span class="o">=</span> <span class="kc">False</span></div>
 
 <div class="viewcode-block" id="Pool.terminate"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.terminate">[docs]</a>    <span class="k">def</span> <span class="nf">terminate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Terminate all connections in the pool.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span><span class="p">:</span>
             <span class="k">return</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_init</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_holders</span><span class="p">:</span>
-            <span class="n">ch</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span></div>
+            <span class="n">ch</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">True</span></div>
 
     <span class="k">def</span> <span class="nf">_check_init</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span><span class="p">:</span>

@@ -1609,7 +1609,16 @@ open cursors and other resources <em>except</em> prepared statements.</p>
 <dl class="method">
 <dt id="asyncpg.pool.Pool.close">
 <em class="property">coroutine </em><code class="descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.close" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gracefully close all connections in the pool.</p>
+<dd><p>Attempt to gracefully close all connections in the pool.</p>
+<p>Wait until all pool connections are released, close them and
+shut down the pool.  If any error (including cancellation) occurs
+in <code class="docutils literal notranslate"><span class="pre">close()</span></code> the pool will terminate by calling
+:meth:’Pool.terminate() &lt;pool.Pool.terminate&gt;`.</p>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.16.0: </span><code class="docutils literal notranslate"><span class="pre">close()</span></code> now waits until all pool connections are released
+before closing them and the pool.  Errors raised in <code class="docutils literal notranslate"><span class="pre">close()</span></code>
+will cause immediate pool termination.</p>
+</div>
 </dd></dl>
 
 <dl class="method">
