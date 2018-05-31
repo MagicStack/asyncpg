@@ -145,3 +145,14 @@ FROM
 WHERE
     t.typname = $1 AND ns.nspname = $2
 '''
+
+
+# 'b' for a base type, 'd' for a domain, 'e' for enum.
+SCALAR_TYPE_KINDS = (b'b', b'd', b'e')
+
+
+def is_scalar_type(typeinfo) -> bool:
+    return (
+        typeinfo['kind'] in SCALAR_TYPE_KINDS and
+        not typeinfo['elemtype']
+    )

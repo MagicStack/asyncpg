@@ -1082,6 +1082,40 @@ class TestCodecs(tb.ConnectedTestCase):
                 DROP EXTENSION hstore
             ''')
 
+    async def test_custom_codec_on_domain(self):
+        """Test encoding/decoding using a custom codec on a domain."""
+        await self.con.execute('''
+            CREATE DOMAIN custom_codec_t AS int
+        ''')
+
+        try:
+            await self.con.set_type_codec(
+                'custom_codec_t',
+                encoder=lambda v: str(v),
+                decoder=lambda v: int(v))
+
+            v = await self.con.fetchval('SELECT $1::custom_codec_t', 10)
+            self.assertEqual(v, 10)
+        finally:
+            await self.con.execute('DROP DOMAIN custom_codec_t')
+
+    async def test_custom_codec_on_enum(self):
+        """Test encoding/decoding using a custom codec on an enum."""
+        await self.con.execute('''
+            CREATE TYPE custom_codec_t AS ENUM ('foo', 'bar', 'baz')
+        ''')
+
+        try:
+            await self.con.set_type_codec(
+                'custom_codec_t',
+                encoder=lambda v: str(v).lstrip('enum :'),
+                decoder=lambda v: 'enum: ' + str(v))
+
+            v = await self.con.fetchval('SELECT $1::custom_codec_t', 'foo')
+            self.assertEqual(v, 'enum: foo')
+        finally:
+            await self.con.execute('DROP TYPE custom_codec_t')
+
     async def test_custom_codec_override_binary(self):
         """Test overriding core codecs."""
         import json
