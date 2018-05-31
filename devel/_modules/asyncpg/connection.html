@@ -1067,12 +1067,12 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">typeinfo</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;unknown type: </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
 
-        <span class="n">oid</span> <span class="o">=</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;oid&#39;</span><span class="p">]</span>
-        <span class="k">if</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;kind&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="sa">b</span><span class="s1">&#39;b&#39;</span> <span class="ow">or</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;elemtype&#39;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">introspection</span><span class="o">.</span><span class="n">is_scalar_type</span><span class="p">(</span><span class="n">typeinfo</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s1">&#39;cannot use custom codec on non-scalar type </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
 
+        <span class="n">oid</span> <span class="o">=</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;oid&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">add_python_codec</span><span class="p">(</span>
             <span class="n">oid</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">,</span> <span class="s1">&#39;scalar&#39;</span><span class="p">,</span>
             <span class="n">encoder</span><span class="p">,</span> <span class="n">decoder</span><span class="p">,</span> <span class="nb">format</span><span class="p">)</span>
