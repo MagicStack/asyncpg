@@ -913,12 +913,12 @@ class Connection(metaclass=ConnectionMeta):
         if not typeinfo:
             raise ValueError('unknown type: {}.{}'.format(schema, typename))
 
-        oid = typeinfo['oid']
-        if typeinfo['kind'] != b'b' or typeinfo['elemtype']:
+        if not introspection.is_scalar_type(typeinfo):
             raise ValueError(
                 'cannot use custom codec on non-scalar type {}.{}'.format(
                     schema, typename))
 
+        oid = typeinfo['oid']
         self._protocol.get_settings().add_python_codec(
             oid, typename, schema, 'scalar',
             encoder, decoder, format)
