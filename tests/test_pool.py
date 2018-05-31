@@ -743,17 +743,17 @@ class TestPool(tb.ConnectedTestCase):
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
-class TestHotStandby(tb.ConnectedTestCase):
+class TestHotStandby(tb.ClusterTestCase):
     @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-
-        cls.master_cluster = cls.start_cluster(
-            pg_cluster.TempCluster,
+    def setup_cluster(cls):
+        cls.master_cluster = cls.new_cluster(pg_cluster.TempCluster)
+        cls.start_cluster(
+            cls.master_cluster,
             server_settings={
                 'max_wal_senders': 10,
                 'wal_level': 'hot_standby'
-            })
+            }
+        )
 
         con = None
 
@@ -771,26 +771,23 @@ class TestHotStandby(tb.ConnectedTestCase):
 
             conn_spec = cls.master_cluster.get_connection_spec()
 
-            cls.standby_cluster = cls.start_cluster(
+            cls.standby_cluster = cls.new_cluster(
                 pg_cluster.HotStandbyCluster,
                 cluster_kwargs={
                     'master': conn_spec,
                     'replication_user': 'replication'
-                },
+                }
+            )
+            cls.start_cluster(
+                cls.standby_cluster,
                 server_settings={
                     'hot_standby': True
-                })
+                }
+            )
 
         finally:
             if con is not None:
                 cls.loop.run_until_complete(con.close())
-
-    @classmethod
-    def tearDownMethod(cls):
-        cls.standby_cluster.stop()
-        cls.standby_cluster.destroy()
-        cls.master_cluster.stop()
-        cls.master_cluster.destroy()
 
     def create_pool(self, **kwargs):
         conn_spec = self.standby_cluster.get_connection_spec()

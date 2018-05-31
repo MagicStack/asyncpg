@@ -756,8 +756,9 @@ class TestSSLConnection(tb.ConnectedTestCase):
 
     @classmethod
     def setup_cluster(cls):
-        cls.cluster = cls.start_cluster(
-            pg_cluster.TempCluster, server_settings=cls.get_server_settings())
+        cls.cluster = cls.new_cluster(pg_cluster.TempCluster)
+        cls.start_cluster(
+            cls.cluster, server_settings=cls.get_server_settings())
 
     def setUp(self):
         super().setUp()

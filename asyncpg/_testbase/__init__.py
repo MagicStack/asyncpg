@@ -205,13 +205,18 @@ class TestCase(unittest.TestCase, metaclass=TestCaseMeta):
 _default_cluster = None
 
 
-def _start_cluster(ClusterCls, cluster_kwargs, server_settings,
-                   initdb_options=None):
+def _init_cluster(ClusterCls, cluster_kwargs, initdb_options=None):
     cluster = ClusterCls(**cluster_kwargs)
     cluster.init(**(initdb_options or {}))
     cluster.trust_local_connections()
-    cluster.start(port='dynamic', server_settings=server_settings)
     atexit.register(_shutdown_cluster, cluster)
+    return cluster
+
+
+def _start_cluster(ClusterCls, cluster_kwargs, server_settings,
+                   initdb_options=None):
+    cluster = _init_cluster(ClusterCls, cluster_kwargs, initdb_options)
+    cluster.start(port='dynamic', server_settings=server_settings)
     return cluster
 
 
@@ -228,7 +233,7 @@ def _get_initdb_options(initdb_options=None):
     return initdb_options
 
 
-def _start_default_cluster(server_settings={}, initdb_options=None):
+def _init_default_cluster(initdb_options=None):
     global _default_cluster
 
     if _default_cluster is None:
@@ -237,9 +242,8 @@ def _start_default_cluster(server_settings={}, initdb_options=None):
             # Using existing cluster, assuming it is initialized and running
             _default_cluster = pg_cluster.RunningCluster()
         else:
-            _default_cluster = _start_cluster(
+            _default_cluster = _init_cluster(
                 pg_cluster.TempCluster, cluster_kwargs={},
-                server_settings=server_settings,
                 initdb_options=_get_initdb_options(initdb_options))
 
     return _default_cluster
@@ -248,7 +252,8 @@ def _start_default_cluster(server_settings={}, initdb_options=None):
 def _shutdown_cluster(cluster):
     if cluster.get_status() == 'running':
         cluster.stop()
-    cluster.destroy()
+    if cluster.get_status() != 'not-initialized':
+        cluster.destroy()
 
 
 def create_pool(dsn=None, *,
@@ -279,13 +284,38 @@ class ClusterTestCase(TestCase):
         }
 
     @classmethod
+    def new_cluster(cls, ClusterCls, *, cluster_kwargs={}, initdb_options={}):
+        cluster = _init_cluster(ClusterCls, cluster_kwargs,
+                                _get_initdb_options(initdb_options))
+        cls._clusters.append(cluster)
+        return cluster
+
+    @classmethod
+    def start_cluster(cls, cluster, *, server_settings={}):
+        cluster.start(port='dynamic', server_settings=server_settings)
+
+    @classmethod
     def setup_cluster(cls):
-        cls.cluster = _start_default_cluster(cls.get_server_settings())
+        cls.cluster = _init_default_cluster()
+
+        if cls.cluster.get_status() != 'running':
+            cls.cluster.start(
+                port='dynamic', server_settings=cls.get_server_settings())
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        cls._clusters = []
         cls.setup_cluster()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        for cluster in cls._clusters:
+            if cluster is not _default_cluster:
+                cluster.stop()
+                cluster.destroy()
+        cls._clusters = []
 
     @classmethod
     def get_connection_spec(cls, kwargs={}):
@@ -308,14 +338,6 @@ class ClusterTestCase(TestCase):
     def connect(cls, **kwargs):
         conn_spec = cls.get_connection_spec(kwargs)
         return pg_connection.connect(**conn_spec, loop=cls.loop)
-
-    @classmethod
-    def start_cluster(cls, ClusterCls, *,
-                      cluster_kwargs={}, server_settings={},
-                      initdb_options={}):
-        return _start_cluster(
-            ClusterCls, cluster_kwargs,
-            server_settings, _get_initdb_options(initdb_options))
 
 
 class ProxiedClusterTestCase(ClusterTestCase):
