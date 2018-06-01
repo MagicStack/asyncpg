@@ -20,11 +20,7 @@ compile:
 
 
 debug:
-	$(PYTHON) setup.py build_ext --inplace --debug \
-		--cython-always \
-		--cython-annotate \
-		--cython-directives="linetrace=True" \
-		--define ASYNCPG_DEBUG,CYTHON_TRACE,CYTHON_TRACE_NOGIL
+	ASYNCPG_DEBUG=1 $(PYTHON) setup.py build_ext --inplace
 
 
 test:

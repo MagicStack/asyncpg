@@ -1,4 +1,0 @@
-Cython>=0.28.3
-flake8>=3.4.1
-pytest>=3.0.7
-uvloop>=0.8.0
