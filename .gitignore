@@ -31,3 +31,4 @@ docs/_build
 *,cover
 .coverage
 /.pytest_cache/
+/.eggs

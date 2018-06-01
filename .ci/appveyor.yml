@@ -26,10 +26,9 @@ branches:
 
 install:
     - "%PYTHON% -m pip install --upgrade pip wheel setuptools"
-    - "%PYTHON% -m pip install --upgrade -r .ci/requirements-win.txt"
 
 build_script:
-    - "%PYTHON% setup.py build_ext --inplace"
+    - "%PYTHON% setup.py build_ext --inplace --cython-always"
 
 test_script:
     - "%PYTHON% setup.py test"
@@ -41,6 +40,7 @@ artifacts:
     - path: dist\*
 
 deploy_script:
+    - "%PYTHON% -m pip install --upgrade -r .ci/requirements-publish.txt"
     - ps: |
         if ($env:appveyor_repo_branch -eq 'releases') {
             $PACKAGE_VERSION = & "$env:PYTHON" ".ci/package-version.py"
