@@ -28,8 +28,7 @@ cdef int2_encode(ConnectionSettings settings, WriteBuffer buf, obj):
         overflow = 1
 
     if overflow or val < INT16_MIN or val > INT16_MAX:
-        raise OverflowError(
-            'int16 value out of range: {!r}'.format(obj))
+        raise OverflowError('value out of int16 range')
 
     buf.write_int32(2)
     buf.write_int16(<int16_t>val)
@@ -50,8 +49,7 @@ cdef int4_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
     # "long" and "long long" have the same size for x86_64, need an extra check
     if overflow or (sizeof(val) > 4 and (val < INT32_MIN or val > INT32_MAX)):
-        raise OverflowError(
-            'int32 value out of range: {!r}'.format(obj))
+        raise OverflowError('value out of int32 range')
 
     buf.write_int32(4)
     buf.write_int32(<int32_t>val)
@@ -72,8 +70,7 @@ cdef uint4_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
     # "long" and "long long" have the same size for x86_64, need an extra check
     if overflow or (sizeof(val) > 4 and val > UINT32_MAX):
-        raise OverflowError(
-            'uint32 value out of range: {!r}'.format(obj))
+        raise OverflowError('value out of uint32 range')
 
     buf.write_int32(4)
     buf.write_int32(<int32_t>val)
@@ -95,8 +92,7 @@ cdef int8_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
     # Just in case for systems with "long long" bigger than 8 bytes
     if overflow or (sizeof(val) > 8 and (val < INT64_MIN or val > INT64_MAX)):
-        raise OverflowError(
-            'int64 value out of range: {!r}'.format(obj))
+        raise OverflowError('value out of int64 range')
 
     buf.write_int32(8)
     buf.write_int64(<int64_t>val)

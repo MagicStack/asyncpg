@@ -130,7 +130,7 @@ cdef class PreparedStatementState:
 
         if self.have_text_args:
             writer.write_int16(self.args_num)
-            for idx from 0 <= idx < self.args_num:
+            for idx in range(self.args_num):
                 codec = <Codec>(self.args_codecs[idx])
                 writer.write_int16(codec.format)
         else:
@@ -139,17 +139,35 @@ cdef class PreparedStatementState:
 
         writer.write_int16(self.args_num)
 
-        for idx from 0 <= idx < self.args_num:
+        for idx in range(self.args_num):
             arg = args[idx]
             if arg is None:
                 writer.write_int32(-1)
             else:
                 codec = <Codec>(self.args_codecs[idx])
-                codec.encode(self.settings, writer, arg)
+                try:
+                    codec.encode(self.settings, writer, arg)
+                except (AssertionError, exceptions.InternalClientError):
+                    # These are internal errors and should raise as-is.
+                    raise
+                except exceptions.InterfaceError:
+                    # This is already a descriptive error.
+                    raise
+                except Exception as e:
+                    # Everything else is assumed to be an encoding error
+                    # due to invalid input.
+                    value_repr = repr(arg)
+                    if len(value_repr) > 40:
+                        value_repr = value_repr[:40] + '...'
+
+                    raise exceptions.DataError(
+                        'invalid input for query argument'
+                        ' ${n}: {v} ({msg})'.format(
+                            n=idx + 1, v=value_repr, msg=e)) from e
 
         if self.have_text_cols:
             writer.write_int16(self.cols_num)
-            for idx from 0 <= idx < self.cols_num:
+            for idx in range(self.cols_num):
                 codec = <Codec>(self.rows_codecs[idx])
                 writer.write_int16(codec.format)
         else:

@@ -209,6 +209,10 @@ class InterfaceError(InterfaceMessage, Exception):
         Exception.__init__(self, msg)
 
 
+class DataError(InterfaceError, ValueError):
+    """An error caused by invalid query input."""
+
+
 class InterfaceWarning(InterfaceMessage, UserWarning):
     """A warning caused by an improper use of asyncpg API."""
 
