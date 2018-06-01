@@ -25,6 +25,11 @@ def _timezone(offset):
     return datetime.timezone(datetime.timedelta(minutes=minutes))
 
 
+def _system_timezone():
+    d = datetime.datetime.now(datetime.timezone.utc).astimezone()
+    return datetime.timezone(d.utcoffset())
+
+
 infinity_datetime = datetime.datetime(
     datetime.MAXYEAR, 12, 31, 23, 59, 59, 999999)
 negative_infinity_datetime = datetime.datetime(
@@ -32,6 +37,9 @@ negative_infinity_datetime = datetime.datetime(
 
 infinity_date = datetime.date(datetime.MAXYEAR, 12, 31)
 negative_infinity_date = datetime.date(datetime.MINYEAR, 1, 1)
+current_timezone = _system_timezone()
+current_date = datetime.date.today()
+current_datetime = datetime.datetime.now()
 
 
 type_samples = [
@@ -160,6 +168,8 @@ type_samples = [
         negative_infinity_datetime,
         {'textinput': 'infinity', 'output': infinity_datetime},
         {'textinput': '-infinity', 'output': negative_infinity_datetime},
+        {'input': datetime.date(2000, 1, 1),
+         'output': datetime.datetime(2000, 1, 1)}
     ]),
     ('date', 'date', [
         datetime.date(3000, 5, 20),
@@ -185,6 +195,16 @@ type_samples = [
         datetime.datetime(2400, 1, 1, 10, 10, 0, tzinfo=_timezone(2000)),
         infinity_datetime,
         negative_infinity_datetime,
+        {
+            'input': current_date,
+            'output': datetime.datetime(
+                year=current_date.year, month=current_date.month,
+                day=current_date.day, tzinfo=current_timezone),
+        },
+        {
+            'input': current_datetime,
+            'output': current_datetime.replace(tzinfo=current_timezone),
+        }
     ]),
     ('timetz', 'timetz', [
         # timetz retains the offset
@@ -656,6 +676,12 @@ class TestCodecs(tb.ConnectedTestCase):
             ('oid', 'value out of uint32 range', [
                 2 ** 32,
                 -1,
+            ]),
+            ('timestamp', r"expected a datetime\.date.*got 'str'", [
+                'foo'
+            ]),
+            ('timestamptz', r"expected a datetime\.date.*got 'str'", [
+                'foo'
             ]),
         ]
 

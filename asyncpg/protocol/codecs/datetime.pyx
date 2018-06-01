@@ -5,7 +5,10 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+cimport cpython.datetime
 import datetime
+
+cpython.datetime.import_datetime()
 
 utc = datetime.timezone.utc
 date_from_ordinal = datetime.date.fromordinal
@@ -54,6 +57,11 @@ negative_infinity_date = datetime.date(datetime.MINYEAR, 1, 1)
 
 cdef int32_t negative_infinity_date_ord = <int32_t>cpython.PyLong_AsLong(
     negative_infinity_date.toordinal())
+
+
+cdef inline _local_timezone():
+    d = datetime.datetime.now(datetime.timezone.utc).astimezone()
+    return datetime.timezone(d.utcoffset())
 
 
 cdef inline _encode_time(WriteBuffer buf, int64_t seconds,
@@ -135,6 +143,15 @@ cdef date_decode_tuple(ConnectionSettings settings, FastReadBuffer buf):
 
 
 cdef timestamp_encode(ConnectionSettings settings, WriteBuffer buf, obj):
+    if not cpython.datetime.PyDateTime_Check(obj):
+        if cpython.datetime.PyDate_Check(obj):
+            obj = datetime.datetime(obj.year, obj.month, obj.day)
+        else:
+            raise TypeError(
+                'expected a datetime.date or datetime.datetime instance, '
+                'got {!r}'.format(type(obj).__name__)
+            )
+
     delta = obj - pg_epoch_datetime
     cdef:
         int64_t seconds = cpython.PyLong_AsLongLong(delta.days) * 86400 + \
@@ -186,6 +203,16 @@ cdef timestamp_decode_tuple(ConnectionSettings settings, FastReadBuffer buf):
 
 
 cdef timestamptz_encode(ConnectionSettings settings, WriteBuffer buf, obj):
+    if not cpython.datetime.PyDateTime_Check(obj):
+        if cpython.datetime.PyDate_Check(obj):
+            obj = datetime.datetime(obj.year, obj.month, obj.day,
+                                    tzinfo=_local_timezone())
+        else:
+            raise TypeError(
+                'expected a datetime.date or datetime.datetime instance, '
+                'got {!r}'.format(type(obj).__name__)
+            )
+
     buf.write_int32(8)
 
     if obj == infinity_datetime:
@@ -195,7 +222,14 @@ cdef timestamptz_encode(ConnectionSettings settings, WriteBuffer buf, obj):
         buf.write_int64(pg_time64_negative_infinity)
         return
 
-    delta = obj.astimezone(utc) - pg_epoch_datetime_utc
+    try:
+        utc_dt = obj.astimezone(utc)
+    except ValueError:
+        # Python 3.5 doesn't like it when we call astimezone()
+        # on naive datetime objects, so make it aware.
+        utc_dt = obj.replace(tzinfo=_local_timezone()).astimezone(utc)
+
+    delta = utc_dt - pg_epoch_datetime_utc
     cdef:
         int64_t seconds = cpython.PyLong_AsLongLong(delta.days) * 86400 + \
                                 cpython.PyLong_AsLong(delta.seconds)
