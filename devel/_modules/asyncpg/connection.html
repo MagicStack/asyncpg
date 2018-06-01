@@ -450,17 +450,34 @@
             <span class="n">stmt_name</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
 
         <span class="n">statement</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="n">stmt_name</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
-        <span class="n">ready</span> <span class="o">=</span> <span class="n">statement</span><span class="o">.</span><span class="n">_init_types</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">ready</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">True</span><span class="p">:</span>
-            <span class="n">types</span><span class="p">,</span> <span class="n">intro_stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__execute</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">ready</span><span class="p">),),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">register_data_types</span><span class="p">(</span><span class="n">types</span><span class="p">)</span>
+        <span class="n">need_reprepare</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">types_with_missing_codecs</span> <span class="o">=</span> <span class="n">statement</span><span class="o">.</span><span class="n">_init_types</span><span class="p">()</span>
+        <span class="n">tries</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">types_with_missing_codecs</span><span class="p">:</span>
+            <span class="n">settings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
+
+            <span class="c1"># Introspect newly seen types and populate the</span>
+            <span class="c1"># codec cache.</span>
+            <span class="n">types</span><span class="p">,</span> <span class="n">intro_stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_introspect_types</span><span class="p">(</span>
+                <span class="n">types_with_missing_codecs</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+
+            <span class="n">settings</span><span class="o">.</span><span class="n">register_data_types</span><span class="p">(</span><span class="n">types</span><span class="p">)</span>
+
             <span class="c1"># The introspection query has used an anonymous statement,</span>
             <span class="c1"># which has blown away the anonymous statement we&#39;ve prepared</span>
             <span class="c1"># for the query, so we need to re-prepare it.</span>
             <span class="n">need_reprepare</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">intro_stmt</span><span class="o">.</span><span class="n">name</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">statement</span><span class="o">.</span><span class="n">name</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">need_reprepare</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">types_with_missing_codecs</span> <span class="o">=</span> <span class="n">statement</span><span class="o">.</span><span class="n">_init_types</span><span class="p">()</span>
+            <span class="n">tries</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">tries</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">:</span>
+                <span class="c1"># In the vast majority of cases there will be only</span>
+                <span class="c1"># one iteration.  In rare cases, there might be a race</span>
+                <span class="c1"># with reload_schema_state(), which would cause a</span>
+                <span class="c1"># second try.  More than five is clearly a bug.</span>
+                <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InternalClientError</span><span class="p">(</span>
+                    <span class="s1">&#39;could not resolve query result and/or argument types &#39;</span>
+                    <span class="s1">&#39;in </span><span class="si">{}</span><span class="s1"> attempts&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tries</span><span class="p">)</span>
+                <span class="p">)</span>
 
         <span class="c1"># Now that types have been resolved, populate the codec pipeline</span>
         <span class="c1"># for the statement.</span>
@@ -479,6 +496,10 @@
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_stmts</span><span class="p">()</span>
 
         <span class="k">return</span> <span class="n">statement</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_introspect_types</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typeoids</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__execute</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">typeoids</span><span class="p">),),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Connection.cursor"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.cursor">[docs]</a>    <span class="k">def</span> <span class="nf">cursor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">prefetch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return a *cursor factory* for the specified query.</span>
@@ -1425,6 +1446,18 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_statement_cache</span><span class="p">()</span>
 
+    <span class="k">def</span> <span class="nf">_drop_local_type_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">clear_type_cache</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_drop_global_type_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># This connection is a member of a pool, so we delegate</span>
+            <span class="c1"># the cache drop to the pool.</span>
+            <span class="n">pool</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span><span class="o">.</span><span class="n">_holder</span><span class="o">.</span><span class="n">_pool</span>
+            <span class="n">pool</span><span class="o">.</span><span class="n">_drop_type_cache</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_type_cache</span><span class="p">()</span>
+
 <div class="viewcode-block" id="Connection.reload_schema_state"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.reload_schema_state">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">reload_schema_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Indicate that the database schema information must be reloaded.</span>
 
@@ -1467,9 +1500,7 @@
 
 <span class="sd">        .. versionadded:: 0.14.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># It is enough to clear the type cache only once, not in each</span>
-        <span class="c1"># connection in the pool.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">clear_type_cache</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_drop_global_type_cache</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_drop_global_statement_cache</span><span class="p">()</span></div>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">return_status</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
