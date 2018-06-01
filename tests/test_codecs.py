@@ -542,17 +542,19 @@ class TestCodecs(tb.ConnectedTestCase):
             "SELECT $1::numeric", decimal.Decimal('sNaN'))
         self.assertTrue(res.is_nan())
 
-        with self.assertRaisesRegex(ValueError, 'numeric type does not '
-                                                'support infinite values'):
+        with self.assertRaisesRegex(asyncpg.DataError,
+                                    'numeric type does not '
+                                    'support infinite values'):
             await self.con.fetchval(
                 "SELECT $1::numeric", decimal.Decimal('-Inf'))
 
-        with self.assertRaisesRegex(ValueError, 'numeric type does not '
-                                                'support infinite values'):
+        with self.assertRaisesRegex(asyncpg.DataError,
+                                    'numeric type does not '
+                                    'support infinite values'):
             await self.con.fetchval(
                 "SELECT $1::numeric", decimal.Decimal('+Inf'))
 
-        with self.assertRaises(decimal.InvalidOperation):
+        with self.assertRaisesRegex(asyncpg.DataError, 'invalid'):
             await self.con.fetchval(
                 "SELECT $1::numeric", 'invalid')
 
@@ -578,18 +580,18 @@ class TestCodecs(tb.ConnectedTestCase):
 
     async def test_invalid_input(self):
         cases = [
-            ('bytea', TypeError, 'a bytes-like object is required', [
+            ('bytea', 'a bytes-like object is required', [
                 1,
                 'aaa'
             ]),
-            ('bool', TypeError, 'a boolean is required', [
+            ('bool', 'a boolean is required', [
                 1,
             ]),
-            ('int2', TypeError, 'an integer is required', [
+            ('int2', 'an integer is required', [
                 '2',
                 'aa',
             ]),
-            ('smallint', OverflowError, 'int16 value out of range', [
+            ('smallint', 'value out of int16 range', [
                 2**256,  # check for the same exception for any big numbers
                 decimal.Decimal("2000000000000000000000000000000"),
                 0xffff,
@@ -597,72 +599,76 @@ class TestCodecs(tb.ConnectedTestCase):
                 32768,
                 -32769
             ]),
-            ('float4', ValueError, 'float value too large', [
+            ('float4', 'value out of float32 range', [
                 4.1 * 10 ** 40,
                 -4.1 * 10 ** 40,
             ]),
-            ('int4', TypeError, 'an integer is required', [
+            ('int4', 'an integer is required', [
                 '2',
                 'aa',
             ]),
-            ('int', OverflowError, 'int32 value out of range', [
+            ('int', 'value out of int32 range', [
                 2**256,  # check for the same exception for any big numbers
                 decimal.Decimal("2000000000000000000000000000000"),
                 0xffffffff,
                 2**31,
                 -2**31 - 1,
             ]),
-            ('int8', TypeError, 'an integer is required', [
+            ('int8', 'an integer is required', [
                 '2',
                 'aa',
             ]),
-            ('bigint', OverflowError, 'int64 value out of range', [
+            ('bigint', 'value out of int64 range', [
                 2**256,  # check for the same exception for any big numbers
                 decimal.Decimal("2000000000000000000000000000000"),
                 0xffffffffffffffff,
                 2**63,
                 -2**63 - 1,
             ]),
-            ('text', TypeError, 'expected str, got bytes', [
+            ('text', 'expected str, got bytes', [
                 b'foo'
             ]),
-            ('text', TypeError, 'expected str, got list', [
+            ('text', 'expected str, got list', [
                 [1]
             ]),
-            ('tid', TypeError, 'list or tuple expected', [
+            ('tid', 'list or tuple expected', [
                 b'foo'
             ]),
-            ('tid', ValueError, 'invalid number of elements in tid tuple', [
+            ('tid', 'invalid number of elements in tid tuple', [
                 [],
                 (),
                 [1, 2, 3],
                 (4,),
             ]),
-            ('tid', OverflowError, 'tuple id block value out of range', [
+            ('tid', 'tuple id block value out of uint32 range', [
                 (-1, 0),
                 (2**256, 0),
                 (0xffffffff + 1, 0),
                 (2**32, 0),
             ]),
-            ('tid', OverflowError, 'tuple id offset value out of range', [
+            ('tid', 'tuple id offset value out of uint16 range', [
                 (0, -1),
                 (0, 2**256),
                 (0, 0xffff + 1),
                 (0, 0xffffffff),
                 (0, 65536),
             ]),
-            ('oid', OverflowError, 'uint32 value out of range', [
+            ('oid', 'value out of uint32 range', [
                 2 ** 32,
                 -1,
             ]),
         ]
 
-        for typname, errcls, errmsg, data in cases:
+        for typname, errmsg, data in cases:
             stmt = await self.con.prepare("SELECT $1::" + typname)
 
             for sample in data:
                 with self.subTest(sample=sample, typname=typname):
-                    with self.assertRaisesRegex(errcls, errmsg):
+                    full_errmsg = (
+                        r'invalid input for query argument \$1:.*' + errmsg)
+
+                    with self.assertRaisesRegex(
+                            asyncpg.DataError, full_errmsg):
                         await stmt.fetchval(sample)
 
     async def test_arrays(self):
@@ -733,37 +739,39 @@ class TestCodecs(tb.ConnectedTestCase):
             def __contains__(self, item):
                 return False
 
-        with self.assertRaisesRegex(TypeError,
+        with self.assertRaisesRegex(asyncpg.DataError,
                                     'sized iterable container expected'):
             result = await self.con.fetchval("SELECT $1::int[]",
                                              SomeContainer())
 
-        with self.assertRaisesRegex(ValueError, 'dimensions'):
+        with self.assertRaisesRegex(asyncpg.DataError, 'dimensions'):
             await self.con.fetchval(
                 "SELECT $1::int[]",
                 [[[[[[[1]]]]]]])
 
-        with self.assertRaisesRegex(ValueError, 'non-homogeneous'):
+        with self.assertRaisesRegex(asyncpg.DataError, 'non-homogeneous'):
             await self.con.fetchval(
                 "SELECT $1::int[]",
                 [1, [1]])
 
-        with self.assertRaisesRegex(ValueError, 'non-homogeneous'):
+        with self.assertRaisesRegex(asyncpg.DataError, 'non-homogeneous'):
             await self.con.fetchval(
                 "SELECT $1::int[]",
                 [[1], 1, [2]])
 
-        with self.assertRaisesRegex(ValueError, 'invalid array element'):
+        with self.assertRaisesRegex(asyncpg.DataError,
+                                    'invalid array element'):
             await self.con.fetchval(
                 "SELECT $1::int[]",
                 [1, 't', 2])
 
-        with self.assertRaisesRegex(ValueError, 'invalid array element'):
+        with self.assertRaisesRegex(asyncpg.DataError,
+                                    'invalid array element'):
             await self.con.fetchval(
                 "SELECT $1::int[]",
                 [[1], ['t'], [2]])
 
-        with self.assertRaisesRegex(TypeError,
+        with self.assertRaisesRegex(asyncpg.DataError,
                                     'sized iterable container expected'):
             await self.con.fetchval(
                 "SELECT $1::int[]",
@@ -887,11 +895,11 @@ class TestCodecs(tb.ConnectedTestCase):
                     self.assertEqual(result, expected)
 
         with self.assertRaisesRegex(
-                TypeError, 'list, tuple or Range object expected'):
+                asyncpg.DataError, 'list, tuple or Range object expected'):
             await self.con.fetch("SELECT $1::int4range", 'aa')
 
         with self.assertRaisesRegex(
-                ValueError, 'expected 0, 1 or 2 elements'):
+                asyncpg.DataError, 'expected 0, 1 or 2 elements'):
             await self.con.fetch("SELECT $1::int4range", (0, 2, 3))
 
         cases = [(asyncpg.Range(0, 1), asyncpg.Range(0, 1), 1),
@@ -933,7 +941,8 @@ class TestCodecs(tb.ConnectedTestCase):
 
             self.assertEqual(res, {'foo': '2', 'bar': '3'})
 
-            with self.assertRaisesRegex(ValueError, 'null value not allowed'):
+            with self.assertRaisesRegex(asyncpg.DataError,
+                                        'null value not allowed'):
                 await self.con.fetchval('''
                     SELECT $1::hstore AS result
                 ''', {None: '1'})

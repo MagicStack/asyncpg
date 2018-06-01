@@ -12,7 +12,7 @@ cdef float4_encode(ConnectionSettings settings, WriteBuffer buf, obj):
     cdef double dval = cpython.PyFloat_AsDouble(obj)
     cdef float fval = <float>dval
     if math.isinf(fval) and not math.isinf(dval):
-        raise ValueError('float value too large to be encoded as FLOAT4')
+        raise ValueError('value out of float32 range')
 
     buf.write_int32(4)
     buf.write_float(fval)

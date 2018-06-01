@@ -24,8 +24,7 @@ cdef tid_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 
     # "long" and "long long" have the same size for x86_64, need an extra check
     if overflow or (sizeof(block) > 4 and block > UINT32_MAX):
-        raise OverflowError(
-            'tuple id block value out of range: {!r}'.format(obj[0]))
+        raise OverflowError('tuple id block value out of uint32 range')
 
     try:
         offset = cpython.PyLong_AsUnsignedLong(obj[1])
@@ -34,8 +33,7 @@ cdef tid_encode(ConnectionSettings settings, WriteBuffer buf, obj):
         overflow = 1
 
     if overflow or offset > 65535:
-        raise OverflowError(
-            'tuple id offset value out of range: {!r}'.format(obj[1]))
+        raise OverflowError('tuple id offset value out of uint16 range')
 
     buf.write_int32(6)
     buf.write_int32(<int32_t>block)
