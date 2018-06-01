@@ -815,11 +815,17 @@ class TestSSLConnection(tb.ConnectedTestCase):
             await con.close()
 
     async def test_ssl_connection_default_context(self):
-        with self.assertRaisesRegex(ssl.SSLError, 'verify failed'):
-            await self.connect(
-                host='localhost',
-                user='ssl_user',
-                ssl=True)
+        # XXX: uvloop artifact
+        old_handler = self.loop.get_exception_handler()
+        try:
+            self.loop.set_exception_handler(lambda *args: None)
+            with self.assertRaisesRegex(ssl.SSLError, 'verify failed'):
+                await self.connect(
+                    host='localhost',
+                    user='ssl_user',
+                    ssl=True)
+        finally:
+            self.loop.set_exception_handler(old_handler)
 
     async def test_ssl_connection_pool(self):
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
