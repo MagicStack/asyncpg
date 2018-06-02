@@ -29,29 +29,27 @@ If you want to build **asyncpg** from a Git checkout you will need:
   * CPython header files.  These can usually be obtained by installing
     the relevant Python development package: **python3-dev** on Debian/Ubuntu,
     **python3-devel** on RHEL/Fedora.
-  * Cython version 0.24 or later.  The easiest way to install it to use
-    virtualenv and pip, however a system package should also suffice.
-  * GNU make
 
-Once the above requirements are satisfied, run:
+Once the above requirements are satisfied, run the following command
+in the root of the source checkout:
 
 .. code-block:: bash
 
-    $ make
+    $ pip install -e .
 
-At this point you can run the usual ``setup.py`` commands or
-``pip install -e .`` to install the newly built version.
+A debug build containing more runtime checks can be created by setting
+the ``ASYNCPG_DEBUG`` environment variable when building:
 
-.. note::
+.. code-block:: bash
 
-   A debug build can be created by running ``make debug``.
+    $ env ASYNCPG_DEBUG=1 pip install -e .
 
 
 Running tests
 -------------
 
-To execute the testsuite simply run:
+To execute the testsuite run:
 
 .. code-block:: bash
 
-    $ make test
+    $ python setup.py test
