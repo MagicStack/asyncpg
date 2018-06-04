@@ -328,16 +328,28 @@ class ClusterTestCase(TestCase):
                 conn_spec['user'] = 'postgres'
         return conn_spec
 
-    def create_pool(self, pool_class=pg_pool.Pool,
-                    connection_class=pg_connection.Connection, **kwargs):
-        conn_spec = self.get_connection_spec(kwargs)
-        return create_pool(loop=self.loop, pool_class=pool_class,
-                           connection_class=connection_class, **conn_spec)
-
     @classmethod
     def connect(cls, **kwargs):
         conn_spec = cls.get_connection_spec(kwargs)
         return pg_connection.connect(**conn_spec, loop=cls.loop)
+
+    def setUp(self):
+        super().setUp()
+        self._pools = []
+
+    def tearDown(self):
+        super().tearDown()
+        for pool in self._pools:
+            pool.terminate()
+        self._pools = []
+
+    def create_pool(self, pool_class=pg_pool.Pool,
+                    connection_class=pg_connection.Connection, **kwargs):
+        conn_spec = self.get_connection_spec(kwargs)
+        pool = create_pool(loop=self.loop, pool_class=pool_class,
+                           connection_class=connection_class, **conn_spec)
+        self._pools.append(pool)
+        return pool
 
 
 class ProxiedClusterTestCase(ClusterTestCase):

@@ -794,6 +794,59 @@ class TestPool(tb.ConnectedTestCase):
 
         await task
 
+    async def test_pool_expire_connections(self):
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
+
+        con = await pool.acquire()
+        try:
+            await pool.expire_connections()
+        finally:
+            await pool.release(con)
+
+        self.assertIsNone(pool._holders[0]._con)
+
+    async def test_pool_set_connection_args(self):
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
+
+        # Test that connection is expired on release.
+        con = await pool.acquire()
+        connspec = self.get_connection_spec()
+        try:
+            connspec['server_settings']['application_name'] = \
+                'set_conn_args_test'
+        except KeyError:
+            connspec['server_settings'] = {
+                'application_name': 'set_conn_args_test'
+            }
+
+        pool.set_connect_args(**connspec)
+        await pool.expire_connections()
+        await pool.release(con)
+
+        con = await pool.acquire()
+        self.assertEqual(con.get_settings().application_name,
+                         'set_conn_args_test')
+        await pool.release(con)
+
+        # Test that connection is expired before acquire.
+        connspec = self.get_connection_spec()
+        try:
+            connspec['server_settings']['application_name'] = \
+                'set_conn_args_test'
+        except KeyError:
+            connspec['server_settings'] = {
+                'application_name': 'set_conn_args_test_2'
+            }
+
+        pool.set_connect_args(**connspec)
+        await pool.expire_connections()
+
+        con = await pool.acquire()
+        self.assertEqual(con.get_settings().application_name,
+                         'set_conn_args_test_2')
+
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
 class TestHotStandby(tb.ClusterTestCase):
