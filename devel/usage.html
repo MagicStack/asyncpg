@@ -303,7 +303,7 @@ more information.</p>
 </tr>
 <tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">float</span></code>,
 <code class="docutils literal notranslate"><span class="pre">double</span> <span class="pre">precision</span></code></td>
-<td><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> <a class="footnote-reference" href="#f1" id="id1">[1]</a></td>
 </tr>
 <tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">smallint</span></code>,
 <code class="docutils literal notranslate"><span class="pre">integer</span></code>,
@@ -343,6 +343,16 @@ more information.</p>
 </tbody>
 </table>
 <p>All other types are encoded and decoded as text by default.</p>
+<table class="docutils footnote" frame="void" id="f1" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Inexact single-precision <code class="docutils literal notranslate"><span class="pre">float</span></code> values may have a different
+representation when decoded into a Python float.  This is inherent
+to the implementation of limited-precision floating point types.
+If you need the decimal representation to match, cast the expression
+to <code class="docutils literal notranslate"><span class="pre">double</span></code> or <code class="docutils literal notranslate"><span class="pre">numeric</span></code> in your query.</td></tr>
+</tbody>
+</table>
 </div>
 <div class="section" id="custom-type-conversions">
 <span id="asyncpg-custom-codecs"></span><h2>Custom Type Conversions<a class="headerlink" href="#custom-type-conversions" title="Permalink to this headline">¶</a></h2>

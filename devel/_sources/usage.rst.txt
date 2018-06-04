@@ -126,7 +126,7 @@ The table below shows the correspondence between PostgreSQL and Python types.
 | ``interval``         | :class:`datetime.timedelta \                        |
 |                      | <python:datetime.timedelta>`                        |
 +----------------------+-----------------------------------------------------+
-| ``float``,           | :class:`float <python:float>`                       |
+| ``float``,           | :class:`float <python:float>` [#f1]_                |
 | ``double precision`` |                                                     |
 +----------------------+-----------------------------------------------------+
 | ``smallint``,        | :class:`int <python:int>`                           |
@@ -157,6 +157,11 @@ The table below shows the correspondence between PostgreSQL and Python types.
 
 All other types are encoded and decoded as text by default.
 
+.. [#f1] Inexact single-precision ``float`` values may have a different
+         representation when decoded into a Python float.  This is inherent
+         to the implementation of limited-precision floating point types.
+         If you need the decimal representation to match, cast the expression
+         to ``double`` or ``numeric`` in your query.
 
 .. _asyncpg-custom-codecs:
 
