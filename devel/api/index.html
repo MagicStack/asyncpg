@@ -1533,6 +1533,8 @@ the following format:
 <code class="docutils literal notranslate"><span class="pre">postgres://user:pass&#64;host:port/database?option=value</span></code>.</li>
 <li><strong>**connect_kwargs</strong> – Keyword arguments for the <a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">connect()</span></code></a>
 function.</li>
+<li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – The class to use for connections.  Must be a subclass of
+<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</li>
 <li><strong>min_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Number of connection the pool will be initialized with.</li>
 <li><strong>max_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Max number of connections in the pool.</li>
 <li><strong>max_queries</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Number of queries after a connection is closed and replaced
@@ -1653,6 +1655,17 @@ that, it behaves identically to
 </dd></dl>
 
 <dl class="method">
+<dt id="asyncpg.pool.Pool.expire_connections">
+<em class="property">coroutine </em><code class="descname">expire_connections</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.expire_connections"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.expire_connections" title="Permalink to this definition">¶</a></dt>
+<dd><p>Expire all currently open connections.</p>
+<p>Cause all currently open connections to get replaced on the
+next <a class="reference internal" href="#asyncpg.pool.Pool.acquire" title="asyncpg.pool.Pool.acquire"><code class="xref py py-meth docutils literal notranslate"><span class="pre">acquire()</span></code></a> call.</p>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.16.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="method">
 <dt id="asyncpg.pool.Pool.fetch">
 <em class="property">coroutine </em><code class="descname">fetch</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.fetch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run a query and return the results as a list of <code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code>.</p>
@@ -1708,6 +1721,34 @@ to the timeout provided in the corresponding call to the
 </table>
 <div class="versionchanged">
 <p><span class="versionmodified">Changed in version 0.14.0: </span>Added the <em>timeout</em> parameter.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.pool.Pool.set_connect_args">
+<code class="descname">set_connect_args</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>**connect_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.set_connect_args"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.set_connect_args" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the new connection arguments for this pool.</p>
+<p>The new connection arguments will be used for all subsequent
+new connection attempts.  Existing connections will remain until
+they expire. Use <a class="reference internal" href="#asyncpg.pool.Pool.expire_connections" title="asyncpg.pool.Pool.expire_connections"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Pool.expire_connections()</span></code></a> to expedite the connection
+expiry.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>dsn</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Connection arguments specified using as a single string in
+the following format:
+<code class="docutils literal notranslate"><span class="pre">postgres://user:pass&#64;host:port/database?option=value</span></code>.</li>
+<li><strong>**connect_kwargs</strong> – Keyword arguments for the <a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">connect()</span></code></a>
+function.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.16.0.</span></p>
 </div>
 </dd></dl>
 
