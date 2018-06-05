@@ -8,12 +8,16 @@
 import asyncio
 import functools
 import inspect
+import logging
 import time
 import warnings
 
 from . import connection
 from . import connect_utils
 from . import exceptions
+
+
+logger = logging.getLogger(__name__)
 
 
 class PoolConnectionProxyMeta(type):
@@ -621,7 +625,10 @@ class Pool:
         Wait until all pool connections are released, close them and
         shut down the pool.  If any error (including cancellation) occurs
         in ``close()`` the pool will terminate by calling
-        :meth:'Pool.terminate() <pool.Pool.terminate>`.
+        :meth:`Pool.terminate() <pool.Pool.terminate>`.
+
+        It is advisable to use :func:`python:asyncio.wait_for` to set
+        a timeout.
 
         .. versionchanged:: 0.16.0
             ``close()`` now waits until all pool connections are released
@@ -635,6 +642,9 @@ class Pool:
         self._closing = True
 
         try:
+            warning_callback = self._loop.call_later(
+                60, self._warn_on_long_close)
+
             release_coros = [
                 ch.wait_until_released() for ch in self._holders]
             await asyncio.gather(*release_coros, loop=self._loop)
@@ -648,8 +658,15 @@ class Pool:
             raise
 
         finally:
+            warning_callback.cancel()
             self._closed = True
             self._closing = False
+
+    def _warn_on_long_close(self):
+        logger.warning('Pool.close() is taking over 60 seconds to complete. '
+                       'Check if you have any unreleased connections left. '
+                       'Use asyncio.wait_for() to set a timeout for '
+                       'Pool.close().')
 
     def terminate(self):
         """Terminate all connections in the pool."""
