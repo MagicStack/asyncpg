@@ -3,11 +3,11 @@
 set -e -x
 
 if [ -z "${TRAVIS_TAG}" ]; then
-    # Not a release
+    # Not a tagged commit.
     exit 0
 fi
 
-pip install -U ".ci/requirements-publish.txt"
+pip install -U -r ".ci/requirements-publish.txt"
 
 PACKAGE_VERSION=$(python ".ci/package-version.py")
 PYPI_VERSION=$(python ".ci/pypi-check.py" "${PYMODULE}")

@@ -27,3 +27,13 @@ class TestEnvironment(tb.ConnectedTestCase):
             'Expecting PostgreSQL version {pgver}, got {maj}.{min}.'.format(
                 pgver=pgver, maj=srv_ver.major, min=srv_ver.minor)
         )
+
+    @unittest.skipIf(not os.environ.get('ASYNCPG_VERSION'),
+                     "environ[ASYNCPG_VERSION] is not set")
+    async def test_environment_asyncpg_version(self):
+        apgver = os.environ.get('ASYNCPG_VERSION')
+        self.assertEqual(
+            asyncpg.__version__, apgver,
+            'Expecting asyncpg version {}, got {}.'.format(
+                apgver, asyncpg.__version__)
+        )

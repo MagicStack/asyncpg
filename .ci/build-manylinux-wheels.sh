@@ -5,11 +5,10 @@ set -e -x
 # Compile wheels
 PYTHON="/opt/python/${PYTHON_VERSION}/bin/python"
 PIP="/opt/python/${PYTHON_VERSION}/bin/pip"
-${PIP} install --upgrade pip wheel
-${PIP} install --upgrade setuptools
-${PIP} install -r /io/.ci/requirements.txt
-make -C /io/ PYTHON="${PYTHON}"
-${PIP} wheel /io/ -w /io/dist/
+${PIP} install --upgrade setuptools pip wheel
+cd /io
+make clean
+${PYTHON} setup.py bdist_wheel
 
 # Bundle external shared libraries into the wheels.
 for whl in /io/dist/*.whl; do
@@ -17,13 +16,12 @@ for whl in /io/dist/*.whl; do
     rm /io/dist/*-linux_*.whl
 done
 
+${PIP} install ${PYMODULE}[test] -f "file:///io/dist"
+
 # Grab docker host, where Postgres should be running.
 export PGHOST=$(ip route | awk '/default/ { print $3 }' | uniq)
 export PGUSER="postgres"
 
-PYTHON="/opt/python/${PYTHON_VERSION}/bin/python"
-PIP="/opt/python/${PYTHON_VERSION}/bin/pip"
-${PIP} install ${PYMODULE} --no-index -f file:///io/dist
 rm -rf /io/tests/__pycache__
-make -C /io/ PYTHON="${PYTHON}" testinstalled
+make -C /io PYTHON="${PYTHON}" testinstalled
 rm -rf /io/tests/__pycache__

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+#
 # Copyright (C) 2016-present the asyncpg authors and contributors
 # <see AUTHORS file>
 #

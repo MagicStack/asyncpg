@@ -2,6 +2,7 @@
 
 
 PYTHON ?= python
+ROOT = $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 
 
 all: compile
@@ -30,13 +31,14 @@ test:
 
 
 testinstalled:
-	$(PYTHON) tests/__init__.py
-	USE_UVLOOP=1 $(PYTHON) tests/__init__.py
+	cd /tmp && $(PYTHON) $(ROOT)/tests/__init__.py
+	cd /tmp && USE_UVLOOP=1 $(PYTHON) $(ROOT)/tests/__init__.py
 
 
 quicktest:
 	$(PYTHON) setup.py test
 
 
-htmldocs: compile
+htmldocs:
+	$(PYTHON) setup.py build_ext --inplace
 	$(MAKE) -C docs html

@@ -29,6 +29,6 @@ __all__ = ('connect', 'create_pool', 'Record', 'Connection') + \
 #
 #    Source and wheel distributions built from development
 #    snapshots will automatically include the git revision
-#    in __version__, for example: '0.16.0.dev22+ge06ad03'
+#    in __version__, for example: '0.16.0.dev0+ge06ad03'
 
 __version__ = '0.16.0.dev0'

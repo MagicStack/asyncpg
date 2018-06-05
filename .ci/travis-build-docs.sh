@@ -7,5 +7,5 @@ if [[ "${BUILD}" != *docs* ]]; then
     exit 0
 fi
 
-pip install -U .[dev]
+pip install -U -e .[docs]
 make htmldocs SPHINXOPTS="-q -W -j4"

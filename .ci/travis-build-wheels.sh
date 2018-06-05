@@ -24,15 +24,16 @@ if [ "${PACKAGE_VERSION}" == "${PYPI_VERSION}" ]; then
 fi
 
 
-pushd $(dirname $0) > /dev/null
-_root=$(dirname $(pwd -P))
-popd > /dev/null
+_root="${TRAVIS_BUILD_DIR}"
 
 
 _upload_wheels() {
     python "${_root}/.ci/s3-upload.py" "${_root}/dist"/*.whl
     sudo rm -rf "${_root}/dist"/*.whl
 }
+
+
+pip install -U -r ".ci/requirements-publish.txt"
 
 
 if [ "${TRAVIS_OS_NAME}" == "linux" ]; then
@@ -49,6 +50,7 @@ if [ "${TRAVIS_OS_NAME}" == "linux" ]; then
                 -v "${_root}":/io \
                 -e "PYMODULE=${PYMODULE}" \
                 -e "PYTHON_VERSION=${ML_PYTHON_VERSION}" \
+                -e "ASYNCPG_VERSION=${PACKAGE_VERSION}" \
                 "${ML_IMAGE}" /io/.ci/build-manylinux-wheels.sh
 
             _upload_wheels
@@ -58,13 +60,11 @@ if [ "${TRAVIS_OS_NAME}" == "linux" ]; then
 elif [ "${TRAVIS_OS_NAME}" == "osx" ]; then
     export PGINSTALLATION="/usr/local/opt/postgresql@${PGVERSION}/bin"
 
-    make clean && make -C "${_root}"
-    pip wheel "${_root}" -w "${_root}/dist/"
+    make clean
+    python setup.py bdist_wheel
 
-    pip install ${PYMODULE} --no-index -f "file:///${_root}/dist"
-    pushd / >/dev/null
-    make -C "${_root}" testinstalled
-    popd >/dev/null
+    pip install ${PYMODULE}[test] -f "file:///${_root}/dist"
+    make -C "${_root}" ASYNCPG_VERSION="${PACKAGE_VERSION}" testinstalled
 
     _upload_wheels
 

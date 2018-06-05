@@ -15,6 +15,7 @@ import os.path
 import pathlib
 import platform
 import re
+import subprocess
 
 # We use vanilla build_ext, to avoid importing Cython via
 # the setuptools version.
@@ -28,18 +29,27 @@ from setuptools.command import sdist as setuptools_sdist
 
 CYTHON_DEPENDENCY = 'Cython==0.28.3'
 
+# Minimal dependencies required to test asyncpg.
+TEST_DEPENDENCIES = [
+    'flake8~=3.5.0',
+    'uvloop>=0.8.0;platform_system!="Windows"',
+]
+
+# Dependencies required to build documentation.
+DOC_DEPENDENCIES = [
+    'Sphinx~=1.7.3',
+    'sphinxcontrib-asyncio~=0.2.0',
+    'sphinx_rtd_theme~=0.2.4',
+]
+
 EXTRA_DEPENDENCIES = {
+    'docs': DOC_DEPENDENCIES,
+    'test': TEST_DEPENDENCIES,
     # Dependencies required to develop asyncpg.
     'dev': [
         CYTHON_DEPENDENCY,
-        'flake8~=3.5.0',
-        'pytest~=3.0.7',
-        'uvloop>=0.8.0;platform_system!="Windows"',
-        # Docs
-        'Sphinx~=1.7.3',
-        'sphinxcontrib-asyncio~=0.2.0',
-        'sphinx_rtd_theme~=0.2.4',
-    ]
+        'pytest>=3.6.0',
+    ] + DOC_DEPENDENCIES + TEST_DEPENDENCIES
 }
 
 
@@ -48,6 +58,45 @@ LDFLAGS = []
 
 if platform.uname().system != 'Windows':
     CFLAGS.extend(['-fsigned-char', '-Wall', '-Wsign-compare', '-Wconversion'])
+
+
+_ROOT = pathlib.Path(__file__).parent
+
+
+with open(str(_ROOT / 'README.rst')) as f:
+    readme = f.read()
+
+
+with open(str(_ROOT / 'asyncpg' / '__init__.py')) as f:
+    for line in f:
+        if line.startswith('__version__ ='):
+            _, _, version = line.partition('=')
+            VERSION = version.strip(" \n'\"")
+            break
+    else:
+        raise RuntimeError(
+            'unable to read the version from asyncpg/__init__.py')
+
+
+if (_ROOT / '.git').is_dir() and 'dev' in VERSION:
+    # This is a git checkout, use git to
+    # generate a precise version.
+    def git_commitish():
+        env = {}
+        v = os.environ.get('PATH')
+        if v is not None:
+            env['PATH'] = v
+
+        git = subprocess.run(['git', 'rev-parse', 'HEAD'], env=env, cwd=_ROOT,
+                             stdout=subprocess.PIPE)
+        if git.returncode == 0:
+            commitish = git.stdout.strip().decode('ascii')
+        else:
+            commitish = 'unknown'
+
+        return commitish
+
+    VERSION += '+' + git_commitish()[:7]
 
 
 class VersionMixin:
@@ -183,55 +232,10 @@ class build_ext(distutils_build_ext.build_ext):
         super(build_ext, self).finalize_options()
 
 
-_ROOT = pathlib.Path(__file__).parent
-
-
-with open(str(_ROOT / 'README.rst')) as f:
-    readme = f.read()
-
-
-with open(str(_ROOT / 'asyncpg' / '__init__.py')) as f:
-    for line in f:
-        if line.startswith('__version__ ='):
-            _, _, version = line.partition('=')
-            VERSION = version.strip(" \n'\"")
-            break
-    else:
-        raise RuntimeError(
-            'unable to read the version from asyncpg/__init__.py')
-
-
-extra_setup_kwargs = {}
 setup_requires = []
 
-if (_ROOT / '.git').is_dir():
-    # This is a git checkout, use setuptools_scm to
-    # generage a precise version.
-    def version_scheme(v):
-        from setuptools_scm import version
-
-        if v.exact:
-            fv = v.format_with("{tag}")
-            if fv != VERSION:
-                raise RuntimeError(
-                    'asyncpg.__version__ does not match the git tag')
-        else:
-            fv = v.format_next_version(
-                version.guess_next_simple_semver,
-                retain=version.SEMVER_MINOR)
-
-            if not fv.startswith(VERSION[:-1]):
-                raise RuntimeError(
-                    'asyncpg.__version__ does not match the git tag')
-
-        return fv
-
-    setup_requires.append('setuptools_scm')
-    extra_setup_kwargs['use_scm_version'] = {
-        'version_scheme': version_scheme
-    }
-
-if not (_ROOT / 'asyncpg' / 'protocol' / 'protocol.c').exists():
+if (not (_ROOT / 'asyncpg' / 'protocol' / 'protocol.c').exists() or
+        '--cython-always' in sys.argv):
     # No Cython output, require Cython to build.
     setup_requires.append(CYTHON_DEPENDENCY)
 
@@ -273,5 +277,4 @@ setuptools.setup(
     test_suite='tests.suite',
     extras_require=EXTRA_DEPENDENCIES,
     setup_requires=setup_requires,
-    **extra_setup_kwargs
 )

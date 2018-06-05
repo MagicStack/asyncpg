@@ -9,4 +9,5 @@ if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
 fi
 
 pip install --upgrade setuptools pip wheel
-pip install --upgrade -e .[dev]
+pip download --dest=/tmp/deps .[test]
+pip install -U --no-index --find-links=/tmp/deps /tmp/deps/*
