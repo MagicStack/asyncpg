@@ -87,8 +87,8 @@ if (_ROOT / '.git').is_dir() and 'dev' in VERSION:
         if v is not None:
             env['PATH'] = v
 
-        git = subprocess.run(['git', 'rev-parse', 'HEAD'], env=env, cwd=_ROOT,
-                             stdout=subprocess.PIPE)
+        git = subprocess.run(['git', 'rev-parse', 'HEAD'], env=env,
+                             cwd=str(_ROOT), stdout=subprocess.PIPE)
         if git.returncode == 0:
             commitish = git.stdout.strip().decode('ascii')
         else:
