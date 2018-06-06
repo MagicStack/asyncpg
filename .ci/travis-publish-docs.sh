@@ -19,6 +19,7 @@ make htmldocs
 git config --global user.email "infra@magic.io"
 git config --global user.name "Travis CI"
 
+PACKAGE_VERSION=$(python ".ci/package-version.py")
 REPO=$(git config remote.origin.url)
 SSH_REPO=${REPO/https:\/\/github.com\//git@github.com:}
 COMMITISH=$(git rev-parse --verify HEAD)
@@ -29,7 +30,7 @@ cd docs/gh-pages
 git checkout "${TARGET_BRANCH}" || git checkout --orphan "${TARGET_BRANCH}"
 cd ..
 
-if [ -z "${TRAVIS_TAG}" ]; then
+if [[ ${PACKAGE_VERSION} = *"dev"* ]]; then
     VERSION="devel"
 else
     VERSION="current"
