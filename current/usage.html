@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.15.0
+                0.16.0
               </div>
             
           
@@ -99,6 +99,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#custom-type-conversions">Custom Type Conversions</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#example-automatic-json-conversion">Example: automatic JSON conversion</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#example-automatic-conversion-of-postgis-types">Example: automatic conversion of PostGIS types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-decoding-numeric-columns-as-floats">Example: decoding numeric columns as floats</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#transactions">Transactions</a></li>
@@ -302,7 +303,7 @@ more information.</p>
 </tr>
 <tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">float</span></code>,
 <code class="docutils literal notranslate"><span class="pre">double</span> <span class="pre">precision</span></code></td>
-<td><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> <a class="footnote-reference" href="#f1" id="id1">[1]</a></td>
 </tr>
 <tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">smallint</span></code>,
 <code class="docutils literal notranslate"><span class="pre">integer</span></code>,
@@ -336,9 +337,22 @@ more information.</p>
 <tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">uuid</span></code></td>
 <td><a class="reference external" href="https://docs.python.org/3/library/uuid.html#uuid.UUID" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">uuid.UUID</span></code></a></td>
 </tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">tid</span></code></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></td>
+</tr>
 </tbody>
 </table>
 <p>All other types are encoded and decoded as text by default.</p>
+<table class="docutils footnote" frame="void" id="f1" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Inexact single-precision <code class="docutils literal notranslate"><span class="pre">float</span></code> values may have a different
+representation when decoded into a Python float.  This is inherent
+to the implementation of limited-precision floating point types.
+If you need the decimal representation to match, cast the expression
+to <code class="docutils literal notranslate"><span class="pre">double</span></code> or <code class="docutils literal notranslate"><span class="pre">numeric</span></code> in your query.</td></tr>
+</tbody>
+</table>
 </div>
 <div class="section" id="custom-type-conversions">
 <span id="asyncpg-custom-codecs"></span><h2>Custom Type Conversions<a class="headerlink" href="#custom-type-conversions" title="Permalink to this headline">¶</a></h2>
@@ -419,6 +433,34 @@ will work.</p>
             <span class="n">data</span><span class="p">)</span>
 
         <span class="k">print</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="example-decoding-numeric-columns-as-floats">
+<h3>Example: decoding numeric columns as floats<a class="headerlink" href="#example-decoding-numeric-columns-as-floats" title="Permalink to this headline">¶</a></h3>
+<p>By default asyncpg decodes numeric columns as Python
+<a class="reference external" href="https://docs.python.org/3/library/decimal.html#decimal.Decimal" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Decimal</span></code></a> instances.  The example below
+shows how to instruct asyncpg to use floats instead.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">import</span> <span class="nn">asyncpg</span>
+
+
+<span class="n">async</span> <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">set_type_codec</span><span class="p">(</span>
+            <span class="s1">&#39;numeric&#39;</span><span class="p">,</span> <span class="n">encoder</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">decoder</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+            <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;pg_catalog&#39;</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="s1">&#39;text&#39;</span>
+        <span class="p">)</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="n">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span><span class="s2">&quot;SELECT $1::numeric&quot;</span><span class="p">,</span> <span class="mf">11.123</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">res</span><span class="p">))</span>
 
     <span class="k">finally</span><span class="p">:</span>
         <span class="n">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
@@ -542,7 +584,7 @@ Web service that computes the requested power of two.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.15.0',
+            VERSION:'0.16.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

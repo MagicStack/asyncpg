@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.15.0
+                0.16.0
               </div>
             
           
@@ -173,7 +173,7 @@
 <span id="asyncpg-api-connection"></span><h2>Connection<a class="headerlink" href="#connection" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="asyncpg.connection.connect">
-<code class="descname">connect</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>host=None</em>, <em>port=None</em>, <em>user=None</em>, <em>password=None</em>, <em>database=None</em>, <em>loop=None</em>, <em>timeout=60</em>, <em>statement_cache_size=100</em>, <em>max_cached_statement_lifetime=300</em>, <em>max_cacheable_statement_size=15360</em>, <em>command_timeout=None</em>, <em>ssl=None</em>, <em>connection_class=&lt;class 'asyncpg.connection.Connection'&gt;</em>, <em>server_settings=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.connect" title="Permalink to this definition">¶</a></dt>
+<code class="descname">connect</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>host=None</em>, <em>port=None</em>, <em>user=None</em>, <em>password=None</em>, <em>passfile=None</em>, <em>database=None</em>, <em>loop=None</em>, <em>timeout=60</em>, <em>statement_cache_size=100</em>, <em>max_cached_statement_lifetime=300</em>, <em>max_cacheable_statement_size=15360</em>, <em>command_timeout=None</em>, <em>ssl=None</em>, <em>connection_class=&lt;class 'asyncpg.connection.Connection'&gt;</em>, <em>server_settings=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.connect" title="Permalink to this definition">¶</a></dt>
 <dd><p>A coroutine to establish a connection to a PostgreSQL server.</p>
 <p>Returns a new <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a> object.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -196,6 +196,9 @@ variable, if set)</li>
 <li><strong>database</strong> – the name of the database (defaults to the value of <code class="docutils literal notranslate"><span class="pre">PGDATABASE</span></code>
 environment variable, if set.)</li>
 <li><strong>password</strong> – password used for authentication</li>
+<li><strong>passfile</strong> – the name of the file used to store passwords
+(defaults to <code class="docutils literal notranslate"><span class="pre">~/.pgpass</span></code>, or <code class="docutils literal notranslate"><span class="pre">%APPDATA%\postgresql\pgpass.conf</span></code>
+on Windows)</li>
 <li><strong>loop</strong> – An asyncio event loop instance.  If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the default
 event loop will be used.</li>
 <li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – connection timeout in seconds.</li>
@@ -211,9 +214,10 @@ regardless of their size.</li>
 (the default is <code class="docutils literal notranslate"><span class="pre">None</span></code>: no timeout).</li>
 <li><strong>ssl</strong> – pass <code class="docutils literal notranslate"><span class="pre">True</span></code> or an <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.SSLContext">ssl.SSLContext</a> instance to
 require an SSL connection.  If <code class="docutils literal notranslate"><span class="pre">True</span></code>, a default SSL context
-returned by <a class="reference external" href="https://docs.python.org/3/library/ssl.html# ssl.create_default_context">ssl.create_default_context()</a>
+returned by <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.create_default_context">ssl.create_default_context()</a>
 will be used.</li>
-<li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – an optional dict of server parameters.</li>
+<li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – an optional dict of server runtime parameters.  Refer to
+PostgreSQL documentation for a <a class="reference external" href="https://www.postgresql.org/docs/current/static/runtime-config.html">list of supported options</a>.</li>
 <li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – class of the returned connection object.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</li>
 </ul>
@@ -246,6 +250,10 @@ for that.</p>
 </div>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.11.0: </span>Added <code class="docutils literal notranslate"><span class="pre">connection_class</span></code> parameter.</p>
+</div>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.16.0: </span>Added <code class="docutils literal notranslate"><span class="pre">passfile</span></code> parameter
+(and support for password files in general).</p>
 </div>
 </dd></dl>
 
@@ -300,7 +308,7 @@ DEBUG, INFO, or LOG.</p>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.close">
-<em class="property">coroutine </em><code class="descname">close</code><span class="sig-paren">(</span><em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.close" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">close</code><span class="sig-paren">(</span><em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.close" title="Permalink to this definition">¶</a></dt>
 <dd><p>Close the connection gracefully.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -730,6 +738,23 @@ otherwise.</td>
 </dd></dl>
 
 <dl class="method">
+<dt id="asyncpg.connection.Connection.is_in_transaction">
+<code class="descname">is_in_transaction</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.is_in_transaction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.is_in_transaction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if Connection is currently inside a transaction.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return bool:</th><td class="field-body">True if inside transaction, False otherwise.</td>
+</tr>
+</tbody>
+</table>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.16.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="method">
 <dt id="asyncpg.connection.Connection.prepare">
 <em class="property">coroutine </em><code class="descname">prepare</code><span class="sig-paren">(</span><em>query</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.prepare"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.prepare" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a <em>prepared statement</em> for the specified query.</p>
@@ -977,7 +1002,7 @@ format.</p>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.transaction">
-<code class="descname">transaction</code><span class="sig-paren">(</span><em>isolation='read_committed'</em>, <em>readonly=False</em>, <em>deferrable=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.transaction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.transaction" title="Permalink to this definition">¶</a></dt>
+<code class="descname">transaction</code><span class="sig-paren">(</span><em>*</em>, <em>isolation='read_committed'</em>, <em>readonly=False</em>, <em>deferrable=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.transaction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.transaction" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a <code class="xref py py-class docutils literal notranslate"><span class="pre">Transaction</span></code> object.</p>
 <p>Refer to <a class="reference external" href="https://www.postgresql.org/docs/current/static/sql-set-transaction.html">PostgreSQL documentation</a> on the meaning of transaction
 parameters.</p>
@@ -1433,7 +1458,7 @@ fetch subsets of the query results.</p>
 
 <dl class="method">
 <dt id="asyncpg.cursor.Cursor.fetchrow">
-<code class="descname">fetchrow</code><span class="sig-paren">(</span><em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/cursor.html#Cursor.fetchrow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.cursor.Cursor.fetchrow" title="Permalink to this definition">¶</a></dt>
+<code class="descname">fetchrow</code><span class="sig-paren">(</span><em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/cursor.html#Cursor.fetchrow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.cursor.Cursor.fetchrow" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the next row.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1508,6 +1533,8 @@ the following format:
 <code class="docutils literal notranslate"><span class="pre">postgres://user:pass&#64;host:port/database?option=value</span></code>.</li>
 <li><strong>**connect_kwargs</strong> – Keyword arguments for the <a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">connect()</span></code></a>
 function.</li>
+<li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – The class to use for connections.  Must be a subclass of
+<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</li>
 <li><strong>min_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Number of connection the pool will be initialized with.</li>
 <li><strong>max_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Max number of connections in the pool.</li>
 <li><strong>max_queries</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Number of queries after a connection is closed and replaced
@@ -1561,7 +1588,7 @@ open cursors and other resources <em>except</em> prepared statements.</p>
 <p>Pools are created by calling <a class="reference internal" href="#asyncpg.pool.create_pool" title="asyncpg.pool.create_pool"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_pool()</span></code></a>.</p>
 <dl class="method">
 <dt id="asyncpg.pool.Pool.acquire">
-<code class="descname">acquire</code><span class="sig-paren">(</span><em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.acquire"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.acquire" title="Permalink to this definition">¶</a></dt>
+<code class="descname">acquire</code><span class="sig-paren">(</span><em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.acquire"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.acquire" title="Permalink to this definition">¶</a></dt>
 <dd><p>Acquire a database connection from the pool.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1591,7 +1618,18 @@ open cursors and other resources <em>except</em> prepared statements.</p>
 <dl class="method">
 <dt id="asyncpg.pool.Pool.close">
 <em class="property">coroutine </em><code class="descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.close" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gracefully close all connections in the pool.</p>
+<dd><p>Attempt to gracefully close all connections in the pool.</p>
+<p>Wait until all pool connections are released, close them and
+shut down the pool.  If any error (including cancellation) occurs
+in <code class="docutils literal notranslate"><span class="pre">close()</span></code> the pool will terminate by calling
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">Pool.terminate()</span></code>.</p>
+<p>It is advisable to use <a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.wait_for" title="(in Python v3.6)"><code class="docutils literal notranslate"><span class="pre">asyncio.wait_for()</span></code></a> to set
+a timeout.</p>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.16.0: </span><code class="docutils literal notranslate"><span class="pre">close()</span></code> now waits until all pool connections are released
+before closing them and the pool.  Errors raised in <code class="docutils literal notranslate"><span class="pre">close()</span></code>
+will cause immediate pool termination.</p>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -1615,6 +1653,17 @@ that, it behaves identically to
 <code class="xref py py-meth docutils literal notranslate"><span class="pre">Connection.executemany()</span></code>.</p>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.10.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.pool.Pool.expire_connections">
+<em class="property">coroutine </em><code class="descname">expire_connections</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.expire_connections"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.expire_connections" title="Permalink to this definition">¶</a></dt>
+<dd><p>Expire all currently open connections.</p>
+<p>Cause all currently open connections to get replaced on the
+next <a class="reference internal" href="#asyncpg.pool.Pool.acquire" title="asyncpg.pool.Pool.acquire"><code class="xref py py-meth docutils literal notranslate"><span class="pre">acquire()</span></code></a> call.</p>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.16.0.</span></p>
 </div>
 </dd></dl>
 
@@ -1674,6 +1723,34 @@ to the timeout provided in the corresponding call to the
 </table>
 <div class="versionchanged">
 <p><span class="versionmodified">Changed in version 0.14.0: </span>Added the <em>timeout</em> parameter.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.pool.Pool.set_connect_args">
+<code class="descname">set_connect_args</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>**connect_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.set_connect_args"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.Pool.set_connect_args" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the new connection arguments for this pool.</p>
+<p>The new connection arguments will be used for all subsequent
+new connection attempts.  Existing connections will remain until
+they expire. Use <a class="reference internal" href="#asyncpg.pool.Pool.expire_connections" title="asyncpg.pool.Pool.expire_connections"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Pool.expire_connections()</span></code></a> to expedite the connection
+expiry.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>dsn</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Connection arguments specified using as a single string in
+the following format:
+<code class="docutils literal notranslate"><span class="pre">postgres://user:pass&#64;host:port/database?option=value</span></code>.</li>
+<li><strong>**connect_kwargs</strong> – Keyword arguments for the <a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">connect()</span></code></a>
+function.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.16.0.</span></p>
 </div>
 </dd></dl>
 
@@ -1967,7 +2044,7 @@ items either by a numeric index or by a field name:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.15.0',
+            VERSION:'0.16.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

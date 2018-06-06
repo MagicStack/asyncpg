@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.15.0
+                0.16.0
               </div>
             
           
@@ -185,26 +185,23 @@ package.  In that case a working C compiler is required.</p>
 <li>CPython header files.  These can usually be obtained by installing
 the relevant Python development package: <strong>python3-dev</strong> on Debian/Ubuntu,
 <strong>python3-devel</strong> on RHEL/Fedora.</li>
-<li>Cython version 0.24 or later.  The easiest way to install it to use
-virtualenv and pip, however a system package should also suffice.</li>
-<li>GNU make</li>
 </ul>
 </div></blockquote>
-<p>Once the above requirements are satisfied, run:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ make
+<p>Once the above requirements are satisfied, run the following command
+in the root of the source checkout:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ pip install -e .
 </pre></div>
 </div>
-<p>At this point you can run the usual <code class="docutils literal notranslate"><span class="pre">setup.py</span></code> commands or
-<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">.</span></code> to install the newly built version.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">A debug build can be created by running <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">debug</span></code>.</p>
+<p>A debug build containing more runtime checks can be created by setting
+the <code class="docutils literal notranslate"><span class="pre">ASYNCPG_DEBUG</span></code> environment variable when building:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ env <span class="nv">ASYNCPG_DEBUG</span><span class="o">=</span><span class="m">1</span> pip install -e .
+</pre></div>
 </div>
 </div>
 <div class="section" id="running-tests">
 <h2>Running tests<a class="headerlink" href="#running-tests" title="Permalink to this headline">¶</a></h2>
-<p>To execute the testsuite simply run:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ make <span class="nb">test</span>
+<p>To execute the testsuite run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ python setup.py <span class="nb">test</span>
 </pre></div>
 </div>
 </div>
@@ -253,7 +250,7 @@ virtualenv and pip, however a system package should also suffice.</li>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.15.0',
+            VERSION:'0.16.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
