@@ -172,4 +172,4 @@ cdef class DataCodecConfig:
         dict _custom_type_codecs
 
     cdef inline Codec get_codec(self, uint32_t oid, ServerDataFormat format)
-    cdef inline Codec get_local_codec(self, uint32_t oid)
+    cdef inline Codec get_any_local_codec(self, uint32_t oid)

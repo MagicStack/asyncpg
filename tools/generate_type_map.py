@@ -23,6 +23,19 @@ _INVALIDOID = 0
 # postgresql/src/include/access/transam.h: FirstBootstrapObjectId
 _MAXBUILTINOID = 10000 - 1
 
+# A list of alternative names for builtin types.
+_TYPE_ALIASES = {
+    'smallint': 'int2',
+    'int': 'int4',
+    'integer': 'int4',
+    'bigint': 'int8',
+    'decimal': 'numeric',
+    'real': 'float4',
+    'double precision': 'float8',
+    'timestamp with timezone': 'timestamptz',
+    'time with timezone': 'timetz',
+}
+
 
 async def runner(args):
     conn = await asyncpg.connect(host=args.pghost, port=args.pgport,
@@ -79,7 +92,14 @@ async def runner(args):
     buf += '\n\ncdef ARRAY_TYPES = ({},)'.format(', '.join(array_types))
 
     f_typemap = ('{}: {!r}'.format(dn, n) for dn, n in sorted(typemap.items()))
-    buf += '\n\nTYPEMAP = {{\n    {}}}'.format(',\n    '.join(f_typemap))
+    buf += '\n\nBUILTIN_TYPE_OID_MAP = {{\n    {}\n}}'.format(
+        ',\n    '.join(f_typemap))
+    buf += ('\n\nBUILTIN_TYPE_NAME_MAP = ' +
+            '{v: k for k, v in BUILTIN_TYPE_OID_MAP.items()}')
+
+    for k, v in _TYPE_ALIASES.items():
+        buf += ('\n\nBUILTIN_TYPE_NAME_MAP[{!r}] = \\\n    '
+                'BUILTIN_TYPE_NAME_MAP[{!r}]'.format(k, v))
 
     print(buf)
 

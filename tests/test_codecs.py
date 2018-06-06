@@ -487,9 +487,9 @@ class TestCodecs(tb.ConnectedTestCase):
             self.assertEqual(at[0].type.name, intname)
 
     async def test_all_builtin_types_handled(self):
-        from asyncpg.protocol.protocol import TYPEMAP
+        from asyncpg.protocol.protocol import BUILTIN_TYPE_OID_MAP
 
-        for oid, typename in TYPEMAP.items():
+        for oid, typename in BUILTIN_TYPE_OID_MAP.items():
             codec = self.con.get_settings().get_data_codec(oid)
             self.assertIsNotNone(
                 codec,
@@ -976,7 +976,9 @@ class TestCodecs(tb.ConnectedTestCase):
     async def test_extra_codec_alias(self):
         """Test encoding/decoding of a builtin non-pg_catalog codec."""
         await self.con.execute('''
-            CREATE EXTENSION IF NOT EXISTS hstore
+            CREATE DOMAIN my_dec_t AS decimal;
+            CREATE EXTENSION IF NOT EXISTS hstore;
+            CREATE TYPE rec_t AS ( i my_dec_t, h hstore );
         ''')
 
         try:
@@ -1008,9 +1010,40 @@ class TestCodecs(tb.ConnectedTestCase):
                     SELECT $1::hstore AS result
                 ''', {None: '1'})
 
+            await self.con.set_builtin_type_codec(
+                'my_dec_t', codec_name='decimal')
+
+            res = await self.con.fetchval('''
+                SELECT $1::my_dec_t AS result
+            ''', 44)
+
+            self.assertEqual(res, 44)
+
+            # Both my_dec_t and hstore are decoded in binary
+            res = await self.con.fetchval('''
+                SELECT ($1::my_dec_t, 'a=>1'::hstore)::rec_t AS result
+            ''', 44)
+
+            self.assertEqual(res, (44, {'a': '1'}))
+
+            # Now, declare only the text format for my_dec_t
+            await self.con.reset_type_codec('my_dec_t')
+            await self.con.set_builtin_type_codec(
+                'my_dec_t', codec_name='decimal', format='text')
+
+            # This should fail, as there is no binary codec for
+            # my_dec_t and text decoding of composites is not
+            # implemented.
+            with self.assertRaises(NotImplementedError):
+                res = await self.con.fetchval('''
+                    SELECT ($1::my_dec_t, 'a=>1'::hstore)::rec_t AS result
+                ''', 44)
+
         finally:
             await self.con.execute('''
-                DROP EXTENSION hstore
+                DROP TYPE rec_t;
+                DROP EXTENSION hstore;
+                DROP DOMAIN my_dec_t;
             ''')
 
     async def test_custom_codec_text(self):

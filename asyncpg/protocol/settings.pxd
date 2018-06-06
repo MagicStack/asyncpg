@@ -24,6 +24,6 @@ cdef class ConnectionSettings:
         self, typeoid, typename, typeschema)
     cpdef inline clear_type_cache(self)
     cpdef inline set_builtin_type_codec(
-        self, typeoid, typename, typeschema, typekind, alias_to)
+        self, typeoid, typename, typeschema, typekind, alias_to, format)
     cpdef inline Codec get_data_codec(
         self, uint32_t oid, ServerDataFormat format=*)

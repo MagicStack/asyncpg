@@ -101,7 +101,7 @@ DEF REGROLEOID = 4096
 
 cdef ARRAY_TYPES = (_TEXTOID, _OIDOID,)
 
-TYPEMAP = {
+BUILTIN_TYPE_OID_MAP = {
     ABSTIMEOID: 'abstime',
     ACLITEMOID: 'aclitem',
     ANYARRAYOID: 'anyarray',
@@ -187,4 +187,34 @@ TYPEMAP = {
     XIDOID: 'xid',
     XMLOID: 'xml',
     _OIDOID: 'oid[]',
-    _TEXTOID: 'text[]'}
+    _TEXTOID: 'text[]'
+}
+
+BUILTIN_TYPE_NAME_MAP = {v: k for k, v in BUILTIN_TYPE_OID_MAP.items()}
+
+BUILTIN_TYPE_NAME_MAP['smallint'] = \
+    BUILTIN_TYPE_NAME_MAP['int2']
+
+BUILTIN_TYPE_NAME_MAP['int'] = \
+    BUILTIN_TYPE_NAME_MAP['int4']
+
+BUILTIN_TYPE_NAME_MAP['integer'] = \
+    BUILTIN_TYPE_NAME_MAP['int4']
+
+BUILTIN_TYPE_NAME_MAP['bigint'] = \
+    BUILTIN_TYPE_NAME_MAP['int8']
+
+BUILTIN_TYPE_NAME_MAP['decimal'] = \
+    BUILTIN_TYPE_NAME_MAP['numeric']
+
+BUILTIN_TYPE_NAME_MAP['real'] = \
+    BUILTIN_TYPE_NAME_MAP['float4']
+
+BUILTIN_TYPE_NAME_MAP['double precision'] = \
+    BUILTIN_TYPE_NAME_MAP['float8']
+
+BUILTIN_TYPE_NAME_MAP['timestamp with timezone'] = \
+    BUILTIN_TYPE_NAME_MAP['timestamptz']
+
+BUILTIN_TYPE_NAME_MAP['time with timezone'] = \
+    BUILTIN_TYPE_NAME_MAP['timetz']

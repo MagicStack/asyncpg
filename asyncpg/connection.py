@@ -1005,29 +1005,57 @@ class Connection(metaclass=ConnectionMeta):
         self._drop_local_statement_cache()
 
     async def set_builtin_type_codec(self, typename, *,
-                                     schema='public', codec_name):
-        """Set a builtin codec for the specified data type.
+                                     schema='public', codec_name,
+                                     format=None):
+        """Set a builtin codec for the specified scalar data type.
 
-        :param typename:  Name of the data type the codec is for.
-        :param schema:  Schema name of the data type the codec is for
-                        (defaults to 'public')
-        :param codec_name:  The name of the builtin codec.
+        This method has two uses.  The first is to register a builtin
+        codec for an extension type without a stable OID, such as 'hstore'.
+        The second use is to declare that an extension type or a
+        user-defined type is wire-compatible with a certain builtin
+        data type and should be exchanged as such.
+
+        :param typename:
+            Name of the data type the codec is for.
+
+        :param schema:
+            Schema name of the data type the codec is for
+            (defaults to ``'public'``).
+
+        :param codec_name:
+            The name of the builtin codec to use for the type.
+            This should be either the name of a known core type
+            (such as ``"int"``), or the name of a supported extension
+            type.  Currently, the only supported extension type is
+            ``"pg_contrib.hstore"``.
+
+        :param format:
+            If *format* is ``None`` (the default), all formats supported
+            by the target codec are declared to be supported for *typename*.
+            If *format* is ``'text'`` or ``'binary'``, then only the
+            specified format is declared to be supported for *typename*.
+
+        .. versionchanged:: 0.18.0
+            The *codec_name* argument can be the name of any known
+            core data type.  Added the *format* keyword argument.
         """
         self._check_open()
 
         typeinfo = await self.fetchrow(
             introspection.TYPE_BY_NAME, typename, schema)
         if not typeinfo:
-            raise ValueError('unknown type: {}.{}'.format(schema, typename))
+            raise exceptions.InterfaceError(
+                'unknown type: {}.{}'.format(schema, typename))
 
-        oid = typeinfo['oid']
-        if typeinfo['kind'] != b'b' or typeinfo['elemtype']:
-            raise ValueError(
+        if not introspection.is_scalar_type(typeinfo):
+            raise exceptions.InterfaceError(
                 'cannot alias non-scalar type {}.{}'.format(
                     schema, typename))
 
+        oid = typeinfo['oid']
+
         self._protocol.get_settings().set_builtin_type_codec(
-            oid, typename, schema, 'scalar', codec_name)
+            oid, typename, schema, 'scalar', codec_name, format)
 
         # Statement cache is no longer valid due to codec changes.
         self._drop_local_statement_cache()

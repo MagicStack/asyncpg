@@ -66,14 +66,14 @@ cdef class Codec:
         elif type == CODEC_RANGE:
             if format != PG_FORMAT_BINARY:
                 raise NotImplementedError(
-                    'cannot encode type "{}"."{}": text encoding of '
+                    'cannot decode type "{}"."{}": text encoding of '
                     'range types is not supported'.format(schema, name))
             self.encoder = <codec_encode_func>&self.encode_range
             self.decoder = <codec_decode_func>&self.decode_range
         elif type == CODEC_COMPOSITE:
             if format != PG_FORMAT_BINARY:
                 raise NotImplementedError(
-                    'cannot encode type "{}"."{}": text encoding of '
+                    'cannot decode type "{}"."{}": text encoding of '
                     'composite types is not supported'.format(schema, name))
             self.encoder = <codec_encode_func>&self.encode_composite
             self.decoder = <codec_decode_func>&self.decode_composite
@@ -243,8 +243,10 @@ cdef class Codec:
                     '{!r}, expected {!r}'
                         .format(
                             i,
-                            TYPEMAP.get(received_elem_typ, received_elem_typ),
-                            TYPEMAP.get(elem_typ, elem_typ)
+                            BUILTIN_TYPE_OID_MAP.get(
+                                received_elem_typ, received_elem_typ),
+                            BUILTIN_TYPE_OID_MAP.get(
+                                elem_typ, elem_typ)
                         ),
                     schema=self.schema,
                     data_type=self.name,
@@ -567,27 +569,38 @@ cdef class DataCodecConfig:
             encode_func c_encoder = NULL
             decode_func c_decoder = NULL
             uint32_t oid = pylong_as_oid(typeoid)
-
-        if xformat == PG_XFORMAT_TUPLE:
-            core_codec = get_any_core_codec(oid, format, xformat)
-            if core_codec is None:
-                raise exceptions.InterfaceError(
-                    "{} type does not support 'tuple' exchange format".format(
-                        typename))
-            c_encoder = core_codec.c_encoder
-            c_decoder = core_codec.c_decoder
-            format = core_codec.format
+            bint codec_set = False
 
         # Clear all previous overrides (this also clears type cache).
         self.remove_python_codec(typeoid, typename, typeschema)
 
-        self._custom_type_codecs[typeoid] = \
-            Codec.new_python_codec(oid, typename, typeschema, typekind,
-                                   encoder, decoder, c_encoder, c_decoder,
-                                   format, xformat)
+        if format == PG_FORMAT_ANY:
+            formats = (PG_FORMAT_TEXT, PG_FORMAT_BINARY)
+        else:
+            formats = (format,)
+
+        for fmt in formats:
+            if xformat == PG_XFORMAT_TUPLE:
+                core_codec = get_core_codec(oid, fmt, xformat)
+                if core_codec is None:
+                    continue
+                c_encoder = core_codec.c_encoder
+                c_decoder = core_codec.c_decoder
+
+            self._custom_type_codecs[typeoid, fmt] = \
+                Codec.new_python_codec(oid, typename, typeschema, typekind,
+                                       encoder, decoder, c_encoder, c_decoder,
+                                       fmt, xformat)
+            codec_set = True
+
+        if not codec_set:
+            raise exceptions.InterfaceError(
+                "{} type does not support the 'tuple' exchange format".format(
+                    typename))
 
     def remove_python_codec(self, typeoid, typename, typeschema):
-        self._custom_type_codecs.pop(typeoid, None)
+        for fmt in (PG_FORMAT_BINARY, PG_FORMAT_TEXT):
+            self._custom_type_codecs.pop((typeoid, fmt), None)
         self.clear_type_cache()
 
     def _set_builtin_type_codec(self, typeoid, typename, typeschema, typekind,
@@ -596,16 +609,21 @@ cdef class DataCodecConfig:
             Codec codec
             Codec target_codec
             uint32_t oid = pylong_as_oid(typeoid)
-            uint32_t alias_pid
+            uint32_t alias_oid = 0
+            bint codec_set = False
 
         if format == PG_FORMAT_ANY:
             formats = (PG_FORMAT_BINARY, PG_FORMAT_TEXT)
         else:
             formats = (format,)
 
+        if isinstance(alias_to, int):
+            alias_oid = pylong_as_oid(alias_to)
+        else:
+            alias_oid = BUILTIN_TYPE_NAME_MAP.get(alias_to, 0)
+
         for format in formats:
-            if isinstance(alias_to, int):
-                alias_oid = pylong_as_oid(alias_to)
+            if alias_oid != 0:
                 target_codec = self.get_codec(alias_oid, format)
             else:
                 target_codec = get_extra_codec(alias_to, format)
@@ -619,11 +637,20 @@ cdef class DataCodecConfig:
             codec.schema = typeschema
             codec.kind = typekind
 
-            self._custom_type_codecs[typeoid] = codec
-            break
-        else:
+            self._custom_type_codecs[typeoid, format] = codec
+            codec_set = True
+
+        if not codec_set:
+            if format == PG_FORMAT_BINARY:
+                codec_str = 'binary'
+            elif format == PG_FORMAT_TEXT:
+                codec_str = 'text'
+            else:
+                codec_str = 'text or binary'
+
             raise exceptions.InterfaceError(
-                'invalid builtin codec reference: {}'.format(alias_to))
+                f'cannot alias {typename} to {alias_to}: '
+                f'there is no {codec_str} codec for {alias_to}')
 
     def set_builtin_type_codec(self, typeoid, typename, typeschema, typekind,
                                alias_to, format=PG_FORMAT_ANY):
@@ -667,7 +694,7 @@ cdef class DataCodecConfig:
     cdef inline Codec get_codec(self, uint32_t oid, ServerDataFormat format):
         cdef Codec codec
 
-        codec = self.get_local_codec(oid)
+        codec = self.get_any_local_codec(oid)
         if codec is not None:
             if codec.format != format:
                 # The codec for this OID has been overridden by
@@ -686,8 +713,14 @@ cdef class DataCodecConfig:
             except KeyError:
                 return None
 
-    cdef inline Codec get_local_codec(self, uint32_t oid):
-        return self._custom_type_codecs.get(oid)
+    cdef inline Codec get_any_local_codec(self, uint32_t oid):
+        cdef Codec codec
+
+        codec = self._custom_type_codecs.get((oid, PG_FORMAT_BINARY))
+        if codec is None:
+            return self._custom_type_codecs.get((oid, PG_FORMAT_TEXT))
+        else:
+            return codec
 
 
 cdef inline Codec get_core_codec(
@@ -746,7 +779,7 @@ cdef register_core_codec(uint32_t oid,
         str name
         str kind
 
-    name = TYPEMAP[oid]
+    name = BUILTIN_TYPE_OID_MAP[oid]
     kind = 'array' if oid in ARRAY_TYPES else 'scalar'
 
     codec = Codec(oid)

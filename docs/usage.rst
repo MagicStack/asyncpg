@@ -298,6 +298,33 @@ shows how to instruct asyncpg to use floats instead.
     asyncio.get_event_loop().run_until_complete(main())
 
 
+Example: decoding hstore values
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+hstore_ is an extension data type used for storing key/value pairs.
+asyncpg includes a codec to decode and encode hstore values as ``dict``
+objects.  Because ``hstore`` is not a builtin type, the codec must
+be registered on a connection using :meth:`Connection.set_builtin_type_codec()
+<asyncpg.connection.Connection.set_builtin_type_codec>`:
+
+.. code-block:: python
+
+    import asyncpg
+    import asyncio
+
+    async def run():
+        conn = await asyncpg.connect()
+        # Assuming the hstore extension exists in the public schema.
+        await con.set_builtin_type_codec(
+            'hstore', codec_name='pg_contrib.hstore')
+        result = await con.fetchval("SELECT 'a=>1,b=>2'::hstore")
+        assert result == {'a': 1, 'b': 2}
+
+    asyncio.get_event_loop().run_until_complete(run())
+
+.. _hstore: https://www.postgresql.org/docs/current/static/hstore.html
+
+
 Transactions
 ------------
 
