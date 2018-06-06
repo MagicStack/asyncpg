@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.16.0.dev0
+                0.16.0
               </div>
             
           
@@ -1622,7 +1622,9 @@ open cursors and other resources <em>except</em> prepared statements.</p>
 <p>Wait until all pool connections are released, close them and
 shut down the pool.  If any error (including cancellation) occurs
 in <code class="docutils literal notranslate"><span class="pre">close()</span></code> the pool will terminate by calling
-:meth:’Pool.terminate() &lt;pool.Pool.terminate&gt;`.</p>
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">Pool.terminate()</span></code>.</p>
+<p>It is advisable to use <a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.wait_for" title="(in Python v3.6)"><code class="docutils literal notranslate"><span class="pre">asyncio.wait_for()</span></code></a> to set
+a timeout.</p>
 <div class="versionchanged">
 <p><span class="versionmodified">Changed in version 0.16.0: </span><code class="docutils literal notranslate"><span class="pre">close()</span></code> now waits until all pool connections are released
 before closing them and the pool.  Errors raised in <code class="docutils literal notranslate"><span class="pre">close()</span></code>
@@ -2042,7 +2044,7 @@ items either by a numeric index or by a field name:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.16.0.dev0',
+            VERSION:'0.16.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

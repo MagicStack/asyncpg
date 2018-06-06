@@ -67,7 +67,7 @@
             
             
               <div class="version">
-                0.16.0.dev0
+                0.16.0
               </div>
             
           
@@ -172,12 +172,16 @@
 <span class="kn">import</span> <span class="nn">asyncio</span>
 <span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">connection</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">connect_utils</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">exceptions</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 
 <span class="k">class</span> <span class="nc">PoolConnectionProxyMeta</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
@@ -785,7 +789,10 @@
 <span class="sd">        Wait until all pool connections are released, close them and</span>
 <span class="sd">        shut down the pool.  If any error (including cancellation) occurs</span>
 <span class="sd">        in ``close()`` the pool will terminate by calling</span>
-<span class="sd">        :meth:&#39;Pool.terminate() &lt;pool.Pool.terminate&gt;`.</span>
+<span class="sd">        :meth:`Pool.terminate() &lt;pool.Pool.terminate&gt;`.</span>
+
+<span class="sd">        It is advisable to use :func:`python:asyncio.wait_for` to set</span>
+<span class="sd">        a timeout.</span>
 
 <span class="sd">        .. versionchanged:: 0.16.0</span>
 <span class="sd">            ``close()`` now waits until all pool connections are released</span>
@@ -799,6 +806,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_closing</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="k">try</span><span class="p">:</span>
+            <span class="n">warning_callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_later</span><span class="p">(</span>
+                <span class="mi">60</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_warn_on_long_close</span><span class="p">)</span>
+
             <span class="n">release_coros</span> <span class="o">=</span> <span class="p">[</span>
                 <span class="n">ch</span><span class="o">.</span><span class="n">wait_until_released</span><span class="p">()</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_holders</span><span class="p">]</span>
             <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">release_coros</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span>
@@ -812,8 +822,15 @@
             <span class="k">raise</span>
 
         <span class="k">finally</span><span class="p">:</span>
+            <span class="n">warning_callback</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_closing</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+    <span class="k">def</span> <span class="nf">_warn_on_long_close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Pool.close() is taking over 60 seconds to complete. &#39;</span>
+                       <span class="s1">&#39;Check if you have any unreleased connections left. &#39;</span>
+                       <span class="s1">&#39;Use asyncio.wait_for() to set a timeout for &#39;</span>
+                       <span class="s1">&#39;Pool.close().&#39;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Pool.terminate"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.terminate">[docs]</a>    <span class="k">def</span> <span class="nf">terminate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Terminate all connections in the pool.&quot;&quot;&quot;</span>
@@ -1037,7 +1054,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.16.0.dev0',
+            VERSION:'0.16.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
