@@ -43,7 +43,7 @@ matrix:
           dist: trusty
           sudo: false
           language: python
-          python: "3.5"
+          python: "3.6"
           env: BUILD=quicktests PGVERSION=9.2
           addons:
               apt: {packages: [postgresql-9.2]}
@@ -52,7 +52,7 @@ matrix:
           dist: trusty
           sudo: false
           language: python
-          python: "3.5"
+          python: "3.6"
           env: BUILD=quicktests PGVERSION=9.3
           addons:
               apt: {packages: [postgresql-9.3]}
@@ -61,7 +61,7 @@ matrix:
           dist: trusty
           sudo: false
           language: python
-          python: "3.5"
+          python: "3.6"
           env: BUILD=quicktests PGVERSION=9.4
           addons:
               apt: {packages: [postgresql-9.4]}
@@ -70,7 +70,7 @@ matrix:
           dist: trusty
           sudo: false
           language: python
-          python: "3.5"
+          python: "3.6"
           env: BUILD=quicktests PGVERSION=9.5
           addons:
               apt: {packages: [postgresql-9.5]}
@@ -121,18 +121,18 @@ matrix:
           dist: trusty
           sudo: required
           language: python
-          python: "3.5"
+          python: "3.6"
           env: BUILD=wheels,docs,release PGVERSION=10
           services: [docker]
           addons:
               apt: {packages: [postgresql-10]}
 
         - os: osx
-          env: BUILD=tests,wheels PYTHON_VERSION=3.5.5 PGVERSION=9.6
+          env: BUILD=tests,wheels PYTHON_VERSION=3.5.5 PGVERSION=10
 
         - os: osx
           osx_image: xcode8.3
-          env: BUILD=tests,wheels PYTHON_VERSION=3.6.5 PGVERSION=9.6
+          env: BUILD=tests,wheels PYTHON_VERSION=3.6.5 PGVERSION=10
 
     allow_failures:
         - python: "3.7-dev"
