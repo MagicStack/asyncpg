@@ -36,12 +36,10 @@ if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
     pyenv rehash
 
     # Install PostgreSQL
-    if brew ls --versions postgresql@${PGVERSION} > /dev/null; then
-        brew upgrade postgresql@${PGVERSION}
-    else
-        brew install postgresql@${PGVERSION}
+    if brew ls --versions postgresql > /dev/null; then
+        brew remove --force --ignore-dependencies postgresql
     fi
 
-    brew cleanup postgresql@${PGVERSION}
+    brew install postgresql@${PGVERSION}
     brew services start postgresql@${PGVERSION}
 fi
