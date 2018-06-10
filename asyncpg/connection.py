@@ -112,7 +112,7 @@ class Connection(metaclass=ConnectionMeta):
         """
         self._check_open()
         if channel not in self._listeners:
-            await self.fetch('LISTEN {}'.format(channel))
+            await self.fetch('LISTEN "{}"'.format(channel))
             self._listeners[channel] = set()
         self._listeners[channel].add(callback)
 
@@ -127,7 +127,7 @@ class Connection(metaclass=ConnectionMeta):
         self._listeners[channel].remove(callback)
         if not self._listeners[channel]:
             del self._listeners[channel]
-            await self.fetch('UNLISTEN {}'.format(channel))
+            await self.fetch('UNLISTEN "{}"'.format(channel))
 
     def add_log_listener(self, callback):
         """Add a listener for Postgres log messages.

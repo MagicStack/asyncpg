@@ -78,6 +78,24 @@ class TestListeners(tb.ClusterTestCase):
 
                 await con1.remove_listener('ipc', listener1)
 
+    async def test_listen_notletters(self):
+        async with self.create_pool(database='postgres') as pool:
+            async with pool.acquire() as con1, pool.acquire() as con2:
+
+                q1 = asyncio.Queue(loop=self.loop)
+
+                def listener1(*args):
+                    q1.put_nowait(args)
+
+                await con1.add_listener('12+34', listener1)
+                await con2.execute("""NOTIFY "12+34", 'hello'""")
+
+                self.assertEqual(
+                    await q1.get(),
+                    (con1, con2.get_server_pid(), '12+34', 'hello'))
+
+                await con1.remove_listener('12+34', listener1)
+
     async def test_dangling_listener_warns(self):
         async with self.create_pool(database='postgres') as pool:
             with self.assertWarnsRegex(
