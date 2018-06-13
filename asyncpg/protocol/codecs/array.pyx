@@ -804,23 +804,23 @@ cdef _infer_array_dims(const Py_UCS4 *array_text,
         ndims[0] = 0
 
 
-cdef int4_encode_ex(ConnectionSettings settings, WriteBuffer buf, object obj,
-                    const void *arg):
-    return int4_encode(settings, buf, obj)
+cdef uint4_encode_ex(ConnectionSettings settings, WriteBuffer buf, object obj,
+                     const void *arg):
+    return uint4_encode(settings, buf, obj)
 
 
-cdef int4_decode_ex(ConnectionSettings settings, FastReadBuffer buf,
-                    const void *arg):
-    return int4_decode(settings, buf)
+cdef uint4_decode_ex(ConnectionSettings settings, FastReadBuffer buf,
+                     const void *arg):
+    return uint4_decode(settings, buf)
 
 
 cdef arrayoid_encode(ConnectionSettings settings, WriteBuffer buf, items):
     array_encode(settings, buf, items, OIDOID,
-                 <encode_func_ex>&int4_encode_ex, NULL)
+                 <encode_func_ex>&uint4_encode_ex, NULL)
 
 
 cdef arrayoid_decode(ConnectionSettings settings, FastReadBuffer buf):
-    return array_decode(settings, buf, <decode_func_ex>&int4_decode_ex, NULL)
+    return array_decode(settings, buf, <decode_func_ex>&uint4_decode_ex, NULL)
 
 
 cdef text_encode_ex(ConnectionSettings settings, WriteBuffer buf, object obj,
