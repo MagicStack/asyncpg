@@ -1610,6 +1610,11 @@ class TestCodecsLargeOIDs(tb.ConnectedTestCase):
             ''')
             self.assertEqual(oid, 2147483648)
 
+            # Test that introspection handles large OIDs
+            v = await self.con.fetchval('SELECT $1::test_domain_t', 10)
+            self.assertEqual(v, 10)
+
+            # Test that custom codec logic handles large OIDs
             await self.con.set_type_codec(
                 'test_domain_t',
                 encoder=lambda v: str(v),
