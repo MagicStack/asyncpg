@@ -512,45 +512,21 @@ static PyMethodDef record_methods[] = {
 
 PyTypeObject ApgRecord_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "asyncpg.Record",                                /* tp_name */
-    sizeof(ApgRecordObject) - sizeof(PyObject *),    /* tp_basic_size */
-    sizeof(PyObject *),                              /* tp_itemsize */
-    (destructor)record_dealloc,                      /* tp_dealloc */
-    0,                                               /* tp_print */
-    0,                                               /* tp_getattr */
-    0,                                               /* tp_setattr */
-    0,                                               /* tp_reserved */
-    (reprfunc)record_repr,                           /* tp_repr */
-    0,                                               /* tp_as_number */
-    &record_as_sequence,                             /* tp_as_sequence */
-    &record_as_mapping,                              /* tp_as_mapping */
-    (hashfunc)record_hash,                           /* tp_hash */
-    0,                                               /* tp_call */
-    0,                                               /* tp_str */
-    PyObject_GenericGetAttr,                         /* tp_getattro */
-    0,                                               /* tp_setattro */
-    0,                                               /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC |
-        Py_TPFLAGS_BASETYPE,                         /* tp_flags */
-    0,                                               /* tp_doc */
-    (traverseproc)record_traverse,                   /* tp_traverse */
-    0,                                               /* tp_clear */
-    record_richcompare,                              /* tp_richcompare */
-    0,                                               /* tp_weaklistoffset */
-    record_iter,                                     /* tp_iter */
-    0,                                               /* tp_iternext */
-    record_methods,                                  /* tp_methods */
-    0,                                               /* tp_members */
-    0,                                               /* tp_getset */
-    0,                                               /* tp_base */
-    0,                                               /* tp_dict */
-    0,                                               /* tp_descr_get */
-    0,                                               /* tp_descr_set */
-    0,                                               /* tp_dictoffset */
-    0,                                               /* tp_init */
-    0,                                               /* tp_alloc */
-    0,                                               /* tp_new */
-    PyObject_GC_Del,                                 /* tp_free */
+    .tp_name = "asyncpg.Record",
+    .tp_basicsize = sizeof(ApgRecordObject) - sizeof(PyObject *),
+    .tp_itemsize = sizeof(PyObject *),
+    .tp_dealloc = (destructor)record_dealloc,
+    .tp_repr = (reprfunc)record_repr,
+    .tp_as_sequence = &record_as_sequence,
+    .tp_as_mapping = &record_as_mapping,
+    .tp_hash = (hashfunc)record_hash,
+    .tp_getattro = PyObject_GenericGetAttr,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC | Py_TPFLAGS_BASETYPE,
+    .tp_traverse = (traverseproc)record_traverse,
+    .tp_richcompare = record_richcompare,
+    .tp_iter = record_iter,
+    .tp_methods = record_methods,
+    .tp_free = PyObject_GC_Del,
 };
 
 
@@ -630,35 +606,15 @@ static PyMethodDef record_iter_methods[] = {
 
 PyTypeObject ApgRecordIter_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "RecordIterator",                           /* tp_name */
-    sizeof(ApgRecordIterObject),                /* tp_basicsize */
-    0,                                          /* tp_itemsize */
-    /* methods */
-    (destructor)record_iter_dealloc,            /* tp_dealloc */
-    0,                                          /* tp_print */
-    0,                                          /* tp_getattr */
-    0,                                          /* tp_setattr */
-    0,                                          /* tp_reserved */
-    0,                                          /* tp_repr */
-    0,                                          /* tp_as_number */
-    0,                                          /* tp_as_sequence */
-    0,                                          /* tp_as_mapping */
-    0,                                          /* tp_hash */
-    0,                                          /* tp_call */
-    0,                                          /* tp_str */
-    PyObject_GenericGetAttr,                    /* tp_getattro */
-    0,                                          /* tp_setattro */
-    0,                                          /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,    /* tp_flags */
-    0,                                          /* tp_doc */
-    (traverseproc)record_iter_traverse,         /* tp_traverse */
-    0,                                          /* tp_clear */
-    0,                                          /* tp_richcompare */
-    0,                                          /* tp_weaklistoffset */
-    PyObject_SelfIter,                          /* tp_iter */
-    (iternextfunc)record_iter_next,             /* tp_iternext */
-    record_iter_methods,                        /* tp_methods */
-    0,
+    .tp_name = "RecordIterator",
+    .tp_basicsize = sizeof(ApgRecordIterObject),
+    .tp_dealloc = (destructor)record_iter_dealloc,
+    .tp_getattro = PyObject_GenericGetAttr,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_traverse = (traverseproc)record_iter_traverse,
+    .tp_iter = PyObject_SelfIter,
+    .tp_iternext = (iternextfunc)record_iter_next,
+    .tp_methods = record_iter_methods,
 };
 
 
@@ -787,35 +743,15 @@ static PyMethodDef record_items_methods[] = {
 
 PyTypeObject ApgRecordItems_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "RecordItemsIterator",                      /* tp_name */
-    sizeof(ApgRecordItemsObject),               /* tp_basicsize */
-    0,                                          /* tp_itemsize */
-    /* methods */
-    (destructor)record_items_dealloc,           /* tp_dealloc */
-    0,                                          /* tp_print */
-    0,                                          /* tp_getattr */
-    0,                                          /* tp_setattr */
-    0,                                          /* tp_reserved */
-    0,                                          /* tp_repr */
-    0,                                          /* tp_as_number */
-    0,                                          /* tp_as_sequence */
-    0,                                          /* tp_as_mapping */
-    0,                                          /* tp_hash */
-    0,                                          /* tp_call */
-    0,                                          /* tp_str */
-    PyObject_GenericGetAttr,                    /* tp_getattro */
-    0,                                          /* tp_setattro */
-    0,                                          /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,    /* tp_flags */
-    0,                                          /* tp_doc */
-    (traverseproc)record_items_traverse,        /* tp_traverse */
-    0,                                          /* tp_clear */
-    0,                                          /* tp_richcompare */
-    0,                                          /* tp_weaklistoffset */
-    PyObject_SelfIter,                          /* tp_iter */
-    (iternextfunc)record_items_next,            /* tp_iternext */
-    record_items_methods,                       /* tp_methods */
-    0,
+    .tp_name = "RecordItemsIterator",
+    .tp_basicsize = sizeof(ApgRecordItemsObject),
+    .tp_dealloc = (destructor)record_items_dealloc,
+    .tp_getattro = PyObject_GenericGetAttr,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_traverse = (traverseproc)record_items_traverse,
+    .tp_iter = PyObject_SelfIter,
+    .tp_iternext = (iternextfunc)record_items_next,
+    .tp_methods = record_items_methods,
 };
 
 
@@ -896,35 +832,13 @@ record_desc_traverse(ApgRecordDescObject *o, visitproc visit, void *arg)
 
 PyTypeObject ApgRecordDesc_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "RecordDescriptor",                         /* tp_name */
-    sizeof(ApgRecordDescObject),                /* tp_basicsize */
-    0,                                          /* tp_itemsize */
-    /* methods */
-    (destructor)record_desc_dealloc,            /* tp_dealloc */
-    0,                                          /* tp_print */
-    0,                                          /* tp_getattr */
-    0,                                          /* tp_setattr */
-    0,                                          /* tp_reserved */
-    0,                                          /* tp_repr */
-    0,                                          /* tp_as_number */
-    0,                                          /* tp_as_sequence */
-    0,                                          /* tp_as_mapping */
-    0,                                          /* tp_hash */
-    0,                                          /* tp_call */
-    0,                                          /* tp_str */
-    PyObject_GenericGetAttr,                    /* tp_getattro */
-    0,                                          /* tp_setattro */
-    0,                                          /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,    /* tp_flags */
-    0,                                          /* tp_doc */
-    (traverseproc)record_desc_traverse,         /* tp_traverse */
-    0,                                          /* tp_clear */
-    0,                                          /* tp_richcompare */
-    0,                                          /* tp_weaklistoffset */
-    PyObject_SelfIter,                          /* tp_iter */
-    0,                                          /* tp_iternext */
-    0,                                          /* tp_methods */
-    0,
+    .tp_name = "RecordDescriptor",
+    .tp_basicsize = sizeof(ApgRecordDescObject),
+    .tp_dealloc = (destructor)record_desc_dealloc,
+    .tp_getattro = PyObject_GenericGetAttr,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_traverse = (traverseproc)record_desc_traverse,
+    .tp_iter = PyObject_SelfIter,
 };
 
 
