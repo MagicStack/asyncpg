@@ -27,7 +27,7 @@ from setuptools.command import build_py as setuptools_build_py
 from setuptools.command import sdist as setuptools_sdist
 
 
-CYTHON_DEPENDENCY = 'Cython==0.28.3'
+CYTHON_DEPENDENCY = 'Cython==0.28.4'
 
 # Minimal dependencies required to test asyncpg.
 TEST_DEPENDENCIES = [
@@ -246,18 +246,23 @@ setuptools.setup(
     description='An asyncio PosgtreSQL driver',
     long_description=readme,
     classifiers=[
-        'License :: OSI Approved :: Apache Software License',
+        'Development Status :: 5 - Production/Stable',
         'Framework :: AsyncIO',
         'Intended Audience :: Developers',
-        'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
+        'License :: OSI Approved :: Apache Software License',
         'Operating System :: POSIX',
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Microsoft :: Windows',
-        'Development Status :: 5 - Production/Stable',
+        'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: Implementation :: CPython',
+        'Topic :: Database :: Front-Ends',
     ],
-    platforms=['POSIX'],
+    platforms=['macOS', 'POSIX', 'Windows'],
+    python_requires='>=3.5.0',
+    zip_safe=False,
     author='MagicStack Inc',
     author_email='hello@magic.io',
     url='https://github.com/MagicStack/asyncpg',

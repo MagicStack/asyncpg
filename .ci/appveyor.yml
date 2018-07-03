@@ -16,6 +16,8 @@ environment:
         - PYTHON: "C:\\Python35-x64\\python.exe"
         - PYTHON: "C:\\Python36\\python.exe"
         - PYTHON: "C:\\Python36-x64\\python.exe"
+        - PYTHON: "C:\\Python37\\python.exe"
+        - PYTHON: "C:\\Python37-x64\\python.exe"
 
 branches:
     # Avoid building PR branches.
@@ -31,7 +33,7 @@ build_script:
     - "%PYTHON% setup.py build_ext --inplace --cython-always"
 
 test_script:
-    - "%PYTHON% setup.py test"
+    - "%PYTHON% setup.py --verbose test"
 
 after_test:
     - "%PYTHON% setup.py bdist_wheel"
@@ -40,9 +42,9 @@ artifacts:
     - path: dist\*
 
 deploy_script:
-    - "%PYTHON% -m pip install --upgrade -r .ci/requirements-publish.txt"
     - ps: |
         if ($env:appveyor_repo_branch -eq 'releases') {
+            & "$env:PYTHON" -m pip install -U -r ".ci/requirements-publish.txt"
             $PACKAGE_VERSION = & "$env:PYTHON" ".ci/package-version.py"
             $PYPI_VERSION = & "$env:PYTHON" ".ci/pypi-check.py" "asyncpg"
 
