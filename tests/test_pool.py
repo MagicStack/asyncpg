@@ -852,6 +852,35 @@ class TestPool(tb.ConnectedTestCase):
         self.assertEqual(con.get_settings().application_name,
                          'set_conn_args_test_2')
 
+    async def test_pool_init_race(self):
+        pool = self.create_pool(database='postgres', min_size=1, max_size=1)
+
+        t1 = asyncio.ensure_future(pool, loop=self.loop)
+        t2 = asyncio.ensure_future(pool, loop=self.loop)
+
+        await t1
+        with self.assertRaisesRegex(
+                asyncpg.InterfaceError,
+                r'pool is being initialized in another task'):
+            await t2
+
+        await pool.close()
+
+    async def test_pool_init_and_use_race(self):
+        pool = self.create_pool(database='postgres', min_size=1, max_size=1)
+
+        pool_task = asyncio.ensure_future(pool, loop=self.loop)
+        await asyncio.sleep(0, loop=self.loop)
+
+        with self.assertRaisesRegex(
+                asyncpg.InterfaceError,
+                r'being initialized, but not yet ready'):
+
+            await pool.fetchval('SELECT 1')
+
+        await pool_task
+        await pool.close()
+
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
 class TestHotStandby(tb.ClusterTestCase):
