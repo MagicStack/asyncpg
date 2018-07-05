@@ -305,8 +305,8 @@ class Pool:
     __slots__ = ('_queue', '_loop', '_minsize', '_maxsize',
                  '_init', '_connect_args', '_connect_kwargs',
                  '_working_addr', '_working_config', '_working_params',
-                 '_holders', '_initialized', '_closing', '_closed',
-                 '_connection_class', '_generation')
+                 '_holders', '_initialized', '_initializing', '_closing',
+                 '_closed', '_connection_class', '_generation')
 
     def __init__(self, *connect_args,
                  min_size,
@@ -359,6 +359,7 @@ class Pool:
 
         self._holders = []
         self._initialized = False
+        self._initializing = False
         self._queue = asyncio.LifoQueue(maxsize=self._maxsize, loop=self._loop)
 
         self._working_addr = None
@@ -387,9 +388,20 @@ class Pool:
     async def _async__init__(self):
         if self._initialized:
             return
+        if self._initializing:
+            raise exceptions.InterfaceError(
+                'pool is being initialized in another task')
         if self._closed:
             raise exceptions.InterfaceError('pool is closed')
+        self._initializing = True
+        try:
+            await self._initialize()
+            return self
+        finally:
+            self._initializing = False
+            self._initialized = True
 
+    async def _initialize(self):
         if self._minsize:
             # Since we use a LIFO queue, the first items in the queue will be
             # the last ones in `self._holders`.  We want to pre-connect the
@@ -411,9 +423,6 @@ class Pool:
                     connect_tasks.append(ch.connect())
 
                 await asyncio.gather(*connect_tasks, loop=self._loop)
-
-        self._initialized = True
-        return self
 
     def set_connect_args(self, dsn=None, **connect_kwargs):
         r"""Set the new connection arguments for this pool.
@@ -703,6 +712,11 @@ class Pool:
 
     def _check_init(self):
         if not self._initialized:
+            if self._initializing:
+                raise exceptions.InterfaceError(
+                    'pool is being initialized, but not yet ready: '
+                    'likely there is a race between creating a pool and '
+                    'using it')
             raise exceptions.InterfaceError('pool is not initialized')
         if self._closed:
             raise exceptions.InterfaceError('pool is closed')
