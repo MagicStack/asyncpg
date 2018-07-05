@@ -5,6 +5,7 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+import asyncio
 import functools
 import os
 import pathlib
@@ -13,6 +14,7 @@ import sys
 
 
 PY_36 = sys.version_info >= (3, 6)
+PY_37 = sys.version_info >= (3, 7)
 SYSTEM = platform.uname().system
 
 
@@ -69,3 +71,11 @@ if SYSTEM == 'Windows':
 else:
     def get_pg_home_directory() -> pathlib.Path:
         return pathlib.Path.home()
+
+
+if PY_37:
+    def current_asyncio_task(loop):
+        return asyncio.current_task(loop)
+else:
+    def current_asyncio_task(loop):
+        return asyncio.Task.current_task(loop)

@@ -1159,7 +1159,7 @@ class Connection(metaclass=ConnectionMeta):
                 waiter.set_exception(ex)
         finally:
             self._cancellations.discard(
-                asyncio.Task.current_task(self._loop))
+                compat.current_asyncio_task(self._loop))
             if not waiter.done():
                 waiter.set_result(None)
             if w is not None:
