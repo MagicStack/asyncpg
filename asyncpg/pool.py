@@ -467,7 +467,21 @@ class Pool:
                 connection_class=self._connection_class)
 
         if self._init is not None:
-            await self._init(con)
+            try:
+                await self._init(con)
+            except Exception as ex:
+                # If a user-defined `init` function fails, we don't
+                # know if the connection is safe for re-use, hence
+                # we close it.  A new connection will be created
+                # when `acquire` is called again.
+                try:
+                    # Use `close()` to close the connection gracefully.
+                    # An exception in `init` isn't necessarily caused
+                    # by an IO or a protocol error.  close() will
+                    # do the necessary cleanup via _release_on_close().
+                    await con.close()
+                finally:
+                    raise ex
 
         return con
 

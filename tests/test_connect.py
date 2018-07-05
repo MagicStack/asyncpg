@@ -7,6 +7,7 @@
 
 import asyncio
 import contextlib
+import gc
 import ipaddress
 import os
 import platform
@@ -15,6 +16,7 @@ import stat
 import tempfile
 import textwrap
 import unittest
+import weakref
 
 import asyncpg
 from asyncpg import _testbase as tb
@@ -851,3 +853,44 @@ class TestSSLConnection(tb.ConnectedTestCase):
         tasks = [worker() for _ in range(100)]
         await asyncio.gather(*tasks, loop=self.loop)
         await pool.close()
+
+
+class TestConnectionGC(tb.ClusterTestCase):
+
+    async def _run_no_explicit_close_test(self):
+        con = await self.connect()
+        proto = con._protocol
+        conref = weakref.ref(con)
+        del con
+
+        gc.collect()
+        gc.collect()
+        gc.collect()
+
+        self.assertIsNone(conref())
+        self.assertTrue(proto.is_closed())
+
+    async def test_no_explicit_close_no_debug(self):
+        olddebug = self.loop.get_debug()
+        self.loop.set_debug(False)
+        try:
+            with self.assertWarnsRegex(
+                    ResourceWarning,
+                    r'unclosed connection.*run in asyncio debug'):
+                await self._run_no_explicit_close_test()
+        finally:
+            self.loop.set_debug(olddebug)
+
+    async def test_no_explicit_close_with_debug(self):
+        olddebug = self.loop.get_debug()
+        self.loop.set_debug(True)
+        try:
+            with self.assertWarnsRegex(ResourceWarning,
+                                       r'unclosed connection') as rw:
+                await self._run_no_explicit_close_test()
+
+            msg = rw.warning.args[0]
+            self.assertIn(' created at:\n', msg)
+            self.assertIn('in test_no_explicit_close_with_debug', msg)
+        finally:
+            self.loop.set_debug(olddebug)

@@ -6,11 +6,14 @@
 
 
 import asyncio
+import asyncpg
 import collections
 import collections.abc
 import itertools
 import struct
+import sys
 import time
+import traceback
 import warnings
 
 from . import compat
@@ -44,7 +47,8 @@ class Connection(metaclass=ConnectionMeta):
                  '_listeners', '_server_version', '_server_caps',
                  '_intro_query', '_reset_query', '_proxy',
                  '_stmt_exclusive_section', '_config', '_params', '_addr',
-                 '_log_listeners', '_cancellations')
+                 '_log_listeners', '_cancellations', '_source_traceback',
+                 '__weakref__')
 
     def __init__(self, protocol, transport, loop,
                  addr: (str, int) or str,
@@ -97,6 +101,27 @@ class Connection(metaclass=ConnectionMeta):
         # Used for `con.fetchval()`, `con.fetch()`, `con.fetchrow()`,
         # `con.execute()`, and `con.executemany()`.
         self._stmt_exclusive_section = _Atomic()
+
+        if loop.get_debug():
+            self._source_traceback = _extract_stack()
+        else:
+            self._source_traceback = None
+
+    def __del__(self):
+        if not self.is_closed() and self._protocol is not None:
+            if self._source_traceback:
+                msg = "unclosed connection {!r}; created at:\n {}".format(
+                    self, self._source_traceback)
+            else:
+                msg = (
+                    "unclosed connection {!r}; run in asyncio debug "
+                    "mode to show the traceback of connection "
+                    "origin".format(self)
+                )
+
+            warnings.warn(msg, ResourceWarning)
+            if not self._loop.is_closed():
+                self.terminate()
 
     async def add_listener(self, channel, callback):
         """Add a listener for Postgres notifications.
@@ -1789,6 +1814,27 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_reset=sql_reset,
         sql_close_all=sql_close_all
     )
+
+
+def _extract_stack(limit=10):
+    """Replacement for traceback.extract_stack() that only does the
+    necessary work for asyncio debug mode.
+    """
+    frame = sys._getframe().f_back
+    try:
+        stack = traceback.StackSummary.extract(
+            traceback.walk_stack(frame), lookup_lines=False)
+    finally:
+        del frame
+
+    apg_path = asyncpg.__path__[0]
+    i = 0
+    while i < len(stack) and stack[i][0].startswith(apg_path):
+        i += 1
+    stack = stack[i:i + limit]
+
+    stack.reverse()
+    return ''.join(traceback.format_list(stack))
 
 
 _uid = 0

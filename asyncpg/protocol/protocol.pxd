@@ -36,7 +36,7 @@ cdef class BaseProtocol(CoreProtocol):
         object timeout_handle
         object timeout_callback
         object completed_callback
-        object connection
+        object conref
         bint is_reading
 
         str last_query
@@ -47,6 +47,8 @@ cdef class BaseProtocol(CoreProtocol):
         readonly uint64_t queries_count
 
         PreparedStatementState statement
+
+    cdef get_connection(self)
 
     cdef _get_timeout_impl(self, timeout)
     cdef _check_state(self)
