@@ -631,7 +631,21 @@
                 <span class="n">connection_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection_class</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="c1"># If a user-defined `init` function fails, we don&#39;t</span>
+                <span class="c1"># know if the connection is safe for re-use, hence</span>
+                <span class="c1"># we close it.  A new connection will be created</span>
+                <span class="c1"># when `acquire` is called again.</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># Use `close()` to close the connection gracefully.</span>
+                    <span class="c1"># An exception in `init` isn&#39;t necessarily caused</span>
+                    <span class="c1"># by an IO or a protocol error.  close() will</span>
+                    <span class="c1"># do the necessary cleanup via _release_on_close().</span>
+                    <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                <span class="k">finally</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">ex</span>
 
         <span class="k">return</span> <span class="n">con</span>
 

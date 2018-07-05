@@ -170,11 +170,14 @@
 
 
 <span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">import</span> <span class="nn">asyncpg</span>
 <span class="kn">import</span> <span class="nn">collections</span>
 <span class="kn">import</span> <span class="nn">collections.abc</span>
 <span class="kn">import</span> <span class="nn">itertools</span>
 <span class="kn">import</span> <span class="nn">struct</span>
+<span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">traceback</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">compat</span>
@@ -208,7 +211,8 @@
                  <span class="s1">&#39;_listeners&#39;</span><span class="p">,</span> <span class="s1">&#39;_server_version&#39;</span><span class="p">,</span> <span class="s1">&#39;_server_caps&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_intro_query&#39;</span><span class="p">,</span> <span class="s1">&#39;_reset_query&#39;</span><span class="p">,</span> <span class="s1">&#39;_proxy&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_stmt_exclusive_section&#39;</span><span class="p">,</span> <span class="s1">&#39;_config&#39;</span><span class="p">,</span> <span class="s1">&#39;_params&#39;</span><span class="p">,</span> <span class="s1">&#39;_addr&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;_log_listeners&#39;</span><span class="p">,</span> <span class="s1">&#39;_cancellations&#39;</span><span class="p">)</span>
+                 <span class="s1">&#39;_log_listeners&#39;</span><span class="p">,</span> <span class="s1">&#39;_cancellations&#39;</span><span class="p">,</span> <span class="s1">&#39;_source_traceback&#39;</span><span class="p">,</span>
+                 <span class="s1">&#39;__weakref__&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">protocol</span><span class="p">,</span> <span class="n">transport</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span>
                  <span class="n">addr</span><span class="p">:</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">,</span>
@@ -261,6 +265,27 @@
         <span class="c1"># Used for `con.fetchval()`, `con.fetch()`, `con.fetchrow()`,</span>
         <span class="c1"># `con.execute()`, and `con.executemany()`.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_exclusive_section</span> <span class="o">=</span> <span class="n">_Atomic</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">loop</span><span class="o">.</span><span class="n">get_debug</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_source_traceback</span> <span class="o">=</span> <span class="n">_extract_stack</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_source_traceback</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_closed</span><span class="p">()</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source_traceback</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;unclosed connection </span><span class="si">{!r}</span><span class="s2">; created at:</span><span class="se">\n</span><span class="s2"> </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source_traceback</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="s2">&quot;unclosed connection </span><span class="si">{!r}</span><span class="s2">; run in asyncio debug &quot;</span>
+                    <span class="s2">&quot;mode to show the traceback of connection &quot;</span>
+                    <span class="s2">&quot;origin&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+                <span class="p">)</span>
+
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="ne">ResourceWarning</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
 
 <div class="viewcode-block" id="Connection.add_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.add_listener">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">add_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Add a listener for Postgres notifications.</span>
@@ -1323,7 +1348,7 @@
                 <span class="n">waiter</span><span class="o">.</span><span class="n">set_exception</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_cancellations</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span>
-                <span class="n">asyncio</span><span class="o">.</span><span class="n">Task</span><span class="o">.</span><span class="n">current_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">))</span>
+                <span class="n">compat</span><span class="o">.</span><span class="n">current_asyncio_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">))</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">waiter</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
                 <span class="n">waiter</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">w</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -1953,6 +1978,27 @@
         <span class="n">sql_reset</span><span class="o">=</span><span class="n">sql_reset</span><span class="p">,</span>
         <span class="n">sql_close_all</span><span class="o">=</span><span class="n">sql_close_all</span>
     <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_extract_stack</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Replacement for traceback.extract_stack() that only does the</span>
+<span class="sd">    necessary work for asyncio debug mode.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">frame</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">stack</span> <span class="o">=</span> <span class="n">traceback</span><span class="o">.</span><span class="n">StackSummary</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
+            <span class="n">traceback</span><span class="o">.</span><span class="n">walk_stack</span><span class="p">(</span><span class="n">frame</span><span class="p">),</span> <span class="n">lookup_lines</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">del</span> <span class="n">frame</span>
+
+    <span class="n">apg_path</span> <span class="o">=</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">__path__</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">stack</span><span class="p">)</span> <span class="ow">and</span> <span class="n">stack</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">apg_path</span><span class="p">):</span>
+        <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="n">stack</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="n">limit</span><span class="p">]</span>
+
+    <span class="n">stack</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
+    <span class="k">return</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_list</span><span class="p">(</span><span class="n">stack</span><span class="p">))</span>
 
 
 <span class="n">_uid</span> <span class="o">=</span> <span class="mi">0</span>
