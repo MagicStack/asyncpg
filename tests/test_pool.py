@@ -292,7 +292,8 @@ class TestPool(tb.ConnectedTestCase):
             pass
 
         async def setup(con):
-            nonlocal setup_calls
+            nonlocal setup_calls, last_con
+            last_con = con
             setup_calls += 1
             if setup_calls > 1:
                 cons.append(con)
@@ -302,24 +303,28 @@ class TestPool(tb.ConnectedTestCase):
 
         with self.subTest(method='setup'):
             setup_calls = 0
+            last_con = None
             cons = []
             async with self.create_pool(database='postgres',
                                         min_size=1, max_size=1,
                                         setup=setup) as pool:
                 with self.assertRaises(Error):
                     await pool.acquire()
+                self.assertTrue(last_con.is_closed())
 
                 async with pool.acquire() as con:
                     self.assertEqual(cons, ['error', con])
 
         with self.subTest(method='init'):
             setup_calls = 0
+            last_con = None
             cons = []
             async with self.create_pool(database='postgres',
                                         min_size=0, max_size=1,
                                         init=setup) as pool:
                 with self.assertRaises(Error):
                     await pool.acquire()
+                self.assertTrue(last_con.is_closed())
 
                 async with pool.acquire() as con:
                     self.assertEqual(await con.fetchval('select 1::int'), 1)

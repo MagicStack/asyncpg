@@ -16,6 +16,7 @@ import codecs
 import collections
 import socket
 import time
+import weakref
 
 from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, \
                          int32_t, uint32_t, int64_t, uint64_t, \
@@ -126,7 +127,10 @@ cdef class BaseProtocol(CoreProtocol):
             self.create_future = self._create_future_fallback
 
     def set_connection(self, connection):
-        self.connection = connection
+        self.conref = weakref.ref(connection)
+
+    cdef get_connection(self):
+        return self.conref()
 
     def get_server_pid(self):
         return self.backend_pid
@@ -585,7 +589,21 @@ cdef class BaseProtocol(CoreProtocol):
     def _request_cancel(self):
         self.cancel_waiter = self.create_future()
         self.cancel_sent_waiter = self.create_future()
-        self.connection._cancel_current_command(self.cancel_sent_waiter)
+
+        con = self.get_connection()
+        if con is not None:
+            # if 'con' is None it means that the connection object has been
+            # garbage collected and that the transport will soon be aborted.
+            con._cancel_current_command(self.cancel_sent_waiter)
+        else:
+            self.loop.call_exception_handler({
+                'message': 'asyncpg.Protocol has no reference to its '
+                           'Connection object and yet a cancellation '
+                           'was requested. Please report this at '
+                           'github.com/magicstack/asyncpg.'
+            })
+            self.abort()
+
         self._set_state(PROTOCOL_CANCELLED)
 
     def _on_timeout(self, fut):
@@ -636,7 +654,7 @@ cdef class BaseProtocol(CoreProtocol):
 
     cdef inline _get_timeout_impl(self, timeout):
         if timeout is None:
-            timeout = self.connection._config.command_timeout
+            timeout = self.get_connection()._config.command_timeout
         elif timeout is NO_TIMEOUT:
             timeout = None
         else:
@@ -688,7 +706,7 @@ cdef class BaseProtocol(CoreProtocol):
                 'cannot perform operation: another operation is in progress')
         self.waiter = self.create_future()
         if timeout is not None:
-            self.timeout_handle = self.connection._loop.call_later(
+            self.timeout_handle = self.loop.call_later(
                 timeout, self.timeout_callback, self.waiter)
         self.waiter.add_done_callback(self.completed_callback)
         return self.waiter
@@ -839,10 +857,14 @@ cdef class BaseProtocol(CoreProtocol):
             self.return_extra = False
 
     cdef _on_notice(self, parsed):
-        self.connection._process_log_message(parsed, self.last_query)
+        con = self.get_connection()
+        if con is not None:
+            con._process_log_message(parsed, self.last_query)
 
     cdef _on_notification(self, pid, channel, payload):
-        self.connection._process_notification(pid, channel, payload)
+        con = self.get_connection()
+        if con is not None:
+            con._process_notification(pid, channel, payload)
 
     cdef _on_connection_lost(self, exc):
         if self.closing:

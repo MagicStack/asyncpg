@@ -14,7 +14,6 @@ cdef class PreparedStatementState:
     def __cinit__(self, str name, str query, BaseProtocol protocol):
         self.name = name
         self.query = query
-        self.protocol = protocol
         self.settings = protocol.settings
         self.row_desc = self.parameters_desc = None
         self.args_codecs = self.rows_codecs = None

@@ -17,7 +17,6 @@ cdef class PreparedStatementState:
         list         row_desc
         list         parameters_desc
 
-        BaseProtocol protocol
         ConnectionSettings settings
 
         int16_t      args_num
