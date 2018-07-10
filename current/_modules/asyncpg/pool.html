@@ -67,7 +67,7 @@
             
             
               <div class="version">
-                0.16.0
+                0.17.0
               </div>
             
           
@@ -469,8 +469,8 @@
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_queue&#39;</span><span class="p">,</span> <span class="s1">&#39;_loop&#39;</span><span class="p">,</span> <span class="s1">&#39;_minsize&#39;</span><span class="p">,</span> <span class="s1">&#39;_maxsize&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_init&#39;</span><span class="p">,</span> <span class="s1">&#39;_connect_args&#39;</span><span class="p">,</span> <span class="s1">&#39;_connect_kwargs&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_working_addr&#39;</span><span class="p">,</span> <span class="s1">&#39;_working_config&#39;</span><span class="p">,</span> <span class="s1">&#39;_working_params&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;_holders&#39;</span><span class="p">,</span> <span class="s1">&#39;_initialized&#39;</span><span class="p">,</span> <span class="s1">&#39;_closing&#39;</span><span class="p">,</span> <span class="s1">&#39;_closed&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;_connection_class&#39;</span><span class="p">,</span> <span class="s1">&#39;_generation&#39;</span><span class="p">)</span>
+                 <span class="s1">&#39;_holders&#39;</span><span class="p">,</span> <span class="s1">&#39;_initialized&#39;</span><span class="p">,</span> <span class="s1">&#39;_initializing&#39;</span><span class="p">,</span> <span class="s1">&#39;_closing&#39;</span><span class="p">,</span>
+                 <span class="s1">&#39;_closed&#39;</span><span class="p">,</span> <span class="s1">&#39;_connection_class&#39;</span><span class="p">,</span> <span class="s1">&#39;_generation&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">connect_args</span><span class="p">,</span>
                  <span class="n">min_size</span><span class="p">,</span>
@@ -523,6 +523,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_holders</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initializing</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_queue</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">LifoQueue</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_maxsize</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_working_addr</span> <span class="o">=</span> <span class="kc">None</span>
@@ -551,9 +552,20 @@
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_async__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span><span class="p">:</span>
             <span class="k">return</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initializing</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                <span class="s1">&#39;pool is being initialized in another task&#39;</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span><span class="s1">&#39;pool is closed&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initializing</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialize</span><span class="p">()</span>
+            <span class="k">return</span> <span class="bp">self</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initializing</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="kc">True</span>
 
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_minsize</span><span class="p">:</span>
             <span class="c1"># Since we use a LIFO queue, the first items in the queue will be</span>
             <span class="c1"># the last ones in `self._holders`.  We want to pre-connect the</span>
@@ -575,9 +587,6 @@
                     <span class="n">connect_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">connect</span><span class="p">())</span>
 
                 <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">connect_tasks</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="k">return</span> <span class="bp">self</span>
 
 <div class="viewcode-block" id="Pool.set_connect_args"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.set_connect_args">[docs]</a>    <span class="k">def</span> <span class="nf">set_connect_args</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dsn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">connect_kwargs</span><span class="p">):</span>
         <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Set the new connection arguments for this pool.</span>
@@ -631,7 +640,21 @@
                 <span class="n">connection_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection_class</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="c1"># If a user-defined `init` function fails, we don&#39;t</span>
+                <span class="c1"># know if the connection is safe for re-use, hence</span>
+                <span class="c1"># we close it.  A new connection will be created</span>
+                <span class="c1"># when `acquire` is called again.</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># Use `close()` to close the connection gracefully.</span>
+                    <span class="c1"># An exception in `init` isn&#39;t necessarily caused</span>
+                    <span class="c1"># by an IO or a protocol error.  close() will</span>
+                    <span class="c1"># do the necessary cleanup via _release_on_close().</span>
+                    <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                <span class="k">finally</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">ex</span>
 
         <span class="k">return</span> <span class="n">con</span>
 
@@ -853,6 +876,11 @@
 
     <span class="k">def</span> <span class="nf">_check_init</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initializing</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                    <span class="s1">&#39;pool is being initialized, but not yet ready: &#39;</span>
+                    <span class="s1">&#39;likely there is a race between creating a pool and &#39;</span>
+                    <span class="s1">&#39;using it&#39;</span><span class="p">)</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span><span class="s1">&#39;pool is not initialized&#39;</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span><span class="s1">&#39;pool is closed&#39;</span><span class="p">)</span>
@@ -1054,7 +1082,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.16.0',
+            VERSION:'0.17.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

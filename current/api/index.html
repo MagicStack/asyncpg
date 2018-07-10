@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.16.0
+                0.17.0
               </div>
             
           
@@ -201,22 +201,22 @@ environment variable, if set.)</li>
 on Windows)</li>
 <li><strong>loop</strong> – An asyncio event loop instance.  If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the default
 event loop will be used.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – connection timeout in seconds.</li>
-<li><strong>statement_cache_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – the size of prepared statement LRU cache.  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – connection timeout in seconds.</li>
+<li><strong>statement_cache_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – the size of prepared statement LRU cache.  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to
 disable the cache.</li>
-<li><strong>max_cached_statement_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – the maximum time in seconds a prepared statement will stay
+<li><strong>max_cached_statement_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – the maximum time in seconds a prepared statement will stay
 in the cache.  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to allow statements be cached
 indefinitely.</li>
-<li><strong>max_cacheable_statement_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – the maximum size of a statement that can be cached (15KiB by
+<li><strong>max_cacheable_statement_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – the maximum size of a statement that can be cached (15KiB by
 default).  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to allow all statements to be cached
 regardless of their size.</li>
-<li><strong>command_timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – the default timeout for operations on this connection
+<li><strong>command_timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – the default timeout for operations on this connection
 (the default is <code class="docutils literal notranslate"><span class="pre">None</span></code>: no timeout).</li>
 <li><strong>ssl</strong> – pass <code class="docutils literal notranslate"><span class="pre">True</span></code> or an <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.SSLContext">ssl.SSLContext</a> instance to
 require an SSL connection.  If <code class="docutils literal notranslate"><span class="pre">True</span></code>, a default SSL context
 returned by <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.create_default_context">ssl.create_default_context()</a>
 will be used.</li>
-<li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – an optional dict of server runtime parameters.  Refer to
+<li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><em>dict</em></a>) – an optional dict of server runtime parameters.  Refer to
 PostgreSQL documentation for a <a class="reference external" href="https://www.postgresql.org/docs/current/static/runtime-config.html">list of supported options</a>.</li>
 <li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – class of the returned connection object.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</li>
@@ -271,7 +271,7 @@ for that.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>channel</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Channel to listen on.</li>
+<li><strong>channel</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – Channel to listen on.</li>
 <li><strong>callback</strong> (<em>callable</em>) – A callable receiving the following arguments:
 <strong>connection</strong>: a Connection the callback is registered with;
 <strong>pid</strong>: PID of the Postgres server that sent the notification;
@@ -314,7 +314,7 @@ DEBUG, INFO, or LOG.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.</td>
 </tr>
 </tbody>
 </table>
@@ -332,13 +332,13 @@ DEBUG, INFO, or LOG.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – The query to copy the results of.</li>
+<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – The query to copy the results of.</li>
 <li><strong>*args</strong> – Query arguments.</li>
-<li><strong>output</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.6)"><span class="xref std std-term">path-like object</span></a>,
-or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.6)"><span class="xref std std-term">file-like object</span></a>, or
-a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-coroutine-function" title="(in Python v3.6)"><span class="xref std std-term">coroutine function</span></a>
+<li><strong>output</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.7)"><span class="xref std std-term">path-like object</span></a>,
+or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.7)"><span class="xref std std-term">file-like object</span></a>, or
+a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-coroutine-function" title="(in Python v3.7)"><span class="xref std std-term">coroutine function</span></a>
 that takes a <code class="docutils literal notranslate"><span class="pre">bytes</span></code> instance as a sole argument.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -382,14 +382,14 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – The name of the table to copy data from.</li>
-<li><strong>output</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.6)"><span class="xref std std-term">path-like object</span></a>,
-or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.6)"><span class="xref std std-term">file-like object</span></a>, or
-a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-coroutine-function" title="(in Python v3.6)"><span class="xref std std-term">coroutine function</span></a>
+<li><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – The name of the table to copy data from.</li>
+<li><strong>output</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.7)"><span class="xref std std-term">path-like object</span></a>,
+or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.7)"><span class="xref std std-term">file-like object</span></a>, or
+a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-coroutine-function" title="(in Python v3.7)"><span class="xref std std-term">coroutine function</span></a>
 that takes a <code class="docutils literal notranslate"><span class="pre">bytes</span></code> instance as a sole argument.</li>
-<li><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.6)"><em>list</em></a>) – An optional list of column names to copy.</li>
-<li><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – An optional schema name to qualify the table.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
+<li><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) – An optional list of column names to copy.</li>
+<li><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – An optional schema name to qualify the table.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -433,11 +433,11 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – The name of the table to copy data to.</li>
+<li><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – The name of the table to copy data to.</li>
 <li><strong>records</strong> – An iterable returning row tuples to copy into the table.</li>
-<li><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.6)"><em>list</em></a>) – An optional list of column names to copy.</li>
-<li><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – An optional schema name to qualify the table.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
+<li><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) – An optional list of column names to copy.</li>
+<li><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – An optional schema name to qualify the table.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -475,15 +475,15 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – The name of the table to copy data to.</li>
-<li><strong>source</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.6)"><span class="xref std std-term">path-like object</span></a>,
-or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.6)"><span class="xref std std-term">file-like object</span></a>, or
-an <a class="reference external" href="https://docs.python.org/3/glossary.html#term-asynchronous-iterable" title="(in Python v3.6)"><span class="xref std std-term">asynchronous iterable</span></a>
+<li><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – The name of the table to copy data to.</li>
+<li><strong>source</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.7)"><span class="xref std std-term">path-like object</span></a>,
+or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.7)"><span class="xref std std-term">file-like object</span></a>, or
+an <a class="reference external" href="https://docs.python.org/3/glossary.html#term-asynchronous-iterable" title="(in Python v3.7)"><span class="xref std std-term">asynchronous iterable</span></a>
 that returns <code class="docutils literal notranslate"><span class="pre">bytes</span></code>, or an object supporting the
-<a class="reference external" href="https://docs.python.org/3/c-api/buffer.html#bufferobjects" title="(in Python v3.6)"><span class="xref std std-ref">buffer protocol</span></a>.</li>
-<li><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.6)"><em>list</em></a>) – An optional list of column names to copy.</li>
-<li><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – An optional schema name to qualify the table.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
+<a class="reference external" href="https://docs.python.org/3/c-api/buffer.html#bufferobjects" title="(in Python v3.7)"><span class="xref std std-ref">buffer protocol</span></a>.</li>
+<li><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) – An optional list of column names to copy.</li>
+<li><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – An optional schema name to qualify the table.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -527,9 +527,9 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>args</strong> – Query arguments.</li>
-<li><strong>prefetch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – The number of rows the <em>cursor iterator</em>
+<li><strong>prefetch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – The number of rows the <em>cursor iterator</em>
 will prefetch (defaults to <code class="docutils literal notranslate"><span class="pre">50</span></code>.)</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout in seconds.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -565,7 +565,7 @@ are provided.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>args</strong> – Query arguments.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -596,7 +596,7 @@ are provided.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>command</strong> – Command to execute.</li>
 <li><strong>args</strong> – An iterable containing sequences of arguments.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -622,9 +622,9 @@ are provided.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Query text.</li>
+<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – Query text.</li>
 <li><strong>args</strong> – Query arguments.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -644,9 +644,9 @@ are provided.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Query text</li>
+<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – Query text</li>
 <li><strong>args</strong> – Query arguments</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -667,11 +667,11 @@ no records were returned by the query.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Query text.</li>
+<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – Query text.</li>
 <li><strong>args</strong> – Query arguments.</li>
-<li><strong>column</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Numeric index within the record of the value to
+<li><strong>column</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – Numeric index within the record of the value to
 return (defaults to 0).</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.
 If not specified, defaults to the value of
 <code class="docutils literal notranslate"><span class="pre">command_timeout</span></code> argument to the <code class="docutils literal notranslate"><span class="pre">Connection</span></code>
 instance constructor.</li>
@@ -763,8 +763,8 @@ otherwise.</td>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Text of the query to create a prepared statement for.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
+<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – Text of the query to create a prepared statement for.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -1074,9 +1074,9 @@ or <code class="xref py py-meth docutils literal notranslate"><span class="pre">
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>args</strong> – Query arguments.</li>
-<li><strong>prefetch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – The number of rows the <em>cursor iterator</em>
+<li><strong>prefetch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – The number of rows the <em>cursor iterator</em>
 will prefetch (defaults to <code class="docutils literal notranslate"><span class="pre">50</span></code>.)</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout in seconds.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -1120,9 +1120,9 @@ is actually a deserialized JSON output of the SQL
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Query text</li>
+<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – Query text</li>
 <li><strong>args</strong> – Query arguments</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -1142,9 +1142,9 @@ is actually a deserialized JSON output of the SQL
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Query text</li>
+<li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – Query text</li>
 <li><strong>args</strong> – Query arguments</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.</li>
 </ul>
 </td>
 </tr>
@@ -1165,9 +1165,9 @@ is actually a deserialized JSON output of the SQL
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>args</strong> – Query arguments.</li>
-<li><strong>column</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Numeric index within the record of the value to
+<li><strong>column</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – Numeric index within the record of the value to
 return (defaults to 0).</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.
 If not specified, defaults to the value of
 <code class="docutils literal notranslate"><span class="pre">command_timeout</span></code> argument to the <code class="docutils literal notranslate"><span class="pre">Connection</span></code>
 instance constructor.</li>
@@ -1448,7 +1448,7 @@ fetch subsets of the query results.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A list of <code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code> instances.</td>
 </tr>
@@ -1464,7 +1464,7 @@ fetch subsets of the query results.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A <code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code> instance.</td>
 </tr>
@@ -1480,7 +1480,7 @@ fetch subsets of the query results.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Optional timeout value in seconds.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Optional timeout value in seconds.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A number of rows actually skipped over (&lt;= <em>n</em>).</td>
 </tr>
@@ -1528,18 +1528,18 @@ is being released to the pool.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>dsn</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Connection arguments specified using as a single string in
+<li><strong>dsn</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – Connection arguments specified using as a single string in
 the following format:
 <code class="docutils literal notranslate"><span class="pre">postgres://user:pass&#64;host:port/database?option=value</span></code>.</li>
 <li><strong>**connect_kwargs</strong> – Keyword arguments for the <a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">connect()</span></code></a>
 function.</li>
 <li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – The class to use for connections.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</li>
-<li><strong>min_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Number of connection the pool will be initialized with.</li>
-<li><strong>max_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Max number of connections in the pool.</li>
-<li><strong>max_queries</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Number of queries after a connection is closed and replaced
+<li><strong>min_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – Number of connection the pool will be initialized with.</li>
+<li><strong>max_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – Max number of connections in the pool.</li>
+<li><strong>max_queries</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – Number of queries after a connection is closed and replaced
 with a new connection.</li>
-<li><strong>max_inactive_connection_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Number of seconds after which inactive connections in the
+<li><strong>max_inactive_connection_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Number of seconds after which inactive connections in the
 pool will be closed.  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to disable this mechanism.</li>
 <li><strong>setup</strong> (<em>coroutine</em>) – A coroutine to prepare a connection right before it is returned
 from <code class="xref py py-meth docutils literal notranslate"><span class="pre">Pool.acquire()</span></code>.  An example use
@@ -1594,7 +1594,7 @@ open cursors and other resources <em>except</em> prepared statements.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – A timeout for acquiring a Connection.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – A timeout for acquiring a Connection.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">An instance of <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</td>
 </tr>
@@ -1623,7 +1623,7 @@ open cursors and other resources <em>except</em> prepared statements.</p>
 shut down the pool.  If any error (including cancellation) occurs
 in <code class="docutils literal notranslate"><span class="pre">close()</span></code> the pool will terminate by calling
 <code class="xref py py-meth docutils literal notranslate"><span class="pre">Pool.terminate()</span></code>.</p>
-<p>It is advisable to use <a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.wait_for" title="(in Python v3.6)"><code class="docutils literal notranslate"><span class="pre">asyncio.wait_for()</span></code></a> to set
+<p>It is advisable to use <a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.wait_for" title="(in Python v3.7)"><code class="docutils literal notranslate"><span class="pre">asyncio.wait_for()</span></code></a> to set
 a timeout.</p>
 <div class="versionchanged">
 <p><span class="versionmodified">Changed in version 0.16.0: </span><code class="docutils literal notranslate"><span class="pre">close()</span></code> now waits until all pool connections are released
@@ -1713,7 +1713,7 @@ that, it behaves identically to
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>connection</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – A <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a> object to release.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – A timeout for releasing the connection.  If not specified, defaults
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – A timeout for releasing the connection.  If not specified, defaults
 to the timeout provided in the corresponding call to the
 <a class="reference internal" href="#asyncpg.pool.Pool.acquire" title="asyncpg.pool.Pool.acquire"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Pool.acquire()</span></code></a> method.</li>
 </ul>
@@ -1739,7 +1739,7 @@ expiry.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>dsn</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Connection arguments specified using as a single string in
+<li><strong>dsn</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – Connection arguments specified using as a single string in
 the following format:
 <code class="docutils literal notranslate"><span class="pre">postgres://user:pass&#64;host:port/database?option=value</span></code>.</li>
 <li><strong>**connect_kwargs</strong> – Keyword arguments for the <a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">connect()</span></code></a>
@@ -2044,7 +2044,7 @@ items either by a numeric index or by a field name:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.16.0',
+            VERSION:'0.17.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
