@@ -131,8 +131,10 @@ matrix:
           env: BUILD=tests,wheels PYTHON_VERSION=3.5.5 PGVERSION=10
 
         - os: osx
-          osx_image: xcode8.3
           env: BUILD=tests,wheels PYTHON_VERSION=3.6.5 PGVERSION=10
+
+        - os: osx
+          env: BUILD=tests,wheels PYTHON_VERSION=3.7.0 PGVERSION=10
 
 cache:
     pip
