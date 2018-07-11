@@ -513,6 +513,20 @@ class TestCodecs(tb.ConnectedTestCase):
 
         self.assertEqual(len(bits.bytes), expected_bytelen)
 
+        little, big = bits.to_int('little'), bits.to_int('big')
+        self.assertEqual(bits.from_int(little, len(bits), 'little'), bits)
+        self.assertEqual(bits.from_int(big, len(bits), 'big'), bits)
+
+        naive_little = 0
+        for i, c in enumerate(sanitized_bs):
+            naive_little |= int(c) << i
+        naive_big = 0
+        for c in sanitized_bs:
+            naive_big = (naive_big << 1) | int(c)
+
+        self.assertEqual(little, naive_little)
+        self.assertEqual(big, naive_big)
+
     async def test_interval(self):
         res = await self.con.fetchval("SELECT '5 years'::interval")
         self.assertEqual(res, datetime.timedelta(days=1825))
