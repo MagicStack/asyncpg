@@ -228,6 +228,93 @@ class BitString:
 
         return s.strip()
 
+    def to_int(self, bitorder='big', *, signed=False):
+        """Interpret the BitString as a Python int.
+        Acts similarly to int.from_bytes.
+
+        :param bitorder:
+            Determines the bit order used to interpret the BitString. By
+            default, this function uses Postgres conventions for casting bits
+            to ints. If bitorder is 'big', the most significant bit is at the
+            start of the string (this is the same as the default). If bitorder
+            is 'little', the most significant bit is at the end of the string.
+
+        :param bool signed:
+            Determines whether two's complement is used to interpret the
+            BitString. If signed is False, the returned value is always
+            non-negative.
+
+        :return int: An integer representing the BitString. Information about
+                     the BitString's exact length is lost.
+
+        .. versionadded:: 0.18.0
+        """
+        x = int.from_bytes(self._bytes, byteorder='big')
+        x >>= -self._bitlength % 8
+        if bitorder == 'big':
+            pass
+        elif bitorder == 'little':
+            x = int(bin(x)[:1:-1].ljust(self._bitlength, '0'), 2)
+        else:
+            raise ValueError("bitorder must be either 'big' or 'little'")
+
+        if signed and self._bitlength > 0 and x & (1 << (self._bitlength - 1)):
+            x -= 1 << self._bitlength
+        return x
+
+    @classmethod
+    def from_int(cls, x, length, bitorder='big', *, signed=False):
+        """Represent the Python int x as a BitString.
+        Acts similarly to int.to_bytes.
+
+        :param int x:
+            An integer to represent. Negative integers are represented in two's
+            complement form, unless the argument signed is False, in which case
+            negative integers raise an OverflowError.
+
+        :param int length:
+            The length of the resulting BitString. An OverflowError is raised
+            if the integer is not representable in this many bits.
+
+        :param bitorder:
+            Determines the bit order used in the BitString representation. By
+            default, this function uses Postgres conventions for casting ints
+            to bits. If bitorder is 'big', the most significant bit is at the
+            start of the string (this is the same as the default). If bitorder
+            is 'little', the most significant bit is at the end of the string.
+
+        :param bool signed:
+            Determines whether two's complement is used in the BitString
+            representation. If signed is False and a negative integer is given,
+            an OverflowError is raised.
+
+        :return BitString: A BitString representing the input integer, in the
+                           form specified by the other input args.
+
+        .. versionadded:: 0.18.0
+        """
+        # Exception types are by analogy to int.to_bytes
+        if length < 0:
+            raise ValueError("length argument must be non-negative")
+        elif length < x.bit_length():
+            raise OverflowError("int too big to convert")
+
+        if x < 0:
+            if not signed:
+                raise OverflowError("can't convert negative int to unsigned")
+            x &= (1 << length) - 1
+
+        if bitorder == 'big':
+            pass
+        elif bitorder == 'little':
+            x = int(bin(x)[:1:-1].ljust(length, '0'), 2)
+        else:
+            raise ValueError("bitorder must be either 'big' or 'little'")
+
+        x <<= (-length % 8)
+        bytes_ = x.to_bytes((length + 7) // 8, byteorder='big')
+        return cls.frombytes(bytes_, length)
+
     def __repr__(self):
         return '<BitString {}>'.format(self.as_string())
 
