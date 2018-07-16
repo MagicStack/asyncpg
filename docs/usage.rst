@@ -352,7 +352,7 @@ Web service that computes the requested power of two.
         power = int(request.match_info.get('power', 10))
 
         # Take a connection from the pool.
-        async with pool.acquire() as connection:
+        async with app['pool'].acquire() as connection:
             # Open a transaction.
             async with connection.transaction():
                 # Run the query passing the request argument.
