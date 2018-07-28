@@ -49,7 +49,7 @@ class TestRecord(tb.ConnectedTestCase):
         mapping = {key: val}
         with self.checkref(key, val):
             r = Record(mapping, (0,))
-            with self.assertRaises(KeyError):
+            with self.assertRaises(RuntimeError):
                 r[key]
             del r
 
@@ -58,7 +58,7 @@ class TestRecord(tb.ConnectedTestCase):
         mapping = {key: val}
         with self.checkref(key, val):
             r = Record(mapping, (0,))
-            with self.assertRaises(KeyError):
+            with self.assertRaises(RuntimeError):
                 r[key]
             del r
 
@@ -90,7 +90,7 @@ class TestRecord(tb.ConnectedTestCase):
         with self.assertRaisesRegex(KeyError, 'spam'):
             Record(None, (1,))['spam']
 
-        with self.assertRaisesRegex(KeyError, 'spam'):
+        with self.assertRaisesRegex(RuntimeError, 'invalid record descriptor'):
             Record({'spam': 123}, (1,))['spam']
 
     def test_record_slice(self):
@@ -271,6 +271,13 @@ class TestRecord(tb.ConnectedTestCase):
         self.assertEqual(
             sorted([r1, r2, r3, r4, r5, r6, r7]),
             [r1, r2, r3, r6, r7, r4, r5])
+
+    def test_record_get(self):
+        r = Record(R_AB, (42, 43))
+        with self.checkref(r):
+            self.assertEqual(r.get('a'), 42)
+            self.assertEqual(r.get('nonexistent'), None)
+            self.assertEqual(r.get('nonexistent', 'default'), 'default')
 
     def test_record_not_pickleable(self):
         r = Record(R_A, (42,))

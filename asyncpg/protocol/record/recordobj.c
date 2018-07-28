@@ -254,6 +254,62 @@ record_item(ApgRecordObject *o, Py_ssize_t i)
 }
 
 
+typedef enum item_by_name_result {
+    APG_ITEM_FOUND = 0,
+    APG_ERROR = -1,
+    APG_ITEM_NOT_FOUND = -2
+} item_by_name_result_t;
+
+
+/* Lookup a record value by its name.  Return 0 on success, -2 if the
+ * value was not found (with KeyError set), and -1 on all other errors.
+ */
+static item_by_name_result_t
+record_item_by_name(ApgRecordObject *o, PyObject *item, PyObject **result)
+{
+    PyObject *mapped;
+    PyObject *val;
+    Py_ssize_t i;
+
+    mapped = PyObject_GetItem(o->desc->mapping, item);
+    if (mapped == NULL) {
+        goto noitem;
+    }
+
+    if (!PyIndex_Check(mapped)) {
+        Py_DECREF(mapped);
+        goto error;
+    }
+
+    i = PyNumber_AsSsize_t(mapped, PyExc_IndexError);
+    Py_DECREF(mapped);
+
+    if (i < 0) {
+        if (PyErr_Occurred())
+            PyErr_Clear();
+        goto error;
+    }
+
+    val = record_item(o, i);
+    if (val == NULL) {
+        PyErr_Clear();
+        goto error;
+    }
+
+    *result = val;
+
+    return APG_ITEM_FOUND;
+
+noitem:
+    PyErr_SetObject(PyExc_KeyError, item);
+    return APG_ITEM_NOT_FOUND;
+
+error:
+    PyErr_SetString(PyExc_RuntimeError, "invalid record descriptor");
+    return APG_ERROR;
+}
+
+
 static PyObject *
 record_subscript(ApgRecordObject* o, PyObject* item)
 {
@@ -299,42 +355,13 @@ record_subscript(ApgRecordObject* o, PyObject* item)
         }
     }
     else {
-        PyObject *mapped;
-        mapped = PyObject_GetItem(o->desc->mapping, item);
-        if (mapped != NULL) {
-            Py_ssize_t i;
-            PyObject *result;
+        PyObject* result;
 
-            if (!PyIndex_Check(mapped)) {
-                Py_DECREF(mapped);
-                goto noitem;
-            }
-
-            i = PyNumber_AsSsize_t(mapped, PyExc_IndexError);
-            Py_DECREF(mapped);
-
-            if (i < 0) {
-                if (PyErr_Occurred()) {
-                    PyErr_Clear();
-                }
-                goto noitem;
-            }
-
-            result = record_item(o, i);
-            if (result == NULL) {
-                PyErr_Clear();
-                goto noitem;
-            }
+        if (record_item_by_name(o, item, &result) < 0)
+            return NULL;
+        else
             return result;
-        }
-        else {
-            goto noitem;
-        }
     }
-
-noitem:
-    _PyErr_SetKeyError(item);
-    return NULL;
 }
 
 
@@ -483,6 +510,28 @@ record_contains(ApgRecordObject *o, PyObject *arg)
 }
 
 
+static PyObject *
+record_get(ApgRecordObject* o, PyObject* args)
+{
+    PyObject *key;
+    PyObject *defval = Py_None;
+    PyObject *val = NULL;
+    int res;
+
+    if (!PyArg_UnpackTuple(args, "get", 1, 2, &key, &defval))
+        return NULL;
+
+    res = record_item_by_name(o, key, &val);
+    if (res == APG_ITEM_NOT_FOUND) {
+        PyErr_Clear();
+        Py_INCREF(defval);
+        val = defval;
+    }
+
+    return val;
+}
+
+
 static PySequenceMethods record_as_sequence = {
     (lenfunc)record_length,                          /* sq_length */
     0,                                               /* sq_concat */
@@ -506,6 +555,7 @@ static PyMethodDef record_methods[] = {
     {"values",          (PyCFunction)record_values, METH_NOARGS},
     {"keys",            (PyCFunction)record_keys, METH_NOARGS},
     {"items",           (PyCFunction)record_items, METH_NOARGS},
+    {"get",             (PyCFunction)record_get, METH_VARARGS},
     {NULL,              NULL}           /* sentinel */
 };
 
