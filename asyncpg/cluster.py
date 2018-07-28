@@ -552,7 +552,8 @@ class Cluster:
             raise ClusterError('could not find pg_config executable')
 
         if not os.path.isfile(pg_config_path):
-            raise ClusterError('{!r} is not an executable')
+            raise ClusterError('{!r} is not an executable'.format(
+                pg_config_path))
 
         return pg_config_path
 
