@@ -317,7 +317,17 @@ class TestConnectParams(tb.TestCase):
                 'user': 'spam',
                 'database': 'dbname'})
         },
-
+        {
+            'dsn':
+                'cockroachdb://maxroach@localhost:26257/bank?sslmode=disable',
+            'password': False,
+            'result': ([('localhost', 26257)], {
+                'ssl': False,
+                'user': 'maxroach',
+                'password': False,
+                'database': 'bank'
+            })
+        },
         {
             'dsn': 'pq:///dbname?host=/unix_sock/test&user=spam',
             'error': (ValueError, 'invalid DSN')

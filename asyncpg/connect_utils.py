@@ -144,10 +144,11 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     if dsn:
         parsed = urllib.parse.urlparse(dsn)
 
-        if parsed.scheme not in {'postgresql', 'postgres'}:
+        if parsed.scheme not in {'postgresql', 'postgres', 'cockroachdb'}:
             raise ValueError(
                 'invalid DSN: scheme is expected to be either of '
-                '"postgresql" or "postgres", got {!r}'.format(parsed.scheme))
+                '"postgresql" or "postgres" or "cockroachdb", got {!r}'
+                .format(parsed.scheme))
 
         if parsed.port and port is None:
             port = int(parsed.port)
@@ -206,6 +207,11 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 val = query.pop('passfile')
                 if passfile is None:
                     passfile = val
+
+            if 'sslmode' in query:
+                val = query.pop('sslmode').lower()
+                if ssl is None:
+                    ssl = val == 'enabled'
 
             if query:
                 if server_settings is None:
