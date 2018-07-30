@@ -1819,6 +1819,16 @@ items either by a numeric index or by a field name:</p>
 <dd><p>Return an iterator over the <em>values</em> of the record <em>r</em>.</p>
 </dd></dl>
 
+<dl class="describe">
+<dt>
+<code class="descname">get(name[, default])</code></dt>
+<dd><p>Return the value for <em>name</em> if the record has a field named <em>name</em>,
+else return <em>default</em>. If <em>default</em> is not given, return <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.18.</span></p>
+</div>
+</dd></dl>
+
 <dl class="method">
 <dt id="asyncpg.Record.values">
 <code class="descname">values</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.Record.values" title="Permalink to this definition">¶</a></dt>

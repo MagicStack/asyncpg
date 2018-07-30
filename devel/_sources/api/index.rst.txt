@@ -302,6 +302,13 @@ items either by a numeric index or by a field name:
 
       Return an iterator over the *values* of the record *r*.
 
+   .. describe:: get(name[, default])
+
+      Return the value for *name* if the record has a field named *name*,
+      else return *default*. If *default* is not given, return ``None``.
+
+      .. versionadded:: 0.18
+
    .. method:: values()
 
       Return an iterator over the record values.
