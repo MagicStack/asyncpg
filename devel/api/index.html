@@ -1296,7 +1296,7 @@ a <a class="reference external" href="https://www.postgresql.org/docs/current/st
 <span class="k">except</span><span class="p">:</span>
     <span class="n">await</span> <span class="n">tr</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
     <span class="k">raise</span>
-<span class="k">finally</span><span class="p">:</span>
+<span class="k">else</span><span class="p">:</span>
     <span class="n">await</span> <span class="n">tr</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
 </pre></div>
 </div>
