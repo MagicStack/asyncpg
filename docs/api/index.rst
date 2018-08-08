@@ -110,7 +110,7 @@ Alternatively, transactions can be used without an ``async with`` block:
     except:
         await tr.rollback()
         raise
-    finally:
+    else:
         await tr.commit()
 
 
