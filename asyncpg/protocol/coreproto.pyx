@@ -924,34 +924,5 @@ cdef class CoreProtocol:
     cdef _on_connection_lost(self, exc):
         pass
 
-    # asyncio callbacks:
-
-    def data_received(self, data):
-        self.buffer.feed_data(data)
-        self._read_server_messages()
-
-    def connection_made(self, transport):
-        self.transport = transport
-
-        sock = transport.get_extra_info('socket')
-        if (sock is not None and
-              (not hasattr(socket, 'AF_UNIX')
-               or sock.family != socket.AF_UNIX)):
-            sock.setsockopt(socket.IPPROTO_TCP,
-                            socket.TCP_NODELAY, 1)
-
-        try:
-            self._connect()
-        except Exception as ex:
-            transport.abort()
-            self.con_status = CONNECTION_BAD
-            self._set_state(PROTOCOL_FAILED)
-            self._on_error(ex)
-
-    def connection_lost(self, exc):
-        self.con_status = CONNECTION_BAD
-        self._set_state(PROTOCOL_FAILED)
-        self._on_connection_lost(exc)
-
 
 cdef bytes SYNC_MESSAGE = bytes(WriteBuffer.new_message(b'S').end_message())
