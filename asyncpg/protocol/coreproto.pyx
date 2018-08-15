@@ -35,9 +35,6 @@ cdef class CoreProtocol:
     cdef _write(self, buf):
         self.transport.write(memoryview(buf))
 
-    cdef inline _write_sync_message(self):
-        self.transport.write(SYNC_MESSAGE)
-
     cdef _read_server_messages(self):
         cdef:
             char mtype
@@ -749,14 +746,12 @@ cdef class CoreProtocol:
         self._ensure_connected()
         self._set_state(PROTOCOL_PREPARE)
 
-        packet = WriteBuffer.new()
-
         buf = WriteBuffer.new_message(b'P')
         buf.write_str(stmt_name, self.encoding)
         buf.write_str(query, self.encoding)
         buf.write_int16(0)
         buf.end_message()
-        packet.write_buffer(buf)
+        packet = buf
 
         buf = WriteBuffer.new_message(b'D')
         buf.write_byte(b'S')
@@ -766,23 +761,27 @@ cdef class CoreProtocol:
 
         packet.write_bytes(SYNC_MESSAGE)
 
-        self.transport.write(memoryview(packet))
+        self._write(packet)
 
     cdef _send_bind_message(self, str portal_name, str stmt_name,
                             WriteBuffer bind_data, int32_t limit):
 
-        cdef WriteBuffer buf
+        cdef:
+            WriteBuffer packet
+            WriteBuffer buf
 
         buf = self._build_bind_message(portal_name, stmt_name, bind_data)
-        self._write(buf)
+        packet = buf
 
         buf = WriteBuffer.new_message(b'E')
         buf.write_str(portal_name, self.encoding)  # name of the portal
         buf.write_int32(limit)  # number of rows to return; 0 - all
         buf.end_message()
-        self._write(buf)
+        packet.write_buffer(buf)
 
-        self._write_sync_message()
+        packet.write_bytes(SYNC_MESSAGE)
+
+        self._write(packet)
 
     cdef _bind_execute(self, str portal_name, str stmt_name,
                        WriteBuffer bind_data, int32_t limit):
@@ -833,8 +832,10 @@ cdef class CoreProtocol:
         buf.write_str(portal_name, self.encoding)  # name of the portal
         buf.write_int32(limit)  # number of rows to return; 0 - all
         buf.end_message()
+
+        buf.write_bytes(SYNC_MESSAGE)
+
         self._write(buf)
-        self._write_sync_message()
 
     cdef _bind(self, str portal_name, str stmt_name,
                WriteBuffer bind_data):
@@ -845,8 +846,10 @@ cdef class CoreProtocol:
         self._set_state(PROTOCOL_BIND)
 
         buf = self._build_bind_message(portal_name, stmt_name, bind_data)
+
+        buf.write_bytes(SYNC_MESSAGE)
+
         self._write(buf)
-        self._write_sync_message()
 
     cdef _close(self, str name, bint is_portal):
         cdef WriteBuffer buf
@@ -863,9 +866,10 @@ cdef class CoreProtocol:
 
         buf.write_str(name, self.encoding)
         buf.end_message()
-        self._write(buf)
 
-        self._write_sync_message()
+        buf.write_bytes(SYNC_MESSAGE)
+
+        self._write(buf)
 
     cdef _simple_query(self, str query):
         cdef WriteBuffer buf

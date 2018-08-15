@@ -134,7 +134,6 @@ cdef class CoreProtocol:
     cdef _auth_password_message_md5(self, bytes salt)
 
     cdef _write(self, buf)
-    cdef inline _write_sync_message(self)
 
     cdef _read_server_messages(self)
 
