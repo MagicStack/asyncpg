@@ -206,7 +206,8 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host', 123)], {
                 'user': 'user',
                 'password': 'passw',
-                'database': 'testdb'})
+                'database': 'testdb',
+                'session': True})
         },
 
         {
@@ -227,7 +228,8 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host2', 456)], {
                 'user': 'user2',
                 'password': 'passw2',
-                'database': 'db2'})
+                'database': 'db2',
+                'session': True})
         },
 
         {
@@ -250,7 +252,8 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host2', 456)], {
                 'user': 'user2',
                 'password': 'passw2',
-                'database': 'db2'})
+                'database': 'db2',
+                'session': True})
         },
 
         {
@@ -267,7 +270,8 @@ class TestConnectParams(tb.TestCase):
             'result': ([('localhost', 5555)], {
                 'user': 'user3',
                 'password': '123123',
-                'database': 'abcdef'})
+                'database': 'abcdef',
+                'session': True})
         },
 
         {
@@ -275,7 +279,8 @@ class TestConnectParams(tb.TestCase):
             'result': ([('localhost', 5555)], {
                 'user': 'user3',
                 'password': '123123',
-                'database': 'abcdef'})
+                'database': 'abcdef',
+                'session': True})
         },
 
         {
@@ -291,7 +296,8 @@ class TestConnectParams(tb.TestCase):
                 'server_settings': {'param': '123'},
                 'user': 'me',
                 'password': 'ask',
-                'database': 'db'})
+                'database': 'db',
+                'session': True})
         },
 
         {
@@ -308,14 +314,16 @@ class TestConnectParams(tb.TestCase):
                 'server_settings': {'aa': 'bb', 'param': '123'},
                 'user': 'me',
                 'password': 'ask',
-                'database': 'db'})
+                'database': 'db',
+                'session': True})
         },
 
         {
             'dsn': 'postgresql:///dbname?host=/unix_sock/test&user=spam',
             'result': ([os.path.join('/unix_sock/test', '.s.PGSQL.5432')], {
                 'user': 'spam',
-                'database': 'dbname'})
+                'database': 'dbname',
+                'session': True})
         },
 
         {
@@ -384,7 +392,8 @@ class TestConnectParams(tb.TestCase):
             addrs, params = connect_utils._parse_connect_dsn_and_args(
                 dsn=dsn, host=host, port=port, user=user, password=password,
                 passfile=passfile, database=database, ssl=None,
-                connect_timeout=None, server_settings=server_settings)
+                connect_timeout=None, session=True,
+                server_settings=server_settings)
 
             params = {k: v for k, v in params._asdict().items()
                       if v is not None}
@@ -429,7 +438,11 @@ class TestConnectParams(tb.TestCase):
                 'host': 'abc',
                 'result': (
                     [('abc', 5432)],
-                    {'user': '__test__', 'database': '__test__'}
+                    {
+                        'user': '__test__',
+                        'database': '__test__',
+                        'session': True,
+                    }
                 )
             })
 
@@ -467,6 +480,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for user@abc',
                         'user': 'user',
                         'database': 'db',
+                        'session': True,
                     }
                 )
             })
@@ -483,6 +497,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for user@abc',
                         'user': 'user',
                         'database': 'db',
+                        'session': True,
                     }
                 )
             })
@@ -497,6 +512,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for user@abc',
                         'user': 'user',
                         'database': 'db',
+                        'session': True,
                     }
                 )
             })
@@ -512,6 +528,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for localhost',
                         'user': 'user',
                         'database': 'db',
+                        'session': True,
                     }
                 )
             })
@@ -529,6 +546,7 @@ class TestConnectParams(tb.TestCase):
                             'password': 'password from pgpass for localhost',
                             'user': 'user',
                             'database': 'db',
+                            'session': True,
                         }
                     )
                 })
@@ -546,6 +564,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for cde:5433',
                         'user': 'user',
                         'database': 'db',
+                        'session': True,
                     }
                 )
             })
@@ -562,6 +581,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for testuser',
                         'user': 'testuser',
                         'database': 'db',
+                        'session': True,
                     }
                 )
             })
@@ -578,6 +598,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for testdb',
                         'user': 'user',
                         'database': 'testdb',
+                        'session': True,
                     }
                 )
             })
@@ -594,6 +615,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass with escapes',
                         'user': R'test\\',
                         'database': R'test\:db',
+                        'session': True,
                     }
                 )
             })
@@ -621,6 +643,7 @@ class TestConnectParams(tb.TestCase):
                         {
                             'user': 'user',
                             'database': 'db',
+                            'session': True,
                         }
                     )
                 })
@@ -641,6 +664,7 @@ class TestConnectParams(tb.TestCase):
                         {
                             'user': 'user',
                             'database': 'db',
+                            'session': True,
                         }
                     )
                 })
@@ -657,6 +681,7 @@ class TestConnectParams(tb.TestCase):
                 {
                     'user': 'user',
                     'database': 'db',
+                    'session': True,
                 }
             )
         })

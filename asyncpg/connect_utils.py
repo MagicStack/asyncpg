@@ -33,6 +33,7 @@ _ConnectionParameters = collections.namedtuple(
         'database',
         'ssl',
         'connect_timeout',
+        'session',
         'server_settings',
     ])
 
@@ -135,7 +136,7 @@ def _read_password_from_pgpass(
 
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                                 password, passfile, database, ssl,
-                                connect_timeout, server_settings):
+                                connect_timeout, session, server_settings):
     if host is not None and not isinstance(host, str):
         raise TypeError(
             'host argument is expected to be str, got {!r}'.format(
@@ -320,7 +321,8 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
     params = _ConnectionParameters(
         user=user, password=password, database=database, ssl=ssl,
-        connect_timeout=connect_timeout, server_settings=server_settings)
+        connect_timeout=connect_timeout, session=session,
+        server_settings=server_settings)
 
     return addrs, params
 
@@ -330,7 +332,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
                              statement_cache_size,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
-                             ssl, server_settings):
+                             session, ssl, server_settings):
 
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
@@ -359,7 +361,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
         dsn=dsn, host=host, port=port, user=user,
         password=password, passfile=passfile, ssl=ssl,
         database=database, connect_timeout=timeout,
-        server_settings=server_settings)
+        session=session, server_settings=server_settings)
 
     config = _ClientConfiguration(
         command_timeout=command_timeout,

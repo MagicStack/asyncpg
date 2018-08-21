@@ -315,13 +315,12 @@ class Connection(metaclass=ConnectionMeta):
                     len(query) > self._config.max_cacheable_statement_size):
                 use_cache = False
 
-        if use_cache or named:
+        if (use_cache or named) and self._protocol.session:
             stmt_name = self._get_unique_id('stmt')
         else:
             stmt_name = ''
 
         statement = await self._protocol.prepare(stmt_name, query, timeout)
-        need_reprepare = False
         types_with_missing_codecs = statement._init_types()
         tries = 0
         while types_with_missing_codecs:
@@ -334,10 +333,6 @@ class Connection(metaclass=ConnectionMeta):
 
             settings.register_data_types(types)
 
-            # The introspection query has used an anonymous statement,
-            # which has blown away the anonymous statement we've prepared
-            # for the query, so we need to re-prepare it.
-            need_reprepare = not intro_stmt.name and not statement.name
             types_with_missing_codecs = statement._init_types()
             tries += 1
             if tries > 5:
@@ -353,10 +348,6 @@ class Connection(metaclass=ConnectionMeta):
         # Now that types have been resolved, populate the codec pipeline
         # for the statement.
         statement._init_codecs()
-
-        if need_reprepare:
-            await self._protocol.prepare(
-                stmt_name, query, timeout, state=statement)
 
         if use_cache:
             self._stmt_cache.put(query, statement)
@@ -1466,6 +1457,7 @@ async def connect(dsn=None, *,
                   statement_cache_size=100,
                   max_cached_statement_lifetime=300,
                   max_cacheable_statement_size=1024 * 15,
+                  session=True,
                   command_timeout=None,
                   ssl=None,
                   connection_class=Connection,
@@ -1526,6 +1518,15 @@ async def connect(dsn=None, *,
         the maximum size of a statement that can be cached (15KiB by
         default).  Pass ``0`` to allow all statements to be cached
         regardless of their size.
+
+    :param bool session:
+        if features which lifetime is PostgreSQL session can be used
+        by the client (the default is ``True``). Set this to ``False``
+        if connecting to ``pgbouncer`` with ``pool_mode`` set to
+        ``transaction`` or ``statement``.
+        This will completely prevent usage of named prepared statements.
+        Unnmamed prepared statements will be used during transactions
+        only.
 
     :param float command_timeout:
         the default timeout for operations on this connection
@@ -1599,7 +1600,8 @@ async def connect(dsn=None, *,
         command_timeout=command_timeout,
         statement_cache_size=statement_cache_size,
         max_cached_statement_lifetime=max_cached_statement_lifetime,
-        max_cacheable_statement_size=max_cacheable_statement_size)
+        max_cacheable_statement_size=max_cacheable_statement_size,
+        session=session)
 
 
 class _StatementCacheEntry:

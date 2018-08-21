@@ -104,6 +104,8 @@ cdef class CoreProtocol:
         # True - completed, False - suspended
         bint result_execute_completed
 
+    cpdef is_in_transaction(self)
+
     cdef _process__auth(self, char mtype)
     cdef _process__prepare(self, char mtype)
     cdef _process__bind_execute(self, char mtype)
@@ -143,21 +145,27 @@ cdef class CoreProtocol:
 
     cdef _ensure_connected(self)
 
+    cdef WriteBuffer _build_parse_message(self, str stmt_name, str query)
+    cdef WriteBuffer _build_describe_message(self, str stmt_name)
     cdef WriteBuffer _build_bind_message(self, str portal_name,
                                          str stmt_name,
                                          WriteBuffer bind_data)
+    cdef WriteBuffer _build_execute_message(self, str portal_name,
+                                            int32_t limit)
 
 
     cdef _connect(self)
     cdef _prepare(self, str stmt_name, str query)
-    cdef _send_bind_message(self, str portal_name, str stmt_name,
-                            WriteBuffer bind_data, int32_t limit)
-    cdef _bind_execute(self, str portal_name, str stmt_name,
-                       WriteBuffer bind_data, int32_t limit)
-    cdef _bind_execute_many(self, str portal_name, str stmt_name,
-                            object bind_data)
-    cdef _bind(self, str portal_name, str stmt_name,
-               WriteBuffer bind_data)
+    cdef _send_parse_bind_execute(self, str stmt_name, str query,
+                                  str portal_name, WriteBuffer bind_data,
+                                  int32_t limit)
+    cdef _parse_bind_execute(self, str stmt_name, str query,
+                             str portal_name, WriteBuffer bind_data,
+                             int32_t limit)
+    cdef _parse_bind_execute_many(self, str stmt_name, str query,
+                                  str portal_name, object bind_data)
+    cdef _parse_bind(self, str stmt_name, str query,
+                     str portal_name, WriteBuffer bind_data)
     cdef _execute(self, str portal_name, int32_t limit)
     cdef _close(self, str name, bint is_portal)
     cdef _simple_query(self, str query)

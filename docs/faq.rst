@@ -56,15 +56,10 @@ already exists`` errors, you are most likely not connecting to the
 PostgreSQL server directly, but via
 `pgbouncer <https://pgbouncer.github.io/>`_.  pgbouncer, when
 in the ``"transaction"`` or ``"statement"`` pooling mode, does not support
-prepared statements.  You have two options:
-
-* if you are using pgbouncer for connection pooling to a single server,
-  switch to the :ref:`connection pool <asyncpg-connection-pool>`
-  functionality provided by asyncpg, it is a much better option for this
-  purpose;
-
-* if you have no option of avoiding the use of pgbouncer, then you need to
-  switch pgbouncer's ``pool_mode`` to ``session``.
+any features with session lifetime (including prepared statements).
+You must initialize :class:`Connection` with ``session`` set to ``False``, this
+will prevent the client from using named prepared statements and will limit it
+to use unnamed prepared statements in a transaction only.
 
 
 Why do I get ``PostgresSyntaxError`` when using ``expression IN $1``?

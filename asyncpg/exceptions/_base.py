@@ -132,17 +132,9 @@ class PostgresMessage(metaclass=PostgresMessageMeta):
             hint = dct.get('hint', '')
             hint += textwrap.dedent("""\
 
-                NOTE: pgbouncer with pool_mode set to "transaction" or
-                "statement" does not support prepared statements properly.
-                You have two options:
-
-                * if you are using pgbouncer for connection pooling to a
-                  single server, switch to the connection pool functionality
-                  provided by asyncpg, it is a much better option for this
-                  purpose;
-
-                * if you have no option of avoiding the use of pgbouncer,
-                  then you must switch pgbouncer's pool_mode to "session".
+                if you are using pgbouncer with pool_mode set to "transaction"
+                or "statement", then you must initialize Connection with
+                session set to False.
             """)
 
             dct['hint'] = hint
