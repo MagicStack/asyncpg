@@ -291,6 +291,12 @@ class Connection(metaclass=ConnectionMeta):
         :param float timeout: Optional timeout value in seconds.
         :return None: This method discards the results of the operations.
 
+        .. note::
+
+           When inserting a large number of rows,
+           use :meth:`Connection.copy_records_to_table()` instead,
+           it is much more efficient for this purpose.
+
         .. versionadded:: 0.7.0
 
         .. versionchanged:: 0.11.0
