@@ -455,6 +455,12 @@
 <span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 <span class="sd">        :return None: This method discards the results of the operations.</span>
 
+<span class="sd">        .. note::</span>
+
+<span class="sd">           When inserting a large number of rows,</span>
+<span class="sd">           use :meth:`Connection.copy_records_to_table()` instead,</span>
+<span class="sd">           it is much more efficient for this purpose.</span>
+
 <span class="sd">        .. versionadded:: 0.7.0</span>
 
 <span class="sd">        .. versionchanged:: 0.11.0</span>

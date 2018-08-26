@@ -605,6 +605,12 @@ are provided.</p>
 </tr>
 </tbody>
 </table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When inserting a large number of rows,
+use <a class="reference internal" href="#asyncpg.connection.Connection.copy_records_to_table" title="asyncpg.connection.Connection.copy_records_to_table"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Connection.copy_records_to_table()</span></code></a> instead,
+it is much more efficient for this purpose.</p>
+</div>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.7.0.</span></p>
 </div>
