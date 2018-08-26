@@ -29,14 +29,17 @@ cdef class CoreProtocol:
         self._execute_iter = None
         self._execute_portal_name = None
         self._execute_stmt_name = None
+        self._execute_query = None
 
         self._reset_result()
 
+    cpdef is_in_transaction(self):
+        # PQTRANS_INTRANS = idle, within transaction block
+        # PQTRANS_INERROR = idle, within failed transaction
+        return self.xact_status in (PQTRANS_INTRANS, PQTRANS_INERROR)
+
     cdef _write(self, buf):
         self.transport.write(memoryview(buf))
-
-    cdef inline _write_sync_message(self):
-        self.transport.write(SYNC_MESSAGE)
 
     cdef _read_server_messages(self):
         cdef:
@@ -268,10 +271,15 @@ cdef class CoreProtocol:
                     self.result = e
                     self._push_result()
                 else:
+                    if self.con_params.session or self.is_in_transaction():
+                        query = None
+                    else:
+                        query = self._execute_query
+
                     # Next iteration over the executemany() arg sequence
-                    self._send_bind_message(
-                        self._execute_portal_name, self._execute_stmt_name,
-                        buf, 0)
+                    self._send_parse_bind_execute(
+                        self._execute_stmt_name, query,
+                        self._execute_portal_name, buf, 0)
 
         elif mtype == b'I':
             # EmptyQueryResponse
@@ -684,6 +692,27 @@ cdef class CoreProtocol:
         if self.con_status != CONNECTION_OK:
             raise apg_exc.InternalClientError('not connected')
 
+    cdef WriteBuffer _build_parse_message(self, str stmt_name, str query):
+        cdef WriteBuffer buf
+
+        buf = WriteBuffer.new_message(b'P')
+        buf.write_str(stmt_name, self.encoding)
+        buf.write_str(query, self.encoding)
+        buf.write_int16(0)
+        buf.end_message()
+
+        return buf
+
+    cdef WriteBuffer _build_describe_message(self, str stmt_name):
+        cdef WriteBuffer buf
+
+        buf = WriteBuffer.new_message(b'D')
+        buf.write_byte(b'S')
+        buf.write_str(stmt_name, self.encoding)
+        buf.end_message()
+
+        return buf
+
     cdef WriteBuffer _build_bind_message(self, str portal_name,
                                          str stmt_name,
                                          WriteBuffer bind_data):
@@ -697,6 +726,17 @@ cdef class CoreProtocol:
         buf.write_buffer(bind_data)
 
         buf.end_message()
+        return buf
+
+    cdef WriteBuffer _build_execute_message(self, str portal_name,
+                                            int32_t limit):
+        cdef WriteBuffer buf
+
+        buf = WriteBuffer.new_message(b'E')
+        buf.write_str(portal_name, self.encoding)  # name of the portal
+        buf.write_int32(limit)  # number of rows to return; 0 - all
+        buf.end_message()
+
         return buf
 
     # API for subclasses
@@ -742,62 +782,50 @@ cdef class CoreProtocol:
         self._write(outbuf)
 
     cdef _prepare(self, str stmt_name, str query):
-        cdef:
-            WriteBuffer packet
-            WriteBuffer buf
+        cdef WriteBuffer buf
 
         self._ensure_connected()
         self._set_state(PROTOCOL_PREPARE)
 
-        packet = WriteBuffer.new()
+        buf = self._build_parse_message(stmt_name, query)
+        buf.write_buffer(self._build_describe_message(stmt_name))
 
-        buf = WriteBuffer.new_message(b'P')
-        buf.write_str(stmt_name, self.encoding)
-        buf.write_str(query, self.encoding)
-        buf.write_int16(0)
-        buf.end_message()
-        packet.write_buffer(buf)
+        buf.write_bytes(SYNC_MESSAGE)
 
-        buf = WriteBuffer.new_message(b'D')
-        buf.write_byte(b'S')
-        buf.write_str(stmt_name, self.encoding)
-        buf.end_message()
-        packet.write_buffer(buf)
+        self._write(buf)
 
-        packet.write_bytes(SYNC_MESSAGE)
-
-        self.transport.write(memoryview(packet))
-
-    cdef _send_bind_message(self, str portal_name, str stmt_name,
-                            WriteBuffer bind_data, int32_t limit):
-
-        cdef WriteBuffer buf
+    cdef _send_parse_bind_execute(self, str stmt_name, str query,
+                                  str portal_name, WriteBuffer bind_data,
+                                  int32_t limit):
+        cdef:
+            WriteBuffer buf
+            WriteBuffer pbuf
 
         buf = self._build_bind_message(portal_name, stmt_name, bind_data)
+        buf.write_buffer(self._build_execute_message(portal_name, limit))
+
+        if query is not None:
+            pbuf = self._build_parse_message(stmt_name, query)
+            pbuf.write_buffer(buf)
+            buf = pbuf
+
+        buf.write_bytes(SYNC_MESSAGE)
+
         self._write(buf)
 
-        buf = WriteBuffer.new_message(b'E')
-        buf.write_str(portal_name, self.encoding)  # name of the portal
-        buf.write_int32(limit)  # number of rows to return; 0 - all
-        buf.end_message()
-        self._write(buf)
-
-        self._write_sync_message()
-
-    cdef _bind_execute(self, str portal_name, str stmt_name,
-                       WriteBuffer bind_data, int32_t limit):
-
-        cdef WriteBuffer buf
+    cdef _parse_bind_execute(self, str stmt_name, str query, str portal_name,
+                             WriteBuffer bind_data, int32_t limit):
 
         self._ensure_connected()
         self._set_state(PROTOCOL_BIND_EXECUTE)
 
         self.result = []
 
-        self._send_bind_message(portal_name, stmt_name, bind_data, limit)
+        self._send_parse_bind_execute(stmt_name, query,
+                                      portal_name, bind_data, limit)
 
-    cdef _bind_execute_many(self, str portal_name, str stmt_name,
-                            object bind_data):
+    cdef _parse_bind_execute_many(self, str stmt_name, str query,
+                                  str portal_name, object bind_data):
 
         cdef WriteBuffer buf
 
@@ -809,6 +837,7 @@ cdef class CoreProtocol:
         self._execute_iter = bind_data
         self._execute_portal_name = portal_name
         self._execute_stmt_name = stmt_name
+        self._execute_query = query
 
         try:
             buf = <WriteBuffer>next(bind_data)
@@ -819,7 +848,29 @@ cdef class CoreProtocol:
             self.result = e
             self._push_result()
         else:
-            self._send_bind_message(portal_name, stmt_name, buf, 0)
+            self._send_parse_bind_execute(stmt_name, query,
+                                          portal_name, buf, 0)
+
+    cdef _parse_bind(self, str stmt_name, str query,
+                     str portal_name, WriteBuffer bind_data):
+
+        cdef:
+            WriteBuffer buf
+            WriteBuffer pbuf
+
+        self._ensure_connected()
+        self._set_state(PROTOCOL_BIND)
+
+        buf = self._build_bind_message(portal_name, stmt_name, bind_data)
+
+        if query is not None:
+            pbuf = self._build_parse_message(stmt_name, query)
+            pbuf.write_buffer(buf)
+            buf = pbuf
+
+        buf.write_bytes(SYNC_MESSAGE)
+
+        self._write(buf)
 
     cdef _execute(self, str portal_name, int32_t limit):
         cdef WriteBuffer buf
@@ -829,24 +880,11 @@ cdef class CoreProtocol:
 
         self.result = []
 
-        buf = WriteBuffer.new_message(b'E')
-        buf.write_str(portal_name, self.encoding)  # name of the portal
-        buf.write_int32(limit)  # number of rows to return; 0 - all
-        buf.end_message()
+        buf = self._build_execute_message(portal_name, limit)
+
+        buf.write_bytes(SYNC_MESSAGE)
+
         self._write(buf)
-        self._write_sync_message()
-
-    cdef _bind(self, str portal_name, str stmt_name,
-               WriteBuffer bind_data):
-
-        cdef WriteBuffer buf
-
-        self._ensure_connected()
-        self._set_state(PROTOCOL_BIND)
-
-        buf = self._build_bind_message(portal_name, stmt_name, bind_data)
-        self._write(buf)
-        self._write_sync_message()
 
     cdef _close(self, str name, bint is_portal):
         cdef WriteBuffer buf
@@ -863,9 +901,10 @@ cdef class CoreProtocol:
 
         buf.write_str(name, self.encoding)
         buf.end_message()
-        self._write(buf)
 
-        self._write_sync_message()
+        buf.write_bytes(SYNC_MESSAGE)
+
+        self._write(buf)
 
     cdef _simple_query(self, str query):
         cdef WriteBuffer buf

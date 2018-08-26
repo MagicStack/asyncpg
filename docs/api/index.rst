@@ -56,8 +56,7 @@ a need to run the same query again.
 .. warning::
 
    If you are using pgbouncer with ``pool_mode`` set to ``transaction`` or
-   ``statement``, prepared statements will not work correctly.  See
-   :ref:`asyncpg-prepared-stmt-errors` for more information.
+   ``statement``, initialize Connection with session set to False.
 
 
 .. autoclass:: asyncpg.prepared_stmt.PreparedStatement()

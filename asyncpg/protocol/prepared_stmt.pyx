@@ -19,6 +19,7 @@ cdef class PreparedStatementState:
         self.args_codecs = self.rows_codecs = None
         self.args_num = self.cols_num = 0
         self.cols_desc = None
+        self.need_reprepare = False
         self.closed = False
         self.refs = 0
         self.buffer = FastReadBuffer.new()

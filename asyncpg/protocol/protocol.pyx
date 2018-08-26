@@ -105,6 +105,9 @@ cdef class BaseProtocol(CoreProtocol):
         self.address = addr
         self.settings = ConnectionSettings((self.address, con_params.database))
 
+        self.session = con_params.session
+        self.last_unnamed = None
+
         self.statement = None
         self.return_extra = False
 
@@ -138,11 +141,6 @@ cdef class BaseProtocol(CoreProtocol):
     def get_settings(self):
         return self.settings
 
-    def is_in_transaction(self):
-        # PQTRANS_INTRANS = idle, within transaction block
-        # PQTRANS_INERROR = idle, within failed transaction
-        return self.xact_status in (PQTRANS_INTRANS, PQTRANS_INERROR)
-
     cdef inline resume_reading(self):
         if not self.is_reading:
             self.is_reading = True
@@ -172,6 +170,8 @@ cdef class BaseProtocol(CoreProtocol):
             if state is None:
                 state = PreparedStatementState(stmt_name, query, self)
             self.statement = state
+            if stmt_name == '':
+                self.last_unnamed = state
         except Exception as ex:
             waiter.set_exception(ex)
             self._coreproto_error()
@@ -195,10 +195,17 @@ cdef class BaseProtocol(CoreProtocol):
 
         waiter = self._new_waiter(timeout)
         try:
-            self._bind_execute(
-                portal_name,
-                state.name,
-                args_buf,
+            if state.name == '' and (state != self.last_unnamed
+                                     or state.need_reprepare):
+                query = state.query
+                state.need_reprepare = False
+                self.last_unnamed = state
+            else:
+                query = None
+
+            self._parse_bind_execute(
+                state.name, query,
+                portal_name, args_buf,
                 limit)  # network op
 
             self.last_query = state.query
@@ -232,10 +239,17 @@ cdef class BaseProtocol(CoreProtocol):
 
         waiter = self._new_waiter(timeout)
         try:
-            self._bind_execute_many(
-                portal_name,
-                state.name,
-                arg_bufs)  # network op
+            if state.name == '' and (state != self.last_unnamed
+                                     or state.need_reprepare):
+                query = state.query
+                state.need_reprepare = False
+                self.last_unnamed = state
+            else:
+                query = None
+
+            self._parse_bind_execute_many(
+                state.name, query,
+                portal_name, arg_bufs)  # network op
 
             self.last_query = state.query
             self.statement = state
@@ -263,10 +277,17 @@ cdef class BaseProtocol(CoreProtocol):
 
         waiter = self._new_waiter(timeout)
         try:
-            self._bind(
-                portal_name,
-                state.name,
-                args_buf)  # network op
+            if state.name == '' and (state != self.last_unnamed
+                                     or state.need_reprepare):
+                query = state.query
+                state.need_reprepare = False
+                self.last_unnamed = state
+            else:
+                query = None
+
+            self._parse_bind(
+                state.name, query,
+                portal_name, args_buf)  # network op
 
             self.last_query = state.query
             self.statement = state
@@ -313,6 +334,9 @@ cdef class BaseProtocol(CoreProtocol):
         if self.cancel_sent_waiter is not None:
             await self.cancel_sent_waiter
             self.cancel_sent_waiter = None
+
+        if self.last_unnamed is not None:
+            self.last_unnamed.need_reprepare = True
 
         self._check_state()
         # query() needs to call _get_timeout instead of _get_timeout_impl
@@ -519,6 +543,10 @@ cdef class BaseProtocol(CoreProtocol):
             raise apg_exc.InternalClientError(
                 'cannot close prepared statement; refs == {} != 0'.format(
                     state.refs))
+
+        if state.name == '' and (state != self.last_unnamed
+                                 or state.need_reprepare):
+            return
 
         timeout = self._get_timeout_impl(timeout)
         waiter = self._new_waiter(timeout)
@@ -855,6 +883,9 @@ cdef class BaseProtocol(CoreProtocol):
             self.statement = None
             self.last_query = None
             self.return_extra = False
+            if (not self.session and not self.is_in_transaction()
+                and self.last_unnamed is not None):
+                self.last_unnamed.need_reprepare = True
 
     cdef _on_notice(self, parsed):
         con = self.get_connection()
