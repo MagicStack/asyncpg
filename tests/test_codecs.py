@@ -851,6 +851,27 @@ class TestCodecs(tb.ConnectedTestCase):
                 SELECT $1::test_composite
             ''', res)
 
+            # composite input as a mapping
+            res = await self.con.fetchval('''
+                SELECT $1::test_composite
+            ''', {'b': 'foo', 'a': 1, 'c': [1, 2, 3]})
+
+            self.assertEqual(res, (1, 'foo', [1, 2, 3]))
+
+            # Test None padding
+            res = await self.con.fetchval('''
+                SELECT $1::test_composite
+            ''', {'a': 1})
+
+            self.assertEqual(res, (1, None, None))
+
+            with self.assertRaisesRegex(
+                    asyncpg.DataError,
+                    "'bad' is not a valid element"):
+                await self.con.fetchval(
+                    "SELECT $1::test_composite",
+                    {'bad': 'foo'})
+
         finally:
             await self.con.execute('DROP TYPE test_composite')
 

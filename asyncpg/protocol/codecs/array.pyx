@@ -5,7 +5,9 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-from collections.abc import Iterable as IterableABC, Sized as SizedABC
+from collections.abc import (Iterable as IterableABC,
+                             Mapping as MappingABC,
+                             Sized as SizedABC)
 
 from asyncpg import exceptions
 
@@ -36,7 +38,8 @@ cdef inline _is_array_iterable(object obj):
     return (
         isinstance(obj, IterableABC) and
         isinstance(obj, SizedABC) and
-        not _is_trivial_container(obj)
+        not _is_trivial_container(obj) and
+        not isinstance(obj, MappingABC)
     )
 
 

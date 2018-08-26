@@ -67,6 +67,7 @@ cdef class Codec:
         # composite types
         tuple           element_type_oids
         object          element_names
+        object          record_desc
         list            element_codecs
 
         # Pointers to actual encoder/decoder functions for this codec

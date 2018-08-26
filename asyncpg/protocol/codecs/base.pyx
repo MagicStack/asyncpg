@@ -5,6 +5,8 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+from collections.abc import Mapping as MappingABC
+
 from asyncpg import exceptions
 
 
@@ -43,12 +45,13 @@ cdef class Codec:
         self.element_type_oids = element_type_oids
         self.element_codecs = element_codecs
         self.element_delimiter = element_delimiter
+        self.element_names = element_names
 
         if element_names is not None:
-            self.element_names = record.ApgRecordDesc_New(
+            self.record_desc = record.ApgRecordDesc_New(
                 element_names, tuple(element_names))
         else:
-            self.element_names = None
+            self.record_desc = None
 
         if type == CODEC_C:
             self.encoder = <codec_encode_func>&self.encode_scalar
@@ -125,6 +128,31 @@ cdef class Codec:
             int i
             list elem_codecs = self.element_codecs
             ssize_t count
+            ssize_t composite_size
+            tuple rec
+
+        if isinstance(obj, MappingABC):
+            # Input is dict-like, form a tuple
+            composite_size = len(self.element_type_oids)
+            rec = cpython.PyTuple_New(composite_size)
+
+            for i in range(composite_size):
+                cpython.Py_INCREF(None)
+                cpython.PyTuple_SET_ITEM(rec, i, None)
+
+            for field in obj:
+                try:
+                    i = self.element_names[field]
+                except KeyError:
+                    raise ValueError(
+                        '{!r} is not a valid element of composite '
+                        'type {}'.format(field, self.name)) from None
+
+                item = obj[field]
+                cpython.Py_INCREF(item)
+                cpython.PyTuple_SET_ITEM(rec, i, item)
+
+            obj = rec
 
         count = len(obj)
         if count > _MAXINT32:
@@ -204,7 +232,7 @@ cdef class Codec:
                 schema=self.schema,
                 data_type=self.name,
             )
-        result = record.ApgRecord_New(self.element_names, elem_count)
+        result = record.ApgRecord_New(self.record_desc, elem_count)
         for i in range(elem_count):
             elem_typ = self.element_type_oids[i]
             received_elem_typ = <uint32_t>hton.unpack_int32(buf.read(4))
