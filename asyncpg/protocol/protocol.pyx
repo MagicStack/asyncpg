@@ -98,6 +98,7 @@ cdef class BaseProtocol(CoreProtocol):
         CoreProtocol.__init__(self, con_params)
 
         self.loop = loop
+        self.transport = None
         self.waiter = connected_fut
         self.cancel_waiter = None
         self.cancel_sent_waiter = None
@@ -882,6 +883,9 @@ cdef class BaseProtocol(CoreProtocol):
             # Throw an error in any awaiting waiter.
             self.closing = True
             self._handle_waiter_on_connection_lost(exc)
+
+    cdef _write(self, buf):
+        self.transport.write(memoryview(buf))
 
     # asyncio callbacks:
 

@@ -17,7 +17,6 @@ cdef class CoreProtocol:
         self.password = con_params.password
         self.auth_msg = None
         self.con_params = con_params
-        self.transport = None
         self.con_status = CONNECTION_BAD
         self.state = PROTOCOL_IDLE
         self.xact_status = PQTRANS_IDLE
@@ -31,9 +30,6 @@ cdef class CoreProtocol:
         self._execute_stmt_name = None
 
         self._reset_result()
-
-    cdef _write(self, buf):
-        self.transport.write(memoryview(buf))
 
     cdef _read_server_messages(self):
         cdef:
@@ -147,7 +143,6 @@ cdef class CoreProtocol:
             if self.result_type != RESULT_OK:
                 self.con_status = CONNECTION_BAD
                 self._push_result()
-                self.transport.close()
 
             elif self.auth_msg is not None:
                 # Server wants us to send auth data, so do that.
@@ -909,6 +904,9 @@ cdef class CoreProtocol:
         buf = WriteBuffer.new_message(b'X')
         buf.end_message()
         self._write(buf)
+
+    cdef _write(self, buf):
+        raise NotImplementedError
 
     cdef _decode_row(self, const char* buf, ssize_t buf_len):
         pass
