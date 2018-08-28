@@ -5,6 +5,9 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+from asyncpg import exceptions
+
+
 cdef inline record_encode_frame(ConnectionSettings settings, WriteBuffer buf,
                                 WriteBuffer elem_data, int32_t elem_count):
     buf.write_int32(4 + elem_data.len())
@@ -36,7 +39,7 @@ cdef anonymous_record_decode(ConnectionSettings settings, FastReadBuffer buf):
         else:
             elem_codec = settings.get_data_codec(elem_typ)
             if elem_codec is None or not elem_codec.has_decoder():
-                raise RuntimeError(
+                raise exceptions.InternalClientError(
                     'no decoder for composite type element in '
                     'position {} of type OID {}'.format(i, elem_typ))
             elem = elem_codec.decode(settings,

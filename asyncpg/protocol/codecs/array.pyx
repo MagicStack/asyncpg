@@ -7,6 +7,8 @@
 
 from collections.abc import Iterable as IterableABC, Sized as SizedABC
 
+from asyncpg import exceptions
+
 
 DEF ARRAY_MAXDIM = 6  # defined in postgresql/src/includes/c.h
 
@@ -285,7 +287,7 @@ cdef inline array_decode(ConnectionSettings settings, FastReadBuffer buf,
         return result
 
     if ndims > ARRAY_MAXDIM:
-        raise RuntimeError(
+        raise exceptions.ProtocolError(
             'number of array dimensions ({}) exceed the maximum expected ({})'.
             format(ndims, ARRAY_MAXDIM))
 
@@ -337,7 +339,8 @@ cdef _nested_array_decode(ConnectionSettings settings,
 
     if ASYNCPG_DEBUG:
         if ndims <= 0:
-            raise RuntimeError('unexpected ndims value: {}'.format(ndims))
+            raise exceptions.ProtocolError(
+                'unexpected ndims value: {}'.format(ndims))
 
     for i in range(ndims):
         array_len *= dims[i]
@@ -409,7 +412,7 @@ cdef textarray_decode(ConnectionSettings settings, FastReadBuffer buf,
         return _textarray_decode(
             settings, array_text, decoder, decoder_arg, typdelim)
     except ValueError as e:
-        raise ValueError(
+        raise exceptions.ProtocolError(
             'malformed array literal {!r}: {}'.format(s, e.args[0]))
     finally:
         PyMem_Free(array_text)
@@ -845,7 +848,8 @@ cdef arraytext_decode(ConnectionSettings settings, FastReadBuffer buf):
 cdef anyarray_decode(ConnectionSettings settings, FastReadBuffer buf):
     # Instances of anyarray (or any other polymorphic pseudotype) are
     # never supposed to be returned from actual queries.
-    raise RuntimeError('unexpected instance of \'anyarray\' type')
+    raise exceptions.ProtocolError(
+        'unexpected instance of \'anyarray\' type')
 
 
 cdef init_array_codecs():

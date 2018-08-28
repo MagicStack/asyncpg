@@ -222,7 +222,11 @@ class InterfaceWarning(InterfaceMessage, UserWarning):
 
 
 class InternalClientError(Exception):
-    pass
+    """All unexpected errors not classified otherwise."""
+
+
+class ProtocolError(InternalClientError):
+    """Unexpected condition in the handling of PostgreSQL protocol input."""
 
 
 class OutdatedSchemaCacheError(InternalClientError):

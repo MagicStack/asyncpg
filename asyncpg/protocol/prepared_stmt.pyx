@@ -30,7 +30,8 @@ cdef class PreparedStatementState:
         for oid in self.parameters_desc:
             codec = self.settings.get_data_codec(oid)
             if codec is None:
-                raise RuntimeError
+                raise exceptions.InternalClientError(
+                    'missing codec information for OID {}'.format(oid))
             result.append(apg_types.Type(
                 oid, codec.name, codec.kind, codec.schema))
 
@@ -49,7 +50,8 @@ cdef class PreparedStatementState:
 
             codec = self.settings.get_data_codec(oid)
             if codec is None:
-                raise RuntimeError
+                raise exceptions.InternalClientError(
+                    'missing codec information for OID {}'.format(oid))
 
             name = name.decode(self.settings._encoding)
 
@@ -199,7 +201,8 @@ cdef class PreparedStatementState:
             oid = row[3]
             codec = self.settings.get_data_codec(oid)
             if codec is None or not codec.has_decoder():
-                raise RuntimeError('no decoder for OID {}'.format(oid))
+                raise exceptions.InternalClientError(
+                    'no decoder for OID {}'.format(oid))
             if not codec.is_binary():
                 self.have_text_cols = True
 
@@ -223,7 +226,8 @@ cdef class PreparedStatementState:
             p_oid = self.parameters_desc[i]
             codec = self.settings.get_data_codec(p_oid)
             if codec is None or not codec.has_encoder():
-                raise RuntimeError('no encoder for OID {}'.format(p_oid))
+                raise exceptions.InternalClientError(
+                    'no encoder for OID {}'.format(p_oid))
             if codec.type not in {}:
                 self.have_text_args = True
 
@@ -257,15 +261,10 @@ cdef class PreparedStatementState:
         fnum = hton.unpack_int16(rbuf.read(2))
 
         if fnum != self.cols_num:
-            raise RuntimeError(
-                'number of columns in result ({}) is '
+            raise exceptions.ProtocolError(
+                'the number of columns in the result row ({}) is '
                 'different from what was described ({})'.format(
                     fnum, self.cols_num))
-
-        if rows_codecs is None or len(rows_codecs) < fnum:
-            if fnum > 0:
-                # It's OK to have no rows_codecs for empty records
-                raise RuntimeError('invalid rows_codecs')
 
         dec_row = record.ApgRecord_New(self.cols_desc, fnum)
         for i in range(fnum):

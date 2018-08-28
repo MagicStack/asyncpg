@@ -8,9 +8,12 @@
 from cpython cimport Py_buffer
 from libc.string cimport memcpy
 
+from asyncpg import exceptions
 
-class BufferError(Exception):
+
+class BufferError(exceptions.InternalClientError):
     pass
+
 
 @cython.no_gc_clear
 @cython.final
@@ -49,7 +52,7 @@ cdef class WriteBuffer:
             self._size = 0
 
         if self._view_count:
-            raise RuntimeError(
+            raise BufferError(
                 'Deallocating buffer with attached memoryviews')
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):
@@ -292,7 +295,7 @@ cdef class ReadBuffer:
 
         if ASYNCPG_DEBUG:
             if self._len0 < 1:
-                raise RuntimeError(
+                raise BufferError(
                     'debug: second buffer of ReadBuffer is empty')
 
     cdef inline const char* _try_read_bytes(self, ssize_t nbytes):
@@ -381,7 +384,7 @@ cdef class ReadBuffer:
 
         if ASYNCPG_DEBUG:
             if not self._buf0:
-                raise RuntimeError(
+                raise BufferError(
                     'debug: first buffer of ReadBuffer is empty')
 
         self._ensure_first_buf()

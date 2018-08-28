@@ -113,7 +113,7 @@ cdef class CoreProtocol:
                         # Sync point, self to push the result
                         if self.result_type != RESULT_FAILED:
                             self.result_type = RESULT_FAILED
-                            self.result = RuntimeError(
+                            self.result = apg_exc.InternalClientError(
                                 'unknown error in protocol implementation')
 
                         self._push_result()

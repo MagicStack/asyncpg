@@ -5,7 +5,7 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-from asyncpg.exceptions import OutdatedSchemaCacheError
+from asyncpg import exceptions
 
 
 cdef void* binary_codec_map[(MAXSUPPORTEDOID + 1) * 2]
@@ -62,14 +62,14 @@ cdef class Codec:
                 self.decoder = <codec_decode_func>&self.decode_array_text
         elif type == CODEC_RANGE:
             if format != PG_FORMAT_BINARY:
-                raise RuntimeError(
+                raise NotImplementedError(
                     'cannot encode type "{}"."{}": text encoding of '
                     'range types is not supported'.format(schema, name))
             self.encoder = <codec_encode_func>&self.encode_range
             self.decoder = <codec_decode_func>&self.decode_range
         elif type == CODEC_COMPOSITE:
             if format != PG_FORMAT_BINARY:
-                raise RuntimeError(
+                raise NotImplementedError(
                     'cannot encode type "{}"."{}": text encoding of '
                     'composite types is not supported'.format(schema, name))
             self.encoder = <codec_encode_func>&self.encode_composite
@@ -78,7 +78,8 @@ cdef class Codec:
             self.encoder = <codec_encode_func>&self.encode_in_python
             self.decoder = <codec_decode_func>&self.decode_in_python
         else:
-            raise RuntimeError('unexpected codec type: {}'.format(type))
+            raise exceptions.InternalClientError(
+                'unexpected codec type: {}'.format(type))
 
     cdef Codec copy(self):
         cdef Codec codec
@@ -150,12 +151,12 @@ cdef class Codec:
             elif self.format == PG_FORMAT_TEXT:
                 text_encode(settings, buf, data)
             else:
-                raise RuntimeError(
+                raise exceptions.InternalClientError(
                     'unexpected data format: {}'.format(self.format))
         elif self.xformat == PG_XFORMAT_TUPLE:
             self.c_encoder(settings, buf, data)
         else:
-            raise RuntimeError(
+            raise exceptions.InternalClientError(
                 'unexpected exchange format: {}'.format(self.xformat))
 
     cdef encode(self, ConnectionSettings settings, WriteBuffer buf,
@@ -193,7 +194,7 @@ cdef class Codec:
 
         elem_count = <ssize_t><uint32_t>hton.unpack_int32(buf.read(4))
         if elem_count != len(self.element_type_oids):
-            raise OutdatedSchemaCacheError(
+            raise exceptions.OutdatedSchemaCacheError(
                 'unexpected number of attributes of composite type: '
                 '{}, expected {}'
                     .format(
@@ -209,7 +210,7 @@ cdef class Codec:
             received_elem_typ = <uint32_t>hton.unpack_int32(buf.read(4))
 
             if received_elem_typ != elem_typ:
-                raise OutdatedSchemaCacheError(
+                raise exceptions.OutdatedSchemaCacheError(
                     'unexpected data type of composite type attribute {}: '
                     '{!r}, expected {!r}'
                         .format(
@@ -243,12 +244,12 @@ cdef class Codec:
             elif self.format == PG_FORMAT_TEXT:
                 data = text_decode(settings, buf)
             else:
-                raise RuntimeError(
+                raise exceptions.InternalClientError(
                     'unexpected data format: {}'.format(self.format))
         elif self.xformat == PG_XFORMAT_TUPLE:
             data = self.c_decoder(settings, buf)
         else:
-            raise RuntimeError(
+            raise exceptions.InternalClientError(
                 'unexpected exchange format: {}'.format(self.xformat))
 
         return self.py_decoder(data)
@@ -455,7 +456,7 @@ cdef class DataCodecConfig:
 
             elif ti['kind'] == b'c':
                 if not comp_type_attrs:
-                    raise RuntimeError(
+                    raise exceptions.InternalClientError(
                         'type record missing field types for '
                         'composite {}'.format(oid))
 
@@ -469,7 +470,7 @@ cdef class DataCodecConfig:
                         elem_codec = self.get_codec(typoid, PG_FORMAT_TEXT)
                         has_text_elements = True
                     if elem_codec is None:
-                        raise RuntimeError(
+                        raise exceptions.InternalClientError(
                             'no codec for composite attribute type {}'.format(
                                 typoid))
                     comp_elem_codecs.append(elem_codec)
@@ -490,7 +491,7 @@ cdef class DataCodecConfig:
                 # Domain type
 
                 if not base_type:
-                    raise RuntimeError(
+                    raise exceptions.InternalClientError(
                         'type record missing base type for domain {}'.format(
                             oid))
 
@@ -506,7 +507,7 @@ cdef class DataCodecConfig:
                 # Range type
 
                 if not range_subtype_oid:
-                    raise RuntimeError(
+                    raise exceptions.InternalClientError(
                         'type record missing base type for range {}'.format(
                             oid))
 
@@ -542,7 +543,7 @@ cdef class DataCodecConfig:
         if xformat == PG_XFORMAT_TUPLE:
             core_codec = get_any_core_codec(oid, format, xformat)
             if core_codec is None:
-                raise ValueError(
+                raise exceptions.InterfaceError(
                     "{} type does not support 'tuple' exchange format".format(
                         typename))
             c_encoder = core_codec.c_encoder
@@ -593,7 +594,8 @@ cdef class DataCodecConfig:
             self._custom_type_codecs[typeoid] = codec
             break
         else:
-            raise ValueError('unknown alias target: {}'.format(alias_to))
+            raise exceptions.InterfaceError(
+                'invalid builtin codec reference: {}'.format(alias_to))
 
     def set_builtin_type_codec(self, typeoid, typename, typeschema, typekind,
                                alias_to, format=PG_FORMAT_ANY):
@@ -707,7 +709,7 @@ cdef register_core_codec(uint32_t oid,
                          ClientExchangeFormat xformat=PG_XFORMAT_OBJECT):
 
     if oid > MAXSUPPORTEDOID:
-        raise RuntimeError(
+        raise exceptions.InternalClientError(
             'cannot register core codec for OID {}: it is greater '
             'than MAXSUPPORTEDOID ({})'.format(oid, MAXSUPPORTEDOID))
 
@@ -729,7 +731,8 @@ cdef register_core_codec(uint32_t oid,
     elif format == PG_FORMAT_TEXT:
         text_codec_map[oid * xformat] = <void*>codec
     else:
-        raise RuntimeError('invalid data format: {}'.format(format))
+        raise exceptions.InternalClientError(
+            'invalid data format: {}'.format(format))
 
 
 cdef register_extra_codec(str name,
