@@ -59,23 +59,27 @@ else:
 def _read_password_file(passfile: pathlib.Path) \
         -> typing.List[typing.Tuple[str, ...]]:
 
-    if not passfile.is_file():
-        warnings.warn(
-            'password file {!r} is not a plain file'.format(passfile))
-
-        return None
-
-    if _system != 'Windows':
-        if passfile.stat().st_mode & (stat.S_IRWXG | stat.S_IRWXO):
-            warnings.warn(
-                'password file {!r} has group or world access; '
-                'permissions should be u=rw (0600) or less'.format(passfile))
-
-            return None
-
     passtab = []
 
     try:
+        if not passfile.exists():
+            return []
+
+        if not passfile.is_file():
+            warnings.warn(
+                'password file {!r} is not a plain file'.format(passfile))
+
+            return []
+
+        if _system != 'Windows':
+            if passfile.stat().st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+                warnings.warn(
+                    'password file {!r} has group or world access; '
+                    'permissions should be u=rw (0600) or less'.format(
+                        passfile))
+
+                return []
+
         with passfile.open('rt') as f:
             for line in f:
                 line = line.strip()
@@ -104,9 +108,6 @@ def _read_password_from_pgpass(
     :return:
         Password string, if found, ``None`` otherwise.
     """
-
-    if not passfile.exists():
-        return None
 
     passtab = _read_password_file(passfile)
     if not passtab:

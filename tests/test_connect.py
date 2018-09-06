@@ -661,6 +661,50 @@ class TestConnectParams(tb.TestCase):
             )
         })
 
+    @unittest.skipIf(_system == 'Windows', 'no mode checking on Windows')
+    def test_connect_pgpass_inaccessible_file(self):
+        with tempfile.NamedTemporaryFile('w+t') as passfile:
+            os.chmod(passfile.name, stat.S_IWUSR)
+
+            # nonexistent passfile is OK
+            self.run_testcase({
+                'host': 'abc',
+                'user': 'user',
+                'database': 'db',
+                'passfile': passfile.name,
+                'result': (
+                    [('abc', 5432)],
+                    {
+                        'user': 'user',
+                        'database': 'db',
+                    }
+                )
+            })
+
+    @unittest.skipIf(_system == 'Windows', 'no mode checking on Windows')
+    def test_connect_pgpass_inaccessible_directory(self):
+        with tempfile.TemporaryDirectory() as passdir:
+            with tempfile.NamedTemporaryFile('w+t', dir=passdir) as passfile:
+                os.chmod(passdir, stat.S_IWUSR)
+
+                try:
+                    # nonexistent passfile is OK
+                    self.run_testcase({
+                        'host': 'abc',
+                        'user': 'user',
+                        'database': 'db',
+                        'passfile': passfile.name,
+                        'result': (
+                            [('abc', 5432)],
+                            {
+                                'user': 'user',
+                                'database': 'db',
+                            }
+                        )
+                    })
+                finally:
+                    os.chmod(passdir, stat.S_IRWXU)
+
     async def test_connect_args_validation(self):
         for val in {-1, 'a', True, False, 0}:
             with self.assertRaisesRegex(ValueError, 'greater than 0'):
