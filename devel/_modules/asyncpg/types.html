@@ -392,6 +392,93 @@
 
         <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
 
+<div class="viewcode-block" id="BitString.to_int"><a class="viewcode-back" href="../../api/index.html#asyncpg.types.BitString.to_int">[docs]</a>    <span class="k">def</span> <span class="nf">to_int</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bitorder</span><span class="o">=</span><span class="s1">&#39;big&#39;</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">signed</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Interpret the BitString as a Python int.</span>
+<span class="sd">        Acts similarly to int.from_bytes.</span>
+
+<span class="sd">        :param bitorder:</span>
+<span class="sd">            Determines the bit order used to interpret the BitString. By</span>
+<span class="sd">            default, this function uses Postgres conventions for casting bits</span>
+<span class="sd">            to ints. If bitorder is &#39;big&#39;, the most significant bit is at the</span>
+<span class="sd">            start of the string (this is the same as the default). If bitorder</span>
+<span class="sd">            is &#39;little&#39;, the most significant bit is at the end of the string.</span>
+
+<span class="sd">        :param bool signed:</span>
+<span class="sd">            Determines whether two&#39;s complement is used to interpret the</span>
+<span class="sd">            BitString. If signed is False, the returned value is always</span>
+<span class="sd">            non-negative.</span>
+
+<span class="sd">        :return int: An integer representing the BitString. Information about</span>
+<span class="sd">                     the BitString&#39;s exact length is lost.</span>
+
+<span class="sd">        .. versionadded:: 0.18.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="nb">int</span><span class="o">.</span><span class="n">from_bytes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bytes</span><span class="p">,</span> <span class="n">byteorder</span><span class="o">=</span><span class="s1">&#39;big&#39;</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">&gt;&gt;=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_bitlength</span> <span class="o">%</span> <span class="mi">8</span>
+        <span class="k">if</span> <span class="n">bitorder</span> <span class="o">==</span> <span class="s1">&#39;big&#39;</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">elif</span> <span class="n">bitorder</span> <span class="o">==</span> <span class="s1">&#39;little&#39;</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">bin</span><span class="p">(</span><span class="n">x</span><span class="p">)[:</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bitlength</span><span class="p">,</span> <span class="s1">&#39;0&#39;</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bitorder must be either &#39;big&#39; or &#39;little&#39;&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">signed</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bitlength</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">x</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bitlength</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)):</span>
+            <span class="n">x</span> <span class="o">-=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bitlength</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+
+<div class="viewcode-block" id="BitString.from_int"><a class="viewcode-back" href="../../api/index.html#asyncpg.types.BitString.from_int">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_int</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">bitorder</span><span class="o">=</span><span class="s1">&#39;big&#39;</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">signed</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Represent the Python int x as a BitString.</span>
+<span class="sd">        Acts similarly to int.to_bytes.</span>
+
+<span class="sd">        :param int x:</span>
+<span class="sd">            An integer to represent. Negative integers are represented in two&#39;s</span>
+<span class="sd">            complement form, unless the argument signed is False, in which case</span>
+<span class="sd">            negative integers raise an OverflowError.</span>
+
+<span class="sd">        :param int length:</span>
+<span class="sd">            The length of the resulting BitString. An OverflowError is raised</span>
+<span class="sd">            if the integer is not representable in this many bits.</span>
+
+<span class="sd">        :param bitorder:</span>
+<span class="sd">            Determines the bit order used in the BitString representation. By</span>
+<span class="sd">            default, this function uses Postgres conventions for casting ints</span>
+<span class="sd">            to bits. If bitorder is &#39;big&#39;, the most significant bit is at the</span>
+<span class="sd">            start of the string (this is the same as the default). If bitorder</span>
+<span class="sd">            is &#39;little&#39;, the most significant bit is at the end of the string.</span>
+
+<span class="sd">        :param bool signed:</span>
+<span class="sd">            Determines whether two&#39;s complement is used in the BitString</span>
+<span class="sd">            representation. If signed is False and a negative integer is given,</span>
+<span class="sd">            an OverflowError is raised.</span>
+
+<span class="sd">        :return BitString: A BitString representing the input integer, in the</span>
+<span class="sd">                           form specified by the other input args.</span>
+
+<span class="sd">        .. versionadded:: 0.18.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Exception types are by analogy to int.to_bytes</span>
+        <span class="k">if</span> <span class="n">length</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;length argument must be non-negative&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">length</span> <span class="o">&lt;</span> <span class="n">x</span><span class="o">.</span><span class="n">bit_length</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">OverflowError</span><span class="p">(</span><span class="s2">&quot;int too big to convert&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">signed</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">OverflowError</span><span class="p">(</span><span class="s2">&quot;can&#39;t convert negative int to unsigned&quot;</span><span class="p">)</span>
+            <span class="n">x</span> <span class="o">&amp;=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">length</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">bitorder</span> <span class="o">==</span> <span class="s1">&#39;big&#39;</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">elif</span> <span class="n">bitorder</span> <span class="o">==</span> <span class="s1">&#39;little&#39;</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">bin</span><span class="p">(</span><span class="n">x</span><span class="p">)[:</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="n">length</span><span class="p">,</span> <span class="s1">&#39;0&#39;</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bitorder must be either &#39;big&#39; or &#39;little&#39;&quot;</span><span class="p">)</span>
+
+        <span class="n">x</span> <span class="o">&lt;&lt;=</span> <span class="p">(</span><span class="o">-</span><span class="n">length</span> <span class="o">%</span> <span class="mi">8</span><span class="p">)</span>
+        <span class="n">bytes_</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">((</span><span class="n">length</span> <span class="o">+</span> <span class="mi">7</span><span class="p">)</span> <span class="o">//</span> <span class="mi">8</span><span class="p">,</span> <span class="n">byteorder</span><span class="o">=</span><span class="s1">&#39;big&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">frombytes</span><span class="p">(</span><span class="n">bytes_</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span></div>
+
     <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="s1">&#39;&lt;BitString </span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">as_string</span><span class="p">())</span>
 
