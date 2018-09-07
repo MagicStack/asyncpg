@@ -76,7 +76,8 @@ The table below shows the correspondence between PostgreSQL and Python types.
 | ``anyrange``         | :class:`asyncpg.Range <asyncpg.types.Range>`        |
 +----------------------+-----------------------------------------------------+
 | ``record``           | :class:`asyncpg.Record`,                            |
-|                      | :class:`tuple <python:tuple>`                       |
+|                      | :class:`tuple <python:tuple>`,                      |
+|                      | :class:`Mapping <python:collections.abc.Mapping>`   |
 +----------------------+-----------------------------------------------------+
 | ``bit``, ``varbit``  | :class:`asyncpg.BitString <asyncpg.types.BitString>`|
 +----------------------+-----------------------------------------------------+
