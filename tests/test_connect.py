@@ -236,7 +236,8 @@ class TestConnectParams(tb.TestCase):
                 'PGDATABASE': 'testdb',
                 'PGPASSWORD': 'passw',
                 'PGHOST': 'host',
-                'PGPORT': '123'
+                'PGPORT': '123',
+                'PGSSLMODE': 'prefer'
             },
 
             'dsn': 'postgres://user3:123123@localhost/abcdef',
@@ -246,11 +247,13 @@ class TestConnectParams(tb.TestCase):
             'user': 'user2',
             'password': 'passw2',
             'database': 'db2',
+            'ssl': False,
 
             'result': ([('host2', 456)], {
                 'user': 'user2',
                 'password': 'passw2',
-                'database': 'db2'})
+                'database': 'db2',
+                'ssl': False})
         },
 
         {
@@ -259,7 +262,8 @@ class TestConnectParams(tb.TestCase):
                 'PGDATABASE': 'testdb',
                 'PGPASSWORD': 'passw',
                 'PGHOST': 'host',
-                'PGPORT': '123'
+                'PGPORT': '123',
+                'PGSSLMODE': 'prefer'
             },
 
             'dsn': 'postgres://user3:123123@localhost:5555/abcdef',
@@ -267,7 +271,9 @@ class TestConnectParams(tb.TestCase):
             'result': ([('localhost', 5555)], {
                 'user': 'user3',
                 'password': '123123',
-                'database': 'abcdef'})
+                'database': 'abcdef',
+                'ssl': ssl.SSLContext,
+                'ssl_is_advisory': True})
         },
 
         {
@@ -281,7 +287,7 @@ class TestConnectParams(tb.TestCase):
         {
             'dsn': 'postgresql://user3:123123@localhost:5555/'
                    'abcdef?param=sss&param=123&host=testhost&user=testuser'
-                   '&port=2222&database=testdb',
+                   '&port=2222&database=testdb&sslmode=require',
             'host': '127.0.0.1',
             'port': '888',
             'user': 'me',
@@ -291,24 +297,28 @@ class TestConnectParams(tb.TestCase):
                 'server_settings': {'param': '123'},
                 'user': 'me',
                 'password': 'ask',
-                'database': 'db'})
+                'database': 'db',
+                'ssl': ssl.SSLContext,
+                'ssl_is_advisory': False})
         },
 
         {
             'dsn': 'postgresql://user3:123123@localhost:5555/'
                    'abcdef?param=sss&param=123&host=testhost&user=testuser'
-                   '&port=2222&database=testdb',
+                   '&port=2222&database=testdb&sslmode=disable',
             'host': '127.0.0.1',
             'port': '888',
             'user': 'me',
             'password': 'ask',
             'database': 'db',
             'server_settings': {'aa': 'bb'},
+            'ssl': True,
             'result': ([('127.0.0.1', 888)], {
                 'server_settings': {'aa': 'bb', 'param': '123'},
                 'user': 'me',
                 'password': 'ask',
-                'database': 'db'})
+                'database': 'db',
+                'ssl': True})
         },
 
         {
@@ -351,7 +361,7 @@ class TestConnectParams(tb.TestCase):
         env = testcase.get('env', {})
         test_env = {'PGHOST': None, 'PGPORT': None,
                     'PGUSER': None, 'PGPASSWORD': None,
-                    'PGDATABASE': None}
+                    'PGDATABASE': None, 'PGSSLMODE': None}
         test_env.update(env)
 
         dsn = testcase.get('dsn')
@@ -361,6 +371,7 @@ class TestConnectParams(tb.TestCase):
         password = testcase.get('password')
         passfile = testcase.get('passfile')
         database = testcase.get('database')
+        ssl = testcase.get('ssl')
         server_settings = testcase.get('server_settings')
 
         expected = testcase.get('result')
@@ -383,14 +394,21 @@ class TestConnectParams(tb.TestCase):
 
             addrs, params = connect_utils._parse_connect_dsn_and_args(
                 dsn=dsn, host=host, port=port, user=user, password=password,
-                passfile=passfile, database=database, ssl=None,
+                passfile=passfile, database=database, ssl=ssl,
                 connect_timeout=None, server_settings=server_settings)
 
             params = {k: v for k, v in params._asdict().items()
                       if v is not None}
+
             result = (addrs, params)
 
         if expected is not None:
+            for k, v in expected[1].items():
+                # If `expected` contains a type, allow that to "match" any
+                # instance of that type tyat `result` may contain. We need
+                # this because different SSLContexts don't compare equal.
+                if isinstance(v, type) and isinstance(result[1].get(k), v):
+                    result[1][k] = v
             self.assertEqual(expected, result)
 
     def test_test_connect_params_environ(self):
@@ -767,6 +785,38 @@ class TestConnection(tb.ConnectedTestCase):
                 user='ssl_user',
                 ssl=ssl_context)
 
+    @unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
+    async def test_connection_sslmode_no_ssl_server(self):
+        async def verify_works(sslmode):
+            con = None
+            try:
+                con = await self.connect(
+                    dsn='postgresql://foo/?sslmode=' + sslmode,
+                    host='localhost')
+                self.assertEqual(await con.fetchval('SELECT 42'), 42)
+            finally:
+                if con:
+                    await con.close()
+
+        async def verify_fails(sslmode):
+            con = None
+            try:
+                with self.assertRaises(ConnectionError):
+                    await self.connect(
+                        dsn='postgresql://foo/?sslmode=' + sslmode,
+                        host='localhost')
+                    await con.fetchval('SELECT 42')
+            finally:
+                if con:
+                    await con.close()
+
+        await verify_works('disable')
+        await verify_works('allow')
+        await verify_works('prefer')
+        await verify_fails('require')
+        await verify_fails('verify-ca')
+        await verify_fails('verify-full')
+
     async def test_connection_ssl_unix(self):
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
         ssl_context.load_verify_locations(SSL_CA_CERT_FILE)
@@ -859,6 +909,60 @@ class TestSSLConnection(tb.ConnectedTestCase):
             self.assertEqual(await con.fetchval('SELECT 43'), 43)
         finally:
             await con.close()
+
+    async def test_ssl_connection_sslmode(self):
+        async def verify_works(sslmode, *, host='localhost'):
+            con = None
+            try:
+                con = await self.connect(
+                    dsn='postgresql://foo/?sslmode=' + sslmode,
+                    host=host,
+                    user='ssl_user')
+                self.assertEqual(await con.fetchval('SELECT 42'), 42)
+            finally:
+                if con:
+                    await con.close()
+
+        async def verify_fails(sslmode, *, host='localhost',
+                               exn_type=ssl.SSLError):
+            # XXX: uvloop artifact
+            old_handler = self.loop.get_exception_handler()
+            con = None
+            try:
+                self.loop.set_exception_handler(lambda *args: None)
+                with self.assertRaises(exn_type):
+                    await self.connect(
+                        dsn='postgresql://foo/?sslmode=' + sslmode,
+                        host=host,
+                        user='ssl_user')
+                    await con.fetchval('SELECT 42')
+            finally:
+                if con:
+                    await con.close()
+                self.loop.set_exception_handler(old_handler)
+
+        invalid_auth_err = asyncpg.InvalidAuthorizationSpecificationError
+        await verify_fails('disable', exn_type=invalid_auth_err)
+        await verify_works('allow')
+        await verify_works('prefer')
+        await verify_works('require')
+        await verify_fails('verify-ca')
+        await verify_fails('verify-full')
+
+        orig_create_default_context = ssl.create_default_context
+        try:
+            def custom_create_default_context(*args, **kwargs):
+                ctx = orig_create_default_context(*args, **kwargs)
+                ctx.load_verify_locations(cafile=SSL_CA_CERT_FILE)
+                return ctx
+            ssl.create_default_context = custom_create_default_context
+            await verify_works('verify-ca')
+            await verify_works('verify-ca', host='127.0.0.1')
+            await verify_works('verify-full')
+            await verify_fails('verify-full', host='127.0.0.1',
+                               exn_type=ssl.CertificateError)
+        finally:
+            ssl.create_default_context = orig_create_default_context
 
     async def test_ssl_connection_default_context(self):
         # XXX: uvloop artifact
