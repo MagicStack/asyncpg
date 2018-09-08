@@ -7,12 +7,14 @@
 
 import asyncio
 import collections
+import functools
 import getpass
 import os
 import pathlib
 import platform
 import re
 import socket
+import ssl as ssl_module
 import stat
 import struct
 import time
@@ -32,6 +34,7 @@ _ConnectionParameters = collections.namedtuple(
         'password',
         'database',
         'ssl',
+        'ssl_is_advisory',
         'connect_timeout',
         'server_settings',
     ])
@@ -208,6 +211,11 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 if passfile is None:
                     passfile = val
 
+            if 'sslmode' in query:
+                val = query.pop('sslmode')
+                if ssl is None:
+                    ssl = val
+
             if query:
                 if server_settings is None:
                     server_settings = query
@@ -303,6 +311,47 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         raise ValueError(
             'could not determine the database address to connect to')
 
+    if ssl is None:
+        ssl = os.getenv('PGSSLMODE')
+
+    # ssl_is_advisory is only allowed to come from the sslmode parameter.
+    ssl_is_advisory = None
+    if isinstance(ssl, str):
+        SSLMODES = {
+            'disable': 0,
+            'allow': 1,
+            'prefer': 2,
+            'require': 3,
+            'verify-ca': 4,
+            'verify-full': 5,
+        }
+        try:
+            sslmode = SSLMODES[ssl]
+        except KeyError:
+            modes = ', '.join(SSLMODES.keys())
+            raise ValueError('`sslmode` parameter must be one of ' + modes)
+
+        # sslmode 'allow' is currently handled as 'prefer' because we're
+        # missing the "retry with SSL" behavior for 'allow', but do have the
+        # "retry without SSL" behavior for 'prefer'.
+        # Not changing 'allow' to 'prefer' here would be effectively the same
+        # as changing 'allow' to 'disable'.
+        if sslmode == SSLMODES['allow']:
+            sslmode = SSLMODES['prefer']
+
+        # docs at https://www.postgresql.org/docs/10/static/libpq-connect.html
+        # Not implemented: sslcert & sslkey & sslrootcert & sslcrl params.
+        if sslmode <= SSLMODES['allow']:
+            ssl = False
+            ssl_is_advisory = sslmode >= SSLMODES['allow']
+        else:
+            ssl = ssl_module.create_default_context()
+            ssl.check_hostname = sslmode >= SSLMODES['verify-full']
+            ssl.verify_mode = ssl_module.CERT_REQUIRED
+            if sslmode <= SSLMODES['require']:
+                ssl.verify_mode = ssl_module.CERT_NONE
+            ssl_is_advisory = sslmode <= SSLMODES['prefer']
+
     if ssl:
         for addr in addrs:
             if isinstance(addr, str):
@@ -321,7 +370,8 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
     params = _ConnectionParameters(
         user=user, password=password, database=database, ssl=ssl,
-        connect_timeout=connect_timeout, server_settings=server_settings)
+        ssl_is_advisory=ssl_is_advisory, connect_timeout=connect_timeout,
+        server_settings=server_settings)
 
     return addrs, params
 
@@ -384,11 +434,12 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
 
     if isinstance(addr, str):
         # UNIX socket
-        assert params.ssl is None
+        assert not params.ssl
         connector = loop.create_unix_connection(proto_factory, addr)
     elif params.ssl:
         connector = _create_ssl_connection(
-            proto_factory, *addr, loop=loop, ssl_context=params.ssl)
+            proto_factory, *addr, loop=loop, ssl_context=params.ssl,
+            ssl_is_advisory=params.ssl_is_advisory)
     else:
         connector = loop.create_connection(proto_factory, *addr)
 
@@ -435,7 +486,12 @@ async def _connect(*, loop, timeout, connection_class, **kwargs):
     raise last_error
 
 
-async def _get_ssl_ready_socket(host, port, *, loop):
+async def _negotiate_ssl_connection(host, port, conn_factory, *, loop, ssl,
+                                    server_hostname, ssl_is_advisory=False):
+    # Note: ssl_is_advisory only affects behavior when the server does not
+    # accept SSLRequests. If the SSLRequest is accepted but either the SSL
+    # negotiation fails or the PostgreSQL user isn't permitted to use SSL,
+    # there's nothing that would attempt to reconnect with a non-SSL socket.
     reader, writer = await asyncio.open_connection(host, port, loop=loop)
 
     tr = writer.transport
@@ -448,25 +504,41 @@ async def _get_ssl_ready_socket(host, port, *, loop):
         resp = await reader.readexactly(1)
 
         if resp == b'S':
-            return sock.dup()
+            conn_factory = functools.partial(
+                conn_factory, ssl=ssl, server_hostname=server_hostname)
+        elif (ssl_is_advisory and
+                ssl.verify_mode == ssl_module.CERT_NONE and
+                resp == b'N'):
+            # ssl_is_advisory will imply that ssl.verify_mode == CERT_NONE,
+            # since the only way to get ssl_is_advisory is from sslmode=prefer
+            # (or sslmode=allow). But be extra sure to disallow insecure
+            # connections when the ssl context asks for real security.
+            pass
         else:
             raise ConnectionError(
                 'PostgreSQL server at "{}:{}" rejected SSL upgrade'.format(
                     host, port))
+
+        sock = sock.dup()  # Must come before tr.close()
     finally:
         tr.close()
 
-
-async def _create_ssl_connection(protocol_factory, host, port, *,
-                                 loop, ssl_context):
-    sock = await _get_ssl_ready_socket(host, port, loop=loop)
     try:
-        return await loop.create_connection(
-            protocol_factory, sock=sock, ssl=ssl_context,
-            server_hostname=host)
+        return await conn_factory(sock=sock)  # Must come after tr.close()
     except Exception:
         sock.close()
         raise
+
+
+async def _create_ssl_connection(protocol_factory, host, port, *,
+                                 loop, ssl_context, ssl_is_advisory=False):
+    return await _negotiate_ssl_connection(
+        host, port,
+        functools.partial(loop.create_connection, protocol_factory),
+        loop=loop,
+        ssl=ssl_context,
+        server_hostname=host,
+        ssl_is_advisory=ssl_is_advisory)
 
 
 async def _open_connection(*, loop, addr, params: _ConnectionParameters):
@@ -474,18 +546,13 @@ async def _open_connection(*, loop, addr, params: _ConnectionParameters):
         r, w = await asyncio.open_unix_connection(addr, loop=loop)
     else:
         if params.ssl:
-            sock = await _get_ssl_ready_socket(*addr, loop=loop)
-
-            try:
-                r, w = await asyncio.open_connection(
-                    sock=sock,
-                    loop=loop,
-                    ssl=params.ssl,
-                    server_hostname=addr[0])
-            except Exception:
-                sock.close()
-                raise
-
+            r, w = await _negotiate_ssl_connection(
+                *addr,
+                functools.partial(asyncio.open_connection, loop=loop),
+                loop=loop,
+                ssl=params.ssl,
+                server_hostname=addr[0],
+                ssl_is_advisory=params.ssl_is_advisory)
         else:
             r, w = await asyncio.open_connection(*addr, loop=loop)
             _set_nodelay(_get_socket(w.transport))
