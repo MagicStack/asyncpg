@@ -1624,6 +1624,45 @@ class TestCodecs(tb.ConnectedTestCase):
                 DROP TYPE enum_t;
             ''')
 
+    async def test_enum_in_composite(self):
+        await self.con.execute('''
+            CREATE TYPE enum_t AS ENUM ('abc', 'def', 'ghi');
+            CREATE TYPE composite_w_enum AS (a int, b enum_t);
+        ''')
+
+        try:
+            result = await self.con.fetchval('''
+                SELECT ROW(1, 'def'::enum_t)::composite_w_enum
+            ''')
+            self.assertEqual(set(result.items()), {('a', 1), ('b', 'def')})
+
+        finally:
+            await self.con.execute('''
+                DROP TYPE composite_w_enum;
+                DROP TYPE enum_t;
+            ''')
+
+    async def test_enum_function_return(self):
+        await self.con.execute('''
+            CREATE TYPE enum_t AS ENUM ('abc', 'def', 'ghi');
+            CREATE FUNCTION return_enum() RETURNS enum_t
+            LANGUAGE plpgsql AS $$
+            BEGIN
+                RETURN 'abc'::enum_t;
+            END;
+            $$;
+        ''')
+
+        try:
+            result = await self.con.fetchval('''SELECT return_enum()''')
+            self.assertEqual(result, 'abc')
+
+        finally:
+            await self.con.execute('''
+                DROP FUNCTION return_enum();
+                DROP TYPE enum_t;
+            ''')
+
     async def test_no_result(self):
         st = await self.con.prepare('rollback')
         self.assertTupleEqual(st.get_attributes(), ())
