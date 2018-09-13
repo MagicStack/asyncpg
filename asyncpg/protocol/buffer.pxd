@@ -105,13 +105,14 @@ cdef class ReadBuffer:
     cdef inline int32_t read_int32(self) except? -1
     cdef inline int16_t read_int16(self) except? -1
     cdef inline read_cstr(self)
-    cdef int32_t has_message(self) except -1
-    cdef inline int32_t has_message_type(self, char mtype) except -1
+    cdef int32_t take_message(self) except -1
+    cdef inline int32_t take_message_type(self, char mtype) except -1
+    cdef int32_t put_message(self) except -1
     cdef inline const char* try_consume_message(self, ssize_t* len)
     cdef Memory consume_message(self)
     cdef bytearray consume_messages(self, char mtype)
-    cdef discard_message(self)
-    cdef inline _discard_message(self)
+    cdef finish_message(self)
+    cdef inline _finish_message(self)
     cdef inline char get_message_type(self)
     cdef inline int32_t get_message_length(self)
 

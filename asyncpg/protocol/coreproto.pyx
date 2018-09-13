@@ -22,8 +22,6 @@ cdef class CoreProtocol:
         self.xact_status = PQTRANS_IDLE
         self.encoding = 'utf-8'
 
-        self._skip_discard = False
-
         # executemany support data
         self._execute_iter = None
         self._execute_portal_name = None
@@ -36,7 +34,7 @@ cdef class CoreProtocol:
             char mtype
             ProtocolState state
 
-        while self.buffer.has_message() == 1:
+        while self.buffer.take_message() == 1:
             mtype = self.buffer.get_message_type()
             state = self.state
 
@@ -150,10 +148,7 @@ cdef class CoreProtocol:
                     self._push_result()
 
             finally:
-                if self._skip_discard:
-                    self._skip_discard = False
-                else:
-                    self.buffer.discard_message()
+                self.buffer.finish_message()
 
     cdef _process__auth(self, char mtype):
         if mtype == b'R':
@@ -319,8 +314,6 @@ cdef class CoreProtocol:
 
         self.result = buf.consume_messages(b'd')
 
-        self._skip_discard = True
-
         # By this point we have consumed all CopyData messages
         # in the inbound buffer.  If there are no messages left
         # in the buffer, we need to push the accumulated data
@@ -328,9 +321,13 @@ cdef class CoreProtocol:
         # batch.  If there _are_ non-CopyData messages left,
         # we must not push the result here and let the
         # _process__copy_out_data subprotocol do the job.
-        if not buf.has_message():
+        if not buf.take_message():
             self._on_result()
             self.result = None
+        else:
+            # If there is a message in the buffer, put it back to
+            # be processed by the next protocol iteration.
+            buf.put_message()
 
     cdef _write_copy_data_msg(self, object data):
         cdef:
@@ -385,11 +382,9 @@ cdef class CoreProtocol:
                     '_parse_data_msgs: first message is not "D"')
 
         if self._discard_data:
-            while True:
+            while buf.take_message_type(b'D'):
                 buf.consume_message()
-                if not buf.has_message() or buf.get_message_type() != b'D':
-                    self._skip_discard = True
-                    return
+            return
 
         if ASYNCPG_DEBUG:
             if type(self.result) is not list:
@@ -398,7 +393,7 @@ cdef class CoreProtocol:
                     format(self.result))
 
         rows = self.result
-        while True:
+        while buf.take_message_type(b'D'):
             cbuf = buf.try_consume_message(&cbuf_len)
             if cbuf != NULL:
                 row = decoder(self, cbuf, cbuf_len)
@@ -407,10 +402,6 @@ cdef class CoreProtocol:
                 row = decoder(self, mem.buf, mem.length)
 
             cpython.PyList_Append(rows, row)
-
-            if not buf.has_message() or buf.get_message_type() != b'D':
-                self._skip_discard = True
-                return
 
     cdef _parse_msg_backend_key_data(self):
         self.backend_pid = self.buffer.read_int32()

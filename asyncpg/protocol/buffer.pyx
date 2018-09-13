@@ -489,7 +489,7 @@ cdef class ReadBuffer:
 
                 self._ensure_first_buf()
 
-    cdef int32_t has_message(self) except -1:
+    cdef int32_t take_message(self) except -1:
         cdef:
             const char *cbuf
 
@@ -525,8 +525,24 @@ cdef class ReadBuffer:
         self._current_message_ready = 1
         return 1
 
-    cdef inline int32_t has_message_type(self, char mtype) except -1:
-        return self.has_message() and self.get_message_type() == mtype
+    cdef inline int32_t take_message_type(self, char mtype) except -1:
+        cdef const char *buf0
+
+        if self._current_message_ready:
+            return self._current_message_type == mtype
+        elif self._length >= 1:
+            self._ensure_first_buf()
+            buf0 = cpython.PyBytes_AS_STRING(self._buf0)
+
+            return buf0[self._pos0] == mtype and self.take_message()
+        else:
+            return 0
+
+    cdef int32_t put_message(self) except -1:
+        if not self._current_message_ready:
+            raise BufferError('cannot put message: no message taken')
+        self._current_message_ready = False
+        return 0
 
     cdef inline const char* try_consume_message(self, ssize_t* len):
         cdef:
@@ -541,7 +557,7 @@ cdef class ReadBuffer:
         buf = self._try_read_bytes(buf_len)
         if buf != NULL:
             len[0] = buf_len
-            self._discard_message()
+            self._finish_message()
         return buf
 
     cdef Memory consume_message(self):
@@ -551,7 +567,7 @@ cdef class ReadBuffer:
             mem = self.read(self._current_message_len_unread)
         else:
             mem = None
-        self._discard_message()
+        self._finish_message()
         return mem
 
     cdef bytearray consume_messages(self, char mtype):
@@ -562,7 +578,7 @@ cdef class ReadBuffer:
             ssize_t total_bytes = 0
             bytearray result
 
-        if not self.has_message_type(mtype):
+        if not self.take_message_type(mtype):
             return None
 
         # consume_messages is a volume-oriented method, so
@@ -571,25 +587,23 @@ cdef class ReadBuffer:
         result = PyByteArray_FromStringAndSize(NULL, self._length)
         buf = PyByteArray_AsString(result)
 
-        while self.has_message_type(mtype):
+        while self.take_message_type(mtype):
             nbytes = self._current_message_len_unread
             self._read(buf, nbytes)
             buf += nbytes
             total_bytes += nbytes
-            self._discard_message()
+            self._finish_message()
 
         # Clamp the result to an actual size read.
         PyByteArray_Resize(result, total_bytes)
 
         return result
 
-    cdef discard_message(self):
-        if self._current_message_type == 0:
-            # Already discarded
+    cdef finish_message(self):
+        if self._current_message_type == 0 or not self._current_message_ready:
+            # The message has already been finished (e.g by consume_message()),
+            # or has been put back by put_message().
             return
-
-        if not self._current_message_ready:
-            raise BufferError('no message to discard')
 
         if self._current_message_len_unread:
             if ASYNCPG_DEBUG:
@@ -602,9 +616,9 @@ cdef class ReadBuffer:
                     mtype,
                     (<Memory>discarded).as_bytes()))
 
-        self._discard_message()
+        self._finish_message()
 
-    cdef inline _discard_message(self):
+    cdef inline _finish_message(self):
         self._current_message_type = 0
         self._current_message_len = 0
         self._current_message_ready = 0
