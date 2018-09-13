@@ -19,7 +19,7 @@ cdef enum ProtocolState:
     PROTOCOL_CANCELLED = 3
 
     PROTOCOL_AUTH = 10
-    PROTOCOL_PREPARE = 11
+    PROTOCOL_PARSE_DESCRIBE = 11
     PROTOCOL_BIND_EXECUTE = 12
     PROTOCOL_BIND_EXECUTE_MANY = 13
     PROTOCOL_CLOSE_STMT_PORTAL = 14
@@ -105,7 +105,7 @@ cdef class CoreProtocol:
         bint result_execute_completed
 
     cdef _process__auth(self, char mtype)
-    cdef _process__prepare(self, char mtype)
+    cdef _process__parse_describe(self, char mtype)
     cdef _process__bind_execute(self, char mtype)
     cdef _process__bind_execute_many(self, char mtype)
     cdef _process__close_stmt_portal(self, char mtype)
