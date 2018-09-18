@@ -79,20 +79,17 @@ cdef inline _encode_time(WriteBuffer buf, int64_t seconds,
 
 
 cdef inline int32_t _decode_time(FastReadBuffer buf, int64_t *seconds,
-                                 uint32_t *microseconds):
-    # XXX: add support for double timestamps
-    # int64 timestamps,
+                                 int32_t *microseconds):
     cdef int64_t ts = hton.unpack_int64(buf.read(8))
 
     if ts == pg_time64_infinity:
         return 1
     elif ts == pg_time64_negative_infinity:
         return -1
-
-    seconds[0] = <int64_t>(ts / 1000000)
-    microseconds[0] = <uint32_t>(ts % 1000000)
-
-    return 0
+    else:
+        seconds[0] = ts // 1000000
+        microseconds[0] = <int32_t>(ts % 1000000)
+        return 0
 
 
 cdef date_encode(ConnectionSettings settings, WriteBuffer buf, obj):
@@ -181,7 +178,7 @@ cdef timestamp_encode_tuple(ConnectionSettings settings, WriteBuffer buf, obj):
 cdef timestamp_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
         int64_t seconds = 0
-        uint32_t microseconds = 0
+        int32_t microseconds = 0
         int32_t inf = _decode_time(buf, &seconds, &microseconds)
 
     if inf > 0:
@@ -242,7 +239,7 @@ cdef timestamptz_encode(ConnectionSettings settings, WriteBuffer buf, obj):
 cdef timestamptz_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
         int64_t seconds = 0
-        uint32_t microseconds = 0
+        int32_t microseconds = 0
         int32_t inf = _decode_time(buf, &seconds, &microseconds)
 
     if inf > 0:
@@ -285,7 +282,7 @@ cdef time_encode_tuple(ConnectionSettings settings, WriteBuffer buf, obj):
 cdef time_decode(ConnectionSettings settings, FastReadBuffer buf):
     cdef:
         int64_t seconds = 0
-        uint32_t microseconds = 0
+        int32_t microseconds = 0
 
     _decode_time(buf, &seconds, &microseconds)
 
@@ -400,9 +397,10 @@ cdef interval_decode(ConnectionSettings settings, FastReadBuffer buf):
         int32_t months
         int32_t years
         int64_t seconds = 0
-        uint32_t microseconds = 0
+        int32_t microseconds = 0
 
     _decode_time(buf, &seconds, &microseconds)
+
     days = hton.unpack_int32(buf.read(4))
     months = hton.unpack_int32(buf.read(4))
 

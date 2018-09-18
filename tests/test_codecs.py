@@ -169,7 +169,11 @@ type_samples = [
         {'textinput': 'infinity', 'output': infinity_datetime},
         {'textinput': '-infinity', 'output': negative_infinity_datetime},
         {'input': datetime.date(2000, 1, 1),
-         'output': datetime.datetime(2000, 1, 1)}
+         'output': datetime.datetime(2000, 1, 1)},
+        {'textinput': '1970-01-01 20:31:23.648',
+         'output': datetime.datetime(1970, 1, 1, 20, 31, 23, 648000)},
+        {'input': datetime.datetime(1970, 1, 1, 20, 31, 23, 648000),
+         'textoutput': '1970-01-01 20:31:23.648'},
     ]),
     ('date', 'date', [
         datetime.date(3000, 5, 20),
@@ -215,12 +219,29 @@ type_samples = [
         datetime.time(22, 30, 0, tzinfo=_timezone(0)),
     ]),
     ('interval', 'interval', [
-        # no months :(
         datetime.timedelta(40, 10, 1234),
         datetime.timedelta(0, 0, 4321),
         datetime.timedelta(0, 0),
         datetime.timedelta(-100, 0),
         datetime.timedelta(-100, -400),
+        {
+            'textinput': '-2 years -11 months -10 days '
+                         '-2 hours -800 milliseconds',
+            'output': datetime.timedelta(
+                days=(-2 * 365) + (-11 * 30) - 10,
+                seconds=(-2 * 3600),
+                milliseconds=-800
+            ),
+        },
+        {
+            'query': 'SELECT justify_hours($1::interval)::text',
+            'input': datetime.timedelta(
+                days=(-2 * 365) + (-11 * 30) - 10,
+                seconds=(-2 * 3600),
+                milliseconds=-800
+            ),
+            'textoutput': '-1070 days -02:00:00.8',
+        },
     ]),
     ('uuid', 'uuid', [
         uuid.UUID('38a4ff5a-3a56-11e6-a6c2-c8f73323c6d4'),
@@ -458,6 +479,9 @@ class TestCodecs(tb.ConnectedTestCase):
                             stmt = text_out
                         else:
                             outputval = sample['output']
+
+                        if sample.get('query'):
+                            stmt = await self.con.prepare(sample['query'])
                     else:
                         inputval = outputval = sample
 
