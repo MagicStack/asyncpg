@@ -1169,29 +1169,57 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_statement_cache</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Connection.set_builtin_type_codec"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.set_builtin_type_codec">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">set_builtin_type_codec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
-                                     <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;public&#39;</span><span class="p">,</span> <span class="n">codec_name</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Set a builtin codec for the specified data type.</span>
+                                     <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;public&#39;</span><span class="p">,</span> <span class="n">codec_name</span><span class="p">,</span>
+                                     <span class="nb">format</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set a builtin codec for the specified scalar data type.</span>
 
-<span class="sd">        :param typename:  Name of the data type the codec is for.</span>
-<span class="sd">        :param schema:  Schema name of the data type the codec is for</span>
-<span class="sd">                        (defaults to &#39;public&#39;)</span>
-<span class="sd">        :param codec_name:  The name of the builtin codec.</span>
+<span class="sd">        This method has two uses.  The first is to register a builtin</span>
+<span class="sd">        codec for an extension type without a stable OID, such as &#39;hstore&#39;.</span>
+<span class="sd">        The second use is to declare that an extension type or a</span>
+<span class="sd">        user-defined type is wire-compatible with a certain builtin</span>
+<span class="sd">        data type and should be exchanged as such.</span>
+
+<span class="sd">        :param typename:</span>
+<span class="sd">            Name of the data type the codec is for.</span>
+
+<span class="sd">        :param schema:</span>
+<span class="sd">            Schema name of the data type the codec is for</span>
+<span class="sd">            (defaults to ``&#39;public&#39;``).</span>
+
+<span class="sd">        :param codec_name:</span>
+<span class="sd">            The name of the builtin codec to use for the type.</span>
+<span class="sd">            This should be either the name of a known core type</span>
+<span class="sd">            (such as ``&quot;int&quot;``), or the name of a supported extension</span>
+<span class="sd">            type.  Currently, the only supported extension type is</span>
+<span class="sd">            ``&quot;pg_contrib.hstore&quot;``.</span>
+
+<span class="sd">        :param format:</span>
+<span class="sd">            If *format* is ``None`` (the default), all formats supported</span>
+<span class="sd">            by the target codec are declared to be supported for *typename*.</span>
+<span class="sd">            If *format* is ``&#39;text&#39;`` or ``&#39;binary&#39;``, then only the</span>
+<span class="sd">            specified format is declared to be supported for *typename*.</span>
+
+<span class="sd">        .. versionchanged:: 0.18.0</span>
+<span class="sd">            The *codec_name* argument can be the name of any known</span>
+<span class="sd">            core data type.  Added the *format* keyword argument.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
 
         <span class="n">typeinfo</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">(</span>
             <span class="n">introspection</span><span class="o">.</span><span class="n">TYPE_BY_NAME</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">typeinfo</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;unknown type: </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                <span class="s1">&#39;unknown type: </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
 
-        <span class="n">oid</span> <span class="o">=</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;oid&#39;</span><span class="p">]</span>
-        <span class="k">if</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;kind&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="sa">b</span><span class="s1">&#39;b&#39;</span> <span class="ow">or</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;elemtype&#39;</span><span class="p">]:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">introspection</span><span class="o">.</span><span class="n">is_scalar_type</span><span class="p">(</span><span class="n">typeinfo</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
                 <span class="s1">&#39;cannot alias non-scalar type </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
 
+        <span class="n">oid</span> <span class="o">=</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;oid&#39;</span><span class="p">]</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">set_builtin_type_codec</span><span class="p">(</span>
-            <span class="n">oid</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">,</span> <span class="s1">&#39;scalar&#39;</span><span class="p">,</span> <span class="n">codec_name</span><span class="p">)</span>
+            <span class="n">oid</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">,</span> <span class="s1">&#39;scalar&#39;</span><span class="p">,</span> <span class="n">codec_name</span><span class="p">,</span> <span class="nb">format</span><span class="p">)</span>
 
         <span class="c1"># Statement cache is no longer valid due to codec changes.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_statement_cache</span><span class="p">()</span></div>

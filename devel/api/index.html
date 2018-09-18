@@ -863,8 +863,13 @@ asyncpg that the database schema has changed.</p>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.set_builtin_type_codec">
-<em class="property">coroutine </em><code class="descname">set_builtin_type_codec</code><span class="sig-paren">(</span><em>typename</em>, <em>*</em>, <em>schema='public'</em>, <em>codec_name</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.set_builtin_type_codec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.set_builtin_type_codec" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set a builtin codec for the specified data type.</p>
+<em class="property">coroutine </em><code class="descname">set_builtin_type_codec</code><span class="sig-paren">(</span><em>typename</em>, <em>*</em>, <em>schema='public'</em>, <em>codec_name</em>, <em>format=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.set_builtin_type_codec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.set_builtin_type_codec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a builtin codec for the specified scalar data type.</p>
+<p>This method has two uses.  The first is to register a builtin
+codec for an extension type without a stable OID, such as ‘hstore’.
+The second use is to declare that an extension type or a
+user-defined type is wire-compatible with a certain builtin
+data type and should be exchanged as such.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -872,13 +877,25 @@ asyncpg that the database schema has changed.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>typename</strong> – Name of the data type the codec is for.</li>
 <li><strong>schema</strong> – Schema name of the data type the codec is for
-(defaults to ‘public’)</li>
-<li><strong>codec_name</strong> – The name of the builtin codec.</li>
+(defaults to <code class="docutils literal notranslate"><span class="pre">'public'</span></code>).</li>
+<li><strong>codec_name</strong> – The name of the builtin codec to use for the type.
+This should be either the name of a known core type
+(such as <code class="docutils literal notranslate"><span class="pre">&quot;int&quot;</span></code>), or the name of a supported extension
+type.  Currently, the only supported extension type is
+<code class="docutils literal notranslate"><span class="pre">&quot;pg_contrib.hstore&quot;</span></code>.</li>
+<li><strong>format</strong> – If <em>format</em> is <code class="docutils literal notranslate"><span class="pre">None</span></code> (the default), all formats supported
+by the target codec are declared to be supported for <em>typename</em>.
+If <em>format</em> is <code class="docutils literal notranslate"><span class="pre">'text'</span></code> or <code class="docutils literal notranslate"><span class="pre">'binary'</span></code>, then only the
+specified format is declared to be supported for <em>typename</em>.</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.18.0: </span>The <em>codec_name</em> argument can be the name of any known
+core data type.  Added the <em>format</em> keyword argument.</p>
+</div>
 </dd></dl>
 
 <dl class="method">
