@@ -104,8 +104,10 @@ def _read_password_file(passfile: pathlib.Path) \
 
 def _read_password_from_pgpass(
         *, passfile: typing.Optional[pathlib.Path],
-        hosts: typing.List[typing.Union[str, typing.Tuple[str, int]]],
-        port: int, database: str, user: str):
+        hosts: typing.List[str],
+        ports: typing.List[int],
+        database: str,
+        user: str):
     """Parse the pgpass file and return the matching password.
 
     :return:
@@ -116,7 +118,7 @@ def _read_password_from_pgpass(
     if not passtab:
         return None
 
-    for host in hosts:
+    for host, port in zip(hosts, ports):
         if host.startswith('/'):
             # Unix sockets get normalized into 'localhost'
             host = 'localhost'
@@ -137,27 +139,83 @@ def _read_password_from_pgpass(
     return None
 
 
+def _validate_port_spec(hosts, port):
+    if isinstance(port, list):
+        # If there is a list of ports, its length must
+        # match that of the host list.
+        if len(port) != len(hosts):
+            raise exceptions.InterfaceError(
+                'could not match {} port numbers to {} hosts'.format(
+                    len(port), len(hosts)))
+    else:
+        port = [port for _ in range(len(hosts))]
+
+    return port
+
+
+def _parse_hostlist(hostlist, port):
+    if ',' in hostlist:
+        # A comma-separated list of host addresses.
+        hostspecs = hostlist.split(',')
+    else:
+        hostspecs = [hostlist]
+
+    hosts = []
+    hostlist_ports = []
+
+    if not port:
+        portspec = os.environ.get('PGPORT')
+        if portspec:
+            if ',' in portspec:
+                default_port = [int(p) for p in portspec.split(',')]
+            else:
+                default_port = int(portspec)
+        else:
+            default_port = 5432
+
+        default_port = _validate_port_spec(hostspecs, default_port)
+
+    else:
+        port = _validate_port_spec(hostspecs, port)
+
+    for i, hostspec in enumerate(hostspecs):
+        addr, _, hostspec_port = hostspec.partition(':')
+        hosts.append(addr)
+
+        if not port:
+            if hostspec_port:
+                hostlist_ports.append(int(hostspec_port))
+            else:
+                hostlist_ports.append(default_port[i])
+
+    if not port:
+        port = hostlist_ports
+
+    return hosts, port
+
+
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                                 password, passfile, database, ssl,
                                 connect_timeout, server_settings):
-    if host is not None and not isinstance(host, str):
-        raise TypeError(
-            'host argument is expected to be str, got {!r}'.format(
-                type(host)))
+    # `auth_hosts` is the version of host information for the purposes
+    # of reading the pgpass file.
+    auth_hosts = None
 
     if dsn:
         parsed = urllib.parse.urlparse(dsn)
 
         if parsed.scheme not in {'postgresql', 'postgres'}:
             raise ValueError(
-                'invalid DSN: scheme is expected to be either of '
+                'invalid DSN: scheme is expected to be either '
                 '"postgresql" or "postgres", got {!r}'.format(parsed.scheme))
 
-        if parsed.port and port is None:
-            port = int(parsed.port)
+        if not host and parsed.netloc:
+            if '@' in parsed.netloc:
+                auth, _, hostspec = parsed.netloc.partition('@')
+            else:
+                hostspec = parsed.netloc
 
-        if parsed.hostname and host is None:
-            host = parsed.hostname
+            host, port = _parse_hostlist(hostspec, port)
 
         if parsed.path and database is None:
             database = parsed.path
@@ -178,13 +236,13 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
             if 'host' in query:
                 val = query.pop('host')
-                if host is None:
-                    host = val
+                if not host and val:
+                    host, port = _parse_hostlist(val, port)
 
             if 'port' in query:
-                val = int(query.pop('port'))
-                if port is None:
-                    port = val
+                val = query.pop('port')
+                if not port and val:
+                    port = [int(p) for p in val.split(',')]
 
             if 'dbname' in query:
                 val = query.pop('dbname')
@@ -222,24 +280,19 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 else:
                     server_settings = {**query, **server_settings}
 
-    # On env-var -> connection parameter conversion read here:
-    # https://www.postgresql.org/docs/current/static/libpq-envars.html
-    # Note that env values may be an empty string in cases when
-    # the variable is "unset" by setting it to an empty value
-    # `auth_hosts` is the version of host information for the purposes
-    # of reading the pgpass file.
-    auth_hosts = None
-    if host is None:
-        host = os.getenv('PGHOST')
-        if not host:
-            auth_hosts = ['localhost']
+    if not host:
+        hostspec = os.environ.get('PGHOST')
+        if hostspec:
+            host, port = _parse_hostlist(hostspec, port)
 
-            if _system == 'Windows':
-                host = ['localhost']
-            else:
-                host = ['/tmp', '/private/tmp',
-                        '/var/pgsql_socket', '/run/postgresql',
-                        'localhost']
+    if not host:
+        auth_hosts = ['localhost']
+
+        if _system == 'Windows':
+            host = ['localhost']
+        else:
+            host = ['/run/postgresql', '/var/run/postgresql',
+                    '/tmp', '/private/tmp', 'localhost']
 
     if not isinstance(host, list):
         host = [host]
@@ -247,14 +300,23 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     if auth_hosts is None:
         auth_hosts = host
 
-    if port is None:
-        port = os.getenv('PGPORT')
-        if port:
-            port = int(port)
+    if not port:
+        portspec = os.environ.get('PGPORT')
+        if portspec:
+            if ',' in portspec:
+                port = [int(p) for p in portspec.split(',')]
+            else:
+                port = int(portspec)
         else:
             port = 5432
+
+    elif isinstance(port, (list, tuple)):
+        port = [int(p) for p in port]
+
     else:
         port = int(port)
+
+    port = _validate_port_spec(host, port)
 
     if user is None:
         user = os.getenv('PGUSER')
@@ -293,19 +355,20 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
         if passfile is not None:
             password = _read_password_from_pgpass(
-                hosts=auth_hosts, port=port, database=database, user=user,
+                hosts=auth_hosts, ports=port,
+                database=database, user=user,
                 passfile=passfile)
 
     addrs = []
-    for h in host:
+    for h, p in zip(host, port):
         if h.startswith('/'):
             # UNIX socket name
             if '.s.PGSQL.' not in h:
-                h = os.path.join(h, '.s.PGSQL.{}'.format(port))
+                h = os.path.join(h, '.s.PGSQL.{}'.format(p))
             addrs.append(h)
         else:
             # TCP host/port
-            addrs.append((h, port))
+            addrs.append((h, p))
 
     if not addrs:
         raise ValueError(
@@ -329,7 +392,8 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             sslmode = SSLMODES[ssl]
         except KeyError:
             modes = ', '.join(SSLMODES.keys())
-            raise ValueError('`sslmode` parameter must be one of ' + modes)
+            raise exceptions.InterfaceError(
+                '`sslmode` parameter must be one of: {}'.format(modes))
 
         # sslmode 'allow' is currently handled as 'prefer' because we're
         # missing the "retry with SSL" behavior for 'allow', but do have the

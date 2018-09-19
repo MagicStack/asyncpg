@@ -23,6 +23,7 @@ from asyncpg import _testbase as tb
 from asyncpg import connection
 from asyncpg import connect_utils
 from asyncpg import cluster as pg_cluster
+from asyncpg import exceptions
 from asyncpg.serverversion import split_server_version_string
 
 _system = platform.uname().system
@@ -285,6 +286,57 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'dsn': 'postgresql://user@host1,host2/db',
+            'result': ([('host1', 5432), ('host2', 5432)], {
+                'database': 'db',
+                'user': 'user',
+            })
+        },
+
+        {
+            'dsn': 'postgresql://user@host1:1111,host2:2222/db',
+            'result': ([('host1', 1111), ('host2', 2222)], {
+                'database': 'db',
+                'user': 'user',
+            })
+        },
+
+        {
+            'env': {
+                'PGHOST': 'host1:1111,host2:2222',
+                'PGUSER': 'foo',
+            },
+            'dsn': 'postgresql:///db',
+            'result': ([('host1', 1111), ('host2', 2222)], {
+                'database': 'db',
+                'user': 'foo',
+            })
+        },
+
+        {
+            'env': {
+                'PGUSER': 'foo',
+            },
+            'dsn': 'postgresql:///db?host=host1:1111,host2:2222',
+            'result': ([('host1', 1111), ('host2', 2222)], {
+                'database': 'db',
+                'user': 'foo',
+            })
+        },
+
+        {
+            'env': {
+                'PGUSER': 'foo',
+            },
+            'dsn': 'postgresql:///db',
+            'host': ['host1', 'host2'],
+            'result': ([('host1', 5432), ('host2', 5432)], {
+                'database': 'db',
+                'user': 'foo',
+            })
+        },
+
+        {
             'dsn': 'postgresql://user3:123123@localhost:5555/'
                    'abcdef?param=sss&param=123&host=testhost&user=testuser'
                    '&port=2222&database=testdb&sslmode=require',
@@ -331,6 +383,14 @@ class TestConnectParams(tb.TestCase):
         {
             'dsn': 'pq:///dbname?host=/unix_sock/test&user=spam',
             'error': (ValueError, 'invalid DSN')
+        },
+        {
+            'dsn': 'postgresql://host1,host2,host3/db',
+            'port': [111, 222],
+            'error': (
+                exceptions.InterfaceError,
+                'could not match 2 port numbers to 3 hosts'
+            )
         },
     ]
 
@@ -409,7 +469,7 @@ class TestConnectParams(tb.TestCase):
                 # this because different SSLContexts don't compare equal.
                 if isinstance(v, type) and isinstance(result[1].get(k), v):
                     result[1][k] = v
-            self.assertEqual(expected, result)
+            self.assertEqual(expected, result, 'Testcase: {}'.format(testcase))
 
     def test_test_connect_params_environ(self):
         self.assertNotIn('AAAAAAAAAA123', os.environ)

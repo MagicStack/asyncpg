@@ -1506,77 +1506,120 @@ async def connect(dsn=None, *,
                   server_settings=None):
     r"""A coroutine to establish a connection to a PostgreSQL server.
 
+    The connection parameters may be specified either as a connection
+    URI in *dsn*, or as specific keyword arguments, or both.
+    If both *dsn* and keyword arguments are specified, the latter
+    override the corresponding values parsed from the connection URI.
+    The default values for the majority of arguments can be specified
+    using `environment variables <postgres envvars>`_.
+
     Returns a new :class:`~asyncpg.connection.Connection` object.
 
     :param dsn:
         Connection arguments specified using as a single string in the
-        following format:
-        ``postgres://user:pass@host:port/database?option=value``
+        `libpq connection URI format`_:
+        ``postgres://user:password@host:port/database?option=value``.
+        The following options are recognized by asyncpg: host, port,
+        user, database (or dbname), password, passfile, sslmode.
+        Unlike libpq, asyncpg will treat unrecognized options
+        as `server settings`_ to be used for the connection.
 
     :param host:
-        database host address or a path to the directory containing
-        database server UNIX socket (defaults to the default UNIX socket,
-        or the value of the ``PGHOST`` environment variable, if set).
+        Database host address as one of the following:
+
+        - an IP address or a domain name;
+        - an absolute path to the directory containing the database
+          server Unix-domain socket (not supported on Windows);
+        - a sequence of any of the above, in which case the addresses
+          will be tried in order, and the first successful connection
+          will be returned.
+
+        If not specified, asyncpg will try the following, in order:
+
+        - host address(es) parsed from the *dsn* argument,
+        - the value of the ``PGHOST`` environment variable,
+        - on Unix, common directories used for PostgreSQL Unix-domain
+          sockets: ``"/run/postgresql"``, ``"/var/run/postgresl"``,
+          ``"/var/pgsql_socket"``, ``"/private/tmp"``, and ``"/tmp"``,
+        - ``"localhost"``.
 
     :param port:
-        connection port number (defaults to ``5432``, or the value of
-        the ``PGPORT`` environment variable, if set)
+        Port number to connect to at the server host
+        (or Unix-domain socket file extension).  If multiple host
+        addresses were specified, this parameter may specify a
+        sequence of port numbers of the same length as the host sequence,
+        or it may specify a single port number to be used for all host
+        addresses.
+
+        If not specified, the value parsed from the *dsn* argument is used,
+        or the value of the ``PGPORT`` environment variable, or ``5432`` if
+        neither is specified.
 
     :param user:
-        the name of the database role used for authentication
-        (defaults to the name of the effective user of the process
-        making the connection, or the value of ``PGUSER`` environment
-        variable, if set)
+        The name of the database role used for authentication.
+
+        If not specified, the value parsed from the *dsn* argument is used,
+        or the value of the ``PGUSER`` environment variable, or the
+        operating system name of the user running the application.
 
     :param database:
-        the name of the database (defaults to the value of ``PGDATABASE``
-        environment variable, if set.)
+        The name of the database to connect to.
+
+        If not specified, the value parsed from the *dsn* argument is used,
+        or the value of the ``PGDATABASE`` environment variable, or the
+        operating system name of the user running the application.
 
     :param password:
-        password used for authentication
+        Password to be used for authentication, if the server requires
+        one.  If not specified, the value parsed from the *dsn* argument
+        is used, or the value of the ``PGPASSWORD`` environment variable.
+        Note that the use of the environment variable is discouraged as
+        other users and applications may be able to read it without needing
+        specific privileges.  It is recommended to use *passfile* instead.
 
     :param passfile:
-        the name of the file used to store passwords
+        The name of the file used to store passwords
         (defaults to ``~/.pgpass``, or ``%APPDATA%\postgresql\pgpass.conf``
-        on Windows)
+        on Windows).
 
     :param loop:
         An asyncio event loop instance.  If ``None``, the default
         event loop will be used.
 
     :param float timeout:
-        connection timeout in seconds.
+        Connection timeout in seconds.
 
     :param int statement_cache_size:
-        the size of prepared statement LRU cache.  Pass ``0`` to
+        The size of prepared statement LRU cache.  Pass ``0`` to
         disable the cache.
 
     :param int max_cached_statement_lifetime:
-        the maximum time in seconds a prepared statement will stay
+        The maximum time in seconds a prepared statement will stay
         in the cache.  Pass ``0`` to allow statements be cached
         indefinitely.
 
     :param int max_cacheable_statement_size:
-        the maximum size of a statement that can be cached (15KiB by
+        The maximum size of a statement that can be cached (15KiB by
         default).  Pass ``0`` to allow all statements to be cached
         regardless of their size.
 
     :param float command_timeout:
-        the default timeout for operations on this connection
+        The default timeout for operations on this connection
         (the default is ``None``: no timeout).
 
     :param ssl:
-        pass ``True`` or an `ssl.SSLContext <SSLContext_>`_ instance to
+        Pass ``True`` or an `ssl.SSLContext <SSLContext_>`_ instance to
         require an SSL connection.  If ``True``, a default SSL context
         returned by `ssl.create_default_context() <create_default_context_>`_
         will be used.
 
     :param dict server_settings:
-        an optional dict of server runtime parameters.  Refer to
-        PostgreSQL documentation for a `list of supported options`_.
+        An optional dict of server runtime parameters.  Refer to
+        PostgreSQL documentation for
+        a `list of supported options <server settings>`_.
 
     :param Connection connection_class:
-        class of the returned connection object.  Must be a subclass of
+        Class of the returned connection object.  Must be a subclass of
         :class:`~asyncpg.connection.Connection`.
 
     :return: A :class:`~asyncpg.connection.Connection` instance.
@@ -1613,8 +1656,13 @@ async def connect(dsn=None, *,
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
         https://docs.python.org/3/library/ssl.html#ssl.create_default_context
-    .. _list of supported options:
+    .. _server settings:
         https://www.postgresql.org/docs/current/static/runtime-config.html
+    .. _postgres envvars:
+        https://www.postgresql.org/docs/current/static/libpq-envars.html
+    .. _libpq connection URI format:
+        https://www.postgresql.org/docs/current/static/\
+        libpq-connect.html#LIBPQ-CONNSTRING
     """
     if not issubclass(connection_class, Connection):
         raise TypeError(
