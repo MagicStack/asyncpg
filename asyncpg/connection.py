@@ -100,7 +100,7 @@ class Connection(metaclass=ConnectionMeta):
         #
         # Used for `con.fetchval()`, `con.fetch()`, `con.fetchrow()`,
         # `con.execute()`, and `con.executemany()`.
-        self._stmt_exclusive_section = _Atomic()
+        self._stmt_exclusive_section = asyncio.Lock(loop=loop)
 
         if loop.get_debug():
             self._source_traceback = _extract_stack()
@@ -1409,7 +1409,7 @@ class Connection(metaclass=ConnectionMeta):
         self._drop_global_statement_cache()
 
     async def _execute(self, query, args, limit, timeout, return_status=False):
-        with self._stmt_exclusive_section:
+        async with self._stmt_exclusive_section:
             result, _ = await self.__execute(
                 query, args, limit, timeout, return_status=return_status)
         return result
@@ -1425,7 +1425,7 @@ class Connection(metaclass=ConnectionMeta):
         executor = lambda stmt, timeout: self._protocol.bind_execute_many(
             stmt, args, '', timeout)
         timeout = self._protocol._get_timeout(timeout)
-        with self._stmt_exclusive_section:
+        async with self._stmt_exclusive_section:
             result, _ = await self._do_execute(query, executor, timeout)
         return result
 
@@ -1781,22 +1781,6 @@ class _StatementCache:
             # Let the connection know that the statement was removed
             # from the cache.
             self._on_remove(old_entry._statement)
-
-
-class _Atomic:
-    __slots__ = ('_acquired',)
-
-    def __init__(self):
-        self._acquired = 0
-
-    def __enter__(self):
-        if self._acquired:
-            raise exceptions.InterfaceError(
-                'cannot perform operation: another operation is in progress')
-        self._acquired = 1
-
-    def __exit__(self, t, e, tb):
-        self._acquired = 0
 
 
 class _ConnectionProxy:

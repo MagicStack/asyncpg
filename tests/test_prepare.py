@@ -383,15 +383,22 @@ class TestPrepare(tb.ConnectedTestCase):
 
                 meth = getattr(self.con, methname)
 
+                footprints = []
+
+                async def _trace(awaitable, footprint_before, footprint_after):
+                    footprints.append(footprint_before)
+                    result = await awaitable
+                    footprints.append(footprint_after)
+                    return result
+
                 vf = self.loop.create_task(
-                    meth('SELECT ROW(pg_sleep(0.1), 1)'))
+                    _trace(meth('SELECT ROW(pg_sleep(0.1), 1)'), '11', '12'))
 
                 await asyncio.sleep(0.01, loop=self.loop)
 
-                with self.assertRaisesRegex(asyncpg.InterfaceError,
-                                            'another operation'):
-                    await meth('SELECT 2')
+                await _trace(meth('SELECT 2'), '21', '22')
 
+                self.assertEqual(footprints, ['11', '21', '12', '22'])
                 self.assertEqual(await vf, val)
 
     async def test_prepare_21_errors(self):
