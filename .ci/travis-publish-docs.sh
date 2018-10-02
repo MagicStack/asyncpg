@@ -23,7 +23,7 @@ PACKAGE_VERSION=$(python ".ci/package-version.py")
 REPO=$(git config remote.origin.url)
 SSH_REPO=${REPO/https:\/\/github.com\//git@github.com:}
 COMMITISH=$(git rev-parse --verify HEAD)
-AUTHOR=$(git show --format="%aN <%aE>" "${COMMITISH}")
+AUTHOR=$(git show --quiet --format="%aN <%aE>" "${COMMITISH}")
 
 git clone "${REPO}" docs/gh-pages
 cd docs/gh-pages
