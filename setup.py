@@ -27,7 +27,7 @@ from setuptools.command import build_py as setuptools_build_py
 from setuptools.command import sdist as setuptools_sdist
 
 
-CYTHON_DEPENDENCY = 'Cython==0.28.4'
+CYTHON_DEPENDENCY = 'Cython==0.28.5'
 
 # Minimal dependencies required to test asyncpg.
 TEST_DEPENDENCIES = [
@@ -158,7 +158,7 @@ class build_ext(distutils_build_ext.build_ext):
             self.cython_always = True
             self.cython_annotate = True
             self.cython_directives = "linetrace=True"
-            self.define = 'ASYNCPG_DEBUG,CYTHON_TRACE,CYTHON_TRACE_NOGIL'
+            self.define = 'PG_DEBUG,CYTHON_TRACE,CYTHON_TRACE_NOGIL'
             self.debug = True
         else:
             self.cython_always = False
@@ -213,7 +213,10 @@ class build_ext(distutils_build_ext.build_ext):
 
             from Cython.Build import cythonize
 
-            directives = {}
+            directives = {
+                'language_level': '3',
+            }
+
             if self.cython_directives:
                 for directive in self.cython_directives.split(','):
                     k, _, v = directive.partition('=')
@@ -272,11 +275,18 @@ setuptools.setup(
     include_package_data=True,
     ext_modules=[
         distutils_extension.Extension(
+            "asyncpg.pgproto.pgproto",
+            ["asyncpg/pgproto/pgproto.pyx"],
+            extra_compile_args=CFLAGS,
+            extra_link_args=LDFLAGS),
+
+        distutils_extension.Extension(
             "asyncpg.protocol.protocol",
             ["asyncpg/protocol/record/recordobj.c",
              "asyncpg/protocol/protocol.pyx"],
+            include_dirs=['asyncpg/pgproto/'],
             extra_compile_args=CFLAGS,
-            extra_link_args=LDFLAGS)
+            extra_link_args=LDFLAGS),
     ],
     cmdclass={'build_ext': build_ext, 'build_py': build_py, 'sdist': sdist},
     test_suite='tests.suite',

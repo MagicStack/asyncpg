@@ -1,0 +1,3 @@
+[submodule "asyncpg/pgproto"]
+	path = asyncpg/pgproto
+	url = https://github.com/MagicStack/py-pgproto.git

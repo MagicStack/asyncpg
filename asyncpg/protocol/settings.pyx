@@ -9,7 +9,7 @@ from asyncpg import exceptions
 
 
 @cython.final
-cdef class ConnectionSettings:
+cdef class ConnectionSettings(pgproto.CodecContext):
 
     def __cinit__(self, conn_key):
         self._encoding = 'utf-8'
@@ -26,10 +26,10 @@ cdef class ConnectionSettings:
             self._encoding = self._codec.name
             self._is_utf8 = self._encoding == 'utf-8'
 
-    cdef inline is_encoding_utf8(self):
+    cdef is_encoding_utf8(self):
         return self._is_utf8
 
-    cpdef inline get_text_codec(self):
+    cpdef get_text_codec(self):
         return self._codec
 
     cpdef inline register_data_types(self, types):

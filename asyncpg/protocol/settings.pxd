@@ -5,7 +5,7 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-cdef class ConnectionSettings:
+cdef class ConnectionSettings(pgproto.CodecContext):
     cdef:
         str _encoding
         object _codec
@@ -14,8 +14,8 @@ cdef class ConnectionSettings:
         DataCodecConfig _data_codecs
 
     cdef add_setting(self, str name, str val)
-    cdef inline is_encoding_utf8(self)
-    cpdef inline get_text_codec(self)
+    cdef is_encoding_utf8(self)
+    cpdef get_text_codec(self)
     cpdef inline register_data_types(self, types)
     cpdef inline add_python_codec(
         self, typeoid, typename, typeschema, typekind, encoder,

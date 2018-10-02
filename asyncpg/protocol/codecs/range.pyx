@@ -142,7 +142,7 @@ cdef range_decode(ConnectionSettings settings, FastReadBuffer buf,
 cdef init_range_codecs():
     register_core_codec(ANYRANGEOID,
                         NULL,
-                        <decode_func>&text_decode,
+                        <decode_func>pgproto.text_decode,
                         PG_FORMAT_TEXT)
 
 
