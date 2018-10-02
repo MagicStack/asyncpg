@@ -31,7 +31,7 @@ ctypedef object (*decode_func_ex)(ConnectionSettings settings,
 
 cdef inline bint _is_trivial_container(object obj):
     return cpython.PyUnicode_Check(obj) or cpython.PyBytes_Check(obj) or \
-            PyByteArray_Check(obj) or PyMemoryView_Check(obj)
+            cpythonx.PyByteArray_Check(obj) or cpythonx.PyMemoryView_Check(obj)
 
 
 cdef inline _is_array_iterable(object obj):
@@ -340,7 +340,7 @@ cdef _nested_array_decode(ConnectionSettings settings,
         # An array of current positions at each array level.
         int32_t indexes[ARRAY_MAXDIM]
 
-    if ASYNCPG_DEBUG:
+    if PG_DEBUG:
         if ndims <= 0:
             raise exceptions.ProtocolError(
                 'unexpected ndims value: {}'.format(ndims))
@@ -408,8 +408,8 @@ cdef textarray_decode(ConnectionSettings settings, FastReadBuffer buf,
 
     # Make a copy of array data since we will be mutating it for
     # the purposes of element decoding.
-    s = text_decode(settings, buf)
-    array_text = PyUnicode_AsUCS4Copy(s)
+    s = pgproto.text_decode(settings, buf)
+    array_text = cpythonx.PyUnicode_AsUCS4Copy(s)
 
     try:
         return _textarray_decode(
@@ -418,7 +418,7 @@ cdef textarray_decode(ConnectionSettings settings, FastReadBuffer buf,
         raise exceptions.ProtocolError(
             'malformed array literal {!r}: {}'.format(s, e.args[0]))
     finally:
-        PyMem_Free(array_text)
+        cpython.PyMem_Free(array_text)
 
 
 cdef _textarray_decode(ConnectionSettings settings,
@@ -630,14 +630,14 @@ cdef _textarray_decode(ConnectionSettings settings,
         else:
             # XXX: find a way to avoid the redundant encode/decode
             # cycle here.
-            item_text = PyUnicode_FromKindAndData(
-                PyUnicode_4BYTE_KIND,
+            item_text = cpythonx.PyUnicode_FromKindAndData(
+                cpythonx.PyUnicode_4BYTE_KIND,
                 <void *>item_start,
                 item_end - item_start)
 
             # Prepare the element buffer and call the text decoder
             # for the element type.
-            as_pg_string_and_size(
+            pgproto.as_pg_string_and_size(
                 settings, item_text, &pg_item_str, &pg_item_len)
             item_buf.buf = pg_item_str
             item_buf.len = pg_item_len
@@ -812,12 +812,12 @@ cdef _infer_array_dims(const Py_UCS4 *array_text,
 
 cdef uint4_encode_ex(ConnectionSettings settings, WriteBuffer buf, object obj,
                      const void *arg):
-    return uint4_encode(settings, buf, obj)
+    return pgproto.uint4_encode(settings, buf, obj)
 
 
 cdef uint4_decode_ex(ConnectionSettings settings, FastReadBuffer buf,
                      const void *arg):
-    return uint4_decode(settings, buf)
+    return pgproto.uint4_decode(settings, buf)
 
 
 cdef arrayoid_encode(ConnectionSettings settings, WriteBuffer buf, items):
@@ -831,12 +831,12 @@ cdef arrayoid_decode(ConnectionSettings settings, FastReadBuffer buf):
 
 cdef text_encode_ex(ConnectionSettings settings, WriteBuffer buf, object obj,
                     const void *arg):
-    return text_encode(settings, buf, obj)
+    return pgproto.text_encode(settings, buf, obj)
 
 
 cdef text_decode_ex(ConnectionSettings settings, FastReadBuffer buf,
                     const void *arg):
-    return text_decode(settings, buf)
+    return pgproto.text_decode(settings, buf)
 
 
 cdef arraytext_encode(ConnectionSettings settings, WriteBuffer buf, items):

@@ -175,9 +175,9 @@ cdef class Codec:
         data = self.py_encoder(obj)
         if self.xformat == PG_XFORMAT_OBJECT:
             if self.format == PG_FORMAT_BINARY:
-                bytea_encode(settings, buf, data)
+                pgproto.bytea_encode(settings, buf, data)
             elif self.format == PG_FORMAT_TEXT:
-                text_encode(settings, buf, data)
+                pgproto.text_encode(settings, buf, data)
             else:
                 raise exceptions.InternalClientError(
                     'unexpected data format: {}'.format(self.format))
@@ -270,9 +270,9 @@ cdef class Codec:
                           FastReadBuffer buf):
         if self.xformat == PG_XFORMAT_OBJECT:
             if self.format == PG_FORMAT_BINARY:
-                data = bytea_decode(settings, buf)
+                data = pgproto.bytea_decode(settings, buf)
             elif self.format == PG_FORMAT_TEXT:
-                data = text_decode(settings, buf)
+                data = pgproto.text_decode(settings, buf)
             else:
                 raise exceptions.InternalClientError(
                     'unexpected data format: {}'.format(self.format))

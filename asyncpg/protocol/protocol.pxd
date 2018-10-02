@@ -5,17 +5,23 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-# cython: language_level=3
+from libc.stdint cimport int16_t, int32_t, uint16_t, \
+                         uint32_t, int64_t, uint64_t
 
+from asyncpg.pgproto.debug cimport PG_DEBUG
 
-from libc.stdint cimport int16_t, int32_t, uint16_t, uint32_t, int64_t, uint64_t
+from asyncpg.pgproto.pgproto cimport (
+    WriteBuffer,
+    ReadBuffer,
+    FastReadBuffer,
+    Memory,
+)
 
-from .debug cimport ASYNCPG_DEBUG
+from asyncpg.pgproto cimport pgproto
 
 include "consts.pxi"
 include "pgtypes.pxi"
 
-include "buffer.pxd"
 include "codecs/base.pxd"
 include "settings.pxd"
 include "coreproto.pxd"

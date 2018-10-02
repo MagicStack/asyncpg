@@ -33,9 +33,13 @@ cdef class CoreProtocol:
         cdef:
             char mtype
             ProtocolState state
+            pgproto.take_message_method take_message = \
+                <pgproto.take_message_method>self.buffer.take_message
+            pgproto.get_message_type_method get_message_type= \
+                <pgproto.get_message_type_method>self.buffer.get_message_type
 
-        while self.buffer.take_message() == 1:
-            mtype = self.buffer.get_message_type()
+        while take_message(self.buffer) == 1:
+            mtype = get_message_type(self.buffer)
             state = self.state
 
             try:
@@ -335,10 +339,11 @@ cdef class CoreProtocol:
             object mview
             Py_buffer *pybuf
 
-        mview = PyMemoryView_GetContiguous(data, cpython.PyBUF_SIMPLE, b'C')
+        mview = cpythonx.PyMemoryView_GetContiguous(
+            data, cpython.PyBUF_SIMPLE, b'C')
 
         try:
-            pybuf = PyMemoryView_GET_BUFFER(mview)
+            pybuf = cpythonx.PyMemoryView_GET_BUFFER(mview)
 
             buf = WriteBuffer.new_message(b'd')
             buf.write_cstr(<const char *>pybuf.buf, pybuf.len)
@@ -369,32 +374,37 @@ cdef class CoreProtocol:
         cdef:
             ReadBuffer buf = self.buffer
             list rows
+
             decode_row_method decoder = <decode_row_method>self._decode_row
+            pgproto.try_consume_message_method try_consume_message = \
+                <pgproto.try_consume_message_method>buf.try_consume_message
+            pgproto.take_message_type_method take_message_type = \
+                <pgproto.take_message_type_method>buf.take_message_type
 
             const char* cbuf
             ssize_t cbuf_len
             object row
             Memory mem
 
-        if ASYNCPG_DEBUG:
+        if PG_DEBUG:
             if buf.get_message_type() != b'D':
                 raise apg_exc.InternalClientError(
                     '_parse_data_msgs: first message is not "D"')
 
         if self._discard_data:
-            while buf.take_message_type(b'D'):
+            while take_message_type(buf, b'D'):
                 buf.consume_message()
             return
 
-        if ASYNCPG_DEBUG:
+        if PG_DEBUG:
             if type(self.result) is not list:
                 raise apg_exc.InternalClientError(
                     '_parse_data_msgs: result is not a list, but {!r}'.
                     format(self.result))
 
         rows = self.result
-        while buf.take_message_type(b'D'):
-            cbuf = buf.try_consume_message(&cbuf_len)
+        while take_message_type(buf, b'D'):
+            cbuf = try_consume_message(buf, &cbuf_len)
             if cbuf != NULL:
                 row = decoder(self, cbuf, cbuf_len)
             else:

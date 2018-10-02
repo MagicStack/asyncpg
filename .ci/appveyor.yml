@@ -27,6 +27,7 @@ branches:
         - releases
 
 install:
+    - git submodule update --init --recursive
     - "%PYTHON% -m pip install --upgrade pip wheel setuptools"
 
 build_script:

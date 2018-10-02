@@ -18,72 +18,44 @@ import socket
 import time
 import weakref
 
-from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, \
-                         int32_t, uint32_t, int64_t, uint64_t, \
-                         INT16_MIN, INT16_MAX, INT32_MIN, INT32_MAX, \
-                         UINT32_MAX, INT64_MIN, INT64_MAX
+from asyncpg.pgproto.pgproto cimport (
+    WriteBuffer,
+    ReadBuffer,
+    FastReadBuffer,
+    Memory,
+)
 
+from asyncpg.pgproto cimport pgproto
+from asyncpg.protocol cimport cpythonx
 from asyncpg.protocol cimport record
 
-from asyncpg.protocol.python cimport (
-                     PyMem_Malloc, PyMem_Realloc, PyMem_Calloc, PyMem_Free,
-                     PyMemoryView_GET_BUFFER, PyMemoryView_Check,
-                     PyMemoryView_FromMemory, PyMemoryView_GetContiguous,
-                     PyUnicode_AsUTF8AndSize, PyByteArray_AsString,
-                     PyByteArray_Check, PyUnicode_AsUCS4Copy,
-                     PyByteArray_Size, PyByteArray_Resize,
-                     PyByteArray_FromStringAndSize,
-                     PyUnicode_FromKindAndData, PyUnicode_4BYTE_KIND)
-
-from cpython cimport PyBuffer_FillInfo, PyBytes_AsString
+from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, \
+                         int32_t, uint32_t, int64_t, uint64_t, \
+                         UINT32_MAX
 
 from asyncpg.exceptions import _base as apg_exc_base
 from asyncpg import compat
 from asyncpg import types as apg_types
 from asyncpg import exceptions as apg_exc
 
-from asyncpg.protocol cimport hton
+from asyncpg.pgproto cimport hton
 
 include "consts.pxi"
 include "pgtypes.pxi"
 
 include "encodings.pyx"
 include "settings.pyx"
-include "buffer.pyx"
 
 include "codecs/base.pyx"
 include "codecs/textutils.pyx"
 
-# String types.  Need to go first, as other codecs may rely on
-# text decoding/encoding.
-include "codecs/bytea.pyx"
-include "codecs/text.pyx"
-
-# Builtin types, in lexicographical order.
-include "codecs/bits.pyx"
-include "codecs/datetime.pyx"
-include "codecs/float.pyx"
-include "codecs/geometry.pyx"
-include "codecs/int.pyx"
-include "codecs/json.pyx"
-include "codecs/money.pyx"
-include "codecs/network.pyx"
-include "codecs/numeric.pyx"
-include "codecs/tid.pyx"
-include "codecs/tsearch.pyx"
-include "codecs/txid.pyx"
-include "codecs/uuid.pyx"
-
-# Various pseudotypes and system types
-include "codecs/misc.pyx"
+# register codecs provided by pgproto
+include "codecs/pgproto.pyx"
 
 # nonscalar
 include "codecs/array.pyx"
 include "codecs/range.pyx"
 include "codecs/record.pyx"
-
-# contrib
-include "codecs/hstore.pyx"
 
 include "coreproto.pyx"
 include "prepared_stmt.pyx"
@@ -717,7 +689,7 @@ cdef class BaseProtocol(CoreProtocol):
         waiter.set_result(True)
 
     cdef _on_result__prepare(self, object waiter):
-        if ASYNCPG_DEBUG:
+        if PG_DEBUG:
             if self.statement is None:
                 raise apg_exc.InternalClientError(
                     '_on_result__prepare: statement is None')
@@ -764,7 +736,7 @@ cdef class BaseProtocol(CoreProtocol):
         waiter.set_result(status_msg)
 
     cdef _decode_row(self, const char* buf, ssize_t buf_len):
-        if ASYNCPG_DEBUG:
+        if PG_DEBUG:
             if self.statement is None:
                 raise apg_exc.InternalClientError(
                     '_decode_row: statement is None')
@@ -775,7 +747,7 @@ cdef class BaseProtocol(CoreProtocol):
         waiter = self.waiter
         self.waiter = None
 
-        if ASYNCPG_DEBUG:
+        if PG_DEBUG:
             if waiter is None:
                 raise apg_exc.InternalClientError('_on_result: waiter is None')
 
