@@ -1949,11 +1949,11 @@ else return <em>default</em>. If <em>default</em> is not given, return <code cla
 
 <dl class="class">
 <dt id="asyncpg.types.BitString">
-<em class="property">class </em><code class="descname">BitString</code><span class="sig-paren">(</span><em>bitstring=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/types.html#BitString"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">BitString</code><span class="sig-paren">(</span><em>bitstring=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>bit</cite> and <cite>varbit</cite> types.</p>
 <dl class="classmethod">
 <dt id="asyncpg.types.BitString.from_int">
-<em class="property">classmethod </em><code class="descname">from_int</code><span class="sig-paren">(</span><em>x</em>, <em>length</em>, <em>bitorder='big'</em>, <em>*</em>, <em>signed=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/types.html#BitString.from_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString.from_int" title="Permalink to this definition">¶</a></dt>
+<em class="property">classmethod </em><code class="descname">from_int</code><span class="sig-paren">(</span><em>x</em>, <em>length</em>, <em>bitorder='big'</em>, <em>*</em>, <em>signed=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString.from_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString.from_int" title="Permalink to this definition">¶</a></dt>
 <dd><p>Represent the Python int x as a BitString.
 Acts similarly to int.to_bytes.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1991,7 +1991,7 @@ form specified by the other input args.</p>
 
 <dl class="method">
 <dt id="asyncpg.types.BitString.to_int">
-<code class="descname">to_int</code><span class="sig-paren">(</span><em>bitorder='big'</em>, <em>*</em>, <em>signed=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/types.html#BitString.to_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString.to_int" title="Permalink to this definition">¶</a></dt>
+<code class="descname">to_int</code><span class="sig-paren">(</span><em>bitorder='big'</em>, <em>*</em>, <em>signed=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString.to_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString.to_int" title="Permalink to this definition">¶</a></dt>
 <dd><p>Interpret the BitString as a Python int.
 Acts similarly to int.from_bytes.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -2025,43 +2025,43 @@ the BitString’s exact length is lost.</p>
 
 <dl class="class">
 <dt id="asyncpg.types.Point">
-<em class="property">class </em><code class="descname">Point</code><a class="reference internal" href="../_modules/asyncpg/types.html#Point"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Point" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Point</code><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Point"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Point" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>point</cite> type.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="asyncpg.types.Path">
-<em class="property">class </em><code class="descname">Path</code><span class="sig-paren">(</span><em>*points</em>, <em>is_closed=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/types.html#Path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Path" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Path</code><span class="sig-paren">(</span><em>*points</em>, <em>is_closed=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>path</cite> type.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="asyncpg.types.Polygon">
-<em class="property">class </em><code class="descname">Polygon</code><span class="sig-paren">(</span><em>*points</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/types.html#Polygon"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Polygon" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Polygon</code><span class="sig-paren">(</span><em>*points</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Polygon"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Polygon" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>polygon</cite> type.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="asyncpg.types.Box">
-<em class="property">class </em><code class="descname">Box</code><a class="reference internal" href="../_modules/asyncpg/types.html#Box"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Box" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Box</code><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Box"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Box" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>box</cite> type.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="asyncpg.types.Line">
-<em class="property">class </em><code class="descname">Line</code><a class="reference internal" href="../_modules/asyncpg/types.html#Line"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Line" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Line</code><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Line"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Line" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>line</cite> type.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="asyncpg.types.LineSegment">
-<em class="property">class </em><code class="descname">LineSegment</code><a class="reference internal" href="../_modules/asyncpg/types.html#LineSegment"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.LineSegment" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">LineSegment</code><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#LineSegment"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.LineSegment" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>lseg</cite> type.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="asyncpg.types.Circle">
-<em class="property">class </em><code class="descname">Circle</code><a class="reference internal" href="../_modules/asyncpg/types.html#Circle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Circle" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Circle</code><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Circle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Circle" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>circle</cite> type.</p>
 </dd></dl>
 
