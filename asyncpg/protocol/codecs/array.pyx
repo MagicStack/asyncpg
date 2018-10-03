@@ -25,7 +25,7 @@ ctypedef object (*encode_func_ex)(ConnectionSettings settings,
 
 
 ctypedef object (*decode_func_ex)(ConnectionSettings settings,
-                                  FastReadBuffer buf,
+                                  FRBuffer *buf,
                                   const void *arg)
 
 
@@ -271,17 +271,17 @@ cdef inline textarray_encode(ConnectionSettings settings, WriteBuffer buf,
     buf.write_buffer(array_data)
 
 
-cdef inline array_decode(ConnectionSettings settings, FastReadBuffer buf,
+cdef inline array_decode(ConnectionSettings settings, FRBuffer *buf,
                          decode_func_ex decoder, const void *decoder_arg):
     cdef:
-        int32_t ndims = hton.unpack_int32(buf.read(4))
-        int32_t flags = hton.unpack_int32(buf.read(4))
-        uint32_t elem_oid = <uint32_t>hton.unpack_int32(buf.read(4))
+        int32_t ndims = hton.unpack_int32(frb_read(buf, 4))
+        int32_t flags = hton.unpack_int32(frb_read(buf, 4))
+        uint32_t elem_oid = <uint32_t>hton.unpack_int32(frb_read(buf, 4))
         list result
         int i
         int32_t elem_len
         int32_t elem_count = 1
-        FastReadBuffer elem_buf = FastReadBuffer.new()
+        FRBuffer elem_buf
         int32_t dims[ARRAY_MAXDIM]
         Codec elem_codec
 
@@ -295,9 +295,9 @@ cdef inline array_decode(ConnectionSettings settings, FastReadBuffer buf,
             format(ndims, ARRAY_MAXDIM))
 
     for i in range(ndims):
-        dims[i] = hton.unpack_int32(buf.read(4))
+        dims[i] = hton.unpack_int32(frb_read(buf, 4))
         # Ignore the lower bound information
-        buf.read(4)
+        frb_read(buf, 4)
 
     if ndims == 1:
         # Fast path for flat arrays
@@ -305,12 +305,12 @@ cdef inline array_decode(ConnectionSettings settings, FastReadBuffer buf,
         result = cpython.PyList_New(elem_count)
 
         for i in range(elem_count):
-            elem_len = hton.unpack_int32(buf.read(4))
+            elem_len = hton.unpack_int32(frb_read(buf, 4))
             if elem_len == -1:
                 elem = None
             else:
-                elem_buf.slice_from(buf, elem_len)
-                elem = decoder(settings, elem_buf, decoder_arg)
+                frb_slice_from(&elem_buf, buf, elem_len)
+                elem = decoder(settings, &elem_buf, decoder_arg)
 
             cpython.Py_INCREF(elem)
             cpython.PyList_SET_ITEM(result, i, elem)
@@ -318,17 +318,17 @@ cdef inline array_decode(ConnectionSettings settings, FastReadBuffer buf,
     else:
         result = _nested_array_decode(settings, buf,
                                       decoder, decoder_arg, ndims, dims,
-                                      elem_buf)
+                                      &elem_buf)
 
     return result
 
 
 cdef _nested_array_decode(ConnectionSettings settings,
-                          FastReadBuffer buf,
+                          FRBuffer *buf,
                           decode_func_ex decoder,
                           const void *decoder_arg,
                           int32_t ndims, int32_t *dims,
-                          FastReadBuffer elem_buf):
+                          FRBuffer *elem_buf):
 
     cdef:
         int32_t elem_len
@@ -351,12 +351,12 @@ cdef _nested_array_decode(ConnectionSettings settings,
 
     for i in range(array_len):
         # Decode the element.
-        elem_len = hton.unpack_int32(buf.read(4))
+        elem_len = hton.unpack_int32(frb_read(buf, 4))
         if elem_len == -1:
             elem = None
         else:
             elem = decoder(settings,
-                           elem_buf.slice_from(buf, elem_len),
+                           frb_slice_from(elem_buf, buf, elem_len),
                            decoder_arg)
 
         # Take an explicit reference for PyList_SET_ITEM in the below
@@ -399,7 +399,7 @@ cdef _nested_array_decode(ConnectionSettings settings,
     return stride
 
 
-cdef textarray_decode(ConnectionSettings settings, FastReadBuffer buf,
+cdef textarray_decode(ConnectionSettings settings, FRBuffer *buf,
                       decode_func_ex decoder, const void *decoder_arg,
                       Py_UCS4 typdelim):
     cdef:
@@ -455,7 +455,7 @@ cdef _textarray_decode(ConnectionSettings settings,
         int i
         object item
         str item_text
-        FastReadBuffer item_buf = FastReadBuffer.new()
+        FRBuffer item_buf
         char *pg_item_str
         ssize_t pg_item_len
 
@@ -639,9 +639,8 @@ cdef _textarray_decode(ConnectionSettings settings,
             # for the element type.
             pgproto.as_pg_string_and_size(
                 settings, item_text, &pg_item_str, &pg_item_len)
-            item_buf.buf = pg_item_str
-            item_buf.len = pg_item_len
-            item = decoder(settings, item_buf, decoder_arg)
+            frb_init(&item_buf, pg_item_str, pg_item_len)
+            item = decoder(settings, &item_buf, decoder_arg)
 
         # Place the decoded element in the array.
         cpython.Py_INCREF(item)
@@ -815,7 +814,7 @@ cdef uint4_encode_ex(ConnectionSettings settings, WriteBuffer buf, object obj,
     return pgproto.uint4_encode(settings, buf, obj)
 
 
-cdef uint4_decode_ex(ConnectionSettings settings, FastReadBuffer buf,
+cdef uint4_decode_ex(ConnectionSettings settings, FRBuffer *buf,
                      const void *arg):
     return pgproto.uint4_decode(settings, buf)
 
@@ -825,7 +824,7 @@ cdef arrayoid_encode(ConnectionSettings settings, WriteBuffer buf, items):
                  <encode_func_ex>&uint4_encode_ex, NULL)
 
 
-cdef arrayoid_decode(ConnectionSettings settings, FastReadBuffer buf):
+cdef arrayoid_decode(ConnectionSettings settings, FRBuffer *buf):
     return array_decode(settings, buf, <decode_func_ex>&uint4_decode_ex, NULL)
 
 
@@ -834,7 +833,7 @@ cdef text_encode_ex(ConnectionSettings settings, WriteBuffer buf, object obj,
     return pgproto.text_encode(settings, buf, obj)
 
 
-cdef text_decode_ex(ConnectionSettings settings, FastReadBuffer buf,
+cdef text_decode_ex(ConnectionSettings settings, FRBuffer *buf,
                     const void *arg):
     return pgproto.text_decode(settings, buf)
 
@@ -844,11 +843,11 @@ cdef arraytext_encode(ConnectionSettings settings, WriteBuffer buf, items):
                  <encode_func_ex>&text_encode_ex, NULL)
 
 
-cdef arraytext_decode(ConnectionSettings settings, FastReadBuffer buf):
+cdef arraytext_decode(ConnectionSettings settings, FRBuffer *buf):
     return array_decode(settings, buf, <decode_func_ex>&text_decode_ex, NULL)
 
 
-cdef anyarray_decode(ConnectionSettings settings, FastReadBuffer buf):
+cdef anyarray_decode(ConnectionSettings settings, FRBuffer *buf):
     # Instances of anyarray (or any other polymorphic pseudotype) are
     # never supposed to be returned from actual queries.
     raise exceptions.ProtocolError(

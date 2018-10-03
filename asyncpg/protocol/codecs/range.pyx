@@ -108,30 +108,30 @@ cdef range_encode(ConnectionSettings settings, WriteBuffer buf,
     buf.write_buffer(bounds_data)
 
 
-cdef range_decode(ConnectionSettings settings, FastReadBuffer buf,
+cdef range_decode(ConnectionSettings settings, FRBuffer *buf,
                   decode_func_ex decoder, const void *decoder_arg):
     cdef:
-        uint8_t flags = <uint8_t>buf.read(1)[0]
+        uint8_t flags = <uint8_t>frb_read(buf, 1)[0]
         int32_t bound_len
         object lower = None
         object upper = None
-        FastReadBuffer bound_buf = FastReadBuffer.new()
+        FRBuffer bound_buf
 
     if _range_has_lbound(flags):
-        bound_len = hton.unpack_int32(buf.read(4))
+        bound_len = hton.unpack_int32(frb_read(buf, 4))
         if bound_len == -1:
             lower = None
         else:
-            bound_buf.slice_from(buf, bound_len)
-            lower = decoder(settings, bound_buf, decoder_arg)
+            frb_slice_from(&bound_buf, buf, bound_len)
+            lower = decoder(settings, &bound_buf, decoder_arg)
 
     if _range_has_ubound(flags):
-        bound_len = hton.unpack_int32(buf.read(4))
+        bound_len = hton.unpack_int32(frb_read(buf, 4))
         if bound_len == -1:
             upper = None
         else:
-            bound_buf.slice_from(buf, bound_len)
-            upper = decoder(settings, bound_buf, decoder_arg)
+            frb_slice_from(&bound_buf, buf, bound_len)
+            upper = decoder(settings, &bound_buf, decoder_arg)
 
     return apg_types.Range(lower=lower, upper=upper,
                            lower_inc=(flags & RANGE_LB_INC) != 0,

@@ -21,7 +21,6 @@ cdef class PreparedStatementState:
         self.cols_desc = None
         self.closed = False
         self.refs = 0
-        self.buffer = FastReadBuffer.new()
 
     def _get_parameters(self):
         cdef Codec codec
@@ -252,13 +251,12 @@ cdef class PreparedStatementState:
             tuple rows_codecs = self.rows_codecs
             ConnectionSettings settings = self.settings
             int32_t i
-            FastReadBuffer rbuf = self.buffer
+            FRBuffer rbuf
             ssize_t bl
 
-        rbuf.buf = cbuf
-        rbuf.len = buf_len
+        frb_init(&rbuf, cbuf, buf_len)
 
-        fnum = hton.unpack_int16(rbuf.read(2))
+        fnum = hton.unpack_int16(frb_read(&rbuf, 2))
 
         if fnum != self.cols_num:
             raise exceptions.ProtocolError(
@@ -268,7 +266,7 @@ cdef class PreparedStatementState:
 
         dec_row = record.ApgRecord_New(self.cols_desc, fnum)
         for i in range(fnum):
-            flen = hton.unpack_int32(rbuf.read(4))
+            flen = hton.unpack_int32(frb_read(&rbuf, 4))
 
             if flen == -1:
                 val = None
@@ -276,25 +274,24 @@ cdef class PreparedStatementState:
                 # Clamp buffer size to that of the reported field length
                 # to make sure that codecs can rely on read_all() working
                 # properly.
-                bl = rbuf.len
+                bl = frb_get_len(&rbuf)
                 if flen > bl:
-                    # Check for overflow
-                    rbuf._raise_ins_err(flen, bl)
-                rbuf.len = flen
+                    frb_check(&rbuf, flen)
+                frb_set_len(&rbuf, flen)
                 codec = <Codec>cpython.PyTuple_GET_ITEM(rows_codecs, i)
-                val = codec.decode(settings, rbuf)
-                if rbuf.len != 0:
+                val = codec.decode(settings, &rbuf)
+                if frb_get_len(&rbuf) != 0:
                     raise BufferError(
                         'unexpected trailing {} bytes in buffer'.format(
-                            rbuf.len))
-                rbuf.len = bl - flen
+                            frb_get_len(&rbuf)))
+                frb_set_len(&rbuf, bl - flen)
 
             cpython.Py_INCREF(val)
             record.ApgRecord_SET_ITEM(dec_row, i, val)
 
-        if rbuf.len != 0:
+        if frb_get_len(&rbuf) != 0:
             raise BufferError('unexpected trailing {} bytes in buffer'.format(
-                rbuf.len))
+                frb_get_len(&rbuf)))
 
         return dec_row
 

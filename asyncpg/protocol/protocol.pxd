@@ -13,8 +13,7 @@ from asyncpg.pgproto.debug cimport PG_DEBUG
 from asyncpg.pgproto.pgproto cimport (
     WriteBuffer,
     ReadBuffer,
-    FastReadBuffer,
-    Memory,
+    FRBuffer,
 )
 
 from asyncpg.pgproto cimport pgproto

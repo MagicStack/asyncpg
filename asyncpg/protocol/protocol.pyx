@@ -21,8 +21,15 @@ import weakref
 from asyncpg.pgproto.pgproto cimport (
     WriteBuffer,
     ReadBuffer,
-    FastReadBuffer,
-    Memory,
+
+    FRBuffer,
+    frb_init,
+    frb_read,
+    frb_read_all,
+    frb_slice_from,
+    frb_check,
+    frb_set_len,
+    frb_get_len,
 )
 
 from asyncpg.pgproto cimport pgproto
@@ -39,6 +46,7 @@ from asyncpg import types as apg_types
 from asyncpg import exceptions as apg_exc
 
 from asyncpg.pgproto cimport hton
+
 
 include "consts.pxi"
 include "pgtypes.pxi"

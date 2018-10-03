@@ -130,12 +130,12 @@ cdef class CoreProtocol:
 
                 elif state == PROTOCOL_CANCELLED:
                     # discard all messages until the sync message
-                    self.buffer.consume_message()
+                    self.buffer.discard_message()
 
                 elif state == PROTOCOL_ERROR_CONSUME:
                     # Error in protocol (on asyncpg side);
                     # discard all messages until sync message
-                    self.buffer.consume_message()
+                    self.buffer.discard_message()
 
                 else:
                     raise apg_exc.InternalClientError(
@@ -177,20 +177,20 @@ cdef class CoreProtocol:
     cdef _process__parse_describe(self, char mtype):
         if mtype == b'1':
             # ParseComplete
-            self.buffer.consume_message()
+            self.buffer.discard_message()
 
         elif mtype == b't':
             # ParameterDescription
-            self.result_param_desc = self.buffer.consume_message().as_bytes()
+            self.result_param_desc = self.buffer.consume_message()
 
         elif mtype == b'T':
             # RowDescription
-            self.result_row_desc = self.buffer.consume_message().as_bytes()
+            self.result_row_desc = self.buffer.consume_message()
             self._push_result()
 
         elif mtype == b'n':
             # NoData
-            self.buffer.consume_message()
+            self.buffer.discard_message()
             self._push_result()
 
     cdef _process__bind_execute(self, char mtype):
@@ -200,7 +200,7 @@ cdef class CoreProtocol:
 
         elif mtype == b's':
             # PortalSuspended
-            self.buffer.consume_message()
+            self.buffer.discard_message()
             self._push_result()
 
         elif mtype == b'C':
@@ -211,11 +211,11 @@ cdef class CoreProtocol:
 
         elif mtype == b'2':
             # BindComplete
-            self.buffer.consume_message()
+            self.buffer.discard_message()
 
         elif mtype == b'I':
             # EmptyQueryResponse
-            self.buffer.consume_message()
+            self.buffer.discard_message()
             self._push_result()
 
     cdef _process__bind_execute_many(self, char mtype):
@@ -227,7 +227,7 @@ cdef class CoreProtocol:
 
         elif mtype == b's':
             # PortalSuspended
-            self.buffer.consume_message()
+            self.buffer.discard_message()
 
         elif mtype == b'C':
             # CommandComplete
@@ -235,22 +235,22 @@ cdef class CoreProtocol:
 
         elif mtype == b'2':
             # BindComplete
-            self.buffer.consume_message()
+            self.buffer.discard_message()
 
         elif mtype == b'I':
             # EmptyQueryResponse
-            self.buffer.consume_message()
+            self.buffer.discard_message()
 
     cdef _process__bind(self, char mtype):
         if mtype == b'2':
             # BindComplete
-            self.buffer.consume_message()
+            self.buffer.discard_message()
             self._push_result()
 
     cdef _process__close_stmt_portal(self, char mtype):
         if mtype == b'3':
             # CloseComplete
-            self.buffer.consume_message()
+            self.buffer.discard_message()
             self._push_result()
 
     cdef _process__simple_query(self, char mtype):
@@ -258,20 +258,20 @@ cdef class CoreProtocol:
             # 'D' - DataRow
             # 'I' - EmptyQueryResponse
             # 'T' - RowDescription
-            self.buffer.consume_message()
+            self.buffer.discard_message()
 
         elif mtype == b'C':
             # CommandComplete
             self._parse_msg_command_complete()
         else:
             # We don't really care about COPY IN etc
-            self.buffer.consume_message()
+            self.buffer.discard_message()
 
     cdef _process__copy_out(self, char mtype):
         if mtype == b'H':
             # CopyOutResponse
             self._set_state(PROTOCOL_COPY_OUT_DATA)
-            self.buffer.consume_message()
+            self.buffer.discard_message()
 
     cdef _process__copy_out_data(self, char mtype):
         if mtype == b'd':
@@ -280,7 +280,7 @@ cdef class CoreProtocol:
 
         elif mtype == b'c':
             # CopyDone
-            self.buffer.consume_message()
+            self.buffer.discard_message()
             self._set_state(PROTOCOL_COPY_OUT_DONE)
 
         elif mtype == b'C':
@@ -292,7 +292,7 @@ cdef class CoreProtocol:
         if mtype == b'G':
             # CopyInResponse
             self._set_state(PROTOCOL_COPY_IN_DATA)
-            self.buffer.consume_message()
+            self.buffer.discard_message()
 
     cdef _process__copy_in_data(self, char mtype):
         if mtype == b'C':
@@ -384,7 +384,7 @@ cdef class CoreProtocol:
             const char* cbuf
             ssize_t cbuf_len
             object row
-            Memory mem
+            bytes mem
 
         if PG_DEBUG:
             if buf.get_message_type() != b'D':
@@ -393,7 +393,7 @@ cdef class CoreProtocol:
 
         if self._discard_data:
             while take_message_type(buf, b'D'):
-                buf.consume_message()
+                buf.discard_message()
             return
 
         if PG_DEBUG:
@@ -409,7 +409,10 @@ cdef class CoreProtocol:
                 row = decoder(self, cbuf, cbuf_len)
             else:
                 mem = buf.consume_message()
-                row = decoder(self, mem.buf, mem.length)
+                row = decoder(
+                    self,
+                    cpython.PyBytes_AS_STRING(mem),
+                    cpython.PyBytes_GET_SIZE(mem))
 
             cpython.PyList_Append(rows, row)
 
@@ -451,8 +454,7 @@ cdef class CoreProtocol:
         elif status == AUTH_REQUIRED_PASSWORDMD5:
             # AuthenticationMD5Password
             # Note: MD5 salt is passed as a four-byte sequence
-            md5_salt = cpython.PyBytes_FromStringAndSize(
-                self.buffer.read_bytes(4), 4)
+            md5_salt = self.buffer.read_bytes(4)
             self.auth_msg = self._auth_password_message_md5(md5_salt)
 
         elif status in (AUTH_REQUIRED_KERBEROS, AUTH_REQUIRED_SCMCRED,
@@ -469,7 +471,7 @@ cdef class CoreProtocol:
                 'unsupported authentication method requested by the '
                 'server: {}'.format(status))
 
-        self.buffer.consume_message()
+        self.buffer.discard_message()
 
     cdef _auth_password_message_cleartext(self):
         cdef:

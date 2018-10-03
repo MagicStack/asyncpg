@@ -191,25 +191,25 @@ cdef class Codec:
                 object obj):
         return self.encoder(self, settings, buf, obj)
 
-    cdef decode_scalar(self, ConnectionSettings settings, FastReadBuffer buf):
+    cdef decode_scalar(self, ConnectionSettings settings, FRBuffer *buf):
         return self.c_decoder(settings, buf)
 
-    cdef decode_array(self, ConnectionSettings settings, FastReadBuffer buf):
+    cdef decode_array(self, ConnectionSettings settings, FRBuffer *buf):
         return array_decode(settings, buf, codec_decode_func_ex,
                             <void*>(<cpython.PyObject>self.element_codec))
 
     cdef decode_array_text(self, ConnectionSettings settings,
-                           FastReadBuffer buf):
+                           FRBuffer *buf):
         return textarray_decode(settings, buf, codec_decode_func_ex,
                                 <void*>(<cpython.PyObject>self.element_codec),
                                 self.element_delimiter)
 
-    cdef decode_range(self, ConnectionSettings settings, FastReadBuffer buf):
+    cdef decode_range(self, ConnectionSettings settings, FRBuffer *buf):
         return range_decode(settings, buf, codec_decode_func_ex,
                             <void*>(<cpython.PyObject>self.element_codec))
 
     cdef decode_composite(self, ConnectionSettings settings,
-                          FastReadBuffer buf):
+                          FRBuffer *buf):
         cdef:
             object result
             ssize_t elem_count
@@ -218,9 +218,9 @@ cdef class Codec:
             uint32_t elem_typ
             uint32_t received_elem_typ
             Codec elem_codec
-            FastReadBuffer elem_buf = FastReadBuffer.new()
+            FRBuffer elem_buf
 
-        elem_count = <ssize_t><uint32_t>hton.unpack_int32(buf.read(4))
+        elem_count = <ssize_t><uint32_t>hton.unpack_int32(frb_read(buf, 4))
         if elem_count != len(self.element_type_oids):
             raise exceptions.OutdatedSchemaCacheError(
                 'unexpected number of attributes of composite type: '
@@ -235,7 +235,7 @@ cdef class Codec:
         result = record.ApgRecord_New(self.record_desc, elem_count)
         for i in range(elem_count):
             elem_typ = self.element_type_oids[i]
-            received_elem_typ = <uint32_t>hton.unpack_int32(buf.read(4))
+            received_elem_typ = <uint32_t>hton.unpack_int32(frb_read(buf, 4))
 
             if received_elem_typ != elem_typ:
                 raise exceptions.OutdatedSchemaCacheError(
@@ -253,13 +253,13 @@ cdef class Codec:
                     position=i,
                 )
 
-            elem_len = hton.unpack_int32(buf.read(4))
+            elem_len = hton.unpack_int32(frb_read(buf, 4))
             if elem_len == -1:
                 elem = None
             else:
                 elem_codec = self.element_codecs[i]
-                elem = elem_codec.decode(settings,
-                                         elem_buf.slice_from(buf, elem_len))
+                elem = elem_codec.decode(
+                    settings, frb_slice_from(&elem_buf, buf, elem_len))
 
             cpython.Py_INCREF(elem)
             record.ApgRecord_SET_ITEM(result, i, elem)
@@ -267,7 +267,7 @@ cdef class Codec:
         return result
 
     cdef decode_in_python(self, ConnectionSettings settings,
-                          FastReadBuffer buf):
+                          FRBuffer *buf):
         if self.xformat == PG_XFORMAT_OBJECT:
             if self.format == PG_FORMAT_BINARY:
                 data = pgproto.bytea_decode(settings, buf)
@@ -284,7 +284,7 @@ cdef class Codec:
 
         return self.py_decoder(data)
 
-    cdef inline decode(self, ConnectionSettings settings, FastReadBuffer buf):
+    cdef inline decode(self, ConnectionSettings settings, FRBuffer *buf):
         return self.decoder(self, settings, buf)
 
     cdef inline has_encoder(self):
@@ -398,7 +398,7 @@ cdef codec_encode_func_ex(ConnectionSettings settings, WriteBuffer buf,
 
 
 # Decode callback for arrays
-cdef codec_decode_func_ex(ConnectionSettings settings, FastReadBuffer buf,
+cdef codec_decode_func_ex(ConnectionSettings settings, FRBuffer *buf,
                           const void *arg):
     return (<Codec>arg).decode(settings, buf)
 
