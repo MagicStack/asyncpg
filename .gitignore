@@ -32,3 +32,4 @@ docs/_build
 .coverage
 /.pytest_cache/
 /.eggs
+/.vscode
