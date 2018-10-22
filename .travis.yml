@@ -84,48 +84,57 @@ matrix:
           addons:
               apt: {packages: [postgresql-9.6]}
 
-        # Do a full test run on the latest supported version of PostgreSQL
-        # on each supported version of Python.
-        - os: linux
-          dist: trusty
-          sudo: false
-          language: python
-          python: "3.5"
-          env: BUILD=tests PGVERSION=10
-          addons:
-              apt: {packages: [postgresql-10]}
-
         - os: linux
           dist: trusty
           sudo: false
           language: python
           python: "3.6"
-          env: BUILD=tests PGVERSION=10
+          env: BUILD=quicktests PGVERSION=10
           addons:
               apt: {packages: [postgresql-10]}
+
+        # Do a full test run on the latest supported version of PostgreSQL
+        # on each supported version of Python.
+        - os: linux
+          dist: xenial
+          sudo: required
+          language: python
+          python: "3.5"
+          env: BUILD=tests PGVERSION=11
+          addons:
+              apt: {packages: [postgresql-11]}
+
+        - os: linux
+          dist: xenial
+          sudo: required
+          language: python
+          python: "3.6"
+          env: BUILD=tests PGVERSION=11
+          addons:
+              apt: {packages: [postgresql-11]}
 
         - os: linux
           dist: xenial
           sudo: true
           language: python
           python: "3.7"
-          env: BUILD=tests PGVERSION=10
+          env: BUILD=tests PGVERSION=11
           addons:
-              apt: {packages: [postgresql-10]}
+              apt: {packages: [postgresql-11]}
 
         # Build manylinux wheels.  Each wheel will be tested,
         # so there is no need for BUILD=tests here.
         # Also use this job to publish the releases and build
         # the documentation.
         - os: linux
-          dist: trusty
+          dist: xenial
           sudo: required
           language: python
           python: "3.6"
-          env: BUILD=wheels,docs,release PGVERSION=10
+          env: BUILD=wheels,docs,release PGVERSION=11
           services: [docker]
           addons:
-              apt: {packages: [postgresql-10]}
+              apt: {packages: [postgresql-11]}
 
         - os: osx
           env: BUILD=tests,wheels PYTHON_VERSION=3.5.5 PGVERSION=10
