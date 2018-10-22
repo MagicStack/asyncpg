@@ -1727,10 +1727,12 @@ class TestCodecs(tb.ConnectedTestCase):
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
 class TestCodecsLargeOIDs(tb.ConnectedTestCase):
+    LARGE_OID = 2147483648
+
     @classmethod
     def setup_cluster(cls):
         cls.cluster = cls.new_cluster(pg_cluster.TempCluster)
-        cls.cluster.reset_wal(oid=2147483648)
+        cls.cluster.reset_wal(oid=cls.LARGE_OID)
         cls.start_cluster(cls.cluster)
 
     async def test_custom_codec_large_oid(self):
@@ -1739,7 +1741,15 @@ class TestCodecsLargeOIDs(tb.ConnectedTestCase):
             oid = await self.con.fetchval('''
                 SELECT oid FROM pg_type WHERE typname = 'test_domain_t'
             ''')
-            self.assertEqual(oid, 2147483648)
+
+            expected_oid = self.LARGE_OID
+            if self.server_version >= (11, 0):
+                # PostgreSQL 11 automatically create a domain array type
+                # _before_ the domain type, so the expected OID is
+                # off by one.
+                expected_oid += 1
+
+            self.assertEqual(oid, expected_oid)
 
             # Test that introspection handles large OIDs
             v = await self.con.fetchval('SELECT $1::test_domain_t', 10)
