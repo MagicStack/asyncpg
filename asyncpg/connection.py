@@ -1653,6 +1653,10 @@ async def connect(dsn=None, *,
        Added ``passfile`` parameter
        (and support for password files in general).
 
+    .. versionadded:: 0.18.0
+       Added ability to specify multiple hosts in the *dsn*
+       and *host* arguments.
+
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
         https://docs.python.org/3/library/ssl.html#ssl.create_default_context

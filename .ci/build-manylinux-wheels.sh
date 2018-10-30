@@ -5,7 +5,7 @@ set -e -x
 # Compile wheels
 PYTHON="/opt/python/${PYTHON_VERSION}/bin/python"
 PIP="/opt/python/${PYTHON_VERSION}/bin/pip"
-${PIP} install --upgrade setuptools pip wheel
+${PIP} install --upgrade setuptools pip wheel~=0.31.1
 cd /io
 make clean
 ${PYTHON} setup.py bdist_wheel
