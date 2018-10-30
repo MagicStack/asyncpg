@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.17.0
+                0.18.0
               </div>
             
           
@@ -100,6 +100,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#example-automatic-json-conversion">Example: automatic JSON conversion</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#example-automatic-conversion-of-postgis-types">Example: automatic conversion of PostGIS types</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#example-decoding-numeric-columns-as-floats">Example: decoding numeric columns as floats</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-decoding-hstore-values">Example: decoding hstore values</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#transactions">Transactions</a></li>
@@ -245,7 +246,8 @@ more information.</p>
 </tr>
 <tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">record</span></code></td>
 <td><a class="reference internal" href="api/index.html#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Record</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></td>
+<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Mapping</span></code></a></td>
 </tr>
 <tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">bit</span></code>, <code class="docutils literal notranslate"><span class="pre">varbit</span></code></td>
 <td><a class="reference internal" href="api/index.html#asyncpg.types.BitString" title="asyncpg.types.BitString"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.BitString</span></code></a></td>
@@ -469,6 +471,27 @@ shows how to instruct asyncpg to use floats instead.</p>
 </pre></div>
 </div>
 </div>
+<div class="section" id="example-decoding-hstore-values">
+<h3>Example: decoding hstore values<a class="headerlink" href="#example-decoding-hstore-values" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference external" href="https://www.postgresql.org/docs/current/static/hstore.html">hstore</a> is an extension data type used for storing key/value pairs.
+asyncpg includes a codec to decode and encode hstore values as <code class="docutils literal notranslate"><span class="pre">dict</span></code>
+objects.  Because <code class="docutils literal notranslate"><span class="pre">hstore</span></code> is not a builtin type, the codec must
+be registered on a connection using <a class="reference internal" href="api/index.html#asyncpg.connection.Connection.set_builtin_type_codec" title="asyncpg.connection.Connection.set_builtin_type_codec"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Connection.set_builtin_type_codec()</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">asyncpg</span>
+<span class="kn">import</span> <span class="nn">asyncio</span>
+
+<span class="n">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+    <span class="c1"># Assuming the hstore extension exists in the public schema.</span>
+    <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">set_builtin_type_codec</span><span class="p">(</span>
+        <span class="s1">&#39;hstore&#39;</span><span class="p">,</span> <span class="n">codec_name</span><span class="o">=</span><span class="s1">&#39;pg_contrib.hstore&#39;</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span><span class="s2">&quot;SELECT &#39;a=&gt;1,b=&gt;2&#39;::hstore&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">result</span> <span class="o">==</span> <span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
+
+<span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
 </div>
 <div class="section" id="transactions">
 <h2>Transactions<a class="headerlink" href="#transactions" title="Permalink to this headline">¶</a></h2>
@@ -584,7 +607,7 @@ Web service that computes the requested power of two.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.17.0',
+            VERSION:'0.18.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

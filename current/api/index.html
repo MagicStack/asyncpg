@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.17.0
+                0.18.0
               </div>
             
           
@@ -175,6 +175,12 @@
 <dt id="asyncpg.connection.connect">
 <code class="descname">connect</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>host=None</em>, <em>port=None</em>, <em>user=None</em>, <em>password=None</em>, <em>passfile=None</em>, <em>database=None</em>, <em>loop=None</em>, <em>timeout=60</em>, <em>statement_cache_size=100</em>, <em>max_cached_statement_lifetime=300</em>, <em>max_cacheable_statement_size=15360</em>, <em>command_timeout=None</em>, <em>ssl=None</em>, <em>connection_class=&lt;class 'asyncpg.connection.Connection'&gt;</em>, <em>server_settings=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.connect" title="Permalink to this definition">¶</a></dt>
 <dd><p>A coroutine to establish a connection to a PostgreSQL server.</p>
+<p>The connection parameters may be specified either as a connection
+URI in <em>dsn</em>, or as specific keyword arguments, or both.
+If both <em>dsn</em> and keyword arguments are specified, the latter
+override the corresponding values parsed from the connection URI.
+The default values for the majority of arguments can be specified
+using <a class="reference external" href="postgresenvvars">environment variables</a>.</p>
 <p>Returns a new <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a> object.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -182,43 +188,81 @@
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>dsn</strong> – Connection arguments specified using as a single string in the
-following format:
-<code class="docutils literal notranslate"><span class="pre">postgres://user:pass&#64;host:port/database?option=value</span></code></li>
-<li><strong>host</strong> – database host address or a path to the directory containing
-database server UNIX socket (defaults to the default UNIX socket,
-or the value of the <code class="docutils literal notranslate"><span class="pre">PGHOST</span></code> environment variable, if set).</li>
-<li><strong>port</strong> – connection port number (defaults to <code class="docutils literal notranslate"><span class="pre">5432</span></code>, or the value of
-the <code class="docutils literal notranslate"><span class="pre">PGPORT</span></code> environment variable, if set)</li>
-<li><strong>user</strong> – the name of the database role used for authentication
-(defaults to the name of the effective user of the process
-making the connection, or the value of <code class="docutils literal notranslate"><span class="pre">PGUSER</span></code> environment
-variable, if set)</li>
-<li><strong>database</strong> – the name of the database (defaults to the value of <code class="docutils literal notranslate"><span class="pre">PGDATABASE</span></code>
-environment variable, if set.)</li>
-<li><strong>password</strong> – password used for authentication</li>
-<li><strong>passfile</strong> – the name of the file used to store passwords
+<a class="reference external" href="https://www.postgresql.org/docs/current/static/ libpq-connect.html#LIBPQ-CONNSTRING">libpq connection URI format</a>:
+<code class="docutils literal notranslate"><span class="pre">postgres://user:password&#64;host:port/database?option=value</span></code>.
+The following options are recognized by asyncpg: host, port,
+user, database (or dbname), password, passfile, sslmode.
+Unlike libpq, asyncpg will treat unrecognized options
+as <a class="reference external" href="https://www.postgresql.org/docs/current/static/runtime-config.html">server settings</a> to be used for the connection.</li>
+<li><strong>host</strong> – <p>Database host address as one of the following:</p>
+<ul>
+<li>an IP address or a domain name;</li>
+<li>an absolute path to the directory containing the database
+server Unix-domain socket (not supported on Windows);</li>
+<li>a sequence of any of the above, in which case the addresses
+will be tried in order, and the first successful connection
+will be returned.</li>
+</ul>
+<p>If not specified, asyncpg will try the following, in order:</p>
+<ul>
+<li>host address(es) parsed from the <em>dsn</em> argument,</li>
+<li>the value of the <code class="docutils literal notranslate"><span class="pre">PGHOST</span></code> environment variable,</li>
+<li>on Unix, common directories used for PostgreSQL Unix-domain
+sockets: <code class="docutils literal notranslate"><span class="pre">&quot;/run/postgresql&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;/var/run/postgresl&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;/var/pgsql_socket&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;/private/tmp&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;/tmp&quot;</span></code>,</li>
+<li><code class="docutils literal notranslate"><span class="pre">&quot;localhost&quot;</span></code>.</li>
+</ul>
+</li>
+<li><strong>port</strong> – <p>Port number to connect to at the server host
+(or Unix-domain socket file extension).  If multiple host
+addresses were specified, this parameter may specify a
+sequence of port numbers of the same length as the host sequence,
+or it may specify a single port number to be used for all host
+addresses.</p>
+<p>If not specified, the value parsed from the <em>dsn</em> argument is used,
+or the value of the <code class="docutils literal notranslate"><span class="pre">PGPORT</span></code> environment variable, or <code class="docutils literal notranslate"><span class="pre">5432</span></code> if
+neither is specified.</p>
+</li>
+<li><strong>user</strong> – <p>The name of the database role used for authentication.</p>
+<p>If not specified, the value parsed from the <em>dsn</em> argument is used,
+or the value of the <code class="docutils literal notranslate"><span class="pre">PGUSER</span></code> environment variable, or the
+operating system name of the user running the application.</p>
+</li>
+<li><strong>database</strong> – <p>The name of the database to connect to.</p>
+<p>If not specified, the value parsed from the <em>dsn</em> argument is used,
+or the value of the <code class="docutils literal notranslate"><span class="pre">PGDATABASE</span></code> environment variable, or the
+operating system name of the user running the application.</p>
+</li>
+<li><strong>password</strong> – Password to be used for authentication, if the server requires
+one.  If not specified, the value parsed from the <em>dsn</em> argument
+is used, or the value of the <code class="docutils literal notranslate"><span class="pre">PGPASSWORD</span></code> environment variable.
+Note that the use of the environment variable is discouraged as
+other users and applications may be able to read it without needing
+specific privileges.  It is recommended to use <em>passfile</em> instead.</li>
+<li><strong>passfile</strong> – The name of the file used to store passwords
 (defaults to <code class="docutils literal notranslate"><span class="pre">~/.pgpass</span></code>, or <code class="docutils literal notranslate"><span class="pre">%APPDATA%\postgresql\pgpass.conf</span></code>
-on Windows)</li>
+on Windows).</li>
 <li><strong>loop</strong> – An asyncio event loop instance.  If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the default
 event loop will be used.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – connection timeout in seconds.</li>
-<li><strong>statement_cache_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – the size of prepared statement LRU cache.  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Connection timeout in seconds.</li>
+<li><strong>statement_cache_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – The size of prepared statement LRU cache.  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to
 disable the cache.</li>
-<li><strong>max_cached_statement_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – the maximum time in seconds a prepared statement will stay
+<li><strong>max_cached_statement_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – The maximum time in seconds a prepared statement will stay
 in the cache.  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to allow statements be cached
 indefinitely.</li>
-<li><strong>max_cacheable_statement_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – the maximum size of a statement that can be cached (15KiB by
+<li><strong>max_cacheable_statement_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – The maximum size of a statement that can be cached (15KiB by
 default).  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to allow all statements to be cached
 regardless of their size.</li>
-<li><strong>command_timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – the default timeout for operations on this connection
+<li><strong>command_timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – The default timeout for operations on this connection
 (the default is <code class="docutils literal notranslate"><span class="pre">None</span></code>: no timeout).</li>
-<li><strong>ssl</strong> – pass <code class="docutils literal notranslate"><span class="pre">True</span></code> or an <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.SSLContext">ssl.SSLContext</a> instance to
+<li><strong>ssl</strong> – Pass <code class="docutils literal notranslate"><span class="pre">True</span></code> or an <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.SSLContext">ssl.SSLContext</a> instance to
 require an SSL connection.  If <code class="docutils literal notranslate"><span class="pre">True</span></code>, a default SSL context
 returned by <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.create_default_context">ssl.create_default_context()</a>
 will be used.</li>
-<li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><em>dict</em></a>) – an optional dict of server runtime parameters.  Refer to
-PostgreSQL documentation for a <a class="reference external" href="https://www.postgresql.org/docs/current/static/runtime-config.html">list of supported options</a>.</li>
-<li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – class of the returned connection object.  Must be a subclass of
+<li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><em>dict</em></a>) – An optional dict of server runtime parameters.  Refer to
+PostgreSQL documentation for
+a <a class="reference external" href="serversettings">list of supported options</a>.</li>
+<li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – Class of the returned connection object.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</li>
 </ul>
 </td>
@@ -254,6 +298,10 @@ for that.</p>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.16.0: </span>Added <code class="docutils literal notranslate"><span class="pre">passfile</span></code> parameter
 (and support for password files in general).</p>
+</div>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.18.0: </span>Added ability to specify multiple hosts in the <em>dsn</em>
+and <em>host</em> arguments.</p>
 </div>
 </dd></dl>
 
@@ -605,6 +653,12 @@ are provided.</p>
 </tr>
 </tbody>
 </table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When inserting a large number of rows,
+use <a class="reference internal" href="#asyncpg.connection.Connection.copy_records_to_table" title="asyncpg.connection.Connection.copy_records_to_table"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Connection.copy_records_to_table()</span></code></a> instead,
+it is much more efficient for this purpose.</p>
+</div>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.7.0.</span></p>
 </div>
@@ -857,8 +911,13 @@ asyncpg that the database schema has changed.</p>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.set_builtin_type_codec">
-<em class="property">coroutine </em><code class="descname">set_builtin_type_codec</code><span class="sig-paren">(</span><em>typename</em>, <em>*</em>, <em>schema='public'</em>, <em>codec_name</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.set_builtin_type_codec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.set_builtin_type_codec" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set a builtin codec for the specified data type.</p>
+<em class="property">coroutine </em><code class="descname">set_builtin_type_codec</code><span class="sig-paren">(</span><em>typename</em>, <em>*</em>, <em>schema='public'</em>, <em>codec_name</em>, <em>format=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.set_builtin_type_codec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.set_builtin_type_codec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a builtin codec for the specified scalar data type.</p>
+<p>This method has two uses.  The first is to register a builtin
+codec for an extension type without a stable OID, such as ‘hstore’.
+The second use is to declare that an extension type or a
+user-defined type is wire-compatible with a certain builtin
+data type and should be exchanged as such.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -866,13 +925,25 @@ asyncpg that the database schema has changed.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>typename</strong> – Name of the data type the codec is for.</li>
 <li><strong>schema</strong> – Schema name of the data type the codec is for
-(defaults to ‘public’)</li>
-<li><strong>codec_name</strong> – The name of the builtin codec.</li>
+(defaults to <code class="docutils literal notranslate"><span class="pre">'public'</span></code>).</li>
+<li><strong>codec_name</strong> – The name of the builtin codec to use for the type.
+This should be either the name of a known core type
+(such as <code class="docutils literal notranslate"><span class="pre">&quot;int&quot;</span></code>), or the name of a supported extension
+type.  Currently, the only supported extension type is
+<code class="docutils literal notranslate"><span class="pre">&quot;pg_contrib.hstore&quot;</span></code>.</li>
+<li><strong>format</strong> – If <em>format</em> is <code class="docutils literal notranslate"><span class="pre">None</span></code> (the default), all formats supported
+by the target codec are declared to be supported for <em>typename</em>.
+If <em>format</em> is <code class="docutils literal notranslate"><span class="pre">'text'</span></code> or <code class="docutils literal notranslate"><span class="pre">'binary'</span></code>, then only the
+specified format is declared to be supported for <em>typename</em>.</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.18.0: </span>The <em>codec_name</em> argument can be the name of any known
+core data type.  Added the <em>format</em> keyword argument.</p>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -1296,7 +1367,7 @@ a <a class="reference external" href="https://www.postgresql.org/docs/current/st
 <span class="k">except</span><span class="p">:</span>
     <span class="n">await</span> <span class="n">tr</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
     <span class="k">raise</span>
-<span class="k">finally</span><span class="p">:</span>
+<span class="k">else</span><span class="p">:</span>
     <span class="n">await</span> <span class="n">tr</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -1819,6 +1890,16 @@ items either by a numeric index or by a field name:</p>
 <dd><p>Return an iterator over the <em>values</em> of the record <em>r</em>.</p>
 </dd></dl>
 
+<dl class="describe">
+<dt>
+<code class="descname">get(name[, default])</code></dt>
+<dd><p>Return the value for <em>name</em> if the record has a field named <em>name</em>,
+else return <em>default</em>. If <em>default</em> is not given, return <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.18.</span></p>
+</div>
+</dd></dl>
+
 <dl class="method">
 <dt id="asyncpg.Record.values">
 <code class="descname">values</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#asyncpg.Record.values" title="Permalink to this definition">¶</a></dt>
@@ -1916,49 +1997,119 @@ items either by a numeric index or by a field name:</p>
 
 <dl class="class">
 <dt id="asyncpg.types.BitString">
-<em class="property">class </em><code class="descname">BitString</code><span class="sig-paren">(</span><em>bitstring=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/types.html#BitString"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">BitString</code><span class="sig-paren">(</span><em>bitstring=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>bit</cite> and <cite>varbit</cite> types.</p>
+<dl class="classmethod">
+<dt id="asyncpg.types.BitString.from_int">
+<em class="property">classmethod </em><code class="descname">from_int</code><span class="sig-paren">(</span><em>x</em>, <em>length</em>, <em>bitorder='big'</em>, <em>*</em>, <em>signed=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString.from_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString.from_int" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represent the Python int x as a BitString.
+Acts similarly to int.to_bytes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>x</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – An integer to represent. Negative integers are represented in two’s
+complement form, unless the argument signed is False, in which case
+negative integers raise an OverflowError.</li>
+<li><strong>length</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – The length of the resulting BitString. An OverflowError is raised
+if the integer is not representable in this many bits.</li>
+<li><strong>bitorder</strong> – Determines the bit order used in the BitString representation. By
+default, this function uses Postgres conventions for casting ints
+to bits. If bitorder is ‘big’, the most significant bit is at the
+start of the string (this is the same as the default). If bitorder
+is ‘little’, the most significant bit is at the end of the string.</li>
+<li><strong>signed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – Determines whether two’s complement is used in the BitString
+representation. If signed is False and a negative integer is given,
+an OverflowError is raised.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Return BitString:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"><p class="first last">A BitString representing the input integer, in the
+form specified by the other input args.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.18.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.types.BitString.to_int">
+<code class="descname">to_int</code><span class="sig-paren">(</span><em>bitorder='big'</em>, <em>*</em>, <em>signed=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString.to_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString.to_int" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interpret the BitString as a Python int.
+Acts similarly to int.from_bytes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>bitorder</strong> – Determines the bit order used to interpret the BitString. By
+default, this function uses Postgres conventions for casting bits
+to ints. If bitorder is ‘big’, the most significant bit is at the
+start of the string (this is the same as the default). If bitorder
+is ‘little’, the most significant bit is at the end of the string.</li>
+<li><strong>signed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – Determines whether two’s complement is used to interpret the
+BitString. If signed is False, the returned value is always
+non-negative.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return int:</th><td class="field-body"><p class="first last">An integer representing the BitString. Information about
+the BitString’s exact length is lost.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.18.0.</span></p>
+</div>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="class">
 <dt id="asyncpg.types.Point">
-<em class="property">class </em><code class="descname">Point</code><a class="reference internal" href="../_modules/asyncpg/types.html#Point"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Point" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Point</code><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Point"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Point" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>point</cite> type.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="asyncpg.types.Path">
-<em class="property">class </em><code class="descname">Path</code><span class="sig-paren">(</span><em>*points</em>, <em>is_closed=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/types.html#Path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Path" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Path</code><span class="sig-paren">(</span><em>*points</em>, <em>is_closed=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>path</cite> type.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="asyncpg.types.Polygon">
-<em class="property">class </em><code class="descname">Polygon</code><span class="sig-paren">(</span><em>*points</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/types.html#Polygon"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Polygon" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Polygon</code><span class="sig-paren">(</span><em>*points</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Polygon"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Polygon" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>polygon</cite> type.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="asyncpg.types.Box">
-<em class="property">class </em><code class="descname">Box</code><a class="reference internal" href="../_modules/asyncpg/types.html#Box"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Box" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Box</code><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Box"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Box" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>box</cite> type.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="asyncpg.types.Line">
-<em class="property">class </em><code class="descname">Line</code><a class="reference internal" href="../_modules/asyncpg/types.html#Line"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Line" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Line</code><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Line"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Line" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>line</cite> type.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="asyncpg.types.LineSegment">
-<em class="property">class </em><code class="descname">LineSegment</code><a class="reference internal" href="../_modules/asyncpg/types.html#LineSegment"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.LineSegment" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">LineSegment</code><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#LineSegment"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.LineSegment" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>lseg</cite> type.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="asyncpg.types.Circle">
-<em class="property">class </em><code class="descname">Circle</code><a class="reference internal" href="../_modules/asyncpg/types.html#Circle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Circle" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Circle</code><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Circle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Circle" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>circle</cite> type.</p>
 </dd></dl>
 
@@ -2044,7 +2195,7 @@ items either by a numeric index or by a field name:</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.17.0',
+            VERSION:'0.18.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
