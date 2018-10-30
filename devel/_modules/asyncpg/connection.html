@@ -1670,77 +1670,120 @@
                   <span class="n">server_settings</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sa">r</span><span class="sd">&quot;&quot;&quot;A coroutine to establish a connection to a PostgreSQL server.</span>
 
+<span class="sd">    The connection parameters may be specified either as a connection</span>
+<span class="sd">    URI in *dsn*, or as specific keyword arguments, or both.</span>
+<span class="sd">    If both *dsn* and keyword arguments are specified, the latter</span>
+<span class="sd">    override the corresponding values parsed from the connection URI.</span>
+<span class="sd">    The default values for the majority of arguments can be specified</span>
+<span class="sd">    using `environment variables &lt;postgres envvars&gt;`_.</span>
+
 <span class="sd">    Returns a new :class:`~asyncpg.connection.Connection` object.</span>
 
 <span class="sd">    :param dsn:</span>
 <span class="sd">        Connection arguments specified using as a single string in the</span>
-<span class="sd">        following format:</span>
-<span class="sd">        ``postgres://user:pass@host:port/database?option=value``</span>
+<span class="sd">        `libpq connection URI format`_:</span>
+<span class="sd">        ``postgres://user:password@host:port/database?option=value``.</span>
+<span class="sd">        The following options are recognized by asyncpg: host, port,</span>
+<span class="sd">        user, database (or dbname), password, passfile, sslmode.</span>
+<span class="sd">        Unlike libpq, asyncpg will treat unrecognized options</span>
+<span class="sd">        as `server settings`_ to be used for the connection.</span>
 
 <span class="sd">    :param host:</span>
-<span class="sd">        database host address or a path to the directory containing</span>
-<span class="sd">        database server UNIX socket (defaults to the default UNIX socket,</span>
-<span class="sd">        or the value of the ``PGHOST`` environment variable, if set).</span>
+<span class="sd">        Database host address as one of the following:</span>
+
+<span class="sd">        - an IP address or a domain name;</span>
+<span class="sd">        - an absolute path to the directory containing the database</span>
+<span class="sd">          server Unix-domain socket (not supported on Windows);</span>
+<span class="sd">        - a sequence of any of the above, in which case the addresses</span>
+<span class="sd">          will be tried in order, and the first successful connection</span>
+<span class="sd">          will be returned.</span>
+
+<span class="sd">        If not specified, asyncpg will try the following, in order:</span>
+
+<span class="sd">        - host address(es) parsed from the *dsn* argument,</span>
+<span class="sd">        - the value of the ``PGHOST`` environment variable,</span>
+<span class="sd">        - on Unix, common directories used for PostgreSQL Unix-domain</span>
+<span class="sd">          sockets: ``&quot;/run/postgresql&quot;``, ``&quot;/var/run/postgresl&quot;``,</span>
+<span class="sd">          ``&quot;/var/pgsql_socket&quot;``, ``&quot;/private/tmp&quot;``, and ``&quot;/tmp&quot;``,</span>
+<span class="sd">        - ``&quot;localhost&quot;``.</span>
 
 <span class="sd">    :param port:</span>
-<span class="sd">        connection port number (defaults to ``5432``, or the value of</span>
-<span class="sd">        the ``PGPORT`` environment variable, if set)</span>
+<span class="sd">        Port number to connect to at the server host</span>
+<span class="sd">        (or Unix-domain socket file extension).  If multiple host</span>
+<span class="sd">        addresses were specified, this parameter may specify a</span>
+<span class="sd">        sequence of port numbers of the same length as the host sequence,</span>
+<span class="sd">        or it may specify a single port number to be used for all host</span>
+<span class="sd">        addresses.</span>
+
+<span class="sd">        If not specified, the value parsed from the *dsn* argument is used,</span>
+<span class="sd">        or the value of the ``PGPORT`` environment variable, or ``5432`` if</span>
+<span class="sd">        neither is specified.</span>
 
 <span class="sd">    :param user:</span>
-<span class="sd">        the name of the database role used for authentication</span>
-<span class="sd">        (defaults to the name of the effective user of the process</span>
-<span class="sd">        making the connection, or the value of ``PGUSER`` environment</span>
-<span class="sd">        variable, if set)</span>
+<span class="sd">        The name of the database role used for authentication.</span>
+
+<span class="sd">        If not specified, the value parsed from the *dsn* argument is used,</span>
+<span class="sd">        or the value of the ``PGUSER`` environment variable, or the</span>
+<span class="sd">        operating system name of the user running the application.</span>
 
 <span class="sd">    :param database:</span>
-<span class="sd">        the name of the database (defaults to the value of ``PGDATABASE``</span>
-<span class="sd">        environment variable, if set.)</span>
+<span class="sd">        The name of the database to connect to.</span>
+
+<span class="sd">        If not specified, the value parsed from the *dsn* argument is used,</span>
+<span class="sd">        or the value of the ``PGDATABASE`` environment variable, or the</span>
+<span class="sd">        operating system name of the user running the application.</span>
 
 <span class="sd">    :param password:</span>
-<span class="sd">        password used for authentication</span>
+<span class="sd">        Password to be used for authentication, if the server requires</span>
+<span class="sd">        one.  If not specified, the value parsed from the *dsn* argument</span>
+<span class="sd">        is used, or the value of the ``PGPASSWORD`` environment variable.</span>
+<span class="sd">        Note that the use of the environment variable is discouraged as</span>
+<span class="sd">        other users and applications may be able to read it without needing</span>
+<span class="sd">        specific privileges.  It is recommended to use *passfile* instead.</span>
 
 <span class="sd">    :param passfile:</span>
-<span class="sd">        the name of the file used to store passwords</span>
+<span class="sd">        The name of the file used to store passwords</span>
 <span class="sd">        (defaults to ``~/.pgpass``, or ``%APPDATA%\postgresql\pgpass.conf``</span>
-<span class="sd">        on Windows)</span>
+<span class="sd">        on Windows).</span>
 
 <span class="sd">    :param loop:</span>
 <span class="sd">        An asyncio event loop instance.  If ``None``, the default</span>
 <span class="sd">        event loop will be used.</span>
 
 <span class="sd">    :param float timeout:</span>
-<span class="sd">        connection timeout in seconds.</span>
+<span class="sd">        Connection timeout in seconds.</span>
 
 <span class="sd">    :param int statement_cache_size:</span>
-<span class="sd">        the size of prepared statement LRU cache.  Pass ``0`` to</span>
+<span class="sd">        The size of prepared statement LRU cache.  Pass ``0`` to</span>
 <span class="sd">        disable the cache.</span>
 
 <span class="sd">    :param int max_cached_statement_lifetime:</span>
-<span class="sd">        the maximum time in seconds a prepared statement will stay</span>
+<span class="sd">        The maximum time in seconds a prepared statement will stay</span>
 <span class="sd">        in the cache.  Pass ``0`` to allow statements be cached</span>
 <span class="sd">        indefinitely.</span>
 
 <span class="sd">    :param int max_cacheable_statement_size:</span>
-<span class="sd">        the maximum size of a statement that can be cached (15KiB by</span>
+<span class="sd">        The maximum size of a statement that can be cached (15KiB by</span>
 <span class="sd">        default).  Pass ``0`` to allow all statements to be cached</span>
 <span class="sd">        regardless of their size.</span>
 
 <span class="sd">    :param float command_timeout:</span>
-<span class="sd">        the default timeout for operations on this connection</span>
+<span class="sd">        The default timeout for operations on this connection</span>
 <span class="sd">        (the default is ``None``: no timeout).</span>
 
 <span class="sd">    :param ssl:</span>
-<span class="sd">        pass ``True`` or an `ssl.SSLContext &lt;SSLContext_&gt;`_ instance to</span>
+<span class="sd">        Pass ``True`` or an `ssl.SSLContext &lt;SSLContext_&gt;`_ instance to</span>
 <span class="sd">        require an SSL connection.  If ``True``, a default SSL context</span>
 <span class="sd">        returned by `ssl.create_default_context() &lt;create_default_context_&gt;`_</span>
 <span class="sd">        will be used.</span>
 
 <span class="sd">    :param dict server_settings:</span>
-<span class="sd">        an optional dict of server runtime parameters.  Refer to</span>
-<span class="sd">        PostgreSQL documentation for a `list of supported options`_.</span>
+<span class="sd">        An optional dict of server runtime parameters.  Refer to</span>
+<span class="sd">        PostgreSQL documentation for</span>
+<span class="sd">        a `list of supported options &lt;server settings&gt;`_.</span>
 
 <span class="sd">    :param Connection connection_class:</span>
-<span class="sd">        class of the returned connection object.  Must be a subclass of</span>
+<span class="sd">        Class of the returned connection object.  Must be a subclass of</span>
 <span class="sd">        :class:`~asyncpg.connection.Connection`.</span>
 
 <span class="sd">    :return: A :class:`~asyncpg.connection.Connection` instance.</span>
@@ -1777,8 +1820,13 @@
 <span class="sd">    .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext</span>
 <span class="sd">    .. _create_default_context:</span>
 <span class="sd">        https://docs.python.org/3/library/ssl.html#ssl.create_default_context</span>
-<span class="sd">    .. _list of supported options:</span>
+<span class="sd">    .. _server settings:</span>
 <span class="sd">        https://www.postgresql.org/docs/current/static/runtime-config.html</span>
+<span class="sd">    .. _postgres envvars:</span>
+<span class="sd">        https://www.postgresql.org/docs/current/static/libpq-envars.html</span>
+<span class="sd">    .. _libpq connection URI format:</span>
+<span class="sd">        https://www.postgresql.org/docs/current/static/\</span>
+<span class="sd">        libpq-connect.html#LIBPQ-CONNSTRING</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">connection_class</span><span class="p">,</span> <span class="n">Connection</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>

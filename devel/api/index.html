@@ -175,6 +175,12 @@
 <dt id="asyncpg.connection.connect">
 <code class="descname">connect</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>host=None</em>, <em>port=None</em>, <em>user=None</em>, <em>password=None</em>, <em>passfile=None</em>, <em>database=None</em>, <em>loop=None</em>, <em>timeout=60</em>, <em>statement_cache_size=100</em>, <em>max_cached_statement_lifetime=300</em>, <em>max_cacheable_statement_size=15360</em>, <em>command_timeout=None</em>, <em>ssl=None</em>, <em>connection_class=&lt;class 'asyncpg.connection.Connection'&gt;</em>, <em>server_settings=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.connect" title="Permalink to this definition">¶</a></dt>
 <dd><p>A coroutine to establish a connection to a PostgreSQL server.</p>
+<p>The connection parameters may be specified either as a connection
+URI in <em>dsn</em>, or as specific keyword arguments, or both.
+If both <em>dsn</em> and keyword arguments are specified, the latter
+override the corresponding values parsed from the connection URI.
+The default values for the majority of arguments can be specified
+using <a class="reference external" href="postgresenvvars">environment variables</a>.</p>
 <p>Returns a new <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a> object.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -182,43 +188,81 @@
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>dsn</strong> – Connection arguments specified using as a single string in the
-following format:
-<code class="docutils literal notranslate"><span class="pre">postgres://user:pass&#64;host:port/database?option=value</span></code></li>
-<li><strong>host</strong> – database host address or a path to the directory containing
-database server UNIX socket (defaults to the default UNIX socket,
-or the value of the <code class="docutils literal notranslate"><span class="pre">PGHOST</span></code> environment variable, if set).</li>
-<li><strong>port</strong> – connection port number (defaults to <code class="docutils literal notranslate"><span class="pre">5432</span></code>, or the value of
-the <code class="docutils literal notranslate"><span class="pre">PGPORT</span></code> environment variable, if set)</li>
-<li><strong>user</strong> – the name of the database role used for authentication
-(defaults to the name of the effective user of the process
-making the connection, or the value of <code class="docutils literal notranslate"><span class="pre">PGUSER</span></code> environment
-variable, if set)</li>
-<li><strong>database</strong> – the name of the database (defaults to the value of <code class="docutils literal notranslate"><span class="pre">PGDATABASE</span></code>
-environment variable, if set.)</li>
-<li><strong>password</strong> – password used for authentication</li>
-<li><strong>passfile</strong> – the name of the file used to store passwords
+<a class="reference external" href="https://www.postgresql.org/docs/current/static/ libpq-connect.html#LIBPQ-CONNSTRING">libpq connection URI format</a>:
+<code class="docutils literal notranslate"><span class="pre">postgres://user:password&#64;host:port/database?option=value</span></code>.
+The following options are recognized by asyncpg: host, port,
+user, database (or dbname), password, passfile, sslmode.
+Unlike libpq, asyncpg will treat unrecognized options
+as <a class="reference external" href="https://www.postgresql.org/docs/current/static/runtime-config.html">server settings</a> to be used for the connection.</li>
+<li><strong>host</strong> – <p>Database host address as one of the following:</p>
+<ul>
+<li>an IP address or a domain name;</li>
+<li>an absolute path to the directory containing the database
+server Unix-domain socket (not supported on Windows);</li>
+<li>a sequence of any of the above, in which case the addresses
+will be tried in order, and the first successful connection
+will be returned.</li>
+</ul>
+<p>If not specified, asyncpg will try the following, in order:</p>
+<ul>
+<li>host address(es) parsed from the <em>dsn</em> argument,</li>
+<li>the value of the <code class="docutils literal notranslate"><span class="pre">PGHOST</span></code> environment variable,</li>
+<li>on Unix, common directories used for PostgreSQL Unix-domain
+sockets: <code class="docutils literal notranslate"><span class="pre">&quot;/run/postgresql&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;/var/run/postgresl&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;/var/pgsql_socket&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;/private/tmp&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;/tmp&quot;</span></code>,</li>
+<li><code class="docutils literal notranslate"><span class="pre">&quot;localhost&quot;</span></code>.</li>
+</ul>
+</li>
+<li><strong>port</strong> – <p>Port number to connect to at the server host
+(or Unix-domain socket file extension).  If multiple host
+addresses were specified, this parameter may specify a
+sequence of port numbers of the same length as the host sequence,
+or it may specify a single port number to be used for all host
+addresses.</p>
+<p>If not specified, the value parsed from the <em>dsn</em> argument is used,
+or the value of the <code class="docutils literal notranslate"><span class="pre">PGPORT</span></code> environment variable, or <code class="docutils literal notranslate"><span class="pre">5432</span></code> if
+neither is specified.</p>
+</li>
+<li><strong>user</strong> – <p>The name of the database role used for authentication.</p>
+<p>If not specified, the value parsed from the <em>dsn</em> argument is used,
+or the value of the <code class="docutils literal notranslate"><span class="pre">PGUSER</span></code> environment variable, or the
+operating system name of the user running the application.</p>
+</li>
+<li><strong>database</strong> – <p>The name of the database to connect to.</p>
+<p>If not specified, the value parsed from the <em>dsn</em> argument is used,
+or the value of the <code class="docutils literal notranslate"><span class="pre">PGDATABASE</span></code> environment variable, or the
+operating system name of the user running the application.</p>
+</li>
+<li><strong>password</strong> – Password to be used for authentication, if the server requires
+one.  If not specified, the value parsed from the <em>dsn</em> argument
+is used, or the value of the <code class="docutils literal notranslate"><span class="pre">PGPASSWORD</span></code> environment variable.
+Note that the use of the environment variable is discouraged as
+other users and applications may be able to read it without needing
+specific privileges.  It is recommended to use <em>passfile</em> instead.</li>
+<li><strong>passfile</strong> – The name of the file used to store passwords
 (defaults to <code class="docutils literal notranslate"><span class="pre">~/.pgpass</span></code>, or <code class="docutils literal notranslate"><span class="pre">%APPDATA%\postgresql\pgpass.conf</span></code>
-on Windows)</li>
+on Windows).</li>
 <li><strong>loop</strong> – An asyncio event loop instance.  If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the default
 event loop will be used.</li>
-<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – connection timeout in seconds.</li>
-<li><strong>statement_cache_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – the size of prepared statement LRU cache.  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – Connection timeout in seconds.</li>
+<li><strong>statement_cache_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – The size of prepared statement LRU cache.  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to
 disable the cache.</li>
-<li><strong>max_cached_statement_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – the maximum time in seconds a prepared statement will stay
+<li><strong>max_cached_statement_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – The maximum time in seconds a prepared statement will stay
 in the cache.  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to allow statements be cached
 indefinitely.</li>
-<li><strong>max_cacheable_statement_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – the maximum size of a statement that can be cached (15KiB by
+<li><strong>max_cacheable_statement_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – The maximum size of a statement that can be cached (15KiB by
 default).  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to allow all statements to be cached
 regardless of their size.</li>
-<li><strong>command_timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – the default timeout for operations on this connection
+<li><strong>command_timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – The default timeout for operations on this connection
 (the default is <code class="docutils literal notranslate"><span class="pre">None</span></code>: no timeout).</li>
-<li><strong>ssl</strong> – pass <code class="docutils literal notranslate"><span class="pre">True</span></code> or an <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.SSLContext">ssl.SSLContext</a> instance to
+<li><strong>ssl</strong> – Pass <code class="docutils literal notranslate"><span class="pre">True</span></code> or an <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.SSLContext">ssl.SSLContext</a> instance to
 require an SSL connection.  If <code class="docutils literal notranslate"><span class="pre">True</span></code>, a default SSL context
 returned by <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.create_default_context">ssl.create_default_context()</a>
 will be used.</li>
-<li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><em>dict</em></a>) – an optional dict of server runtime parameters.  Refer to
-PostgreSQL documentation for a <a class="reference external" href="https://www.postgresql.org/docs/current/static/runtime-config.html">list of supported options</a>.</li>
-<li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – class of the returned connection object.  Must be a subclass of
+<li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><em>dict</em></a>) – An optional dict of server runtime parameters.  Refer to
+PostgreSQL documentation for
+a <a class="reference external" href="serversettings">list of supported options</a>.</li>
+<li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – Class of the returned connection object.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</li>
 </ul>
 </td>
