@@ -392,6 +392,16 @@ class TestConnectParams(tb.TestCase):
                 'could not match 2 port numbers to 3 hosts'
             )
         },
+        {
+            'dsn': 'postgres://user@?port=56226&host=%2Ftmp',
+            'result': (
+                [os.path.join('/tmp', '.s.PGSQL.56226')],
+                {
+                    'user': 'user',
+                    'database': 'user',
+                }
+            )
+        },
     ]
 
     @contextlib.contextmanager
