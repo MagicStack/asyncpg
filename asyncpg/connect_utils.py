@@ -215,7 +215,8 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             else:
                 hostspec = parsed.netloc
 
-            host, port = _parse_hostlist(hostspec, port)
+            if hostspec:
+                host, port = _parse_hostlist(hostspec, port)
 
         if parsed.path and database is None:
             database = parsed.path
@@ -234,15 +235,15 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 if isinstance(val, list):
                     query[key] = val[-1]
 
-            if 'host' in query:
-                val = query.pop('host')
-                if not host and val:
-                    host, port = _parse_hostlist(val, port)
-
             if 'port' in query:
                 val = query.pop('port')
                 if not port and val:
                     port = [int(p) for p in val.split(',')]
+
+            if 'host' in query:
+                val = query.pop('host')
+                if not host and val:
+                    host, port = _parse_hostlist(val, port)
 
             if 'dbname' in query:
                 val = query.pop('dbname')
