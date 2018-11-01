@@ -36,21 +36,6 @@ else:
         return name
 
 
-if _system == 'Linux':
-    def ensure_dead_with_parent():
-        import ctypes
-        import signal
-
-        try:
-            PR_SET_PDEATHSIG = 1
-            libc = ctypes.CDLL(ctypes.util.find_library('c'))
-            libc.prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
-        except Exception as e:
-            print(e)
-else:
-    ensure_dead_with_parent = None
-
-
 def find_available_port(port_range=(49152, 65535), max_tries=1000):
     low, high = port_range
 
@@ -230,8 +215,7 @@ class Cluster:
             self._daemon_process = \
                 subprocess.Popen(
                     [self._postgres, '-D', self._data_dir, *extra_args],
-                    stdout=stdout, stderr=subprocess.STDOUT,
-                    preexec_fn=ensure_dead_with_parent)
+                    stdout=stdout, stderr=subprocess.STDOUT)
 
             self._daemon_pid = self._daemon_process.pid
 
