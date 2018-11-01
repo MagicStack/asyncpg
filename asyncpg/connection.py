@@ -539,7 +539,7 @@ class Connection(metaclass=ConnectionMeta):
         :param str query:
             The query to copy the results of.
 
-        :param \*args:
+        :param args:
             Query arguments.
 
         :param output:
