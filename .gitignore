@@ -33,3 +33,6 @@ docs/_build
 /.pytest_cache/
 /.eggs
 /.vscode
+.venv
+venv
+env
