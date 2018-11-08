@@ -12,7 +12,7 @@ import textwrap
 
 __all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError',
            'InterfaceError', 'InterfaceWarning', 'PostgresLogMessage',
-           'InternalClientError', 'OutdatedSchemaCacheError')
+           'InternalClientError', 'OutdatedSchemaCacheError', 'ProtocolError')
 
 
 def _is_asyncpg_class(cls):

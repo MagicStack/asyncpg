@@ -805,6 +805,11 @@ cdef class BaseProtocol(CoreProtocol):
             elif self.state == PROTOCOL_COPY_IN_DATA:
                 self._on_result__copy_in(waiter)
 
+            elif self.state == PROTOCOL_TERMINATING:
+                # We are waiting for the connection to drop, so
+                # ignore any stray results at this point.
+                pass
+
             else:
                 raise apg_exc.InternalClientError(
                     'got result for unknown protocol state {}'.
