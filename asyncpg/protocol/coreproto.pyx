@@ -118,9 +118,16 @@ cdef class CoreProtocol:
                     else:
                         self.buffer.discard_message()
 
+                elif state == PROTOCOL_TERMINATING:
+                    # The connection is being terminated.
+                    # discard all messages until connection
+                    # termination.
+                    self.buffer.discard_message()
+
                 else:
                     raise apg_exc.InternalClientError(
-                        'protocol is in an unknown state {}'.format(state))
+                        f'cannot process message {chr(mtype)!r}: '
+                        f'protocol is in an unexpected state {state!r}.')
 
             except Exception as ex:
                 self.result_type = RESULT_FAILED
@@ -637,8 +644,7 @@ cdef class CoreProtocol:
                     'cannot switch to "idle" state; '
                     'protocol is in the "failed" state')
             elif self.state == PROTOCOL_IDLE:
-                raise apg_exc.InternalClientError(
-                    'protocol is already in the "idle" state')
+                pass
             else:
                 self.state = new_state
 
@@ -647,6 +653,9 @@ cdef class CoreProtocol:
 
         elif new_state == PROTOCOL_CANCELLED:
             self.state = PROTOCOL_CANCELLED
+
+        elif new_state == PROTOCOL_TERMINATING:
+            self.state = PROTOCOL_TERMINATING
 
         else:
             if self.state == PROTOCOL_IDLE:
@@ -903,6 +912,7 @@ cdef class CoreProtocol:
     cdef _terminate(self):
         cdef WriteBuffer buf
         self._ensure_connected()
+        self._set_state(PROTOCOL_TERMINATING)
         buf = WriteBuffer.new_message(b'X')
         buf.end_message()
         self._write(buf)
