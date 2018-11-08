@@ -693,7 +693,6 @@ cdef class BaseProtocol(CoreProtocol):
         return self.waiter
 
     cdef _on_result__connect(self, object waiter):
-        self.con_status = CONNECTION_OK
         waiter.set_result(True)
 
     cdef _on_result__prepare(self, object waiter):
@@ -771,10 +770,6 @@ cdef class BaseProtocol(CoreProtocol):
                     self.result, query=self.last_query)
             else:
                 exc = self.result
-
-            if self.state == PROTOCOL_AUTH:
-                self.con_status = CONNECTION_BAD
-
             waiter.set_exception(exc)
             return
 
@@ -782,7 +777,7 @@ cdef class BaseProtocol(CoreProtocol):
             if self.state == PROTOCOL_AUTH:
                 self._on_result__connect(waiter)
 
-            elif self.state == PROTOCOL_PARSE_DESCRIBE:
+            elif self.state == PROTOCOL_PREPARE:
                 self._on_result__prepare(waiter)
 
             elif self.state == PROTOCOL_BIND_EXECUTE:
@@ -832,12 +827,11 @@ cdef class BaseProtocol(CoreProtocol):
             self.cancel_waiter = None
             if self.waiter is not None and self.waiter.done():
                 self.waiter = None
+            if self.waiter is None:
+                return
 
         try:
-            if self.waiter is not None:
-                # _on_result() might be called several times in the
-                # process, or the waiter might have been cancelled.
-                self._dispatch_result()
+            self._dispatch_result()
         finally:
             self.statement = None
             self.last_query = None
