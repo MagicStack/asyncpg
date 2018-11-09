@@ -881,6 +881,31 @@ class TestPool(tb.ConnectedTestCase):
         await pool_task
         await pool.close()
 
+    async def test_pool_remote_close(self):
+        pool = await self.create_pool(min_size=1, max_size=1)
+        backend_pid_fut = self.loop.create_future()
+
+        async def worker():
+            async with pool.acquire() as conn:
+                pool_backend_pid = await conn.fetchval(
+                    'SELECT pg_backend_pid()')
+                backend_pid_fut.set_result(pool_backend_pid)
+                await asyncio.sleep(0.2, loop=self.loop)
+
+        task = self.loop.create_task(worker())
+        try:
+            conn = await self.connect()
+            backend_pid = await backend_pid_fut
+            await conn.execute('SELECT pg_terminate_backend($1)', backend_pid)
+        finally:
+            await conn.close()
+
+        await task
+
+        # Check that connection_lost has released the pool holder.
+        conn = await pool.acquire(timeout=0.1)
+        await pool.release(conn)
+
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
 class TestHotStandby(tb.ClusterTestCase):

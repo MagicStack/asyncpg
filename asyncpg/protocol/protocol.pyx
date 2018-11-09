@@ -111,7 +111,10 @@ cdef class BaseProtocol(CoreProtocol):
         self.conref = weakref.ref(connection)
 
     cdef get_connection(self):
-        return self.conref()
+        if self.conref is not None:
+            return self.conref()
+        else:
+            return None
 
     def get_server_pid(self):
         return self.backend_pid
@@ -867,6 +870,11 @@ cdef class BaseProtocol(CoreProtocol):
             # terminated or due to another error;
             # Throw an error in any awaiting waiter.
             self.closing = True
+            # Cleanup the connection resources, including, possibly,
+            # releasing the pool holder.
+            con = self.get_connection()
+            if con is not None:
+                con._cleanup()
             self._handle_waiter_on_connection_lost(exc)
 
     cdef _write(self, buf):
