@@ -22,8 +22,10 @@ def main():
         sys.exit(1)
 
     from_hash = sys.argv[1]
+    if len(sys.argv) > 2:
+        to_hash = sys.argv[2]
 
-    r = requests.get(f'{BASE_URL}/{from_hash}...master')
+    r = requests.get(f'{BASE_URL}/{from_hash}...{to_hash}')
     data = json.loads(r.text)
 
     for commit in data['commits']:
