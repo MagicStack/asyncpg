@@ -301,6 +301,13 @@ class Connection(metaclass=ConnectionMeta):
 
         .. versionchanged:: 0.11.0
            `timeout` became a keyword-only parameter.
+
+        .. versionchanged:: 0.19.0
+           The execution was changed to be in an implicit transaction if there
+           was no explicit transaction, so that it will no longer end up with
+           partial success. If you still need the previous behavior to
+           progressively execute many args, please use a loop with prepared
+           statement instead.
         """
         self._check_open()
         return await self._executemany(command, args, timeout)
@@ -821,6 +828,9 @@ class Connection(metaclass=ConnectionMeta):
             f = source
         elif isinstance(source, collections.abc.AsyncIterable):
             # assuming calling output returns an awaitable.
+            # copy_in() is designed to handle very large amounts of data, and
+            # the source async iterable is allowed to return an arbitrary
+            # amount of data on every iteration.
             reader = source
         else:
             # assuming source is an instance supporting the buffer protocol.

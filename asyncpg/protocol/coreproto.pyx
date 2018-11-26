@@ -27,12 +27,12 @@ cdef class CoreProtocol:
         # type of `scram` is `SCRAMAuthentcation`
         self.scram = None
 
-        # executemany support data
-        self._execute_iter = None
-        self._execute_portal_name = None
-        self._execute_stmt_name = None
-
         self._reset_result()
+
+    cpdef is_in_transaction(self):
+        # PQTRANS_INTRANS = idle, within transaction block
+        # PQTRANS_INERROR = idle, within failed transaction
+        return self.xact_status in (PQTRANS_INTRANS, PQTRANS_INERROR)
 
     cdef _read_server_messages(self):
         cdef:
@@ -258,22 +258,7 @@ cdef class CoreProtocol:
         elif mtype == b'Z':
             # ReadyForQuery
             self._parse_msg_ready_for_query()
-            if self.result_type == RESULT_FAILED:
-                self._push_result()
-            else:
-                try:
-                    buf = <WriteBuffer>next(self._execute_iter)
-                except StopIteration:
-                    self._push_result()
-                except Exception as e:
-                    self.result_type = RESULT_FAILED
-                    self.result = e
-                    self._push_result()
-                else:
-                    # Next iteration over the executemany() arg sequence
-                    self._send_bind_message(
-                        self._execute_portal_name, self._execute_stmt_name,
-                        buf, 0)
+            self._push_result()
 
         elif mtype == b'I':
             # EmptyQueryResponse
@@ -775,6 +760,17 @@ cdef class CoreProtocol:
         if self.con_status != CONNECTION_OK:
             raise apg_exc.InternalClientError('not connected')
 
+    cdef WriteBuffer _build_parse_message(self, str stmt_name, str query):
+        cdef WriteBuffer buf
+
+        buf = WriteBuffer.new_message(b'P')
+        buf.write_str(stmt_name, self.encoding)
+        buf.write_str(query, self.encoding)
+        buf.write_int16(0)
+
+        buf.end_message()
+        return buf
+
     cdef WriteBuffer _build_bind_message(self, str portal_name,
                                          str stmt_name,
                                          WriteBuffer bind_data):
@@ -786,6 +782,25 @@ cdef class CoreProtocol:
 
         # Arguments
         buf.write_buffer(bind_data)
+
+        buf.end_message()
+        return buf
+
+    cdef WriteBuffer _build_empty_bind_data(self):
+        cdef WriteBuffer buf
+        buf = WriteBuffer.new()
+        buf.write_int16(0)  # The number of parameter format codes
+        buf.write_int16(0)  # The number of parameter values
+        buf.write_int16(0)  # The number of result-column format codes
+        return buf
+
+    cdef WriteBuffer _build_execute_message(self, str portal_name,
+                                            int32_t limit):
+        cdef WriteBuffer buf
+
+        buf = WriteBuffer.new_message(b'E')
+        buf.write_str(portal_name, self.encoding)  # name of the portal
+        buf.write_int32(limit)  # number of rows to return; 0 - all
 
         buf.end_message()
         return buf
@@ -840,12 +855,7 @@ cdef class CoreProtocol:
         self._ensure_connected()
         self._set_state(PROTOCOL_PREPARE)
 
-        buf = WriteBuffer.new_message(b'P')
-        buf.write_str(stmt_name, self.encoding)
-        buf.write_str(query, self.encoding)
-        buf.write_int16(0)
-        buf.end_message()
-        packet = buf
+        packet = self._build_parse_message(stmt_name, query)
 
         buf = WriteBuffer.new_message(b'D')
         buf.write_byte(b'S')
@@ -867,10 +877,7 @@ cdef class CoreProtocol:
         buf = self._build_bind_message(portal_name, stmt_name, bind_data)
         packet = buf
 
-        buf = WriteBuffer.new_message(b'E')
-        buf.write_str(portal_name, self.encoding)  # name of the portal
-        buf.write_int32(limit)  # number of rows to return; 0 - all
-        buf.end_message()
+        buf = self._build_execute_message(portal_name, limit)
         packet.write_buffer(buf)
 
         packet.write_bytes(SYNC_MESSAGE)
@@ -889,30 +896,75 @@ cdef class CoreProtocol:
 
         self._send_bind_message(portal_name, stmt_name, bind_data, limit)
 
-    cdef _bind_execute_many(self, str portal_name, str stmt_name,
-                            object bind_data):
-
-        cdef WriteBuffer buf
-
+    cdef _execute_many_init(self):
         self._ensure_connected()
         self._set_state(PROTOCOL_BIND_EXECUTE_MANY)
 
         self.result = None
         self._discard_data = True
-        self._execute_iter = bind_data
-        self._execute_portal_name = portal_name
-        self._execute_stmt_name = stmt_name
 
-        try:
-            buf = <WriteBuffer>next(bind_data)
-        except StopIteration:
-            self._push_result()
-        except Exception as e:
-            self.result_type = RESULT_FAILED
-            self.result = e
-            self._push_result()
+    cdef _execute_many_writelines(self, str portal_name, str stmt_name,
+                                  object bind_data):
+        cdef:
+            WriteBuffer packet
+            WriteBuffer buf
+            list buffers = []
+
+        if self.result_type == RESULT_FAILED:
+            raise StopIteration(True)
+
+        while len(buffers) < _EXECUTE_MANY_BUF_NUM:
+            packet = WriteBuffer.new()
+
+            while packet.len() < _EXECUTE_MANY_BUF_SIZE:
+                try:
+                    buf = <WriteBuffer>next(bind_data)
+                except StopIteration:
+                    if packet.len() > 0:
+                        buffers.append(packet)
+                    if len(buffers) > 0:
+                        self._writelines(buffers)
+                        raise StopIteration(True)
+                    else:
+                        raise StopIteration(False)
+                except Exception as ex:
+                    raise StopIteration(ex)
+                packet.write_buffer(
+                    self._build_bind_message(portal_name, stmt_name, buf))
+                packet.write_buffer(
+                    self._build_execute_message(portal_name, 0))
+            buffers.append(packet)
+        self._writelines(buffers)
+
+    cdef _execute_many_done(self, bint data_sent):
+        if data_sent:
+            self._write(SYNC_MESSAGE)
         else:
-            self._send_bind_message(portal_name, stmt_name, buf, 0)
+            self._push_result()
+
+    cdef _execute_many_fail(self, object error):
+        cdef WriteBuffer buf
+
+        self.result_type = RESULT_FAILED
+        self.result = error
+
+        # We shall rollback in an implicit transaction to prevent partial
+        # commit, while do nothing in an explicit transaction and leaving the
+        # error to the user
+        if self.is_in_transaction():
+            self._execute_many_done(True)
+        else:
+            # Here if the implicit transaction is in `ignore_till_sync` mode,
+            # the `ROLLBACK` will be ignored and `Sync` will restore the state;
+            # or else the implicit transaction will be rolled back with a
+            # warning saying that there was no transaction, but rollback is
+            # done anyway, so we could ignore this warning.
+            buf = self._build_parse_message('', 'ROLLBACK')
+            buf.write_buffer(self._build_bind_message(
+                '', '', self._build_empty_bind_data()))
+            buf.write_buffer(self._build_execute_message('', 0))
+            buf.write_bytes(SYNC_MESSAGE)
+            self._write(buf)
 
     cdef _execute(self, str portal_name, int32_t limit):
         cdef WriteBuffer buf
@@ -922,10 +974,7 @@ cdef class CoreProtocol:
 
         self.result = []
 
-        buf = WriteBuffer.new_message(b'E')
-        buf.write_str(portal_name, self.encoding)  # name of the portal
-        buf.write_int32(limit)  # number of rows to return; 0 - all
-        buf.end_message()
+        buf = self._build_execute_message(portal_name, limit)
 
         buf.write_bytes(SYNC_MESSAGE)
 
@@ -1006,6 +1055,9 @@ cdef class CoreProtocol:
         self._write(buf)
 
     cdef _write(self, buf):
+        raise NotImplementedError
+
+    cdef _writelines(self, list buffers):
         raise NotImplementedError
 
     cdef _decode_row(self, const char* buf, ssize_t buf_len):

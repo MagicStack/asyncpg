@@ -196,11 +196,24 @@ class PreparedStatement(connresource.ConnectionResource):
             return None
         return data[0]
 
-    async def __bind_execute(self, args, limit, timeout):
+    @connresource.guarded
+    async def executemany(self, args, *, timeout: float=None):
+        """Execute the statement for each sequence of arguments in *args*.
+
+        :param args: An iterable containing sequences of arguments.
+        :param float timeout: Optional timeout value in seconds.
+        :return None: This method discards the results of the operations.
+
+        .. versionadded:: 0.19.0
+        """
+        return await self.__do_execute(
+            lambda protocol: protocol.bind_execute_many(
+                self._state, args, '', timeout))
+
+    async def __do_execute(self, executor):
         protocol = self._connection._protocol
         try:
-            data, status, _ = await protocol.bind_execute(
-                self._state, args, '', limit, True, timeout)
+            return await executor(protocol)
         except exceptions.OutdatedSchemaCacheError:
             await self._connection.reload_schema_state()
             # We can not find all manually created prepared statements, so just
@@ -209,6 +222,11 @@ class PreparedStatement(connresource.ConnectionResource):
             # invalidate themselves (unfortunately, clearing caches again).
             self._state.mark_closed()
             raise
+
+    async def __bind_execute(self, args, limit, timeout):
+        data, status, _ = await self.__do_execute(
+            lambda protocol: protocol.bind_execute(
+                self._state, args, '', limit, True, timeout))
         self._last_status = status
         return data
 
