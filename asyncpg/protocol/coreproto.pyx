@@ -398,7 +398,7 @@ cdef class CoreProtocol:
         if cbuf != NULL and cbuf_len > 0:
             msg = cpython.PyBytes_FromStringAndSize(cbuf, cbuf_len - 1)
         else:
-            msg = self.buffer.read_cstr()
+            msg = self.buffer.read_null_str()
         self.result_status_msg = msg
 
     cdef _parse_copy_data_msgs(self):
@@ -510,18 +510,18 @@ cdef class CoreProtocol:
         self.backend_secret = self.buffer.read_int32()
 
     cdef _parse_msg_parameter_status(self):
-        name = self.buffer.read_cstr()
+        name = self.buffer.read_null_str()
         name = name.decode(self.encoding)
 
-        val = self.buffer.read_cstr()
+        val = self.buffer.read_null_str()
         val = val.decode(self.encoding)
 
         self._set_server_parameter(name, val)
 
     cdef _parse_msg_notification(self):
         pid = self.buffer.read_int32()
-        channel = self.buffer.read_cstr().decode(self.encoding)
-        payload = self.buffer.read_cstr().decode(self.encoding)
+        channel = self.buffer.read_null_str().decode(self.encoding)
+        payload = self.buffer.read_null_str().decode(self.encoding)
         self._on_notification(pid, channel, payload)
 
     cdef _parse_msg_authentication(self):
@@ -611,7 +611,7 @@ cdef class CoreProtocol:
             if code == 0:
                 break
 
-            message = self.buffer.read_cstr()
+            message = self.buffer.read_null_str()
 
             parsed[chr(code)] = message.decode()
 
