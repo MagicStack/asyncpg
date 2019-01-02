@@ -334,7 +334,7 @@ cdef _decode_row_desc(object desc):
     result = []
 
     for i from 0 <= i < nfields:
-        f_name = reader.read_cstr()
+        f_name = reader.read_null_str()
         f_table_oid = <uint32_t>reader.read_int32()
         f_column_num = reader.read_int16()
         f_dt_oid = <uint32_t>reader.read_int32()
