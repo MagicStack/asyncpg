@@ -288,6 +288,8 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_get_new_connection</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_generation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_generation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_cancel_inactive_callback</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_inactive_callback</span><span class="p">()</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">acquire</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PoolConnectionProxy</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
