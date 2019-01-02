@@ -124,6 +124,8 @@ class PoolConnectionHolder:
 
         self._con = await self._pool._get_new_connection()
         self._generation = self._pool._generation
+        self._maybe_cancel_inactive_callback()
+        self._setup_inactive_callback()
 
     async def acquire(self) -> PoolConnectionProxy:
         if self._con is None or self._con.is_closed():

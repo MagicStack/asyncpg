@@ -668,6 +668,24 @@ class TestPool(tb.ConnectedTestCase):
 
         self.assertGreaterEqual(N, 50)
 
+    async def test_pool_max_inactive_time_05(self):
+        # Test that idle never-acquired connections abide by
+        # the max inactive lifetime.
+        async with self.create_pool(
+                database='postgres', min_size=2, max_size=2,
+                max_inactive_connection_lifetime=0.2) as pool:
+
+            self.assertIsNotNone(pool._holders[0]._con)
+            self.assertIsNotNone(pool._holders[1]._con)
+
+            await pool.execute('SELECT pg_sleep(0.3)')
+            await asyncio.sleep(0.3, loop=self.loop)
+
+            self.assertIs(pool._holders[0]._con, None)
+            # The connection in the second holder was never used,
+            # but should be closed nonetheless.
+            self.assertIs(pool._holders[1]._con, None)
+
     async def test_pool_handles_inactive_connection_errors(self):
         pool = await self.create_pool(database='postgres',
                                       min_size=1, max_size=1)
