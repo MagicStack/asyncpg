@@ -21,7 +21,7 @@ Can I use asyncpg with SQLAlchemy ORM?
 Short answer: no.  asyncpg uses asynchronous execution model
 and API, which is fundamentally incompatible with SQLAlchemy.
 However, it is possible to use asyncpg and SQLAlchemy Core
-with the help of a third-party adapter, such as asyncpgsa_.
+with the help of a third-party adapter, such as asyncpgsa_ or databases_.
 
 
 Can I use dot-notation with :class:`asyncpg.Record`?  It looks cleaner.
@@ -75,3 +75,4 @@ a value against a sequence use ``expression = any($1::mytype[])``,
 where ``mytype`` is the array element type.
 
 .. _asyncpgsa: https://github.com/CanopyTax/asyncpgsa
+.. _databases: https://github.com/encode/databases
