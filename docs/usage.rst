@@ -116,13 +116,13 @@ The table below shows the correspondence between PostgreSQL and Python types.
 |                      | <python:datetime.time>`                             |
 +----------------------+-----------------------------------------------------+
 | ``time with          | offset-aware :class:`datetime.time \                |
-| timezone``           | <python:datetime.time>`                             |
+| time zone``          | <python:datetime.time>`                             |
 +----------------------+-----------------------------------------------------+
 | ``timestamp``        | offset-naïve :class:`datetime.datetime \            |
 |                      | <python:datetime.datetime>`                         |
 +----------------------+-----------------------------------------------------+
 | ``timestamp with     | offset-aware :class:`datetime.datetime \            |
-| timezone``           | <python:datetime.datetime>`                         |
+| time zone``          | <python:datetime.datetime>`                         |
 +----------------------+-----------------------------------------------------+
 | ``interval``         | :class:`datetime.timedelta \                        |
 |                      | <python:datetime.timedelta>`                        |
