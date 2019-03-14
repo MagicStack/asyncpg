@@ -754,6 +754,10 @@ class TestCodecs(tb.ConnectedTestCase):
                 r"SELECT '{}'::int[]",
                 []
             ),
+            (
+                r"SELECT ARRAY[(1, 2)]",
+                [(1, 2)]
+            )
         ]
 
         for sql, expected in cases:

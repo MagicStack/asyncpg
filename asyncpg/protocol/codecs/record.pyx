@@ -51,10 +51,25 @@ cdef anonymous_record_decode(ConnectionSettings settings, FRBuffer *buf):
     return result
 
 
+cdef anonymous_record_decode_ex(ConnectionSettings settings, FRBuffer *buf,
+                                const void *arg):
+    return anonymous_record_decode(settings, buf)
+
+
+cdef anonymous_record_array_decode(ConnectionSettings settings, FRBuffer *buf):
+    return array_decode(
+        settings, buf, <decode_func_ex>&anonymous_record_decode_ex, NULL)
+
+
 cdef init_record_codecs():
     register_core_codec(RECORDOID,
                         <encode_func>NULL,
                         <decode_func>anonymous_record_decode,
+                        PG_FORMAT_BINARY)
+
+    register_core_codec(_RECORDOID,
+                        <encode_func>NULL,
+                        <decode_func>anonymous_record_array_decode,
                         PG_FORMAT_BINARY)
 
 init_record_codecs()

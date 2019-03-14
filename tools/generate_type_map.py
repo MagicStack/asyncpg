@@ -16,7 +16,7 @@ import asyncpg
 # Array types with builtin codecs, necessary for codec
 # bootstrap to work
 #
-_BUILTIN_ARRAYS = ('_text', '_oid')
+_BUILTIN_ARRAYS = ('_text', '_oid', '_record')
 
 _INVALIDOID = 0
 
