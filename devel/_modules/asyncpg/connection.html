@@ -1956,12 +1956,17 @@
         <span class="k">return</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">_statement</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
 
     <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># First, make sure that we cancel all scheduled callbacks.</span>
-        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_clear_entry_callback</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+        <span class="c1"># Store entries for later.</span>
+        <span class="n">entries</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
 
         <span class="c1"># Clear the entries dict.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+        <span class="c1"># Make sure that we cancel all scheduled callbacks</span>
+        <span class="c1"># and call on_remove callback for each entry.</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_clear_entry_callback</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_on_remove</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">_statement</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_set_entry_timeout</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entry</span><span class="p">):</span>
         <span class="c1"># Clear the existing timeout.</span>
