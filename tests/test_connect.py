@@ -402,6 +402,14 @@ class TestConnectParams(tb.TestCase):
                 }
             )
         },
+
+        {
+            'dsn': 'postgresql://some@user@host1/db',
+            'result': ([('host1', 5432)], {
+                'database': 'db',
+                'user': 'some@user',
+            })
+        },
     ]
 
     @contextlib.contextmanager
