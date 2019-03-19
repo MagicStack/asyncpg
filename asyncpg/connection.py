@@ -1792,12 +1792,17 @@ class _StatementCache:
         return (e._statement for e in self._entries.values())
 
     def clear(self):
-        # First, make sure that we cancel all scheduled callbacks.
-        for entry in self._entries.values():
-            self._clear_entry_callback(entry)
+        # Store entries for later.
+        entries = tuple(self._entries.values())
 
         # Clear the entries dict.
         self._entries.clear()
+
+        # Make sure that we cancel all scheduled callbacks
+        # and call on_remove callback for each entry.
+        for entry in entries:
+            self._clear_entry_callback(entry)
+            self._on_remove(entry._statement)
 
     def _set_entry_timeout(self, entry):
         # Clear the existing timeout.
