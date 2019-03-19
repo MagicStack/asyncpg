@@ -13,6 +13,20 @@ ERRTYP = 'unexpected data type of composite type'
 
 
 class TestCacheInvalidation(tb.ConnectedTestCase):
+
+    def _get_cached_statements(self, connection=None):
+        if connection is None:
+            connection = self.con
+        return list(connection._stmt_cache.iter_statements())
+
+    def _check_statements_are_not_closed(self, statements):
+        self.assertGreater(len(statements), 0)
+        self.assertTrue(all(not s.closed for s in statements))
+
+    def _check_statements_are_closed(self, statements):
+        self.assertGreater(len(statements), 0)
+        self.assertTrue(all(s.closed for s in statements))
+
     async def test_prepare_cache_invalidation_silent(self):
         await self.con.execute('CREATE TABLE tab1(a int, b int)')
 
@@ -21,11 +35,16 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
             result = await self.con.fetchrow('SELECT * FROM tab1')
             self.assertEqual(result, (1, 2))
 
+            statements = self._get_cached_statements()
+            self._check_statements_are_not_closed(statements)
+
             await self.con.execute(
                 'ALTER TABLE tab1 ALTER COLUMN b SET DATA TYPE text')
 
             result = await self.con.fetchrow('SELECT * FROM tab1')
             self.assertEqual(result, (1, '2'))
+
+            self._check_statements_are_closed(statements)
         finally:
             await self.con.execute('DROP TABLE tab1')
 
@@ -37,6 +56,9 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
             result = await self.con.fetchrow('SELECT * FROM tab1')
             self.assertEqual(result, (1, 2))
 
+            statements = self._get_cached_statements()
+            self._check_statements_are_not_closed(statements)
+
             await self.con.execute(
                 'ALTER TABLE tab1 ALTER COLUMN b SET DATA TYPE text')
 
@@ -44,6 +66,8 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
                                         'cached statement plan is invalid'):
                 async with self.con.transaction():
                     result = await self.con.fetchrow('SELECT * FROM tab1')
+
+            self._check_statements_are_closed(statements)
 
             # This is now OK,
             result = await self.con.fetchrow('SELECT * FROM tab1')
@@ -69,6 +93,12 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
             result = await con2.fetchrow('SELECT * FROM tab1')
             self.assertEqual(result, (1, 2))
 
+            statements1 = self._get_cached_statements(con1)
+            self._check_statements_are_not_closed(statements1)
+
+            statements2 = self._get_cached_statements(con2)
+            self._check_statements_are_not_closed(statements2)
+
             await self.con.execute(
                 'ALTER TABLE tab1 ALTER COLUMN b SET DATA TYPE text')
 
@@ -76,6 +106,9 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
             # for the entire pool.
             result = await con1.fetchrow('SELECT * FROM tab1')
             self.assertEqual(result, (1, '2'))
+
+            self._check_statements_are_closed(statements1)
+            self._check_statements_are_closed(statements2)
 
             async with con2.transaction():
                 # This should work, as con1 should have invalidated
@@ -98,11 +131,17 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
             result = await self.con.fetchrow('SELECT * FROM tab1')
             self.assertEqual(result, (1, (2, 3)))
 
+            statements = self._get_cached_statements()
+            self._check_statements_are_not_closed(statements)
+
             async with self.con.transaction():
                 await self.con.execute('ALTER TYPE typ1 ADD ATTRIBUTE c text')
                 with self.assertRaisesRegex(
                         asyncpg.OutdatedSchemaCacheError, ERRNUM):
                     await self.con.fetchrow('SELECT * FROM tab1')
+
+                self._check_statements_are_closed(statements)
+
                 # The second request must be correct (cache was dropped):
                 result = await self.con.fetchrow('SELECT * FROM tab1')
                 self.assertEqual(result, (1, (2, 3, None)))
@@ -123,6 +162,9 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
             result = await self.con.fetchrow('SELECT * FROM tab1')
             self.assertEqual(result, (1, (2, 3)))
 
+            statements = self._get_cached_statements()
+            self._check_statements_are_not_closed(statements)
+
             try:
                 async with self.con.transaction():
                     await self.con.execute(
@@ -130,6 +172,9 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
                     with self.assertRaisesRegex(
                             asyncpg.OutdatedSchemaCacheError, ERRNUM):
                         await self.con.fetchrow('SELECT * FROM tab1')
+
+                    self._check_statements_are_closed(statements)
+
                     # The second request must be correct (cache was dropped):
                     result = await self.con.fetchrow('SELECT * FROM tab1')
                     self.assertEqual(result, (1, (2, 3, None)))
@@ -158,6 +203,9 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
             result = await prep.fetchrow()
             self.assertEqual(result, (1, (2, 3)))
 
+            statements = self._get_cached_statements()
+            self._check_statements_are_not_closed(statements)
+
             try:
                 async with self.con.transaction():
                     await self.con.execute(
@@ -165,6 +213,9 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
                     with self.assertRaisesRegex(
                             asyncpg.OutdatedSchemaCacheError, ERRNUM):
                         await prep.fetchrow()
+
+                    self._check_statements_are_closed(statements)
+
                     # PS has its local cache for types codecs, even after the
                     # cache cleanup it is not possible to use it.
                     # That's why it is marked as closed.
@@ -206,10 +257,15 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
             result = await self.con.fetchrow('SELECT * FROM tab1')
             self.assertEqual(result, (1, (2, 3, 'x')))
 
+            statements = self._get_cached_statements()
+            self._check_statements_are_not_closed(statements)
+
             await self.con.execute('ALTER TYPE typ1 DROP ATTRIBUTE x')
             with self.assertRaisesRegex(
                     asyncpg.OutdatedSchemaCacheError, ERRNUM):
                 await self.con.fetchrow('SELECT * FROM tab1')
+
+            self._check_statements_are_closed(statements)
 
             # This is now OK, the cache is filled after being dropped.
             result = await self.con.fetchrow('SELECT * FROM tab1')
@@ -228,6 +284,9 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
             result = await self.con.fetchrow('SELECT * FROM tab1')
             self.assertEqual(result, (1, (2, 3)))
 
+            statements = self._get_cached_statements()
+            self._check_statements_are_not_closed(statements)
+
             # It is slightly artificial, but can take place in transactional
             # schema changing. Nevertheless, if the code checks and raises it
             # the most probable reason is a difference with the cache type.
@@ -236,6 +295,8 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
             with self.assertRaisesRegex(
                     asyncpg.OutdatedSchemaCacheError, ERRTYP):
                 await self.con.fetchrow('SELECT * FROM tab1')
+
+            self._check_statements_are_closed(statements)
 
             # This is now OK, the cache is filled after being dropped.
             result = await self.con.fetchrow('SELECT * FROM tab1')
@@ -265,8 +326,14 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
             result = await con1.fetchrow('SELECT * FROM tab1')
             self.assertEqual(result, (1, (2, 3)))
 
+            statements1 = self._get_cached_statements(con1)
+            self._check_statements_are_not_closed(statements1)
+
             result = await con2.fetchrow('SELECT * FROM tab1')
             self.assertEqual(result, (1, (2, 3)))
+
+            statements2 = self._get_cached_statements(con2)
+            self._check_statements_are_not_closed(statements2)
 
             # Create the same schema in the "testdb", fetch data which caches
             # type info.
@@ -277,6 +344,9 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
             result = await con_chk.fetchrow('SELECT * FROM tab1')
             self.assertEqual(result, (1, (2, 3)))
 
+            statements_chk = self._get_cached_statements(con_chk)
+            self._check_statements_are_not_closed(statements_chk)
+
             # Change schema in the databases.
             await self.con.execute('ALTER TYPE typ1 ADD ATTRIBUTE c text')
             await con_chk.execute('ALTER TYPE typ1 ADD ATTRIBUTE c text')
@@ -286,6 +356,9 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
             with self.assertRaisesRegex(
                     asyncpg.OutdatedSchemaCacheError, ERRNUM):
                 await con1.fetchrow('SELECT * FROM tab1')
+
+            self._check_statements_are_closed(statements1)
+            self._check_statements_are_closed(statements2)
 
             async with con2.transaction():
                 # This should work, as con1 should have invalidated all caches.
@@ -298,10 +371,14 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
 
             # Check the invalidation is database-specific, i.e. cache entries
             # for pool_chk/con_chk was not dropped via pool/con1.
+
+            self._check_statements_are_not_closed(statements_chk)
+
             with self.assertRaisesRegex(
                     asyncpg.OutdatedSchemaCacheError, ERRNUM):
                 await con_chk.fetchrow('SELECT * FROM tab1')
 
+            self._check_statements_are_closed(statements_chk)
         finally:
             await self.con.execute('DROP TABLE tab1')
             await self.con.execute('DROP TYPE typ1')
