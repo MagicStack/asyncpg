@@ -666,6 +666,7 @@ class Pool:
 
         self._closing = True
 
+        warning_callback = None
         try:
             warning_callback = self._loop.call_later(
                 60, self._warn_on_long_close)
@@ -683,7 +684,7 @@ class Pool:
             raise
 
         finally:
-            warning_callback.cancel()
+            warning_callback and warning_callback.cancel()
             self._closed = True
             self._closing = False
 
