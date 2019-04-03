@@ -830,6 +830,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_closing</span> <span class="o">=</span> <span class="kc">True</span>
 
+        <span class="n">warning_callback</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">warning_callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_later</span><span class="p">(</span>
                 <span class="mi">60</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_warn_on_long_close</span><span class="p">)</span>
@@ -847,7 +848,8 @@
             <span class="k">raise</span>
 
         <span class="k">finally</span><span class="p">:</span>
-            <span class="n">warning_callback</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">warning_callback</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">warning_callback</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_closing</span> <span class="o">=</span> <span class="kc">False</span></div>
 
