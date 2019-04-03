@@ -684,7 +684,8 @@ class Pool:
             raise
 
         finally:
-            warning_callback and warning_callback.cancel()
+            if warning_callback is not None:
+                warning_callback.cancel()
             self._closed = True
             self._closing = False
 
