@@ -8,6 +8,9 @@
 from hashlib import md5 as hashlib_md5  # for MD5 authentication
 
 
+include "scram.pyx"
+
+
 cdef class CoreProtocol:
 
     def __init__(self, con_params):
@@ -21,6 +24,8 @@ cdef class CoreProtocol:
         self.state = PROTOCOL_IDLE
         self.xact_status = PQTRANS_IDLE
         self.encoding = 'utf-8'
+        # type of `scram` is `SCRAMAuthentcation`
+        self.scram = None
 
         # executemany support data
         self._execute_iter = None
@@ -528,6 +533,8 @@ cdef class CoreProtocol:
         cdef:
             int32_t status
             bytes md5_salt
+            list sasl_auth_methods
+            list unsupported_sasl_auth_methods
 
         status = self.buffer.read_int32()
 
@@ -546,6 +553,58 @@ cdef class CoreProtocol:
             md5_salt = self.buffer.read_bytes(4)
             self.auth_msg = self._auth_password_message_md5(md5_salt)
 
+        elif status == AUTH_REQUIRED_SASL:
+            # AuthenticationSASL
+            # This requires making additional requests to the server in order
+            # to follow the SCRAM protocol defined in RFC 5802.
+            # get the SASL authentication methods that the server is providing
+            sasl_auth_methods = []
+            unsupported_sasl_auth_methods = []
+            # determine if the advertised authentication methods are supported,
+            # and if so, add them to the list
+            auth_method = self.buffer.read_null_str()
+            while auth_method:
+                if auth_method in SCRAMAuthentication.AUTHENTICATION_METHODS:
+                    sasl_auth_methods.append(auth_method)
+                else:
+                    unsupported_sasl_auth_methods.append(auth_method)
+                auth_method = self.buffer.read_null_str()
+
+            # if none of the advertised authentication methods are supported,
+            # raise an error
+            # otherwise, initialize the SASL authentication exchange
+            if not sasl_auth_methods:
+                unsupported_sasl_auth_methods = [m.decode("ascii")
+                    for m in unsupported_sasl_auth_methods]
+                self.result_type = RESULT_FAILED
+                self.result = apg_exc.InterfaceError(
+                    'unsupported SASL Authentication methods requested by the '
+                    'server: {!r}'.format(
+                        ", ".join(unsupported_sasl_auth_methods)))
+            else:
+                self.auth_msg = self._auth_password_message_sasl_initial(
+                    sasl_auth_methods)
+
+        elif status == AUTH_SASL_CONTINUE:
+            # AUTH_SASL_CONTINUE
+            # this requeires sending the second part of the SASL exchange, where
+            # the client parses information back from the server and determines
+            # if this is valid.
+            # The client builds a challenge response to the server
+            server_response = self.buffer.consume_message()
+            self.auth_msg = self._auth_password_message_sasl_continue(
+                server_response)
+
+        elif status == AUTH_SASL_FINAL:
+            # AUTH_SASL_FINAL
+            server_response = self.buffer.consume_message()
+            if not self.scram.verify_server_final_message(server_response):
+                self.result_type = RESULT_FAILED
+                self.result = apg_exc.InterfaceError(
+                    'could not verify server signature for '
+                    'SCRAM authentciation: scram-sha-256',
+                )
+
         elif status in (AUTH_REQUIRED_KERBEROS, AUTH_REQUIRED_SCMCRED,
                         AUTH_REQUIRED_GSS, AUTH_REQUIRED_GSS_CONTINUE,
                         AUTH_REQUIRED_SSPI):
@@ -560,7 +619,8 @@ cdef class CoreProtocol:
                 'unsupported authentication method requested by the '
                 'server: {}'.format(status))
 
-        self.buffer.discard_message()
+        if status not in [AUTH_SASL_CONTINUE, AUTH_SASL_FINAL]:
+            self.buffer.discard_message()
 
     cdef _auth_password_message_cleartext(self):
         cdef:
@@ -584,6 +644,34 @@ cdef class CoreProtocol:
                 encode('ascii') + salt).hexdigest().encode('ascii')
 
         msg.write_bytestring(b'md5' + hash)
+        msg.end_message()
+
+        return msg
+
+    cdef _auth_password_message_sasl_initial(self, list sasl_auth_methods):
+        cdef:
+            WriteBuffer msg
+
+        # use the first supported advertized mechanism
+        self.scram = SCRAMAuthentication(sasl_auth_methods[0])
+        # this involves a call and response with the server
+        msg = WriteBuffer.new_message(b'p')
+        msg.write_bytes(self.scram.create_client_first_message(self.user or ''))
+        msg.end_message()
+
+        return msg
+
+    cdef _auth_password_message_sasl_continue(self, bytes server_response):
+        cdef:
+            WriteBuffer msg
+
+        # determine if there is a valid server response
+        self.scram.parse_server_first_message(server_response)
+        # this involves a call and response with the server
+        msg = WriteBuffer.new_message(b'p')
+        client_final_message = self.scram.create_client_final_message(
+            self.password or '')
+        msg.write_bytes(client_final_message)
         msg.end_message()
 
         return msg

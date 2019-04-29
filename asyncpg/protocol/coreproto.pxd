@@ -5,6 +5,9 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+include "scram.pxd"
+
+
 cdef enum ConnectionStatus:
     CONNECTION_OK = 1
     CONNECTION_BAD = 2
@@ -43,6 +46,9 @@ cdef enum AuthenticationMessage:
     AUTH_REQUIRED_GSS = 7
     AUTH_REQUIRED_GSS_CONTINUE = 8
     AUTH_REQUIRED_SSPI = 9
+    AUTH_REQUIRED_SASL = 10
+    AUTH_SASL_CONTINUE = 11
+    AUTH_SASL_FINAL = 12
 
 
 AUTH_METHOD_NAME = {
@@ -50,6 +56,7 @@ AUTH_METHOD_NAME = {
     AUTH_REQUIRED_PASSWORD: 'password',
     AUTH_REQUIRED_PASSWORDMD5: 'md5',
     AUTH_REQUIRED_GSS: 'gss',
+    AUTH_REQUIRED_SASL: 'scram-sha-256',
     AUTH_REQUIRED_SSPI: 'sspi',
 }
 
@@ -91,6 +98,8 @@ cdef class CoreProtocol:
 
         # Instance of _ConnectionParameters
         object con_params
+        # Instance of SCRAMAuthentication
+        SCRAMAuthentication scram
 
         readonly int32_t backend_pid
         readonly int32_t backend_secret
@@ -133,6 +142,8 @@ cdef class CoreProtocol:
 
     cdef _auth_password_message_cleartext(self)
     cdef _auth_password_message_md5(self, bytes salt)
+    cdef _auth_password_message_sasl_initial(self, list sasl_auth_methods)
+    cdef _auth_password_message_sasl_continue(self, bytes server_response)
 
     cdef _write(self, buf)
 
