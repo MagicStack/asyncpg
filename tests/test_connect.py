@@ -80,6 +80,7 @@ class TestAuthentication(tb.ConnectedTestCase):
         methods = [
             ('trust', None),
             ('reject', None),
+            ('scram-sha-256', 'correctpassword'),
             ('md5', 'correctpassword'),
             ('password', 'correctpassword'),
         ]
@@ -88,27 +89,46 @@ class TestAuthentication(tb.ConnectedTestCase):
 
         create_script = []
         for method, password in methods:
+            if method == 'scram-sha-256' and self.server_version.major < 10:
+                continue
+
+            username = method.replace('-', '_')
+
+            # if this is a SCRAM password, we need to set the encryption method
+            # to "scram-sha-256" in order to properly hash the password
+            if method == 'scram-sha-256':
+                create_script.append(
+                    "SET password_encryption = 'scram-sha-256';"
+                )
+
             create_script.append(
                 'CREATE ROLE {}_user WITH LOGIN{};'.format(
-                    method,
+                    username,
                     ' PASSWORD {!r}'.format(password) if password else ''
                 )
             )
 
+            # to be courteous to the MD5 test, revert back to MD5 after the
+            # scram-sha-256 password is set
+            if method == 'scram-sha-256':
+                create_script.append(
+                    "SET password_encryption = 'md5';"
+                )
+
             if _system != 'Windows':
                 self.cluster.add_hba_entry(
                     type='local',
-                    database='postgres', user='{}_user'.format(method),
+                    database='postgres', user='{}_user'.format(username),
                     auth_method=method)
 
             self.cluster.add_hba_entry(
                 type='host', address=ipaddress.ip_network('127.0.0.0/24'),
-                database='postgres', user='{}_user'.format(method),
+                database='postgres', user='{}_user'.format(username),
                 auth_method=method)
 
             self.cluster.add_hba_entry(
                 type='host', address=ipaddress.ip_network('::1/128'),
-                database='postgres', user='{}_user'.format(method),
+                database='postgres', user='{}_user'.format(username),
                 auth_method=method)
 
         # Put hba changes into effect
@@ -124,13 +144,19 @@ class TestAuthentication(tb.ConnectedTestCase):
         methods = [
             'trust',
             'reject',
+            'scram-sha-256',
             'md5',
             'password',
         ]
 
         drop_script = []
         for method in methods:
-            drop_script.append('DROP ROLE {}_user;'.format(method))
+            if method == 'scram-sha-256' and self.server_version.major < 10:
+                continue
+
+            username = method.replace('-', '_')
+
+            drop_script.append('DROP ROLE {}_user;'.format(username))
 
         drop_script = '\n'.join(drop_script)
         self.loop.run_until_complete(self.con.execute(drop_script))
@@ -188,6 +214,53 @@ class TestAuthentication(tb.ConnectedTestCase):
                 'password authentication failed for user "md5_user"'):
             await self._try_connect(
                 user='md5_user', password='wrongpassword')
+
+    async def test_auth_password_scram_sha_256(self):
+        # scram is only supported in PostgreSQL 10 and above
+        if self.server_version.major < 10:
+            return
+
+        conn = await self.connect(
+            user='scram_sha_256_user', password='correctpassword')
+        await conn.close()
+
+        with self.assertRaisesRegex(
+                asyncpg.InvalidPasswordError,
+                'password authentication failed for user "scram_sha_256_user"'
+        ):
+            await self._try_connect(
+                user='scram_sha_256_user', password='wrongpassword')
+
+        # various SASL prep tests
+        # first ensure that password are being hashed for SCRAM-SHA-256
+        await self.con.execute("SET password_encryption = 'scram-sha-256';")
+        alter_password = "ALTER ROLE scram_sha_256_user PASSWORD E{!r};"
+        passwords = [
+            'nonascii\u1680space',  # C.1.2
+            'common\u1806nothing',  # B.1
+            'ab\ufb01c',            # normalization
+            'ab\u007fc',            # C.2.1
+            'ab\u206ac',            # C.2.2, C.6
+            'ab\ue000c',            # C.3, C.5
+            'ab\ufdd0c',            # C.4
+            'ab\u2ff0c',            # C.7
+            'ab\u2000c',            # C.8
+            'ab\ue0001',            # C.9
+        ]
+
+        # ensure the passwords that go through SASLprep work
+        for password in passwords:
+            # update the password
+            await self.con.execute(alter_password.format(password))
+            # test to see that passwords are properly SASL prepped
+            conn = await self.connect(
+                user='scram_sha_256_user', password=password)
+            await conn.close()
+
+        alter_password = \
+            "ALTER ROLE scram_sha_256_user PASSWORD 'correctpassword';"
+        await self.con.execute(alter_password)
+        await self.con.execute("SET password_encryption = 'md5';")
 
     async def test_auth_unsupported(self):
         pass
