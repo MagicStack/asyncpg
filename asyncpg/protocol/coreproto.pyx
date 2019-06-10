@@ -434,7 +434,7 @@ cdef class CoreProtocol:
             Py_buffer *pybuf
 
         mview = cpythonx.PyMemoryView_GetContiguous(
-            data, cpython.PyBUF_SIMPLE, b'C')
+            data, cpython.PyBUF_READ, b'C')
 
         try:
             pybuf = cpythonx.PyMemoryView_GET_BUFFER(mview)
