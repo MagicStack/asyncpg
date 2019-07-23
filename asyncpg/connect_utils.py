@@ -660,4 +660,4 @@ def _close_leaked_connection(fut):
         if tr:
             tr.close()
     except asyncio.CancelledError:
-        pass # hide the exception
+        pass  # hide the exception
