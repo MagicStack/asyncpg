@@ -475,6 +475,36 @@ class TestConnectParams(tb.TestCase):
                 }
             )
         },
+        {
+            'dsn': 'postgres:///db?host=/cloudsql/'
+                   'project:region:instance-name&user=spam',
+            'result': (
+                [os.path.join(
+                    '/cloudsql/project:region:instance-name',
+                    '.s.PGSQL.5432'
+                )], {
+                    'user': 'spam',
+                    'database': 'db'
+                }
+            )
+        },
+        {
+            'dsn': 'postgres:///db?host=127.0.0.1:5432,/cloudsql/'
+                   'project:region:instance-name,localhost:5433&user=spam',
+            'result': (
+                [
+                    ('127.0.0.1', 5432),
+                    os.path.join(
+                        '/cloudsql/project:region:instance-name',
+                        '.s.PGSQL.5432'
+                    ),
+                    ('localhost', 5433)
+                ], {
+                    'user': 'spam',
+                    'database': 'db'
+                }
+            )
+        },
     ]
 
     @contextlib.contextmanager
