@@ -179,9 +179,13 @@ def _parse_hostlist(hostlist, port):
         port = _validate_port_spec(hostspecs, port)
 
     for i, hostspec in enumerate(hostspecs):
-        addr, _, hostspec_port = hostspec.partition(':')
-        hosts.append(addr)
+        if not hostspec.startswith('/'):
+            addr, _, hostspec_port = hostspec.partition(':')
+        else:
+            addr = hostspec
+            hostspec_port = ''
 
+        hosts.append(addr)
         if not port:
             if hostspec_port:
                 hostlist_ports.append(int(hostspec_port))
