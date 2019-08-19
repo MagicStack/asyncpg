@@ -454,6 +454,41 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'dsn': 'postgresql://us%40r:p%40ss@h%40st1,h%40st2:543%33/d%62',
+            'result': (
+                [('h@st1', 5432), ('h@st2', 5433)],
+                {
+                    'user': 'us@r',
+                    'password': 'p@ss',
+                    'database': 'db',
+                }
+            )
+        },
+
+        {
+            'dsn': 'postgresql://user:p@ss@host/db',
+            'result': (
+                [('ss@host', 5432)],
+                {
+                    'user': 'user',
+                    'password': 'p',
+                    'database': 'db',
+                }
+            )
+        },
+
+        {
+            'dsn': 'postgresql:///d%62?user=us%40r&host=h%40st&port=543%33',
+            'result': (
+                [('h@st', 5433)],
+                {
+                    'user': 'us@r',
+                    'database': 'db',
+                }
+            )
+        },
+
+        {
             'dsn': 'pq:///dbname?host=/unix_sock/test&user=spam',
             'error': (ValueError, 'invalid DSN')
         },

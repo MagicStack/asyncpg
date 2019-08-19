@@ -153,7 +153,7 @@ def _validate_port_spec(hosts, port):
     return port
 
 
-def _parse_hostlist(hostlist, port):
+def _parse_hostlist(hostlist, port, *, unquote=False):
     if ',' in hostlist:
         # A comma-separated list of host addresses.
         hostspecs = hostlist.split(',')
@@ -185,9 +185,14 @@ def _parse_hostlist(hostlist, port):
             addr = hostspec
             hostspec_port = ''
 
+        if unquote:
+            addr = urllib.parse.unquote(addr)
+
         hosts.append(addr)
         if not port:
             if hostspec_port:
+                if unquote:
+                    hostspec_port = urllib.parse.unquote(hostspec_port)
                 hostlist_ports.append(int(hostspec_port))
             else:
                 hostlist_ports.append(default_port[i])
@@ -213,25 +218,34 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 'invalid DSN: scheme is expected to be either '
                 '"postgresql" or "postgres", got {!r}'.format(parsed.scheme))
 
-        if not host and parsed.netloc:
+        if parsed.netloc:
             if '@' in parsed.netloc:
-                auth, _, hostspec = parsed.netloc.partition('@')
+                dsn_auth, _, dsn_hostspec = parsed.netloc.partition('@')
             else:
-                hostspec = parsed.netloc
+                dsn_hostspec = parsed.netloc
+                dsn_auth = ''
+        else:
+            dsn_auth = dsn_hostspec = ''
 
-            if hostspec:
-                host, port = _parse_hostlist(hostspec, port)
+        if dsn_auth:
+            dsn_user, _, dsn_password = dsn_auth.partition(':')
+        else:
+            dsn_user = dsn_password = ''
+
+        if not host and dsn_hostspec:
+            host, port = _parse_hostlist(dsn_hostspec, port, unquote=True)
 
         if parsed.path and database is None:
-            database = parsed.path
-            if database.startswith('/'):
-                database = database[1:]
+            dsn_database = parsed.path
+            if dsn_database.startswith('/'):
+                dsn_database = dsn_database[1:]
+            database = urllib.parse.unquote(dsn_database)
 
-        if parsed.username and user is None:
-            user = parsed.username
+        if user is None and dsn_user:
+            user = urllib.parse.unquote(dsn_user)
 
-        if parsed.password and password is None:
-            password = parsed.password
+        if password is None and dsn_password:
+            password = urllib.parse.unquote(dsn_password)
 
         if parsed.query:
             query = urllib.parse.parse_qs(parsed.query, strict_parsing=True)
