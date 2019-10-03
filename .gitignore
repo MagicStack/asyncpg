@@ -33,3 +33,4 @@ docs/_build
 /.pytest_cache/
 /.eggs
 /.vscode
+/.mypy_cache
