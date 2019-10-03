@@ -109,7 +109,7 @@ class TestExecuteMany(tb.ConnectedTestCase):
         self.loop.run_until_complete(self.con.execute('DROP TABLE exmany'))
         super().tearDown()
 
-    async def test_basic(self):
+    async def test_executemany_basic(self):
         result = await self.con.executemany('''
             INSERT INTO exmany VALUES($1, $2)
         ''', [
@@ -139,7 +139,7 @@ class TestExecuteMany(tb.ConnectedTestCase):
             ('a', 1), ('b', 2), ('c', 3), ('d', 4)
         ])
 
-    async def test_bad_input(self):
+    async def test_executemany_bad_input(self):
         bad_data = ([1 / 0] for v in range(10))
 
         with self.assertRaises(ZeroDivisionError):
@@ -154,7 +154,7 @@ class TestExecuteMany(tb.ConnectedTestCase):
                 INSERT INTO exmany (b)VALUES($1)
             ''', good_data)
 
-    async def test_server_failure(self):
+    async def test_executemany_server_failure(self):
         with self.assertRaises(UniqueViolationError):
             await self.con.executemany('''
                 INSERT INTO exmany VALUES($1, $2)
@@ -164,7 +164,7 @@ class TestExecuteMany(tb.ConnectedTestCase):
         result = await self.con.fetch('SELECT * FROM exmany')
         self.assertEqual(result, [])
 
-    async def test_server_failure_after_writes(self):
+    async def test_executemany_server_failure_after_writes(self):
         with self.assertRaises(UniqueViolationError):
             await self.con.executemany('''
                 INSERT INTO exmany VALUES($1, $2)
@@ -174,7 +174,7 @@ class TestExecuteMany(tb.ConnectedTestCase):
         result = await self.con.fetch('SELECT b FROM exmany')
         self.assertEqual(result, [])
 
-    async def test_server_failure_during_writes(self):
+    async def test_executemany_server_failure_during_writes(self):
         # failure at the beginning, server error detected in the middle
         pos = 0
 
@@ -195,7 +195,7 @@ class TestExecuteMany(tb.ConnectedTestCase):
         self.assertEqual(result, [])
         self.assertLess(pos, 128, 'should stop early')
 
-    async def test_client_failure_after_writes(self):
+    async def test_executemany_client_failure_after_writes(self):
         with self.assertRaises(ZeroDivisionError):
             await self.con.executemany('''
                 INSERT INTO exmany VALUES($1, $2)
@@ -203,7 +203,7 @@ class TestExecuteMany(tb.ConnectedTestCase):
         result = await self.con.fetch('SELECT b FROM exmany')
         self.assertEqual(result, [])
 
-    async def test_timeout(self):
+    async def test_executemany_timeout(self):
         with self.assertRaises(asyncio.TimeoutError):
             await self.con.executemany('''
                 INSERT INTO exmany VALUES(pg_sleep(0.1), $1)
@@ -211,7 +211,7 @@ class TestExecuteMany(tb.ConnectedTestCase):
         result = await self.con.fetch('SELECT * FROM exmany')
         self.assertEqual(result, [])
 
-    async def test_client_failure_in_transaction(self):
+    async def test_executemany_client_failure_in_transaction(self):
         tx = self.con.transaction()
         await tx.start()
         with self.assertRaises(ZeroDivisionError):
@@ -226,7 +226,7 @@ class TestExecuteMany(tb.ConnectedTestCase):
         result = await self.con.fetch('SELECT b FROM exmany')
         self.assertEqual(result, [])
 
-    async def test_client_server_failure_conflict(self):
+    async def test_executemany_client_server_failure_conflict(self):
         self.con._transport.set_write_buffer_limits(65536 * 64, 16384 * 64)
         with self.assertRaises(UniqueViolationError):
             await self.con.executemany('''
@@ -235,7 +235,7 @@ class TestExecuteMany(tb.ConnectedTestCase):
         result = await self.con.fetch('SELECT b FROM exmany')
         self.assertEqual(result, [])
 
-    async def test_prepare(self):
+    async def test_executemany_prepare(self):
         stmt = await self.con.prepare('''
             INSERT INTO exmany VALUES($1, $2)
         ''')

@@ -202,6 +202,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         self._check_state()
         timeout = self._get_timeout_impl(timeout)
+        timer = Timer(timeout)
 
         # Make sure the argument sequence is encoded lazily with
         # this generator expression to keep the memory pressure under
@@ -224,20 +225,29 @@ cdef class BaseProtocol(CoreProtocol):
                     state.name,
                     arg_bufs)  # network op
                 data_sent = True
-                await self.writing_allowed.wait()
+                await asyncio.wait_for(
+                    self.writing_allowed.wait(),
+                    timeout=timer.get_remaining_budget())
                 # On Windows the above event somehow won't allow context
                 # switch, so forcing one with sleep(0) here
                 await asyncio.sleep(0)
+                if not timer.has_budget_greater_than(0):
+                    raise asyncio.TimeoutError
         except StopIteration as ex:
-            if ex.value is True:
+            reason = ex.value
+            if (not timer.has_budget_greater_than(0)
+                    and not isinstance(reason, BaseException)):
+                reason = asyncio.TimeoutError
+
+            if reason is True:
                 # there was data sent to DB
                 self._execute_many_done(True)  # network op
-            elif ex.value is False:
+            elif reason is False:
                 # no data was sent to DB in last loop, use data_sent
                 self._execute_many_done(data_sent)  # network op
             else:
                 # data source raised an exception
-                self._execute_many_fail(ex.value)  # network op
+                self._execute_many_fail(reason)  # network op
         except Exception as ex:
             waiter.set_exception(ex)
             self._coreproto_error()
@@ -947,6 +957,13 @@ class Timer:
 
     def get_remaining_budget(self):
         return self._budget
+
+    def has_budget_greater_than(self, amount):
+        if self._budget is None:
+            # Unlimited budget.
+            return True
+        else:
+            return self._budget > amount
 
 
 class Protocol(BaseProtocol, asyncio.Protocol):
