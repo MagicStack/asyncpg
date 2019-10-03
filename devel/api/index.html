@@ -1436,18 +1436,17 @@ won’t be prefetching any rows):</p>
         <span class="c1"># Postgres requires non-scrollable cursors to be created</span>
         <span class="c1"># and used in a transaction.</span>
 
-        <span class="n">async</span> <span class="k">with</span> <span class="n">con</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
-            <span class="c1"># Create a Cursor object</span>
-            <span class="n">cur</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span><span class="s1">&#39;SELECT generate_series(0, 100)&#39;</span><span class="p">)</span>
+        <span class="c1"># Create a Cursor object</span>
+        <span class="n">cur</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span><span class="s1">&#39;SELECT generate_series(0, 100)&#39;</span><span class="p">)</span>
 
-            <span class="c1"># Move the cursor 10 rows forward</span>
-            <span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+        <span class="c1"># Move the cursor 10 rows forward</span>
+        <span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
 
-            <span class="c1"># Fetch one row and print it</span>
-            <span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">())</span>
+        <span class="c1"># Fetch one row and print it</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">())</span>
 
-            <span class="c1"># Fetch a list of 5 rows and print it</span>
-            <span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+        <span class="c1"># Fetch a list of 5 rows and print it</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>It’s also possible to create cursors from prepared statements:</p>

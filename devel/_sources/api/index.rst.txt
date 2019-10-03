@@ -166,18 +166,17 @@ won't be prefetching any rows):
             # Postgres requires non-scrollable cursors to be created
             # and used in a transaction.
 
-            async with con.transaction():
-                # Create a Cursor object
-                cur = await con.cursor('SELECT generate_series(0, 100)')
+            # Create a Cursor object
+            cur = await con.cursor('SELECT generate_series(0, 100)')
 
-                # Move the cursor 10 rows forward
-                await cur.forward(10)
+            # Move the cursor 10 rows forward
+            await cur.forward(10)
 
-                # Fetch one row and print it
-                print(await cur.fetchrow())
+            # Fetch one row and print it
+            print(await cur.fetchrow())
 
-                # Fetch a list of 5 rows and print it
-                print(await cur.fetch(5))
+            # Fetch a list of 5 rows and print it
+            print(await cur.fetch(5))
 
 It's also possible to create cursors from prepared statements:
 
