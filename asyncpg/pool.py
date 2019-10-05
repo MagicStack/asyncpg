@@ -305,7 +305,7 @@ class Pool:
     """
 
     __slots__ = (
-        '_queue', '_loop', '_minsize', '_maxsize',
+        '_queue', '_loop', '_minsize', '_maxsize', '_middlewares',
         '_init', '_connect_args', '_connect_kwargs',
         '_working_addr', '_working_config', '_working_params',
         '_holders', '_initialized', '_initializing', '_closing',
@@ -320,6 +320,7 @@ class Pool:
                  max_inactive_connection_lifetime,
                  setup,
                  init,
+                 middlewares,
                  loop,
                  connection_class,
                  **connect_kwargs):
@@ -377,6 +378,7 @@ class Pool:
         self._closed = False
         self._generation = 0
         self._init = init
+        self._middlewares = middlewares
         self._connect_args = connect_args
         self._connect_kwargs = connect_kwargs
 
@@ -469,6 +471,7 @@ class Pool:
                 *self._connect_args,
                 loop=self._loop,
                 connection_class=self._connection_class,
+                middlewares=self._middlewares,
                 **self._connect_kwargs)
 
             self._working_addr = con._addr
@@ -483,6 +486,7 @@ class Pool:
                 addr=self._working_addr,
                 timeout=self._working_params.connect_timeout,
                 config=self._working_config,
+                middlewares=self._middlewares,
                 params=self._working_params,
                 connection_class=self._connection_class)
 
@@ -784,6 +788,29 @@ class PoolAcquireContext:
         return self.pool._acquire(self.timeout).__await__()
 
 
+def middleware(f):
+    """Decorator for adding a middleware
+
+    Can be used like such
+
+    .. code-block:: python
+
+        @pool.middleware
+        async def my_middleware(query, args, limit,
+                                timeout, return_status, *, handler, conn):
+            print('do something before')
+            result, stmt = await handler(query, args, limit,
+                                         timeout, return_status)
+            print('do something after')
+            return result, stmt
+
+        my_pool = await pool.create_pool(middlewares=[my_middleware])
+    """
+    async def middleware_factory(connection, handler):
+        return functools.partial(f, connection=connection, handler=handler)
+    return middleware_factory
+
+
 def create_pool(dsn=None, *,
                 min_size=10,
                 max_size=10,
@@ -791,6 +818,7 @@ def create_pool(dsn=None, *,
                 max_inactive_connection_lifetime=300.0,
                 setup=None,
                 init=None,
+                middlewares=None,
                 loop=None,
                 connection_class=connection.Connection,
                 **connect_kwargs):
@@ -866,6 +894,23 @@ def create_pool(dsn=None, *,
         or :meth:`Connection.set_type_codec() <\
         asyncpg.connection.Connection.set_type_codec>`.
 
+    :param middlewares:
+        A list of middleware functions to be middleware just
+        before a connection excecutes a statement.
+        Syntax of a middleware is as follows:
+
+        .. code-block:: python
+
+            async def middleware_factory(connection, handler):
+                async def middleware(query, args, limit,
+                                     timeout, return_status):
+                    print('do something before')
+                    result, stmt = await handler(query, args, limit,
+                                                 timeout, return_status)
+                    print('do something after')
+                    return result, stmt
+                return middleware
+
     :param loop:
         An asyncio event loop instance.  If ``None``, the default
         event loop will be used.
@@ -893,6 +938,7 @@ def create_pool(dsn=None, *,
         dsn,
         connection_class=connection_class,
         min_size=min_size, max_size=max_size,
-        max_queries=max_queries, loop=loop, setup=setup, init=init,
+        max_queries=max_queries, loop=loop, setup=setup,
+        middlewares=middlewares, init=init,
         max_inactive_connection_lifetime=max_inactive_connection_lifetime,
         **connect_kwargs)

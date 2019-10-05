@@ -264,6 +264,7 @@ def create_pool(dsn=None, *,
                 setup=None,
                 init=None,
                 loop=None,
+                middlewares=None,
                 pool_class=pg_pool.Pool,
                 connection_class=pg_connection.Connection,
                 **connect_kwargs):
@@ -272,7 +273,7 @@ def create_pool(dsn=None, *,
         min_size=min_size, max_size=max_size,
         max_queries=max_queries, loop=loop, setup=setup, init=init,
         max_inactive_connection_lifetime=max_inactive_connection_lifetime,
-        connection_class=connection_class,
+        connection_class=connection_class, middlewares=middlewares,
         **connect_kwargs)
 
 
