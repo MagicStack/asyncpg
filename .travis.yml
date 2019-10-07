@@ -40,58 +40,60 @@ matrix:
         # Do quick test runs for each supported version of PostgreSQL
         # minus the latest.
         - os: linux
-          dist: trusty
-          sudo: false
+          dist: xenial
           language: python
           python: "3.6"
           env: BUILD=quicktests PGVERSION=9.2
           addons:
-              apt: {packages: [postgresql-9.2]}
+              apt: {packages: [postgresql-9.2, postgresql-contrib-9.2]}
 
         - os: linux
-          dist: trusty
-          sudo: false
+          dist: xenial
           language: python
           python: "3.6"
           env: BUILD=quicktests PGVERSION=9.3
           addons:
-              apt: {packages: [postgresql-9.3]}
+              apt: {packages: [postgresql-9.3, postgresql-contrib-9.3]}
 
         - os: linux
-          dist: trusty
-          sudo: false
+          dist: xenial
           language: python
           python: "3.6"
           env: BUILD=quicktests PGVERSION=9.4
           addons:
-              apt: {packages: [postgresql-9.4]}
+              apt: {packages: [postgresql-9.4, postgresql-contrib-9.4]}
 
         - os: linux
-          dist: trusty
-          sudo: false
+          dist: xenial
           language: python
           python: "3.6"
           env: BUILD=quicktests PGVERSION=9.5
           addons:
-              apt: {packages: [postgresql-9.5]}
+              apt: {packages: [postgresql-9.5, postgresql-contrib-9.5]}
 
         - os: linux
-          dist: trusty
-          sudo: false
+          dist: xenial
           language: python
           python: "3.6"
           env: BUILD=quicktests PGVERSION=9.6
           addons:
-              apt: {packages: [postgresql-9.6]}
+              apt: {packages: [postgresql-9.6, postgresql-contrib-9.6]}
 
         - os: linux
-          dist: trusty
-          sudo: false
+          dist: xenial
           language: python
           python: "3.6"
           env: BUILD=quicktests PGVERSION=10
           addons:
               apt: {packages: [postgresql-10]}
+
+        - os: linux
+          dist: xenial
+          language: python
+          python: "3.6"
+          env: BUILD=quicktests PGVERSION=11
+          addons:
+              apt: {packages: [postgresql-11]}
 
         # Do a full test run on the latest supported version of PostgreSQL
         # on each supported version of Python.
@@ -100,27 +102,27 @@ matrix:
           sudo: required
           language: python
           python: "3.5"
-          env: BUILD=tests PGVERSION=11
+          env: BUILD=tests PGVERSION=12
           addons:
-              apt: {packages: [postgresql-11]}
+              apt: {packages: [postgresql-12]}
 
         - os: linux
           dist: xenial
           sudo: required
           language: python
           python: "3.6"
-          env: BUILD=tests PGVERSION=11
+          env: BUILD=tests PGVERSION=12
           addons:
-              apt: {packages: [postgresql-11]}
+              apt: {packages: [postgresql-12]}
 
         - os: linux
           dist: xenial
           sudo: true
           language: python
           python: "3.7"
-          env: BUILD=tests PGVERSION=11
+          env: BUILD=tests PGVERSION=12
           addons:
-              apt: {packages: [postgresql-11]}
+              apt: {packages: [postgresql-12]}
 
         # Build manylinux wheels.  Each wheel will be tested,
         # so there is no need for BUILD=tests here.
@@ -131,19 +133,19 @@ matrix:
           sudo: required
           language: python
           python: "3.6"
-          env: BUILD=wheels,docs,release PGVERSION=11
+          env: BUILD=wheels,docs,release PGVERSION=12
           services: [docker]
           addons:
-              apt: {packages: [postgresql-11]}
+              apt: {packages: [postgresql-12]}
 
         - os: osx
-          env: BUILD=tests,wheels PYTHON_VERSION=3.5.5 PGVERSION=10
+          env: BUILD=tests,wheels PYTHON_VERSION=3.5.7 PGVERSION=10
 
         - os: osx
-          env: BUILD=tests,wheels PYTHON_VERSION=3.6.5 PGVERSION=10
+          env: BUILD=tests,wheels PYTHON_VERSION=3.6.9 PGVERSION=10
 
         - os: osx
-          env: BUILD=tests,wheels PYTHON_VERSION=3.7.0 PGVERSION=10
+          env: BUILD=tests,wheels PYTHON_VERSION=3.7.4 PGVERSION=10
 
 cache:
     pip

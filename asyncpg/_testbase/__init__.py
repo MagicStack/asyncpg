@@ -279,9 +279,16 @@ def create_pool(dsn=None, *,
 class ClusterTestCase(TestCase):
     @classmethod
     def get_server_settings(cls):
-        return {
+        settings = {
             'log_connections': 'on'
         }
+
+        if cls.cluster.get_pg_version() >= (11, 0):
+            # JITting messes up timing tests, and
+            # is not essential for testing.
+            settings['jit'] = 'off'
+
+        return settings
 
     @classmethod
     def new_cluster(cls, ClusterCls, *, cluster_kwargs={}, initdb_options={}):

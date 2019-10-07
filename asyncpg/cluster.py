@@ -76,6 +76,9 @@ class Cluster:
         self._connection_addr = None
         self._connection_spec_override = None
 
+    def get_pg_version(self):
+        return self._pg_version
+
     def is_managed(self):
         return True
 
@@ -620,16 +623,33 @@ class HotStandbyCluster(TempCluster):
                 'pg_basebackup init exited with status {:d}:\n{}'.format(
                     process.returncode, output.decode()))
 
-        with open(os.path.join(self._data_dir, 'recovery.conf'), 'w') as f:
-            f.write(textwrap.dedent("""\
-                standby_mode = 'on'
-                primary_conninfo = 'host={host} port={port} user={user}'
-            """.format(
-                host=self._master['host'],
-                port=self._master['port'],
-                user=self._repl_user)))
+        if self._pg_version <= (11, 0):
+            with open(os.path.join(self._data_dir, 'recovery.conf'), 'w') as f:
+                f.write(textwrap.dedent("""\
+                    standby_mode = 'on'
+                    primary_conninfo = 'host={host} port={port} user={user}'
+                """.format(
+                    host=self._master['host'],
+                    port=self._master['port'],
+                    user=self._repl_user)))
+        else:
+            f = open(os.path.join(self._data_dir, 'standby.signal'), 'w')
+            f.close()
 
         return output.decode()
+
+    def start(self, wait=60, *, server_settings={}, **opts):
+        if self._pg_version >= (12, 0):
+            server_settings = server_settings.copy()
+            server_settings['primary_conninfo'] = (
+                'host={host} port={port} user={user}'.format(
+                    host=self._master['host'],
+                    port=self._master['port'],
+                    user=self._repl_user,
+                )
+            )
+
+        super().start(wait=wait, server_settings=server_settings, **opts)
 
 
 class RunningCluster(Cluster):

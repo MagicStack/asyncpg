@@ -217,6 +217,10 @@ class InvalidParameterValueError(DataError):
     sqlstate = '22023'
 
 
+class InvalidPrecedingOrFollowingSizeError(DataError):
+    sqlstate = '22013'
+
+
 class InvalidRegularExpressionError(DataError):
     sqlstate = '2201B'
 
@@ -327,6 +331,66 @@ class InvalidXmlCommentError(DataError):
 
 class InvalidXmlProcessingInstructionError(DataError):
     sqlstate = '2200T'
+
+
+class DuplicateJsonObjectKeyValueError(DataError):
+    sqlstate = '22030'
+
+
+class InvalidJsonTextError(DataError):
+    sqlstate = '22032'
+
+
+class InvalidSQLJsonSubscriptError(DataError):
+    sqlstate = '22033'
+
+
+class MoreThanOneSQLJsonItemError(DataError):
+    sqlstate = '22034'
+
+
+class NoSQLJsonItemError(DataError):
+    sqlstate = '22035'
+
+
+class NonNumericSQLJsonItemError(DataError):
+    sqlstate = '22036'
+
+
+class NonUniqueKeysInAJsonObjectError(DataError):
+    sqlstate = '22037'
+
+
+class SingletonSQLJsonItemRequiredError(DataError):
+    sqlstate = '22038'
+
+
+class SQLJsonArrayNotFoundError(DataError):
+    sqlstate = '22039'
+
+
+class SQLJsonMemberNotFoundError(DataError):
+    sqlstate = '2203A'
+
+
+class SQLJsonNumberNotFoundError(DataError):
+    sqlstate = '2203B'
+
+
+class SQLJsonObjectNotFoundError(DataError):
+    sqlstate = '2203C'
+
+
+class TooManyJsonArrayElementsError(DataError):
+    sqlstate = '2203D'
+
+
+class TooManyJsonObjectMembersError(DataError):
+    sqlstate = '2203E'
+
+
+class SQLJsonScalarRequiredError(DataError):
+    sqlstate = '2203F'
 
 
 class IntegrityConstraintViolationError(_base.PostgresError):
@@ -780,6 +844,10 @@ class LockNotAvailableError(ObjectNotInPrerequisiteStateError):
     sqlstate = '55P03'
 
 
+class UnsafeNewEnumValueUsageError(ObjectNotInPrerequisiteStateError):
+    sqlstate = '55P04'
+
+
 class OperatorInterventionError(_base.PostgresError):
     sqlstate = '57000'
 
@@ -993,14 +1061,15 @@ __all__ = _base.__all__ + (
     'DiagnosticsError', 'DiskFullError', 'DivisionByZeroError',
     'DuplicateAliasError', 'DuplicateColumnError', 'DuplicateCursorError',
     'DuplicateDatabaseError', 'DuplicateFileError',
-    'DuplicateFunctionError', 'DuplicateObjectError',
-    'DuplicatePreparedStatementError', 'DuplicateSchemaError',
-    'DuplicateTableError', 'DynamicResultSetsReturned',
-    'ErrorInAssignmentError', 'EscapeCharacterConflictError',
-    'EventTriggerProtocolViolatedError', 'ExclusionViolationError',
-    'ExternalRoutineError', 'ExternalRoutineInvocationError',
-    'FDWColumnNameNotFoundError', 'FDWDynamicParameterValueNeededError',
-    'FDWError', 'FDWFunctionSequenceError',
+    'DuplicateFunctionError', 'DuplicateJsonObjectKeyValueError',
+    'DuplicateObjectError', 'DuplicatePreparedStatementError',
+    'DuplicateSchemaError', 'DuplicateTableError',
+    'DynamicResultSetsReturned', 'ErrorInAssignmentError',
+    'EscapeCharacterConflictError', 'EventTriggerProtocolViolatedError',
+    'ExclusionViolationError', 'ExternalRoutineError',
+    'ExternalRoutineInvocationError', 'FDWColumnNameNotFoundError',
+    'FDWDynamicParameterValueNeededError', 'FDWError',
+    'FDWFunctionSequenceError',
     'FDWInconsistentDescriptorInformationError',
     'FDWInvalidAttributeValueError', 'FDWInvalidColumnNameError',
     'FDWInvalidColumnNumberError', 'FDWInvalidDataTypeDescriptorsError',
@@ -1040,18 +1109,19 @@ __all__ = _base.__all__ + (
     'InvalidEscapeOctetError', 'InvalidEscapeSequenceError',
     'InvalidForeignKeyError', 'InvalidFunctionDefinitionError',
     'InvalidGrantOperationError', 'InvalidGrantorError',
-    'InvalidIndicatorParameterValueError',
+    'InvalidIndicatorParameterValueError', 'InvalidJsonTextError',
     'InvalidLocatorSpecificationError', 'InvalidNameError',
     'InvalidObjectDefinitionError', 'InvalidParameterValueError',
-    'InvalidPasswordError', 'InvalidPreparedStatementDefinitionError',
-    'InvalidRecursionError', 'InvalidRegularExpressionError',
-    'InvalidRoleSpecificationError', 'InvalidRowCountInLimitClauseError',
+    'InvalidPasswordError', 'InvalidPrecedingOrFollowingSizeError',
+    'InvalidPreparedStatementDefinitionError', 'InvalidRecursionError',
+    'InvalidRegularExpressionError', 'InvalidRoleSpecificationError',
+    'InvalidRowCountInLimitClauseError',
     'InvalidRowCountInResultOffsetClauseError',
-    'InvalidSQLStatementNameError', 'InvalidSavepointSpecificationError',
-    'InvalidSchemaDefinitionError', 'InvalidSchemaNameError',
-    'InvalidSqlstateReturnedError', 'InvalidTableDefinitionError',
-    'InvalidTablesampleArgumentError', 'InvalidTablesampleRepeatError',
-    'InvalidTextRepresentationError',
+    'InvalidSQLJsonSubscriptError', 'InvalidSQLStatementNameError',
+    'InvalidSavepointSpecificationError', 'InvalidSchemaDefinitionError',
+    'InvalidSchemaNameError', 'InvalidSqlstateReturnedError',
+    'InvalidTableDefinitionError', 'InvalidTablesampleArgumentError',
+    'InvalidTablesampleRepeatError', 'InvalidTextRepresentationError',
     'InvalidTimeZoneDisplacementValueError',
     'InvalidTransactionInitiationError', 'InvalidTransactionStateError',
     'InvalidTransactionTerminationError',
@@ -1060,10 +1130,13 @@ __all__ = _base.__all__ + (
     'InvalidXmlProcessingInstructionError', 'LocatorError',
     'LockFileExistsError', 'LockNotAvailableError',
     'ModifyingExternalRoutineSQLDataNotPermittedError',
-    'ModifyingSQLDataNotPermittedError', 'MostSpecificTypeMismatchError',
-    'NameTooLongError', 'NoActiveSQLTransactionError',
+    'ModifyingSQLDataNotPermittedError', 'MoreThanOneSQLJsonItemError',
+    'MostSpecificTypeMismatchError', 'NameTooLongError',
+    'NoActiveSQLTransactionError',
     'NoActiveSQLTransactionForBranchTransactionError',
     'NoAdditionalDynamicResultSetsReturned', 'NoData', 'NoDataFoundError',
+    'NoSQLJsonItemError', 'NonNumericSQLJsonItemError',
+    'NonUniqueKeysInAJsonObjectError',
     'NonstandardUseOfEscapeCharacterError', 'NotAnXmlDocumentError',
     'NotNullViolationError', 'NullValueEliminatedInSetFunction',
     'NullValueInExternalRoutineNotAllowedError',
@@ -1080,17 +1153,21 @@ __all__ = _base.__all__ + (
     'QueryCanceledError', 'RaiseError', 'ReadOnlySQLTransactionError',
     'ReadingExternalRoutineSQLDataNotPermittedError',
     'ReadingSQLDataNotPermittedError', 'ReservedNameError',
-    'RestrictViolationError', 'SQLRoutineError',
-    'SQLStatementNotYetCompleteError', 'SavepointError',
-    'SchemaAndDataStatementMixingNotSupportedError',
+    'RestrictViolationError', 'SQLJsonArrayNotFoundError',
+    'SQLJsonMemberNotFoundError', 'SQLJsonNumberNotFoundError',
+    'SQLJsonObjectNotFoundError', 'SQLJsonScalarRequiredError',
+    'SQLRoutineError', 'SQLStatementNotYetCompleteError',
+    'SavepointError', 'SchemaAndDataStatementMixingNotSupportedError',
     'SequenceGeneratorLimitExceededError', 'SerializationError',
-    'SnapshotTooOldError', 'SrfProtocolViolatedError',
+    'SingletonSQLJsonItemRequiredError', 'SnapshotTooOldError',
+    'SrfProtocolViolatedError',
     'StackedDiagnosticsAccessedWithoutActiveHandlerError',
     'StatementCompletionUnknownError', 'StatementTooComplexError',
     'StringDataLengthMismatchError', 'StringDataRightTruncation',
     'StringDataRightTruncationError', 'SubstringError',
     'SyntaxOrAccessError', 'TooManyArgumentsError', 'TooManyColumnsError',
-    'TooManyConnectionsError', 'TooManyRowsError',
+    'TooManyConnectionsError', 'TooManyJsonArrayElementsError',
+    'TooManyJsonObjectMembersError', 'TooManyRowsError',
     'TransactionIntegrityConstraintViolationError',
     'TransactionResolutionUnknownError', 'TransactionRollbackError',
     'TriggerProtocolViolatedError', 'TriggeredActionError',
@@ -1098,8 +1175,8 @@ __all__ = _base.__all__ + (
     'UndefinedColumnError', 'UndefinedFileError',
     'UndefinedFunctionError', 'UndefinedObjectError',
     'UndefinedParameterError', 'UndefinedTableError',
-    'UniqueViolationError', 'UnterminatedCStringError',
-    'UntranslatableCharacterError', 'WindowingError',
-    'WithCheckOptionViolationError', 'WrongObjectTypeError',
-    'ZeroLengthCharacterStringError'
+    'UniqueViolationError', 'UnsafeNewEnumValueUsageError',
+    'UnterminatedCStringError', 'UntranslatableCharacterError',
+    'WindowingError', 'WithCheckOptionViolationError',
+    'WrongObjectTypeError', 'ZeroLengthCharacterStringError'
 )
