@@ -32,7 +32,7 @@ CYTHON_DEPENDENCY = 'Cython==0.29'
 # Minimal dependencies required to test asyncpg.
 TEST_DEPENDENCIES = [
     'flake8~=3.5.0',
-    'uvloop>=0.8.0;platform_system!="Windows"',
+    'uvloop~=0.12.0;platform_system!="Windows"',
 ]
 
 # Dependencies required to build documentation.
