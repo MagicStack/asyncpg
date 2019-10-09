@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.18.0
+                0.19.0
               </div>
             
           
@@ -381,7 +381,7 @@ DEBUG, INFO, or LOG.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – The query to copy the results of.</li>
-<li><strong>*args</strong> – Query arguments.</li>
+<li><strong>args</strong> – Query arguments.</li>
 <li><strong>output</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.7)"><span class="xref std std-term">path-like object</span></a>,
 or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.7)"><span class="xref std std-term">file-like object</span></a>, or
 a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-coroutine-function" title="(in Python v3.7)"><span class="xref std std-term">coroutine function</span></a>
@@ -1436,18 +1436,17 @@ won’t be prefetching any rows):</p>
         <span class="c1"># Postgres requires non-scrollable cursors to be created</span>
         <span class="c1"># and used in a transaction.</span>
 
-        <span class="n">async</span> <span class="k">with</span> <span class="n">con</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
-            <span class="c1"># Create a Cursor object</span>
-            <span class="n">cur</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span><span class="s1">&#39;SELECT generate_series(0, 100)&#39;</span><span class="p">)</span>
+        <span class="c1"># Create a Cursor object</span>
+        <span class="n">cur</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span><span class="s1">&#39;SELECT generate_series(0, 100)&#39;</span><span class="p">)</span>
 
-            <span class="c1"># Move the cursor 10 rows forward</span>
-            <span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+        <span class="c1"># Move the cursor 10 rows forward</span>
+        <span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
 
-            <span class="c1"># Fetch one row and print it</span>
-            <span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">())</span>
+        <span class="c1"># Fetch one row and print it</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">())</span>
 
-            <span class="c1"># Fetch a list of 5 rows and print it</span>
-            <span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+        <span class="c1"># Fetch a list of 5 rows and print it</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>It’s also possible to create cursors from prepared statements:</p>
@@ -2195,7 +2194,7 @@ the BitString’s exact length is lost.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.18.0',
+            VERSION:'0.19.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

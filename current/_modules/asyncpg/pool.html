@@ -67,7 +67,7 @@
             
             
               <div class="version">
-                0.18.0
+                0.19.0
               </div>
             
           
@@ -288,6 +288,8 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_get_new_connection</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_generation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">_generation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_cancel_inactive_callback</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_inactive_callback</span><span class="p">()</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">acquire</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PoolConnectionProxy</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
@@ -828,6 +830,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_closing</span> <span class="o">=</span> <span class="kc">True</span>
 
+        <span class="n">warning_callback</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">warning_callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_later</span><span class="p">(</span>
                 <span class="mi">60</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_warn_on_long_close</span><span class="p">)</span>
@@ -845,7 +848,8 @@
             <span class="k">raise</span>
 
         <span class="k">finally</span><span class="p">:</span>
-            <span class="n">warning_callback</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">warning_callback</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">warning_callback</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_closing</span> <span class="o">=</span> <span class="kc">False</span></div>
 
@@ -1082,7 +1086,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.18.0',
+            VERSION:'0.19.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
