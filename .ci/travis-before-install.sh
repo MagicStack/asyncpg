@@ -19,6 +19,12 @@ if [[ "${TRAVIS_OS_NAME}" == "linux" && "${BUILD}" == *wheels* ]]; then
             sudo tee --append /etc/postgresql/${PGVERSION}/main/postgresql.conf
         echo "host all all 172.17.0.0/16 trust" | \
             sudo tee --append /etc/postgresql/${PGVERSION}/main/pg_hba.conf
+
+        if [ "${PGVERSION}" -ge "11" ]; then
+            # Disable JIT to avoid unpredictable timings in tests.
+            echo "jit = off" | \
+                sudo tee --append /etc/postgresql/${PGVERSION}/main/postgresql.conf
+        fi
     fi
 
     sudo service postgresql start ${PGVERSION}
