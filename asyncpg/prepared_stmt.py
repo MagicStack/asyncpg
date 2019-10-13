@@ -185,7 +185,8 @@ class PreparedStatement(connresource.ConnectionResource):
         return data[0][column]
 
     @connresource.guarded
-    async def fetchrow(self, *args, timeout=None) -> typing.Optional[protocol.Record]:
+    async def fetchrow(self, *args, timeout=None) \
+            -> typing.Optional[protocol.Record]:
         """Execute the statement and return the first row.
 
         :param str query: Query text

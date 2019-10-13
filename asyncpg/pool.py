@@ -510,7 +510,8 @@ class Pool:
         async with self.acquire() as con:
             return await con.execute(query, *args, timeout=timeout)
 
-    async def executemany(self, command: str, args, *, timeout: float=None) -> None:
+    async def executemany(self, command: str, args, *, timeout: float=None) \
+            -> None:
         """Execute an SQL *command* for each sequence of arguments in *args*.
 
         Pool performs this operation using one of its connections.  Other than
@@ -522,7 +523,8 @@ class Pool:
         async with self.acquire() as con:
             return await con.executemany(command, args, timeout=timeout)
 
-    async def fetch(self, query, *args, timeout=None) -> typing.List[protocol.Record]:
+    async def fetch(self, query, *args, timeout=None) \
+            -> typing.List[protocol.Record]:
         """Run a query and return the results as a list of :class:`Record`.
 
         Pool performs this operation using one of its connections.  Other than
@@ -534,7 +536,8 @@ class Pool:
         async with self.acquire() as con:
             return await con.fetch(query, *args, timeout=timeout)
 
-    async def fetchval(self, query, *args, column=0, timeout=None) -> typing.Any:
+    async def fetchval(self, query, *args, column=0, timeout=None) \
+            -> typing.Any:
         """Run a query and return a value in the first row.
 
         Pool performs this operation using one of its connections.  Other than
@@ -547,7 +550,8 @@ class Pool:
             return await con.fetchval(
                 query, *args, column=column, timeout=timeout)
 
-    async def fetchrow(self, query, *args, timeout=None) -> typing.Optional[protocol.Record]:
+    async def fetchrow(self, query, *args, timeout=None) \
+            -> typing.Optional[protocol.Record]:
         """Run a query and return the first row.
 
         Pool performs this operation using one of its connections.  Other than

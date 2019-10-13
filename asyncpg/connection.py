@@ -277,7 +277,8 @@ class Connection(metaclass=ConnectionMeta):
         _, status, _ = await self._execute(query, args, 0, timeout, True)
         return status.decode()
 
-    async def executemany(self, command: str, args, *, timeout: float=None) -> None:
+    async def executemany(self, command: str, args, *, timeout: float=None) \
+            -> None:
         """Execute an SQL *command* for each sequence of arguments in *args*.
 
         Example:
@@ -380,7 +381,8 @@ class Connection(metaclass=ConnectionMeta):
         return await self.__execute(
             self._intro_query, (list(typeoids),), 0, timeout)
 
-    def cursor(self, query, *args, prefetch=None, timeout=None) -> cursor.CursorFactory:
+    def cursor(self, query, *args, prefetch=None, timeout=None) \
+            -> cursor.CursorFactory:
         """Return a *cursor factory* for the specified query.
 
         :param args: Query arguments.
@@ -394,7 +396,8 @@ class Connection(metaclass=ConnectionMeta):
         return cursor.CursorFactory(self, query, None, args,
                                     prefetch, timeout)
 
-    async def prepare(self, query, *, timeout=None) -> prepared_stmt.PreparedStatement:
+    async def prepare(self, query, *, timeout=None) \
+            -> prepared_stmt.PreparedStatement:
         """Create a *prepared statement* for the specified query.
 
         :param str query: Text of the query to create a prepared statement for.
@@ -410,7 +413,8 @@ class Connection(metaclass=ConnectionMeta):
                                          use_cache=use_cache)
         return prepared_stmt.PreparedStatement(self, query, stmt)
 
-    async def fetch(self, query, *args, timeout=None) -> typing.List[protocol.Record]:
+    async def fetch(self, query, *args, timeout=None) \
+            -> typing.List[protocol.Record]:
         """Run a query and return the results as a list of :class:`Record`.
 
         :param str query: Query text.
@@ -422,7 +426,8 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
         return await self._execute(query, args, 0, timeout)
 
-    async def fetchval(self, query, *args, column=0, timeout=None) -> typing.Any:
+    async def fetchval(self, query, *args, column=0, timeout=None) \
+            -> typing.Any:
         """Run a query and return a value in the first row.
 
         :param str query: Query text.
@@ -443,7 +448,8 @@ class Connection(metaclass=ConnectionMeta):
             return None
         return data[0][column]
 
-    async def fetchrow(self, query, *args, timeout=None) -> typing.Optional[protocol.Record]:
+    async def fetchrow(self, query, *args, timeout=None) \
+            -> typing.Optional[protocol.Record]:
         """Run a query and return the first row.
 
         :param str query: Query text
@@ -463,7 +469,8 @@ class Connection(metaclass=ConnectionMeta):
                               columns=None, schema_name=None, timeout=None,
                               format=None, oids=None, delimiter=None,
                               null=None, header=None, quote=None,
-                              escape=None, force_quote=None, encoding=None) -> str:
+                              escape=None, force_quote=None, encoding=None) \
+            -> str:
         """Copy table contents to a file or file-like object.
 
         :param str table_name:
