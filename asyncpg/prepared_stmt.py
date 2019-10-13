@@ -6,10 +6,13 @@
 
 
 import json
+import typing
 
 from . import connresource
 from . import cursor
 from . import exceptions
+from . import protocol
+from . import types
 
 
 class PreparedStatement(connresource.ConnectionResource):
@@ -50,7 +53,7 @@ class PreparedStatement(connresource.ConnectionResource):
         return self._last_status.decode()
 
     @connresource.guarded
-    def get_parameters(self):
+    def get_parameters(self) -> typing.Tuple[types.Type, ...]:
         """Return a description of statement parameters types.
 
         :return: A tuple of :class:`asyncpg.types.Type`.
@@ -67,7 +70,7 @@ class PreparedStatement(connresource.ConnectionResource):
         return self._state._get_parameters()
 
     @connresource.guarded
-    def get_attributes(self):
+    def get_attributes(self) -> typing.Tuple[types.Attribute, ...]:
         """Return a description of relation attributes (columns).
 
         :return: A tuple of :class:`asyncpg.types.Attribute`.
@@ -108,7 +111,7 @@ class PreparedStatement(connresource.ConnectionResource):
                                     timeout)
 
     @connresource.guarded
-    async def explain(self, *args, analyze=False):
+    async def explain(self, *args, analyze=False) -> typing.Dict:
         """Return the execution plan of the statement.
 
         :param args: Query arguments.
@@ -150,7 +153,7 @@ class PreparedStatement(connresource.ConnectionResource):
         return json.loads(data)
 
     @connresource.guarded
-    async def fetch(self, *args, timeout=None):
+    async def fetch(self, *args, timeout=None) -> typing.List[protocol.Record]:
         r"""Execute the statement and return a list of :class:`Record` objects.
 
         :param str query: Query text
@@ -163,7 +166,7 @@ class PreparedStatement(connresource.ConnectionResource):
         return data
 
     @connresource.guarded
-    async def fetchval(self, *args, column=0, timeout=None):
+    async def fetchval(self, *args, column=0, timeout=None) -> typing.Any:
         """Execute the statement and return a value in the first row.
 
         :param args: Query arguments.
@@ -182,7 +185,7 @@ class PreparedStatement(connresource.ConnectionResource):
         return data[0][column]
 
     @connresource.guarded
-    async def fetchrow(self, *args, timeout=None):
+    async def fetchrow(self, *args, timeout=None) -> typing.Optional[protocol.Record]:
         """Execute the statement and return the first row.
 
         :param str query: Query text

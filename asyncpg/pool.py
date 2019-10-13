@@ -10,11 +10,13 @@ import functools
 import inspect
 import logging
 import time
+import typing
 import warnings
 
 from . import connection
 from . import connect_utils
 from . import exceptions
+from . import protocol
 
 
 logger = logging.getLogger(__name__)
@@ -508,7 +510,7 @@ class Pool:
         async with self.acquire() as con:
             return await con.execute(query, *args, timeout=timeout)
 
-    async def executemany(self, command: str, args, *, timeout: float=None):
+    async def executemany(self, command: str, args, *, timeout: float=None) -> None:
         """Execute an SQL *command* for each sequence of arguments in *args*.
 
         Pool performs this operation using one of its connections.  Other than
@@ -520,7 +522,7 @@ class Pool:
         async with self.acquire() as con:
             return await con.executemany(command, args, timeout=timeout)
 
-    async def fetch(self, query, *args, timeout=None) -> list:
+    async def fetch(self, query, *args, timeout=None) -> typing.List[protocol.Record]:
         """Run a query and return the results as a list of :class:`Record`.
 
         Pool performs this operation using one of its connections.  Other than
@@ -532,7 +534,7 @@ class Pool:
         async with self.acquire() as con:
             return await con.fetch(query, *args, timeout=timeout)
 
-    async def fetchval(self, query, *args, column=0, timeout=None):
+    async def fetchval(self, query, *args, column=0, timeout=None) -> typing.Any:
         """Run a query and return a value in the first row.
 
         Pool performs this operation using one of its connections.  Other than
@@ -545,7 +547,7 @@ class Pool:
             return await con.fetchval(
                 query, *args, column=column, timeout=timeout)
 
-    async def fetchrow(self, query, *args, timeout=None):
+    async def fetchrow(self, query, *args, timeout=None) -> typing.Optional[protocol.Record]:
         """Run a query and return the first row.
 
         Pool performs this operation using one of its connections.  Other than
@@ -557,7 +559,7 @@ class Pool:
         async with self.acquire() as con:
             return await con.fetchrow(query, *args, timeout=timeout)
 
-    def acquire(self, *, timeout=None):
+    def acquire(self, *, timeout=None) -> connection.Connection:
         """Acquire a database connection from the pool.
 
         :param float timeout: A timeout for acquiring a Connection.
@@ -784,7 +786,7 @@ def create_pool(dsn=None, *,
                 init=None,
                 loop=None,
                 connection_class=connection.Connection,
-                **connect_kwargs):
+                **connect_kwargs) -> Pool:
     r"""Create a connection pool.
 
     Can be used either with an ``async with`` block:

@@ -14,6 +14,7 @@ import struct
 import sys
 import time
 import traceback
+import typing
 import warnings
 
 from . import compat
@@ -25,6 +26,7 @@ from . import prepared_stmt
 from . import protocol
 from . import serverversion
 from . import transaction
+from . import types
 from . import utils
 
 
@@ -179,11 +181,11 @@ class Connection(metaclass=ConnectionMeta):
         """
         self._log_listeners.discard(callback)
 
-    def get_server_pid(self):
+    def get_server_pid(self) -> int:
         """Return the PID of the Postgres server the connection is bound to."""
         return self._protocol.get_server_pid()
 
-    def get_server_version(self):
+    def get_server_version(self) -> types.ServerVersion:
         """Return the version of the connected PostgreSQL server.
 
         The returned value is a named tuple similar to that in
@@ -199,7 +201,7 @@ class Connection(metaclass=ConnectionMeta):
         """
         return self._server_version
 
-    def get_settings(self):
+    def get_settings(self) -> protocol.ConnectionSettings:
         """Return connection settings.
 
         :return: :class:`~asyncpg.ConnectionSettings`.
@@ -207,7 +209,7 @@ class Connection(metaclass=ConnectionMeta):
         return self._protocol.get_settings()
 
     def transaction(self, *, isolation='read_committed', readonly=False,
-                    deferrable=False):
+                    deferrable=False) -> transaction.Transaction:
         """Create a :class:`~transaction.Transaction` object.
 
         Refer to `PostgreSQL documentation`_ on the meaning of transaction
@@ -230,7 +232,7 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
         return transaction.Transaction(self, isolation, readonly, deferrable)
 
-    def is_in_transaction(self):
+    def is_in_transaction(self) -> bool:
         """Return True if Connection is currently inside a transaction.
 
         :return bool: True if inside transaction, False otherwise.
@@ -275,7 +277,7 @@ class Connection(metaclass=ConnectionMeta):
         _, status, _ = await self._execute(query, args, 0, timeout, True)
         return status.decode()
 
-    async def executemany(self, command: str, args, *, timeout: float=None):
+    async def executemany(self, command: str, args, *, timeout: float=None) -> None:
         """Execute an SQL *command* for each sequence of arguments in *args*.
 
         Example:
@@ -378,7 +380,7 @@ class Connection(metaclass=ConnectionMeta):
         return await self.__execute(
             self._intro_query, (list(typeoids),), 0, timeout)
 
-    def cursor(self, query, *args, prefetch=None, timeout=None):
+    def cursor(self, query, *args, prefetch=None, timeout=None) -> cursor.CursorFactory:
         """Return a *cursor factory* for the specified query.
 
         :param args: Query arguments.
@@ -392,7 +394,7 @@ class Connection(metaclass=ConnectionMeta):
         return cursor.CursorFactory(self, query, None, args,
                                     prefetch, timeout)
 
-    async def prepare(self, query, *, timeout=None):
+    async def prepare(self, query, *, timeout=None) -> prepared_stmt.PreparedStatement:
         """Create a *prepared statement* for the specified query.
 
         :param str query: Text of the query to create a prepared statement for.
@@ -408,7 +410,7 @@ class Connection(metaclass=ConnectionMeta):
                                          use_cache=use_cache)
         return prepared_stmt.PreparedStatement(self, query, stmt)
 
-    async def fetch(self, query, *args, timeout=None) -> list:
+    async def fetch(self, query, *args, timeout=None) -> typing.List[protocol.Record]:
         """Run a query and return the results as a list of :class:`Record`.
 
         :param str query: Query text.
@@ -420,7 +422,7 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
         return await self._execute(query, args, 0, timeout)
 
-    async def fetchval(self, query, *args, column=0, timeout=None):
+    async def fetchval(self, query, *args, column=0, timeout=None) -> typing.Any:
         """Run a query and return a value in the first row.
 
         :param str query: Query text.
@@ -441,7 +443,7 @@ class Connection(metaclass=ConnectionMeta):
             return None
         return data[0][column]
 
-    async def fetchrow(self, query, *args, timeout=None):
+    async def fetchrow(self, query, *args, timeout=None) -> typing.Optional[protocol.Record]:
         """Run a query and return the first row.
 
         :param str query: Query text
@@ -461,7 +463,7 @@ class Connection(metaclass=ConnectionMeta):
                               columns=None, schema_name=None, timeout=None,
                               format=None, oids=None, delimiter=None,
                               null=None, header=None, quote=None,
-                              escape=None, force_quote=None, encoding=None):
+                              escape=None, force_quote=None, encoding=None) -> str:
         """Copy table contents to a file or file-like object.
 
         :param str table_name:
@@ -533,7 +535,7 @@ class Connection(metaclass=ConnectionMeta):
                               timeout=None, format=None, oids=None,
                               delimiter=None, null=None, header=None,
                               quote=None, escape=None, force_quote=None,
-                              encoding=None):
+                              encoding=None) -> str:
         """Copy the results of a query to a file or file-like object.
 
         :param str query:
@@ -597,7 +599,7 @@ class Connection(metaclass=ConnectionMeta):
                             delimiter=None, null=None, header=None,
                             quote=None, escape=None, force_quote=None,
                             force_not_null=None, force_null=None,
-                            encoding=None):
+                            encoding=None) -> str:
         """Copy data to the specified table.
 
         :param str table_name:
@@ -668,7 +670,7 @@ class Connection(metaclass=ConnectionMeta):
 
     async def copy_records_to_table(self, table_name, *, records,
                                     columns=None, schema_name=None,
-                                    timeout=None):
+                                    timeout=None) -> str:
         """Copy a list of records to the specified table using binary COPY.
 
         :param str table_name:
@@ -1060,7 +1062,7 @@ class Connection(metaclass=ConnectionMeta):
         # Statement cache is no longer valid due to codec changes.
         self._drop_local_statement_cache()
 
-    def is_closed(self):
+    def is_closed(self) -> bool:
         """Return ``True`` if the connection is closed, ``False`` otherwise.
 
         :return bool: ``True`` if the connection is closed, ``False``
@@ -1503,7 +1505,7 @@ async def connect(dsn=None, *,
                   command_timeout=None,
                   ssl=None,
                   connection_class=Connection,
-                  server_settings=None):
+                  server_settings=None) -> Connection:
     r"""A coroutine to establish a connection to a PostgreSQL server.
 
     The connection parameters may be specified either as a connection

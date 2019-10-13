@@ -6,10 +6,12 @@
 
 
 import collections
+import typing
 
 from . import compat
 from . import connresource
 from . import exceptions
+from . import protocol
 
 
 class CursorFactory(connresource.ConnectionResource):
@@ -33,7 +35,7 @@ class CursorFactory(connresource.ConnectionResource):
 
     @compat.aiter_compat
     @connresource.guarded
-    def __aiter__(self):
+    def __aiter__(self) -> 'CursorIterator':
         prefetch = 50 if self._prefetch is None else self._prefetch
         return CursorIterator(self._connection,
                               self._query, self._state,
@@ -41,7 +43,7 @@ class CursorFactory(connresource.ConnectionResource):
                               self._timeout)
 
     @connresource.guarded
-    def __await__(self):
+    def __await__(self) -> 'Cursor':
         if self._prefetch is not None:
             raise exceptions.InterfaceError(
                 'prefetch argument can only be specified for iterable cursor')
@@ -164,11 +166,11 @@ class CursorIterator(BaseCursor):
 
     @compat.aiter_compat
     @connresource.guarded
-    def __aiter__(self):
+    def __aiter__(self) -> 'CursorIterator':
         return self
 
     @connresource.guarded
-    async def __anext__(self):
+    async def __anext__(self) -> protocol.Record:
         if self._state is None:
             self._state = await self._connection._get_statement(
                 self._query, self._timeout, named=True)
@@ -203,7 +205,7 @@ class Cursor(BaseCursor):
         return self
 
     @connresource.guarded
-    async def fetch(self, n, *, timeout=None):
+    async def fetch(self, n, *, timeout=None) -> typing.List[protocol.Record]:
         r"""Return the next *n* rows as a list of :class:`Record` objects.
 
         :param float timeout: Optional timeout value in seconds.
@@ -221,7 +223,7 @@ class Cursor(BaseCursor):
         return recs
 
     @connresource.guarded
-    async def fetchrow(self, *, timeout=None):
+    async def fetchrow(self, *, timeout=None) -> protocol.Record:
         r"""Return the next row.
 
         :param float timeout: Optional timeout value in seconds.
