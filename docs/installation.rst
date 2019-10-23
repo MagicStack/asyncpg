@@ -49,6 +49,9 @@ the ``ASYNCPG_DEBUG`` environment variable when building:
 Running tests
 -------------
 
+
+If you want to run tests you must have PostgreSQL installed.
+
 To execute the testsuite run:
 
 .. code-block:: bash
