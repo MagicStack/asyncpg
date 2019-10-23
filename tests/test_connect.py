@@ -1035,6 +1035,16 @@ class TestConnection(tb.ConnectedTestCase):
                 host='/tmp',
                 ssl=ssl_context)
 
+    async def test_connection_as_context_manager(self):
+        conn_spec = self.get_connection_spec()
+        async with await asyncpg.connect(
+            port=conn_spec.get('port'),
+            database=conn_spec.get('database'),
+            user=conn_spec.get('user'),
+            loop=self.loop) as con:
+            self.assertEqual(await con.fetchval('SELECT 42'), 42)
+
+
     async def test_connection_implicit_host(self):
         conn_spec = self.get_connection_spec()
         con = await asyncpg.connect(

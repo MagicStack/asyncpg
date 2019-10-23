@@ -47,6 +47,15 @@ which provides methods to run queries and manage transactions.
     asyncio.get_event_loop().run_until_complete(main())
 
 
+The :class:`Connection <asyncpg.connection.Connection>` can also be used as an
+asynchronous context manager, which will take care of closing the connection
+for you:
+
+-- code-block:: python
+    async with asyncpg.connect('postgresql://postgres@localhost/test') as conn:
+        row = await conn.fetchrow(
+            'SELECT * FROM users WHERE name = $1', 'Bob')
+    # The connection is now closed
 
 .. note::
 

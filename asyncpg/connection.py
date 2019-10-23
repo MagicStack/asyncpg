@@ -50,6 +50,12 @@ class Connection(metaclass=ConnectionMeta):
                  '_log_listeners', '_cancellations', '_source_traceback',
                  '__weakref__')
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args, **kwargs):
+        await self.close()
+
     def __init__(self, protocol, transport, loop,
                  addr: (str, int) or str,
                  config: connect_utils._ClientConfiguration,
