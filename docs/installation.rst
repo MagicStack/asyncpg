@@ -25,6 +25,7 @@ Building from source
 
 If you want to build **asyncpg** from a Git checkout you will need:
 
+  * To have cloned the repo with `--recurse-submodules`.
   * A working C compiler.
   * CPython header files.  These can usually be obtained by installing
     the relevant Python development package: **python3-dev** on Debian/Ubuntu,
