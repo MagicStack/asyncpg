@@ -118,6 +118,7 @@ cdef class CoreProtocol:
                             self.result = apg_exc.InternalClientError(
                                 'unknown error in protocol implementation')
 
+                        self._parse_msg_ready_for_query()
                         self._push_result()
 
                     else:
@@ -187,19 +188,23 @@ cdef class CoreProtocol:
         elif mtype == b'T':
             # Row description
             self.result_row_desc = self.buffer.consume_message()
+            self._push_result()
 
         elif mtype == b'E':
             # ErrorResponse
             self._parse_msg_error_response(True)
-
-        elif mtype == b'Z':
-            # ReadyForQuery
-            self._parse_msg_ready_for_query()
-            self._push_result()
+            # we don't send a sync during the parse/describe sequence
+            # but send a FLUSH instead. If an error happens we need to
+            # send a SYNC explicitly in order to mark the end of the transaction.
+            # this effectively clears the error and we then wait until we get a
+            # ready for new query message
+            self._write(SYNC_MESSAGE)
+            self.state = PROTOCOL_ERROR_CONSUME
 
         elif mtype == b'n':
             # NoData
             self.buffer.discard_message()
+            self._push_result()
 
     cdef _process__bind_execute(self, char mtype):
         if mtype == b'D':
@@ -853,7 +858,7 @@ cdef class CoreProtocol:
         buf.end_message()
         packet.write_buffer(buf)
 
-        packet.write_bytes(SYNC_MESSAGE)
+        packet.write_bytes(FLUSH_MESSAGE)
 
         self._write(packet)
 
@@ -1028,3 +1033,4 @@ cdef class CoreProtocol:
 
 
 cdef bytes SYNC_MESSAGE = bytes(WriteBuffer.new_message(b'S').end_message())
+cdef bytes FLUSH_MESSAGE = bytes(WriteBuffer.new_message(b'H').end_message())
