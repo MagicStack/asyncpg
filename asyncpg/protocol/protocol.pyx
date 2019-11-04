@@ -588,6 +588,13 @@ cdef class BaseProtocol(CoreProtocol):
             })
             self.abort()
 
+        if self.state == PROTOCOL_PREPARE:
+            # we need to send a SYNC to server if we cancel during the PREPARE phase
+            # because the PREPARE sequence does not send a SYNC itself.
+            # we cannot send this extra SYNC if we are not in PREPARE phase,
+            # because then we would issue two SYNCs and we would get two ReadyForQuery
+            # replies, which our current state machine implementation cannot handle
+            self._write(SYNC_MESSAGE)
         self._set_state(PROTOCOL_CANCELLED)
 
     def _on_timeout(self, fut):
