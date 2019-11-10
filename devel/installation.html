@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.19.0.dev0
+                0.20.0.dev0
               </div>
             
           
@@ -181,6 +181,7 @@ package.  In that case a working C compiler is required.</p>
 <p>If you want to build <strong>asyncpg</strong> from a Git checkout you will need:</p>
 <blockquote>
 <div><ul class="simple">
+<li>To have cloned the repo with <cite>–recurse-submodules</cite>.</li>
 <li>A working C compiler.</li>
 <li>CPython header files.  These can usually be obtained by installing
 the relevant Python development package: <strong>python3-dev</strong> on Debian/Ubuntu,
@@ -200,6 +201,7 @@ the <code class="docutils literal notranslate"><span class="pre">ASYNCPG_DEBUG</
 </div>
 <div class="section" id="running-tests">
 <h2>Running tests<a class="headerlink" href="#running-tests" title="Permalink to this headline">¶</a></h2>
+<p>If you want to run tests you must have PostgreSQL installed.</p>
 <p>To execute the testsuite run:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ python setup.py <span class="nb">test</span>
 </pre></div>
@@ -250,7 +252,7 @@ the <code class="docutils literal notranslate"><span class="pre">ASYNCPG_DEBUG</
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.19.0.dev0',
+            VERSION:'0.20.0.dev0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
