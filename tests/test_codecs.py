@@ -341,9 +341,12 @@ type_samples = [
         ipaddress.IPv6Address('ffff' + ':ffff' * 7),
         ipaddress.IPv6Address('::1'),
         ipaddress.IPv6Address('::'),
+        ipaddress.IPv4Interface('10.0.0.1/30'),
+        ipaddress.IPv4Interface('0.0.0.0/0'),
+        ipaddress.IPv4Interface('255.255.255.255/31'),
         dict(
             input='127.0.0.0/8',
-            output=ipaddress.IPv4Network('127.0.0.0/8')),
+            output=ipaddress.IPv4Interface('127.0.0.0/8')),
         dict(
             input='127.0.0.1/32',
             output=ipaddress.IPv4Address('127.0.0.1')),
@@ -358,7 +361,7 @@ type_samples = [
             textoutput='10.11.12.13/32'
         ),
         dict(
-            input=ipaddress.IPv4Network('10.11.12.13'),
+            input=ipaddress.IPv4Interface('10.11.12.13'),
             textoutput='10.11.12.13/32'
         ),
         dict(
@@ -366,11 +369,8 @@ type_samples = [
             output=ipaddress.IPv4Address('10.11.12.13'),
         ),
         dict(
-            # Non-zero address bits after the network prefix are permitted
-            # by postgres, but are invalid in Python
-            # (and zeroed out by supernet()).
             textinput='10.11.12.13/0',
-            output=ipaddress.IPv4Network('0.0.0.0/0'),
+            output=ipaddress.IPv4Interface('10.11.12.13/0'),
         ),
     ]),
     ('macaddr', 'macaddr', [
