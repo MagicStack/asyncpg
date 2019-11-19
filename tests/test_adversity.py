@@ -62,6 +62,6 @@ class TestConnectionLoss(tb.ProxiedClusterTestCase):
                 workers = [worker(pool) for _ in range(concurrency)]
                 self.loop.call_later(1, kill_connectivity)
                 await asyncio.gather(
-                    *workers, loop=self.loop, return_exceptions=True)
+                    *workers, return_exceptions=True)
             finally:
                 pool.terminate()

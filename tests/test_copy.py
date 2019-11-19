@@ -233,7 +233,7 @@ class TestCopyFrom(tb.ConnectedTestCase):
             async def writer(data):
                 # Sleeping here to simulate slow output sink to test
                 # backpressure.
-                await asyncio.sleep(0.05, loop=self.loop)
+                await asyncio.sleep(0.05)
                 f.write(data)
 
             await self.con.copy_from_query('''
@@ -259,7 +259,7 @@ class TestCopyFrom(tb.ConnectedTestCase):
         async def writer(data):
             # Sleeping here to simulate slow output sink to test
             # backpressure.
-            await asyncio.sleep(0.5, loop=self.loop)
+            await asyncio.sleep(0.5)
 
         coro = self.con.copy_from_query('''
             SELECT
@@ -269,7 +269,7 @@ class TestCopyFrom(tb.ConnectedTestCase):
         ''', output=writer)
 
         task = self.loop.create_task(coro)
-        await asyncio.sleep(0.7, loop=self.loop)
+        await asyncio.sleep(0.7)
         task.cancel()
 
         with self.assertRaises(asyncio.CancelledError):
@@ -279,7 +279,7 @@ class TestCopyFrom(tb.ConnectedTestCase):
 
     async def test_copy_from_query_cancellation_on_sink_error(self):
         async def writer(data):
-            await asyncio.sleep(0.05, loop=self.loop)
+            await asyncio.sleep(0.05)
             raise RuntimeError('failure')
 
         coro = self.con.copy_from_query('''
@@ -308,7 +308,7 @@ class TestCopyFrom(tb.ConnectedTestCase):
         ''', output=writer)
 
         task = self.loop.create_task(coro)
-        await asyncio.sleep(0.7, loop=self.loop)
+        await asyncio.sleep(0.7)
         task.cancel()
 
         with self.assertRaises(asyncio.CancelledError):
@@ -318,7 +318,7 @@ class TestCopyFrom(tb.ConnectedTestCase):
 
     async def test_copy_from_query_timeout_1(self):
         async def writer(data):
-            await asyncio.sleep(0.05, loop=self.loop)
+            await asyncio.sleep(0.05)
 
         coro = self.con.copy_from_query('''
             SELECT
@@ -337,7 +337,7 @@ class TestCopyFrom(tb.ConnectedTestCase):
     async def test_copy_from_query_timeout_2(self):
         async def writer(data):
             try:
-                await asyncio.sleep(10, loop=self.loop)
+                await asyncio.sleep(10)
             except asyncio.TimeoutError:
                 raise
             else:
@@ -569,7 +569,7 @@ class TestCopyTo(tb.ConnectedTestCase):
 
                 async def __anext__(self):
                     self.rowcount += 1
-                    await asyncio.sleep(60, loop=self.loop)
+                    await asyncio.sleep(60)
                     return b'a1' * 50 + b'\t' + b'b1' * 50 + b'\n'
 
             with self.assertRaises(asyncio.TimeoutError):

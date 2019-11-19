@@ -16,7 +16,7 @@ from asyncpg import _testbase as tb
 class BaseSimpleTestCase:
 
     async def test_tests_zero_error(self):
-        await asyncio.sleep(0.01, loop=self.loop)
+        await asyncio.sleep(0.01)
         1 / 0
 
 
