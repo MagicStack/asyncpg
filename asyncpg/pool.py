@@ -304,13 +304,14 @@ class Pool:
     Pools are created by calling :func:`~asyncpg.pool.create_pool`.
     """
 
-    __slots__ = ('_queue', '_loop', '_minsize', '_maxsize',
-                 '_init', '_connect_args', '_connect_kwargs',
-                 '_working_addr', '_working_config', '_working_params',
-                 '_holders', '_initialized', '_initializing', '_closing',
-                 '_closed', '_connection_class', '_generation',
-                 '_setup', '_max_queries', '_max_inactive_connection_lifetime'
-                )
+    __slots__ = (
+        '_queue', '_loop', '_minsize', '_maxsize',
+        '_init', '_connect_args', '_connect_kwargs',
+        '_working_addr', '_working_config', '_working_params',
+        '_holders', '_initialized', '_initializing', '_closing',
+        '_closed', '_connection_class', '_generation',
+        '_setup', '_max_queries', '_max_inactive_connection_lifetime'
+    )
 
     def __init__(self, *connect_args,
                  min_size,

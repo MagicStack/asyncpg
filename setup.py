@@ -31,7 +31,11 @@ CYTHON_DEPENDENCY = 'Cython==0.29.14'
 
 # Minimal dependencies required to test asyncpg.
 TEST_DEPENDENCIES = [
-    'flake8~=3.5.0',
+    # pycodestyle is a dependency of flake8, but it must be frozen because
+    # their combination breaks too often
+    # (example breakage: https://gitlab.com/pycqa/flake8/issues/427)
+    'pycodestyle~=2.5.0',
+    'flake8~=3.7.9',
     'uvloop~=0.14.0;platform_system!="Windows"',
 ]
 
