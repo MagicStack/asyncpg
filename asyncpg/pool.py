@@ -146,7 +146,7 @@ class PoolConnectionHolder:
         if self._setup is not None:
             try:
                 await self._setup(proxy)
-            except Exception as ex:
+            except (Exception, asyncio.CancelledError) as ex:
                 # If a user-defined `setup` function fails, we don't
                 # know if the connection is safe for re-use, hence
                 # we close it.  A new connection will be created
@@ -204,7 +204,7 @@ class PoolConnectionHolder:
                     budget -= time.monotonic() - started
 
             await self._con.reset(timeout=budget)
-        except Exception as ex:
+        except (Exception, asyncio.CancelledError) as ex:
             # If the `reset` call failed, terminate the connection.
             # A new one will be created when `acquire` is called
             # again.
@@ -480,7 +480,7 @@ class Pool:
         if self._init is not None:
             try:
                 await self._init(con)
-            except Exception as ex:
+            except (Exception, asyncio.CancelledError) as ex:
                 # If a user-defined `init` function fails, we don't
                 # know if the connection is safe for re-use, hence
                 # we close it.  A new connection will be created
@@ -587,7 +587,7 @@ class Pool:
             ch = await self._queue.get()  # type: PoolConnectionHolder
             try:
                 proxy = await ch.acquire()  # type: PoolConnectionProxy
-            except Exception:
+            except (Exception, asyncio.CancelledError):
                 self._queue.put_nowait(ch)
                 raise
             else:
@@ -679,7 +679,7 @@ class Pool:
                 ch.close() for ch in self._holders]
             await asyncio.gather(*close_coros, loop=self._loop)
 
-        except Exception:
+        except (Exception, asyncio.CancelledError):
             self.terminate()
             raise
 

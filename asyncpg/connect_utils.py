@@ -541,7 +541,7 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
         if timeout <= 0:
             raise asyncio.TimeoutError
         await asyncio.wait_for(connected, loop=loop, timeout=timeout)
-    except Exception:
+    except (Exception, asyncio.CancelledError):
         tr.close()
         raise
 
@@ -614,7 +614,7 @@ async def _negotiate_ssl_connection(host, port, conn_factory, *, loop, ssl,
 
     try:
         return await conn_factory(sock=sock)  # Must come after tr.close()
-    except Exception:
+    except (Exception, asyncio.CancelledError):
         sock.close()
         raise
 

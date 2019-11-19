@@ -1080,7 +1080,7 @@ class Connection(metaclass=ConnectionMeta):
         try:
             if not self.is_closed():
                 await self._protocol.close(timeout)
-        except Exception:
+        except (Exception, asyncio.CancelledError):
             # If we fail to close gracefully, abort the connection.
             self._abort()
             raise
@@ -1213,7 +1213,7 @@ class Connection(metaclass=ConnectionMeta):
             # the CancelledError, and don't want the loop to warn about
             # an unretrieved exception.
             pass
-        except Exception as ex:
+        except (Exception, asyncio.CancelledError) as ex:
             if not waiter.done():
                 waiter.set_exception(ex)
         finally:
