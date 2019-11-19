@@ -308,7 +308,9 @@ class Pool:
                  '_init', '_connect_args', '_connect_kwargs',
                  '_working_addr', '_working_config', '_working_params',
                  '_holders', '_initialized', '_initializing', '_closing',
-                 '_closed', '_connection_class', '_generation')
+                 '_closed', '_connection_class', '_generation',
+                 '_setup', '_max_queries', '_max_inactive_connection_lifetime'
+                )
 
     def __init__(self, *connect_args,
                  min_size,
@@ -362,7 +364,7 @@ class Pool:
         self._holders = []
         self._initialized = False
         self._initializing = False
-        self._queue = asyncio.LifoQueue(maxsize=self._maxsize)
+        self._queue = None
 
         self._working_addr = None
         self._working_config = None
@@ -377,15 +379,10 @@ class Pool:
         self._connect_args = connect_args
         self._connect_kwargs = connect_kwargs
 
-        for _ in range(max_size):
-            ch = PoolConnectionHolder(
-                self,
-                max_queries=max_queries,
-                max_inactive_time=max_inactive_connection_lifetime,
-                setup=setup)
-
-            self._holders.append(ch)
-            self._queue.put_nowait(ch)
+        self._setup = setup
+        self._max_queries = max_queries
+        self._max_inactive_connection_lifetime = \
+            max_inactive_connection_lifetime
 
     async def _async__init__(self):
         if self._initialized:
@@ -404,6 +401,17 @@ class Pool:
             self._initialized = True
 
     async def _initialize(self):
+        self._queue = asyncio.LifoQueue(maxsize=self._maxsize)
+        for _ in range(self._maxsize):
+            ch = PoolConnectionHolder(
+                self,
+                max_queries=self._max_queries,
+                max_inactive_time=self._max_inactive_connection_lifetime,
+                setup=self._setup)
+
+            self._holders.append(ch)
+            self._queue.put_nowait(ch)
+
         if self._minsize:
             # Since we use a LIFO queue, the first items in the queue will be
             # the last ones in `self._holders`.  We want to pre-connect the
