@@ -79,3 +79,14 @@ if PY_37:
 else:
     def current_asyncio_task(loop):
         return asyncio.Task.current_task(loop)
+
+
+async def wait_closed(stream):
+    # Not all asyncio versions have StreamWriter.wait_closed().
+    if hasattr(stream, 'wait_closed'):
+        try:
+            await stream.wait_closed()
+        except ConnectionResetError:
+            # On Windows wait_closed() sometimes propagates
+            # ConnectionResetError which is totally unnecessary.
+            pass
