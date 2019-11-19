@@ -272,10 +272,10 @@ more information.</p>
 <a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Network" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Network</span></code></a></td>
 </tr>
 <tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">inet</span></code></td>
-<td><a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Network" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv4Network</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Network" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Network</span></code></a>,
+<td><a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Interface" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv4Interface</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Interface" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Interface</span></code></a>,
 <a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Address" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv4Address</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Address" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Address</span></code></a></td>
+<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Address" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Address</span></code></a> <a class="footnote-reference" href="#f1" id="id1">[1]</a></td>
 </tr>
 <tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">macaddr</span></code></td>
 <td><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></td>
@@ -305,7 +305,7 @@ more information.</p>
 </tr>
 <tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">float</span></code>,
 <code class="docutils literal notranslate"><span class="pre">double</span> <span class="pre">precision</span></code></td>
-<td><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> <a class="footnote-reference" href="#f1" id="id1">[1]</a></td>
+<td><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> <a class="footnote-reference" href="#f2" id="id2">[2]</a></td>
 </tr>
 <tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">smallint</span></code>,
 <code class="docutils literal notranslate"><span class="pre">integer</span></code>,
@@ -348,7 +348,14 @@ more information.</p>
 <table class="docutils footnote" frame="void" id="f1" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Inexact single-precision <code class="docutils literal notranslate"><span class="pre">float</span></code> values may have a different
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Prior to version 0.20.0, asyncpg erroneously treated <code class="docutils literal notranslate"><span class="pre">inet</span></code> values
+with prefix as <code class="docutils literal notranslate"><span class="pre">IPvXNetwork</span></code> instead of <code class="docutils literal notranslate"><span class="pre">IPvXInterface</span></code>.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="f2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>Inexact single-precision <code class="docutils literal notranslate"><span class="pre">float</span></code> values may have a different
 representation when decoded into a Python float.  This is inherent
 to the implementation of limited-precision floating point types.
 If you need the decimal representation to match, cast the expression

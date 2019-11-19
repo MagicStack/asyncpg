@@ -97,14 +97,14 @@ The table below shows the correspondence between PostgreSQL and Python types.
 |                      | :class:`ipaddress.IPv6Network\                      |
 |                      | <python:ipaddress.IPv6Network>`                     |
 +----------------------+-----------------------------------------------------+
-| ``inet``             | :class:`ipaddress.IPv4Network\                      |
-|                      | <python:ipaddress.IPv4Network>`,                    |
-|                      | :class:`ipaddress.IPv6Network\                      |
-|                      | <python:ipaddress.IPv6Network>`,                    |
+| ``inet``             | :class:`ipaddress.IPv4Interface\                    |
+|                      | <python:ipaddress.IPv4Interface>`,                  |
+|                      | :class:`ipaddress.IPv6Interface\                    |
+|                      | <python:ipaddress.IPv6Interface>`,                  |
 |                      | :class:`ipaddress.IPv4Address\                      |
 |                      | <python:ipaddress.IPv4Address>`,                    |
 |                      | :class:`ipaddress.IPv6Address\                      |
-|                      | <python:ipaddress.IPv6Address>`                     |
+|                      | <python:ipaddress.IPv6Address>` [#f1]_              |
 +----------------------+-----------------------------------------------------+
 | ``macaddr``          | :class:`str <python:str>`                           |
 +----------------------+-----------------------------------------------------+
@@ -127,7 +127,7 @@ The table below shows the correspondence between PostgreSQL and Python types.
 | ``interval``         | :class:`datetime.timedelta \                        |
 |                      | <python:datetime.timedelta>`                        |
 +----------------------+-----------------------------------------------------+
-| ``float``,           | :class:`float <python:float>` [#f1]_                |
+| ``float``,           | :class:`float <python:float>` [#f2]_                |
 | ``double precision`` |                                                     |
 +----------------------+-----------------------------------------------------+
 | ``smallint``,        | :class:`int <python:int>`                           |
@@ -158,7 +158,10 @@ The table below shows the correspondence between PostgreSQL and Python types.
 
 All other types are encoded and decoded as text by default.
 
-.. [#f1] Inexact single-precision ``float`` values may have a different
+.. [#f1] Prior to version 0.20.0, asyncpg erroneously treated ``inet`` values
+         with prefix as ``IPvXNetwork`` instead of ``IPvXInterface``.
+
+.. [#f2] Inexact single-precision ``float`` values may have a different
          representation when decoded into a Python float.  This is inherent
          to the implementation of limited-precision floating point types.
          If you need the decimal representation to match, cast the expression
