@@ -34,7 +34,6 @@ test:
 
 testinstalled:
 	cd /tmp && $(PYTHON) $(ROOT)/tests/__init__.py
-	cd /tmp && USE_UVLOOP=1 $(PYTHON) $(ROOT)/tests/__init__.py
 
 
 quicktest:
