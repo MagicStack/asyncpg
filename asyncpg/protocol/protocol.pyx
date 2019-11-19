@@ -350,7 +350,7 @@ cdef class BaseProtocol(CoreProtocol):
                                 sink(buffer),
                                 timeout=timer.get_remaining_budget(),
                                 loop=self.loop)
-                    except Exception as ex:
+                    except (Exception, asyncio.CancelledError) as ex:
                         # Abort the COPY operation on any error in
                         # output sink.
                         self._request_cancel()
@@ -476,7 +476,7 @@ cdef class BaseProtocol(CoreProtocol):
             else:
                 raise apg_exc.InternalClientError('TimoutError was not raised')
 
-        except Exception as e:
+        except (Exception, asyncio.CancelledError) as e:
             self._write_copy_fail_msg(str(e))
             self._request_cancel()
             # Make asyncio shut up about unretrieved QueryCanceledError
