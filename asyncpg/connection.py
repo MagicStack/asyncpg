@@ -1223,6 +1223,8 @@ class Connection(metaclass=ConnectionMeta):
                 waiter.set_result(None)
             if w is not None:
                 w.close()
+                if hasattr(w, 'wait_closed'):
+                    await w.wait_closed()
 
     def _cancel_current_command(self, waiter):
         self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
