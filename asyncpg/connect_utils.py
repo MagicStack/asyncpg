@@ -611,8 +611,7 @@ async def _negotiate_ssl_connection(host, port, conn_factory, *, loop, ssl,
         sock = sock.dup()  # Must come before tr.close()
     finally:
         writer.close()
-        if hasattr(writer, 'wait_closed'):
-            await writer.wait_closed()
+        await compat.wait_closed(writer)
 
     try:
         return await conn_factory(sock=sock)  # Must come after tr.close()
