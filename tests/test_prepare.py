@@ -88,7 +88,7 @@ class TestPrepare(tb.ConnectedTestCase):
         stmt = await self.con.prepare('''SELECT pg_sleep(10)''')
         fut = self.loop.create_task(stmt.fetch())
 
-        await asyncio.sleep(0.2, loop=self.loop)
+        await asyncio.sleep(0.2)
 
         self.assertFalse(self.con.is_closed())
         await self.con.close()
@@ -104,7 +104,7 @@ class TestPrepare(tb.ConnectedTestCase):
         stmt = await self.con.prepare('''SELECT pg_sleep(10)''')
         fut = self.loop.create_task(stmt.fetchval())
 
-        await asyncio.sleep(0.2, loop=self.loop)
+        await asyncio.sleep(0.2)
 
         self.assertFalse(self.con.is_closed())
         self.con.terminate()
@@ -364,7 +364,7 @@ class TestPrepare(tb.ConnectedTestCase):
 
         # Wait for some time to make sure the first query is fully
         # prepared (!) and is now awaiting the results (!!).
-        await asyncio.sleep(0.01, loop=self.loop)
+        await asyncio.sleep(0.01)
 
         with self.assertRaisesRegex(asyncpg.InterfaceError,
                                     'another operation'):
@@ -386,7 +386,7 @@ class TestPrepare(tb.ConnectedTestCase):
                 vf = self.loop.create_task(
                     meth('SELECT ROW(pg_sleep(0.1), 1)'))
 
-                await asyncio.sleep(0.01, loop=self.loop)
+                await asyncio.sleep(0.01)
 
                 with self.assertRaisesRegex(asyncpg.InterfaceError,
                                             'another operation'):
@@ -477,7 +477,7 @@ class TestPrepare(tb.ConnectedTestCase):
         s = await self.con._prepare('SELECT 1', use_cache=True)
         self.assertIs(s._state, state)
 
-        await asyncio.sleep(1, loop=self.loop)
+        await asyncio.sleep(1)
 
         s = await self.con._prepare('SELECT 1', use_cache=True)
         self.assertIsNot(s._state, state)
@@ -492,7 +492,7 @@ class TestPrepare(tb.ConnectedTestCase):
         # Disable max_lifetime
         cache.set_max_lifetime(0)
 
-        await asyncio.sleep(1, loop=self.loop)
+        await asyncio.sleep(1)
 
         # The statement should still be cached (as we disabled the timeout).
         s = await self.con._prepare('SELECT 1', use_cache=True)
@@ -512,7 +512,7 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertIsNot(s._state, state)
 
         # Check that nothing crashes after the initial timeout
-        await asyncio.sleep(1, loop=self.loop)
+        await asyncio.sleep(1)
 
     @tb.with_connection_options(max_cacheable_statement_size=50)
     async def test_prepare_27_max_cacheable_statement_size(self):

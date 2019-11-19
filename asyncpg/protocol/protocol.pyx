@@ -93,7 +93,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         self.closing = False
         self.is_reading = True
-        self.writing_allowed = asyncio.Event(loop=self.loop)
+        self.writing_allowed = asyncio.Event()
         self.writing_allowed.set()
 
         self.timeout_handle = None
@@ -348,8 +348,7 @@ cdef class BaseProtocol(CoreProtocol):
                         with timer:
                             await asyncio.wait_for(
                                 sink(buffer),
-                                timeout=timer.get_remaining_budget(),
-                                loop=self.loop)
+                                timeout=timer.get_remaining_budget())
                     except (Exception, asyncio.CancelledError) as ex:
                         # Abort the COPY operation on any error in
                         # output sink.
@@ -456,8 +455,7 @@ cdef class BaseProtocol(CoreProtocol):
                         with timer:
                             chunk = await asyncio.wait_for(
                                 iterator.__anext__(),
-                                timeout=timer.get_remaining_budget(),
-                                loop=self.loop)
+                                timeout=timer.get_remaining_budget())
                         self._write_copy_data_msg(chunk)
                 except builtins.StopAsyncIteration:
                     pass

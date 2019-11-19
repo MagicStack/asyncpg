@@ -21,7 +21,7 @@ class SlowIntrospectionConnection(apg_con.Connection):
 
     async def _introspect_types(self, *args, **kwargs):
         self.introspect_count += 1
-        await asyncio.sleep(0.4, loop=self._loop)
+        await asyncio.sleep(0.4)
         return await super()._introspect_types(*args, **kwargs)
 
 
@@ -154,7 +154,7 @@ class TestIntrospection(tb.ConnectedTestCase):
             # slow_intro_conn cache is now populated with intro_1_t
 
             async def wait_and_drop():
-                await asyncio.sleep(0.1, loop=self.loop)
+                await asyncio.sleep(0.1)
                 await slow_intro_conn.reload_schema_state()
 
             # Now, in parallel, run another query that

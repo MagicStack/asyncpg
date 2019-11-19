@@ -531,7 +531,7 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
     before = time.monotonic()
     try:
         tr, pr = await asyncio.wait_for(
-            connector, timeout=timeout, loop=loop)
+            connector, timeout=timeout)
     except asyncio.CancelledError:
         connector.add_done_callback(_close_leaked_connection)
         raise
@@ -540,7 +540,7 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
     try:
         if timeout <= 0:
             raise asyncio.TimeoutError
-        await asyncio.wait_for(connected, loop=loop, timeout=timeout)
+        await asyncio.wait_for(connected, timeout=timeout)
     except (Exception, asyncio.CancelledError):
         tr.close()
         raise
@@ -581,7 +581,7 @@ async def _negotiate_ssl_connection(host, port, conn_factory, *, loop, ssl,
     # accept SSLRequests. If the SSLRequest is accepted but either the SSL
     # negotiation fails or the PostgreSQL user isn't permitted to use SSL,
     # there's nothing that would attempt to reconnect with a non-SSL socket.
-    reader, writer = await asyncio.open_connection(host, port, loop=loop)
+    reader, writer = await asyncio.open_connection(host, port)
 
     tr = writer.transport
     try:
@@ -632,18 +632,18 @@ async def _create_ssl_connection(protocol_factory, host, port, *,
 
 async def _open_connection(*, loop, addr, params: _ConnectionParameters):
     if isinstance(addr, str):
-        r, w = await asyncio.open_unix_connection(addr, loop=loop)
+        r, w = await asyncio.open_unix_connection(addr)
     else:
         if params.ssl:
             r, w = await _negotiate_ssl_connection(
                 *addr,
-                functools.partial(asyncio.open_connection, loop=loop),
+                asyncio.open_connection,
                 loop=loop,
                 ssl=params.ssl,
                 server_hostname=addr[0],
                 ssl_is_advisory=params.ssl_is_advisory)
         else:
-            r, w = await asyncio.open_connection(*addr, loop=loop)
+            r, w = await asyncio.open_connection(*addr)
             _set_nodelay(_get_socket(w.transport))
 
     return r, w

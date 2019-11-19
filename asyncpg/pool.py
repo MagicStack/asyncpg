@@ -199,7 +199,7 @@ class PoolConnectionHolder:
                 started = time.monotonic()
                 await asyncio.wait_for(
                     self._con._protocol._wait_for_cancellation(),
-                    budget, loop=self._pool._loop)
+                    budget)
                 if budget is not None:
                     budget -= time.monotonic() - started
 
@@ -362,7 +362,7 @@ class Pool:
         self._holders = []
         self._initialized = False
         self._initializing = False
-        self._queue = asyncio.LifoQueue(maxsize=self._maxsize, loop=self._loop)
+        self._queue = asyncio.LifoQueue(maxsize=self._maxsize)
 
         self._working_addr = None
         self._working_config = None
@@ -424,7 +424,7 @@ class Pool:
                         break
                     connect_tasks.append(ch.connect())
 
-                await asyncio.gather(*connect_tasks, loop=self._loop)
+                await asyncio.gather(*connect_tasks)
 
     def set_connect_args(self, dsn=None, **connect_kwargs):
         r"""Set the new connection arguments for this pool.
@@ -604,7 +604,7 @@ class Pool:
             return await _acquire_impl()
         else:
             return await asyncio.wait_for(
-                _acquire_impl(), timeout=timeout, loop=self._loop)
+                _acquire_impl(), timeout=timeout)
 
     async def release(self, connection, *, timeout=None):
         """Release a database connection back to the pool.
@@ -642,7 +642,7 @@ class Pool:
         # Use asyncio.shield() to guarantee that task cancellation
         # does not prevent the connection from being returned to the
         # pool properly.
-        return await asyncio.shield(ch.release(timeout), loop=self._loop)
+        return await asyncio.shield(ch.release(timeout))
 
     async def close(self):
         """Attempt to gracefully close all connections in the pool.
@@ -673,11 +673,11 @@ class Pool:
 
             release_coros = [
                 ch.wait_until_released() for ch in self._holders]
-            await asyncio.gather(*release_coros, loop=self._loop)
+            await asyncio.gather(*release_coros)
 
             close_coros = [
                 ch.close() for ch in self._holders]
-            await asyncio.gather(*close_coros, loop=self._loop)
+            await asyncio.gather(*close_coros)
 
         except (Exception, asyncio.CancelledError):
             self.terminate()

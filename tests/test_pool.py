@@ -34,14 +34,14 @@ else:
 class SlowResetConnection(pg_connection.Connection):
     """Connection class to simulate races with Connection.reset()."""
     async def reset(self, *, timeout=None):
-        await asyncio.sleep(0.2, loop=self._loop)
+        await asyncio.sleep(0.2)
         return await super().reset(timeout=timeout)
 
 
 class SlowCancelConnection(pg_connection.Connection):
     """Connection class to simulate races with Connection._cancel()."""
     async def _cancel(self, waiter):
-        await asyncio.sleep(0.2, loop=self._loop)
+        await asyncio.sleep(0.2)
         return await super()._cancel(waiter)
 
 
@@ -59,7 +59,7 @@ class TestPool(tb.ConnectedTestCase):
                     await pool.release(con)
 
                 tasks = [worker() for _ in range(n)]
-                await asyncio.gather(*tasks, loop=self.loop)
+                await asyncio.gather(*tasks)
                 await pool.close()
 
     async def test_pool_02(self):
@@ -74,7 +74,7 @@ class TestPool(tb.ConnectedTestCase):
                         await pool.release(con)
 
                     tasks = [worker() for _ in range(n)]
-                    await asyncio.gather(*tasks, loop=self.loop)
+                    await asyncio.gather(*tasks)
 
     async def test_pool_03(self):
         pool = await self.create_pool(database='postgres',
@@ -121,11 +121,11 @@ class TestPool(tb.ConnectedTestCase):
                         self.assertEqual(await con.fetchval('SELECT 1'), 1)
 
                 tasks = [worker() for _ in range(n)]
-                await asyncio.gather(*tasks, loop=self.loop)
+                await asyncio.gather(*tasks)
                 await pool.close()
 
     async def test_pool_06(self):
-        fut = asyncio.Future(loop=self.loop)
+        fut = asyncio.Future()
 
         async def setup(con):
             fut.set_result(con)
@@ -159,8 +159,7 @@ class TestPool(tb.ConnectedTestCase):
                                     min_size=2, max_size=5,
                                     init=init,
                                     setup=setup) as pool:
-            users = asyncio.gather(*[user(pool) for _ in range(10)],
-                                   loop=self.loop)
+            users = asyncio.gather(*[user(pool) for _ in range(10)])
             await users
 
         self.assertEqual(len(cons), 5)
@@ -370,7 +369,7 @@ class TestPool(tb.ConnectedTestCase):
                 await pool.release(con)
 
             tasks = [worker() for _ in range(5)]
-            await asyncio.gather(*tasks, loop=self.loop)
+            await asyncio.gather(*tasks)
             await pool.close()
 
         finally:
@@ -393,11 +392,11 @@ class TestPool(tb.ConnectedTestCase):
 
         task = self.loop.create_task(worker())
         # Let the worker() run.
-        await asyncio.sleep(0.1, loop=self.loop)
+        await asyncio.sleep(0.1)
         # Cancel the worker.
         task.cancel()
         # Wait to make sure the cleanup has completed.
-        await asyncio.sleep(0.4, loop=self.loop)
+        await asyncio.sleep(0.4)
         # Check that the connection has been returned to the pool.
         self.assertEqual(pool._queue.qsize(), 1)
 
@@ -414,11 +413,11 @@ class TestPool(tb.ConnectedTestCase):
 
         task = self.loop.create_task(worker())
         # Let the worker() run.
-        await asyncio.sleep(0.1, loop=self.loop)
+        await asyncio.sleep(0.1)
         # Cancel the worker.
         task.cancel()
         # Wait to make sure the cleanup has completed.
-        await asyncio.sleep(0.5, loop=self.loop)
+        await asyncio.sleep(0.5)
         # Check that the connection has been returned to the pool.
         self.assertEqual(pool._queue.qsize(), 1)
 
@@ -431,8 +430,8 @@ class TestPool(tb.ConnectedTestCase):
                 async with pool.acquire() as con:
                     await con.execute('SELECT pg_sleep(1)')
 
-            asyncio.ensure_future(sleep_and_release(), loop=self.loop)
-            await asyncio.sleep(0.5, loop=self.loop)
+            asyncio.ensure_future(sleep_and_release())
+            await asyncio.sleep(0.5)
 
             async with pool.acquire() as con:
                 await con.fetchval('SELECT 1')
@@ -462,8 +461,7 @@ class TestPool(tb.ConnectedTestCase):
                 max_queries=1, connection_class=MyConnection,
                 statement_cache_size=3) as pool:
 
-            await asyncio.gather(*[test(pool) for _ in range(N)],
-                                 loop=self.loop)
+            await asyncio.gather(*[test(pool) for _ in range(N)])
 
         self.assertEqual(len(cons), N)
 
@@ -499,34 +497,34 @@ class TestPool(tb.ConnectedTestCase):
     async def test_pool_connection_methods(self):
         async def test_fetch(pool):
             i = random.randint(0, 20)
-            await asyncio.sleep(random.random() / 100, loop=self.loop)
+            await asyncio.sleep(random.random() / 100)
             r = await pool.fetch('SELECT {}::int'.format(i))
             self.assertEqual(r, [(i,)])
             return 1
 
         async def test_fetchrow(pool):
             i = random.randint(0, 20)
-            await asyncio.sleep(random.random() / 100, loop=self.loop)
+            await asyncio.sleep(random.random() / 100)
             r = await pool.fetchrow('SELECT {}::int'.format(i))
             self.assertEqual(r, (i,))
             return 1
 
         async def test_fetchval(pool):
             i = random.randint(0, 20)
-            await asyncio.sleep(random.random() / 100, loop=self.loop)
+            await asyncio.sleep(random.random() / 100)
             r = await pool.fetchval('SELECT {}::int'.format(i))
             self.assertEqual(r, i)
             return 1
 
         async def test_execute(pool):
-            await asyncio.sleep(random.random() / 100, loop=self.loop)
+            await asyncio.sleep(random.random() / 100)
             r = await pool.execute('SELECT generate_series(0, 10)')
             self.assertEqual(r, 'SELECT {}'.format(11))
             return 1
 
         async def test_execute_with_arg(pool):
             i = random.randint(0, 20)
-            await asyncio.sleep(random.random() / 100, loop=self.loop)
+            await asyncio.sleep(random.random() / 100)
             r = await pool.execute('SELECT generate_series(0, $1)', i)
             self.assertEqual(r, 'SELECT {}'.format(i + 1))
             return 1
@@ -536,7 +534,7 @@ class TestPool(tb.ConnectedTestCase):
                                         min_size=5, max_size=10) as pool:
 
                 coros = [meth(pool) for _ in range(N)]
-                res = await asyncio.gather(*coros, loop=self.loop)
+                res = await asyncio.gather(*coros)
                 self.assertEqual(res, [1] * N)
 
         methods = [test_fetch, test_fetchrow, test_fetchval,
@@ -549,7 +547,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_connection_execute_many(self):
         async def worker(pool):
-            await asyncio.sleep(random.random() / 100, loop=self.loop)
+            await asyncio.sleep(random.random() / 100)
             await pool.executemany('''
                 INSERT INTO exmany VALUES($1, $2)
             ''', [
@@ -566,7 +564,7 @@ class TestPool(tb.ConnectedTestCase):
             try:
 
                 coros = [worker(pool) for _ in range(N)]
-                res = await asyncio.gather(*coros, loop=self.loop)
+                res = await asyncio.gather(*coros)
                 self.assertEqual(res, [1] * N)
 
                 n_rows = await pool.fetchval('SELECT count(*) FROM exmany')
@@ -609,7 +607,7 @@ class TestPool(tb.ConnectedTestCase):
                 'SELECT 1')
             self.assertIs(pool._holders[0]._con, con)
 
-            await asyncio.sleep(1, loop=self.loop)
+            await asyncio.sleep(1)
             self.assertIs(pool._holders[0]._con, None)
 
             self.assertEqual(
@@ -628,7 +626,7 @@ class TestPool(tb.ConnectedTestCase):
             con = pool._holders[0]._con
 
             await pool.execute('SELECT pg_sleep(0.5)')
-            await asyncio.sleep(0.6, loop=self.loop)
+            await asyncio.sleep(0.6)
 
             self.assertIs(pool._holders[0]._con, con)
 
@@ -645,7 +643,7 @@ class TestPool(tb.ConnectedTestCase):
 
         async def worker(pool):
             nonlocal N
-            await asyncio.sleep(random.random() / 10 + 0.1, loop=self.loop)
+            await asyncio.sleep(random.random() / 10 + 0.1)
             async with pool.acquire() as con:
                 if random.random() > 0.5:
                     await con.execute('SELECT pg_sleep({:.2f})'.format(
@@ -664,7 +662,7 @@ class TestPool(tb.ConnectedTestCase):
                 max_inactive_connection_lifetime=0.1) as pool:
 
             workers = [worker(pool) for _ in range(50)]
-            await asyncio.gather(*workers, loop=self.loop)
+            await asyncio.gather(*workers)
 
         self.assertGreaterEqual(N, 50)
 
@@ -679,7 +677,7 @@ class TestPool(tb.ConnectedTestCase):
             self.assertIsNotNone(pool._holders[1]._con)
 
             await pool.execute('SELECT pg_sleep(0.3)')
-            await asyncio.sleep(0.3, loop=self.loop)
+            await asyncio.sleep(0.3)
 
             self.assertIs(pool._holders[0]._con, None)
             # The connection in the second holder was never used,
@@ -788,7 +786,7 @@ class TestPool(tb.ConnectedTestCase):
             async with pool.acquire() as connection:
                 async with connection.transaction():
                     flag.set_result(True)
-                    await asyncio.sleep(0.1, loop=self.loop)
+                    await asyncio.sleep(0.1)
 
             conn_released = True
 
@@ -807,7 +805,7 @@ class TestPool(tb.ConnectedTestCase):
         async def worker():
             async with pool.acquire():
                 flag.set_result(True)
-                await asyncio.sleep(0.5, loop=self.loop)
+                await asyncio.sleep(0.5)
 
         task = self.loop.create_task(worker())
 
@@ -873,8 +871,8 @@ class TestPool(tb.ConnectedTestCase):
     async def test_pool_init_race(self):
         pool = self.create_pool(database='postgres', min_size=1, max_size=1)
 
-        t1 = asyncio.ensure_future(pool, loop=self.loop)
-        t2 = asyncio.ensure_future(pool, loop=self.loop)
+        t1 = asyncio.ensure_future(pool)
+        t2 = asyncio.ensure_future(pool)
 
         await t1
         with self.assertRaisesRegex(
@@ -887,8 +885,8 @@ class TestPool(tb.ConnectedTestCase):
     async def test_pool_init_and_use_race(self):
         pool = self.create_pool(database='postgres', min_size=1, max_size=1)
 
-        pool_task = asyncio.ensure_future(pool, loop=self.loop)
-        await asyncio.sleep(0, loop=self.loop)
+        pool_task = asyncio.ensure_future(pool)
+        await asyncio.sleep(0)
 
         with self.assertRaisesRegex(
                 asyncpg.InterfaceError,
@@ -908,7 +906,7 @@ class TestPool(tb.ConnectedTestCase):
                 pool_backend_pid = await conn.fetchval(
                     'SELECT pg_backend_pid()')
                 backend_pid_fut.set_result(pool_backend_pid)
-                await asyncio.sleep(0.2, loop=self.loop)
+                await asyncio.sleep(0.2)
 
         task = self.loop.create_task(worker())
         try:
@@ -990,7 +988,7 @@ class TestHotStandby(tb.ClusterTestCase):
                     await pool.release(con)
 
                 tasks = [worker() for _ in range(n)]
-                await asyncio.gather(*tasks, loop=self.loop)
+                await asyncio.gather(*tasks)
                 await pool.close()
 
     async def test_standby_cursors(self):
