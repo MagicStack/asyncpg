@@ -27,12 +27,12 @@ from setuptools.command import build_py as setuptools_build_py
 from setuptools.command import sdist as setuptools_sdist
 
 
-CYTHON_DEPENDENCY = 'Cython==0.29'
+CYTHON_DEPENDENCY = 'Cython==0.29.14'
 
 # Minimal dependencies required to test asyncpg.
 TEST_DEPENDENCIES = [
     'flake8~=3.5.0',
-    'uvloop~=0.12.0;platform_system!="Windows"',
+    'uvloop~=0.14.0;platform_system!="Windows"',
 ]
 
 # Dependencies required to build documentation.
