@@ -10,7 +10,6 @@ import asyncpg
 import collections
 import collections.abc
 import itertools
-import struct
 import sys
 import time
 import traceback
@@ -1186,24 +1185,16 @@ class Connection(metaclass=ConnectionMeta):
             await self._protocol.close_statement(stmt, protocol.NO_TIMEOUT)
 
     async def _cancel(self, waiter):
-        r = w = None
-
         try:
             # Open new connection to the server
-            r, w = await connect_utils._open_connection(
-                loop=self._loop, addr=self._addr, params=self._params)
-
-            # Pack CancelRequest message
-            msg = struct.pack('!llll', 16, 80877102,
-                              self._protocol.backend_pid,
-                              self._protocol.backend_secret)
-
-            w.write(msg)
-            await r.read()  # Wait until EOF
+            await connect_utils._cancel(
+                loop=self._loop, addr=self._addr, params=self._params,
+                backend_pid=self._protocol.backend_pid,
+                backend_secret=self._protocol.backend_secret)
         except ConnectionResetError as ex:
             # On some systems Postgres will reset the connection
             # after processing the cancellation command.
-            if r is None and not waiter.done():
+            if not waiter.done():
                 waiter.set_exception(ex)
         except asyncio.CancelledError:
             # There are two scenarios in which the cancellation
@@ -1221,9 +1212,6 @@ class Connection(metaclass=ConnectionMeta):
                 compat.current_asyncio_task(self._loop))
             if not waiter.done():
                 waiter.set_result(None)
-            if w is not None:
-                w.close()
-                await compat.wait_closed(w)
 
     def _cancel_current_command(self, waiter):
         self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
