@@ -66,7 +66,7 @@ elif [ "${TRAVIS_OS_NAME}" == "osx" ]; then
     make clean
     python setup.py bdist_wheel
 
-    pip install ${PYMODULE}[test] -f "file:///${_root}/dist"
+    pip install ${PYMODULE} -f "file:///${_root}/dist"
     make -C "${_root}" ASYNCPG_VERSION="${PACKAGE_VERSION}" testinstalled
 
     _upload_wheels
