@@ -171,7 +171,7 @@
 
 <span class="kn">import</span> <span class="nn">collections</span>
 
-<span class="kn">from</span> <span class="nn">asyncpg.pgproto.types</span> <span class="k">import</span> <span class="p">(</span>
+<span class="kn">from</span> <span class="nn">asyncpg.pgproto.types</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">BitString</span><span class="p">,</span> <span class="n">Point</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="n">Polygon</span><span class="p">,</span>
     <span class="n">Box</span><span class="p">,</span> <span class="n">Line</span><span class="p">,</span> <span class="n">LineSegment</span><span class="p">,</span> <span class="n">Circle</span><span class="p">,</span>
 <span class="p">)</span>
@@ -208,7 +208,7 @@
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="s1">&#39;_lower&#39;</span><span class="p">,</span> <span class="s1">&#39;_upper&#39;</span><span class="p">,</span> <span class="s1">&#39;_lower_inc&#39;</span><span class="p">,</span> <span class="s1">&#39;_upper_inc&#39;</span><span class="p">,</span> <span class="s1">&#39;_empty&#39;</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lower</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lower</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                  <span class="n">lower_inc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">upper_inc</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                  <span class="n">empty</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_empty</span> <span class="o">=</span> <span class="n">empty</span>
@@ -249,10 +249,10 @@
     <span class="k">def</span> <span class="nf">isempty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_empty</span>
 
-    <span class="k">def</span> <span class="nf">__bool__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__bool__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_empty</span>
 
-    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Range</span><span class="p">):</span>
             <span class="k">return</span> <span class="bp">NotImplemented</span>
 
@@ -270,7 +270,7 @@
             <span class="n">other</span><span class="o">.</span><span class="n">_empty</span>
         <span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">hash</span><span class="p">((</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_upper</span><span class="p">,</span>
@@ -279,7 +279,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_empty</span>
         <span class="p">))</span>
 
-    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_empty</span><span class="p">:</span>
             <span class="n">desc</span> <span class="o">=</span> <span class="s1">&#39;empty&#39;</span>
         <span class="k">else</span><span class="p">:</span>
