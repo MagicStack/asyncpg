@@ -615,6 +615,7 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
     else:
         connector = loop.create_connection(proto_factory, *addr)
 
+    connector = asyncio.ensure_future(connector)
     before = time.monotonic()
     try:
         tr, pr = await asyncio.wait_for(
