@@ -321,7 +321,7 @@ be registered on a connection using :meth:`Connection.set_builtin_type_codec()
         await conn.set_builtin_type_codec(
             'hstore', codec_name='pg_contrib.hstore')
         result = await conn.fetchval("SELECT 'a=>1,b=>2'::hstore")
-        assert result == {'a': 1, 'b': 2}
+        assert result == {'a': '1', 'b': '2'}
 
     asyncio.get_event_loop().run_until_complete(run())
 
