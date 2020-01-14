@@ -27,7 +27,7 @@ if [[ "${TRAVIS_OS_NAME}" == "linux" && "${BUILD}" == *wheels* ]]; then
         fi
     fi
 
-    sudo service postgresql start ${PGVERSION}
+    sudo pg_ctlcluster ${PGVERSION} main restart
 fi
 
 if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
