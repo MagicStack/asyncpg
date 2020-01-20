@@ -76,6 +76,48 @@ class TestPool(tb.ConnectedTestCase):
                     tasks = [worker() for _ in range(n)]
                     await asyncio.gather(*tasks)
 
+    async def test_pool_with_middleware(self):
+        called = False
+
+        async def my_middleware_factory(connection, handler):
+            async def middleware(query, args, limit, timeout, return_status):
+                nonlocal called
+                called = True
+                return await handler(query, args, limit,
+                                     timeout, return_status)
+            return middleware
+
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1,
+                                      middlewares=[my_middleware_factory])
+
+        con = await pool.acquire(timeout=5)
+        await con.fetchval('SELECT 1')
+        assert called
+
+        pool.terminate()
+        del con
+
+    async def test_pool_with_middleware_decorator(self):
+        called = False
+
+        @pg_pool.middleware
+        async def my_middleware(query, args, limit, timeout, return_status,
+                                *, connection, handler):
+            nonlocal called
+            called = True
+            return await handler(query, args, limit,
+                                 timeout, return_status)
+
+        pool = await self.create_pool(database='postgres', min_size=1,
+                                      max_size=1, middlewares=[my_middleware])
+        con = await pool.acquire(timeout=5)
+        await con.fetchval('SELECT 1')
+        assert called
+
+        pool.terminate()
+        del con
+
     async def test_pool_03(self):
         pool = await self.create_pool(database='postgres',
                                       min_size=1, max_size=1)

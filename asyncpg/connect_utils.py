@@ -594,7 +594,7 @@ async def _create_ssl_connection(protocol_factory, host, port, *,
 
 
 async def _connect_addr(*, addr, loop, timeout, params, config,
-                        connection_class):
+                        middlewares, connection_class):
     assert loop is not None
 
     if timeout <= 0:
@@ -633,12 +633,12 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
         tr.close()
         raise
 
-    con = connection_class(pr, tr, loop, addr, config, params)
+    con = connection_class(pr, tr, loop, addr, config, params, middlewares)
     pr.set_connection(con)
     return con
 
 
-async def _connect(*, loop, timeout, connection_class, **kwargs):
+async def _connect(*, loop, timeout, middlewares, connection_class, **kwargs):
     if loop is None:
         loop = asyncio.get_event_loop()
 
@@ -652,6 +652,7 @@ async def _connect(*, loop, timeout, connection_class, **kwargs):
             con = await _connect_addr(
                 addr=addr, loop=loop, timeout=timeout,
                 params=params, config=config,
+                middlewares=middlewares,
                 connection_class=connection_class)
         except (OSError, asyncio.TimeoutError, ConnectionError) as ex:
             last_error = ex

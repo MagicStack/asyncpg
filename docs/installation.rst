@@ -30,6 +30,7 @@ If you want to build **asyncpg** from a Git checkout you will need:
   * CPython header files.  These can usually be obtained by installing
     the relevant Python development package: **python3-dev** on Debian/Ubuntu,
     **python3-devel** on RHEL/Fedora.
+  * Clone the repo with submodules (`git clone --recursive`, or `git submodules init; git submodules update`)
 
 Once the above requirements are satisfied, run the following command
 in the root of the source checkout:

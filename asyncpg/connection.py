@@ -41,7 +41,7 @@ class Connection(metaclass=ConnectionMeta):
     """
 
     __slots__ = ('_protocol', '_transport', '_loop',
-                 '_top_xact', '_aborted',
+                 '_top_xact', '_aborted', '_middlewares',
                  '_pool_release_ctr', '_stmt_cache', '_stmts_to_close',
                  '_listeners', '_server_version', '_server_caps',
                  '_intro_query', '_reset_query', '_proxy',
@@ -52,7 +52,8 @@ class Connection(metaclass=ConnectionMeta):
     def __init__(self, protocol, transport, loop,
                  addr: (str, int) or str,
                  config: connect_utils._ClientConfiguration,
-                 params: connect_utils._ConnectionParameters):
+                 params: connect_utils._ConnectionParameters,
+                 _middlewares=None):
         self._protocol = protocol
         self._transport = transport
         self._loop = loop
@@ -91,7 +92,7 @@ class Connection(metaclass=ConnectionMeta):
 
         self._reset_query = None
         self._proxy = None
-
+        self._middlewares = _middlewares
         # Used to serialize operations that might involve anonymous
         # statements.  Specifically, we want to make the following
         # operation atomic:
@@ -1399,8 +1400,13 @@ class Connection(metaclass=ConnectionMeta):
 
     async def _execute(self, query, args, limit, timeout, return_status=False):
         with self._stmt_exclusive_section:
-            result, _ = await self.__execute(
-                query, args, limit, timeout, return_status=return_status)
+            wrapped = self.__execute
+            if self._middlewares:
+                for m in reversed(self._middlewares):
+                    wrapped = await m(connection=self, handler=wrapped)
+
+            result, _ = await wrapped(query, args, limit,
+                                      timeout, return_status=return_status)
         return result
 
     async def __execute(self, query, args, limit, timeout,
@@ -1491,6 +1497,7 @@ async def connect(dsn=None, *,
                   max_cacheable_statement_size=1024 * 15,
                   command_timeout=None,
                   ssl=None,
+                  middlewares=None,
                   connection_class=Connection,
                   server_settings=None):
     r"""A coroutine to establish a connection to a PostgreSQL server.
@@ -1607,6 +1614,10 @@ async def connect(dsn=None, *,
         PostgreSQL documentation for
         a `list of supported options <server settings>`_.
 
+    :param middlewares:
+        An optional list of middleware functions. Refer to documentation
+        on create_pool.
+
     :param Connection connection_class:
         Class of the returned connection object.  Must be a subclass of
         :class:`~asyncpg.connection.Connection`.
@@ -1672,6 +1683,7 @@ async def connect(dsn=None, *,
         ssl=ssl, database=database,
         server_settings=server_settings,
         command_timeout=command_timeout,
+        middlewares=middlewares,
         statement_cache_size=statement_cache_size,
         max_cached_statement_lifetime=max_cached_statement_lifetime,
         max_cacheable_statement_size=max_cacheable_statement_size)
