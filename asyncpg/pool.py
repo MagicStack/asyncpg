@@ -605,15 +605,29 @@ class Pool:
                 ch._timeout = timeout
                 return proxy
 
+        def _release_leaked_connection(fut):
+            if not fut.cancelled():
+                asyncio.ensure_future(self.release(fut.result()))
+
         if self._closing:
             raise exceptions.InterfaceError('pool is closing')
         self._check_init()
 
+        acquire_fut = asyncio.ensure_future(_acquire_impl())
         if timeout is None:
-            return await _acquire_impl()
+            return await acquire_fut
         else:
-            return await asyncio.wait_for(
-                _acquire_impl(), timeout=timeout)
+            try:
+                return await asyncio.wait_for(
+                    acquire_fut, timeout=timeout)
+            except asyncio.CancelledError:
+                # Ensure connection is marked as not in use.
+                # The cancellation may have raced the acquire, leading
+                # to the acquire completing but the wait_for to be
+                # cancelled.
+                # See: https://bugs.python.org/issue37658
+                acquire_fut.add_done_callback(_release_leaked_connection)
+                raise
 
     async def release(self, connection, *, timeout=None):
         """Release a database connection back to the pool.
