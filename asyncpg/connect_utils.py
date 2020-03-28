@@ -615,12 +615,23 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
     else:
         connector = loop.create_connection(proto_factory, *addr)
 
+    def _close_leaked_connection(fut):
+        if not fut.cancelled():
+            tr, pr = fut.result()
+            if tr:
+                tr.close()
+
     connector = asyncio.ensure_future(connector)
     before = time.monotonic()
     try:
         tr, pr = await asyncio.wait_for(
             connector, timeout=timeout)
     except asyncio.CancelledError:
+        # Ensure connection is closed.
+        # The cancellation may have raced the connect, leading
+        # to the connect completing but the wait_for to be
+        # cancelled.
+        # See: https://bugs.python.org/issue37658
         connector.add_done_callback(_close_leaked_connection)
         raise
     timeout -= time.monotonic() - before
@@ -721,12 +732,3 @@ def _create_future(loop):
         return asyncio.Future(loop=loop)
     else:
         return create_future()
-
-
-def _close_leaked_connection(fut):
-    try:
-        tr, pr = fut.result()
-        if tr:
-            tr.close()
-    except asyncio.CancelledError:
-        pass  # hide the exception
