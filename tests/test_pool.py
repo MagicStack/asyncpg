@@ -379,6 +379,26 @@ class TestPool(tb.ConnectedTestCase):
             self.cluster.trust_local_connections()
             self.cluster.reload()
 
+    async def test_pool_handles_task_cancel_in_acquire_with_timeout(self):
+        # See https://github.com/MagicStack/asyncpg/issues/547
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
+
+        async def worker():
+            async with pool.acquire(timeout=100):
+                pass
+
+        # Schedule task
+        task = self.loop.create_task(worker())
+        # Yield to task, but cancel almost immediately
+        await asyncio.sleep(0.00000000001)
+        # Cancel the worker.
+        task.cancel()
+        # Wait to make sure the cleanup has completed.
+        await asyncio.sleep(0.4)
+        # Check that the connection has been returned to the pool.
+        self.assertEqual(pool._queue.qsize(), 1)
+
     async def test_pool_handles_task_cancel_in_release(self):
         # Use SlowResetConnectionPool to simulate
         # the Task.cancel() and __aexit__ race.
