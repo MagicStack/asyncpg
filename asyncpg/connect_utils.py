@@ -601,6 +601,11 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
         raise asyncio.TimeoutError
 
     connected = _create_future(loop)
+
+    params_input = params
+    if callable(params.password):
+        params = params._replace(password=params.password())
+
     proto_factory = lambda: protocol.Protocol(
         addr, connected, params, loop)
 
@@ -633,7 +638,7 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
         tr.close()
         raise
 
-    con = connection_class(pr, tr, loop, addr, config, params)
+    con = connection_class(pr, tr, loop, addr, config, params_input)
     pr.set_connection(con)
     return con
 
