@@ -224,6 +224,27 @@ class TestAuthentication(tb.ConnectedTestCase):
                 password=get_wrongpassword)
 
 
+    async def test_auth_password_cleartext_callable_coroutine(self):
+        async def get_correctpassword():
+            return 'correctpassword'
+
+        async def get_wrongpassword():
+            return 'wrongpassword'
+
+        conn = await self.connect(
+            user='password_user',
+            password=get_correctpassword)
+        await conn.close()
+
+        with self.assertRaisesRegex(
+                asyncpg.InvalidPasswordError,
+                'password authentication failed for user "password_user"'):
+            await self._try_connect(
+                user='password_user',
+                password=get_wrongpassword)
+
+
+
     async def test_auth_password_md5(self):
         conn = await self.connect(
             user='md5_user', password='correctpassword')

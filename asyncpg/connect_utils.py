@@ -21,6 +21,7 @@ import time
 import typing
 import urllib.parse
 import warnings
+import inspect
 
 from . import compat
 from . import exceptions
@@ -604,7 +605,12 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
 
     params_input = params
     if callable(params.password):
-        params = params._replace(password=params.password())
+        if inspect.iscoroutinefunction(params.password):
+            password = await params.password()
+        else:
+            password = params.password()
+
+        params = params._replace(password=password)
 
     proto_factory = lambda: protocol.Protocol(
         addr, connected, params, loop)
