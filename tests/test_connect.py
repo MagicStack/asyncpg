@@ -223,7 +223,6 @@ class TestAuthentication(tb.ConnectedTestCase):
                 user='password_user',
                 password=get_wrongpassword)
 
-
     async def test_auth_password_cleartext_callable_coroutine(self):
         async def get_correctpassword():
             return 'correctpassword'
@@ -242,8 +241,6 @@ class TestAuthentication(tb.ConnectedTestCase):
             await self._try_connect(
                 user='password_user',
                 password=get_wrongpassword)
-
-
 
     async def test_auth_password_md5(self):
         conn = await self.connect(
