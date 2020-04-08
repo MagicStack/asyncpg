@@ -1566,6 +1566,10 @@ async def connect(dsn=None, *,
         other users and applications may be able to read it without needing
         specific privileges.  It is recommended to use *passfile* instead.
 
+        Password may be either a string, or a callable that returns a string.
+        If a callable is provided, it will be called each time a new connection
+        is established.
+
     :param passfile:
         The name of the file used to store passwords
         (defaults to ``~/.pgpass``, or ``%APPDATA%\postgresql\pgpass.conf``
