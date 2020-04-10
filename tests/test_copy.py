@@ -582,6 +582,47 @@ class TestCopyTo(tb.ConnectedTestCase):
         finally:
             await self.con.execute('DROP TABLE copytab')
 
+    async def test_copy_to_table_from_file_path(self):
+        await self.con.execute('''
+            CREATE TABLE copytab(a text, "b~" text, i int);
+        ''')
+
+        with tempfile.NamedTemporaryFile() as f:
+            try:
+                f.write(
+                    '\n'.join([
+                        'a1\tb1\t1',
+                        'a2\tb2\t2',
+                        'a3\tb3\t3',
+                        'a4\tb4\t4',
+                        'a5\tb5\t5',
+                        '*\t\\N\t\\N',
+                        ''
+                    ]).encode('utf-8')
+                )
+                f.seek(0)
+
+                res = await self.con.copy_to_table('copytab', source=f.name)
+                self.assertEqual(res, 'COPY 6')
+
+                output = await self.con.fetch("""
+                    SELECT * FROM copytab ORDER BY a
+                """)
+                self.assertEqual(
+                    output,
+                    [
+                        ('*', None, None),
+                        ('a1', 'b1', 1),
+                        ('a2', 'b2', 2),
+                        ('a3', 'b3', 3),
+                        ('a4', 'b4', 4),
+                        ('a5', 'b5', 5),
+                    ]
+                )
+
+            finally:
+                await self.con.execute('DROP TABLE public.copytab')
+
     async def test_copy_records_to_table_1(self):
         await self.con.execute('''
             CREATE TABLE copytab(a text, b int, c timestamptz);

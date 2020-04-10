@@ -813,7 +813,7 @@ class Connection(metaclass=ConnectionMeta):
 
         if path is not None:
             # a path
-            f = await run_in_executor(None, open, path, 'wb')
+            f = await run_in_executor(None, open, path, 'rb')
             opened_by_us = True
         elif hasattr(source, 'read'):
             # file-like
