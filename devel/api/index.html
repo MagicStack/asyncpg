@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.20.0.dev0
+                0.21.0.dev0
               </div>
             
           
@@ -233,12 +233,16 @@ operating system name of the user running the application.</p>
 or the value of the <code class="docutils literal notranslate"><span class="pre">PGDATABASE</span></code> environment variable, or the
 operating system name of the user running the application.</p>
 </li>
-<li><strong>password</strong> – Password to be used for authentication, if the server requires
+<li><strong>password</strong> – <p>Password to be used for authentication, if the server requires
 one.  If not specified, the value parsed from the <em>dsn</em> argument
 is used, or the value of the <code class="docutils literal notranslate"><span class="pre">PGPASSWORD</span></code> environment variable.
 Note that the use of the environment variable is discouraged as
 other users and applications may be able to read it without needing
-specific privileges.  It is recommended to use <em>passfile</em> instead.</li>
+specific privileges.  It is recommended to use <em>passfile</em> instead.</p>
+<p>Password may be either a string, or a callable that returns a string.
+If a callable is provided, it will be called each time a new connection
+is established.</p>
+</li>
 <li><strong>passfile</strong> – The name of the file used to store passwords
 (defaults to <code class="docutils literal notranslate"><span class="pre">~/.pgpass</span></code>, or <code class="docutils literal notranslate"><span class="pre">%APPDATA%\postgresql\pgpass.conf</span></code>
 on Windows).</li>
@@ -275,10 +279,10 @@ a <a class="reference external" href="serversettings">list of supported options<
 <p>Example:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncpg</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncio</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
-<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="n">types</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT * FROM pg_type&#39;</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">types</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">types</span> <span class="o">=</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT * FROM pg_type&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">types</span><span class="p">)</span>
 <span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
 <span class="go">[&lt;Record typname=&#39;bool&#39; typnamespace=11 ...</span>
@@ -302,6 +306,9 @@ for that.</p>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.18.0: </span>Added ability to specify multiple hosts in the <em>dsn</em>
 and <em>host</em> arguments.</p>
+</div>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.21.0: </span>The <em>password</em> argument now accepts a callable or an async function.</p>
 </div>
 </dd></dl>
 
@@ -405,12 +412,12 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <p>Example:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncpg</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncio</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
-<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="n">result</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">copy_from_query</span><span class="p">(</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">copy_from_query</span><span class="p">(</span>
 <span class="gp">... </span>        <span class="s1">&#39;SELECT foo, bar FROM mytable WHERE foo &gt; $1&#39;</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span>
-<span class="gp">... </span>        <span class="n">output</span><span class="o">=</span><span class="s1">&#39;file.csv&#39;</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="s1">&#39;csv&#39;</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="n">output</span><span class="o">=</span><span class="s1">&#39;file.csv&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;csv&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
 <span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
 <span class="go">&#39;COPY 10&#39;</span>
@@ -456,12 +463,12 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <p>Example:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncpg</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncio</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
-<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="n">result</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">copy_from_table</span><span class="p">(</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">copy_from_table</span><span class="p">(</span>
 <span class="gp">... </span>        <span class="s1">&#39;mytable&#39;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">,</span> <span class="s1">&#39;bar&#39;</span><span class="p">),</span>
-<span class="gp">... </span>        <span class="n">output</span><span class="o">=</span><span class="s1">&#39;file.csv&#39;</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="s1">&#39;csv&#39;</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="n">output</span><span class="o">=</span><span class="s1">&#39;file.csv&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;csv&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
 <span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
 <span class="go">&#39;COPY 100&#39;</span>
@@ -497,13 +504,13 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <p>Example:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncpg</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncio</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
-<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="n">result</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">copy_records_to_table</span><span class="p">(</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">copy_records_to_table</span><span class="p">(</span>
 <span class="gp">... </span>        <span class="s1">&#39;mytable&#39;</span><span class="p">,</span> <span class="n">records</span><span class="o">=</span><span class="p">[</span>
 <span class="gp">... </span>            <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;foo&#39;</span><span class="p">,</span> <span class="s1">&#39;bar&#39;</span><span class="p">),</span>
 <span class="gp">... </span>            <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;ham&#39;</span><span class="p">,</span> <span class="s1">&#39;spam&#39;</span><span class="p">)])</span>
-<span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
 <span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
 <span class="go">&#39;COPY 2&#39;</span>
@@ -550,11 +557,11 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <p>Example:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncpg</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncio</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
-<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="n">result</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">copy_to_table</span><span class="p">(</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">copy_to_table</span><span class="p">(</span>
 <span class="gp">... </span>        <span class="s1">&#39;mytable&#39;</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s1">&#39;datafile.tbl&#39;</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
 <span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
 <span class="go">&#39;COPY 140000&#39;</span>
@@ -595,13 +602,13 @@ will prefetch (defaults to <code class="docutils literal notranslate"><span clas
 <p>This method can execute many SQL commands at once, when no arguments
 are provided.</p>
 <p>Example:</p>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
 <span class="gp">... </span><span class="s1">    CREATE TABLE mytab (a int);</span>
 <span class="gp">... </span><span class="s1">    INSERT INTO mytab (a) VALUES (100), (200), (300);</span>
 <span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
 <span class="go">INSERT 0 3</span>
 
-<span class="gp">&gt;&gt;&gt; </span><span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
 <span class="gp">... </span><span class="s1">    INSERT INTO mytab (a) VALUES ($1), ($2)</span>
 <span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
 <span class="go">INSERT 0 2</span>
@@ -632,7 +639,7 @@ are provided.</p>
 <em class="property">coroutine </em><code class="descname">executemany</code><span class="sig-paren">(</span><em>command: str</em>, <em>args</em>, <em>*</em>, <em>timeout: float = None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.executemany"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.executemany" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute an SQL <em>command</em> for each sequence of arguments in <em>args</em>.</p>
 <p>Example:</p>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">executemany</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">executemany</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
 <span class="gp">... </span><span class="s1">    INSERT INTO mytab (a) VALUES ($1, $2, $3);</span>
 <span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">,</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">)])</span>
 </pre></div>
@@ -843,26 +850,26 @@ asyncpg that the database schema has changed.</p>
 <p>Example:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncpg</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncio</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">async</span> <span class="k">def</span> <span class="nf">change_type</span><span class="p">(</span><span class="n">con</span><span class="p">):</span>
-<span class="gp">... </span>    <span class="n">result</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT id, info FROM tbl&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">async</span> <span class="k">def</span> <span class="nf">change_type</span><span class="p">(</span><span class="n">con</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT id, info FROM tbl&#39;</span><span class="p">)</span>
 <span class="gp">... </span>    <span class="c1"># Change composite&#39;s attribute type &quot;int&quot;=&gt;&quot;text&quot;</span>
-<span class="gp">... </span>    <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;ALTER TYPE custom DROP ATTRIBUTE y&#39;</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;ALTER TYPE custom ADD ATTRIBUTE y text&#39;</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">reload_schema_state</span><span class="p">()</span>
+<span class="gp">... </span>    <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;ALTER TYPE custom DROP ATTRIBUTE y&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;ALTER TYPE custom ADD ATTRIBUTE y text&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">reload_schema_state</span><span class="p">()</span>
 <span class="gp">... </span>    <span class="k">for</span> <span class="n">id_</span><span class="p">,</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
 <span class="gp">... </span>        <span class="n">new</span> <span class="o">=</span> <span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">],</span> <span class="nb">str</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">]))</span>
-<span class="gp">... </span>        <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
 <span class="gp">... </span>            <span class="s1">&#39;UPDATE tbl SET info=$2 WHERE id=$1&#39;</span><span class="p">,</span> <span class="n">id_</span><span class="p">,</span> <span class="n">new</span><span class="p">)</span>
 <span class="gp">...</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
 <span class="gp">... </span>    <span class="c1"># Initial schema:</span>
 <span class="gp">... </span>    <span class="c1"># CREATE TYPE custom AS (x int, y int);</span>
 <span class="gp">... </span>    <span class="c1"># CREATE TABLE tbl(id int, info custom);</span>
-<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="n">async</span> <span class="k">with</span> <span class="n">con</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">async</span> <span class="k">with</span> <span class="n">con</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
 <span class="gp">... </span>        <span class="c1"># Prevent concurrent changes in the table</span>
-<span class="gp">... </span>        <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;LOCK TABLE tbl&#39;</span><span class="p">)</span>
-<span class="gp">... </span>        <span class="n">await</span> <span class="n">change_type</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;LOCK TABLE tbl&#39;</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="k">await</span> <span class="n">change_type</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
 <span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
 </pre></div>
@@ -1025,8 +1032,8 @@ and returning a decoded Python object.</li>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncio</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">datetime</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">dateutil.relativedelta</span> <span class="kn">import</span> <span class="n">relativedelta</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
-<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
 <span class="gp">... </span>    <span class="k">def</span> <span class="nf">encoder</span><span class="p">(</span><span class="n">delta</span><span class="p">):</span>
 <span class="gp">... </span>        <span class="n">ndelta</span> <span class="o">=</span> <span class="n">delta</span><span class="o">.</span><span class="n">normalized</span><span class="p">()</span>
 <span class="gp">... </span>        <span class="k">return</span> <span class="p">(</span><span class="n">ndelta</span><span class="o">.</span><span class="n">years</span> <span class="o">*</span> <span class="mi">12</span> <span class="o">+</span> <span class="n">ndelta</span><span class="o">.</span><span class="n">months</span><span class="p">,</span>
@@ -1038,13 +1045,13 @@ and returning a decoded Python object.</li>
 <span class="gp">... </span>    <span class="k">def</span> <span class="nf">decoder</span><span class="p">(</span><span class="n">tup</span><span class="p">):</span>
 <span class="gp">... </span>        <span class="k">return</span> <span class="n">relativedelta</span><span class="p">(</span><span class="n">months</span><span class="o">=</span><span class="n">tup</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">days</span><span class="o">=</span><span class="n">tup</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
 <span class="gp">... </span>                             <span class="n">microseconds</span><span class="o">=</span><span class="n">tup</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
-<span class="gp">... </span>    <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">set_type_codec</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">set_type_codec</span><span class="p">(</span>
 <span class="gp">... </span>        <span class="s1">&#39;interval&#39;</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;pg_catalog&#39;</span><span class="p">,</span> <span class="n">encoder</span><span class="o">=</span><span class="n">encoder</span><span class="p">,</span>
-<span class="gp">... </span>        <span class="n">decoder</span><span class="o">=</span><span class="n">decoder</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="s1">&#39;tuple&#39;</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="n">result</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="n">decoder</span><span class="o">=</span><span class="n">decoder</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;tuple&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span>
 <span class="gp">... </span>        <span class="s2">&quot;SELECT &#39;2 years 3 mons 1 day&#39;::interval&quot;</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2002</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">result</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2002</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">result</span><span class="p">)</span>
 <span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
 <span class="go">relativedelta(years=+2, months=+3, days=+1)</span>
@@ -1108,11 +1115,11 @@ analyzes and compiles the query allowing to reuse that work once there is
 a need to run the same query again.</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">asyncpg</span><span class="o">,</span> <span class="nn">asyncio</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
-<span class="gp">... </span>    <span class="n">conn</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
-<span class="gp">... </span>    <span class="n">stmt</span> <span class="o">=</span> <span class="n">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;SELECT 2 ^ $1&#39;&#39;&#39;</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">stmt</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
-<span class="gp">... </span>    <span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">stmt</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span><span class="mi">20</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">conn</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+<span class="gp">... </span>    <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;SELECT 2 ^ $1&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="k">await</span> <span class="n">stmt</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="k">await</span> <span class="n">stmt</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span><span class="mi">20</span><span class="p">))</span>
 <span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">loop</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
 <span class="go">1024.0</span>
@@ -1335,19 +1342,19 @@ instance constructor.</li>
 <div class="section" id="transactions">
 <span id="asyncpg-api-transaction"></span><h2>Transactions<a class="headerlink" href="#transactions" title="Permalink to this headline">¶</a></h2>
 <p>The most common way to use transactions is through an <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span></code> statement:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="k">with</span> <span class="n">connection</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
-    <span class="n">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;INSERT INTO mytable VALUES(1, 2, 3)&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">with</span> <span class="n">connection</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
+    <span class="k">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;INSERT INTO mytable VALUES(1, 2, 3)&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>asyncpg supports nested transactions (a nested transaction context will create
 a <a class="reference external" href="https://www.postgresql.org/docs/current/static/sql-savepoint.html">savepoint</a>.):</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="k">with</span> <span class="n">connection</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
-    <span class="n">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;CREATE TABLE mytab (a int)&#39;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">with</span> <span class="n">connection</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
+    <span class="k">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;CREATE TABLE mytab (a int)&#39;</span><span class="p">)</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="c1"># Create a nested transaction:</span>
-        <span class="n">async</span> <span class="k">with</span> <span class="n">connection</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
-            <span class="n">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;INSERT INTO mytab (a) VALUES (1), (2)&#39;</span><span class="p">)</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="n">connection</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
+            <span class="k">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;INSERT INTO mytab (a) VALUES (1), (2)&#39;</span><span class="p">)</span>
             <span class="c1"># This nested transaction will be automatically rolled back:</span>
             <span class="k">raise</span> <span class="ne">Exception</span>
     <span class="k">except</span><span class="p">:</span>
@@ -1356,19 +1363,19 @@ a <a class="reference external" href="https://www.postgresql.org/docs/current/st
 
     <span class="c1"># Because the nested transaction was rolled back, there</span>
     <span class="c1"># will be nothing in `mytab`.</span>
-    <span class="k">assert</span> <span class="n">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT a FROM mytab&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="p">[]</span>
+    <span class="k">assert</span> <span class="k">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT a FROM mytab&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="p">[]</span>
 </pre></div>
 </div>
 <p>Alternatively, transactions can be used without an <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span></code> block:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">tr</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">transaction</span><span class="p">()</span>
-<span class="n">await</span> <span class="n">tr</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+<span class="k">await</span> <span class="n">tr</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
 <span class="k">try</span><span class="p">:</span>
     <span class="o">...</span>
 <span class="k">except</span><span class="p">:</span>
-    <span class="n">await</span> <span class="n">tr</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
+    <span class="k">await</span> <span class="n">tr</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
     <span class="k">raise</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="n">await</span> <span class="n">tr</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="k">await</span> <span class="n">tr</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
 </pre></div>
 </div>
 <p>See also the
@@ -1421,40 +1428,40 @@ result set.</p>
 <a class="reference internal" href="#asyncpg.connection.Connection.cursor" title="asyncpg.connection.Connection.cursor"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Connection.cursor()</span></code></a>.
 To make the iteration efficient, the cursor will prefetch records to
 reduce the number of queries sent to the server:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="k">def</span> <span class="nf">iterate</span><span class="p">(</span><span class="n">con</span><span class="p">:</span> <span class="n">Connection</span><span class="p">):</span>
-    <span class="n">async</span> <span class="k">with</span> <span class="n">con</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span> <span class="nf">iterate</span><span class="p">(</span><span class="n">con</span><span class="p">:</span> <span class="n">Connection</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">con</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
         <span class="c1"># Postgres requires non-scrollable cursors to be created</span>
         <span class="c1"># and used in a transaction.</span>
-        <span class="n">async</span> <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">con</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span><span class="s1">&#39;SELECT generate_series(0, 100)&#39;</span><span class="p">):</span>
-            <span class="k">print</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+        <span class="k">async</span> <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">con</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span><span class="s1">&#39;SELECT generate_series(0, 100)&#39;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Or, alternatively, you can iterate over the cursor manually (cursor
 won’t be prefetching any rows):</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="k">def</span> <span class="nf">iterate</span><span class="p">(</span><span class="n">con</span><span class="p">:</span> <span class="n">Connection</span><span class="p">):</span>
-    <span class="n">async</span> <span class="k">with</span> <span class="n">con</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span> <span class="nf">iterate</span><span class="p">(</span><span class="n">con</span><span class="p">:</span> <span class="n">Connection</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">con</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
         <span class="c1"># Postgres requires non-scrollable cursors to be created</span>
         <span class="c1"># and used in a transaction.</span>
 
         <span class="c1"># Create a Cursor object</span>
-        <span class="n">cur</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span><span class="s1">&#39;SELECT generate_series(0, 100)&#39;</span><span class="p">)</span>
+        <span class="n">cur</span> <span class="o">=</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span><span class="s1">&#39;SELECT generate_series(0, 100)&#39;</span><span class="p">)</span>
 
         <span class="c1"># Move the cursor 10 rows forward</span>
-        <span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
 
         <span class="c1"># Fetch one row and print it</span>
-        <span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">())</span>
+        <span class="nb">print</span><span class="p">(</span><span class="k">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">())</span>
 
         <span class="c1"># Fetch a list of 5 rows and print it</span>
-        <span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="k">await</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>It’s also possible to create cursors from prepared statements:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="k">def</span> <span class="nf">iterate</span><span class="p">(</span><span class="n">con</span><span class="p">:</span> <span class="n">Connection</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span> <span class="nf">iterate</span><span class="p">(</span><span class="n">con</span><span class="p">:</span> <span class="n">Connection</span><span class="p">):</span>
     <span class="c1"># Create a prepared statement that will accept one argument</span>
-    <span class="n">stmt</span> <span class="o">=</span> <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="s1">&#39;SELECT generate_series(0, $1)&#39;</span><span class="p">)</span>
+    <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="s1">&#39;SELECT generate_series(0, $1)&#39;</span><span class="p">)</span>
 
-    <span class="n">async</span> <span class="k">with</span> <span class="n">con</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">con</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
         <span class="c1"># Postgres requires non-scrollable cursors to be created</span>
         <span class="c1"># and used in a transaction.</span>
 
@@ -1462,8 +1469,8 @@ won’t be prefetching any rows):</p>
         <span class="c1"># argument -- that will generate a series or records</span>
         <span class="c1"># from 0..10.  Iterate over all of them and print every</span>
         <span class="c1"># record.</span>
-        <span class="n">async</span> <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">stmt</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
-            <span class="k">print</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+        <span class="k">async</span> <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">stmt</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="admonition note">
@@ -1568,19 +1575,19 @@ fetch subsets of the query results.</p>
 <code class="descname">create_pool</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>min_size=10</em>, <em>max_size=10</em>, <em>max_queries=50000</em>, <em>max_inactive_connection_lifetime=300.0</em>, <em>setup=None</em>, <em>init=None</em>, <em>loop=None</em>, <em>connection_class=&lt;class 'asyncpg.connection.Connection'&gt;</em>, <em>**connect_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#create_pool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.create_pool" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a connection pool.</p>
 <p>Can be used either with an <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span></code> block:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="k">with</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">create_pool</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">,</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">with</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">create_pool</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">,</span>
                                <span class="n">command_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
-    <span class="n">async</span> <span class="k">with</span> <span class="n">pool</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
-        <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT 1&#39;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">pool</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT 1&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Or directly with <code class="docutils literal notranslate"><span class="pre">await</span></code>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pool</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">create_pool</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">,</span> <span class="n">command_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
-<span class="n">con</span> <span class="o">=</span> <span class="n">await</span> <span class="n">pool</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pool</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">create_pool</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">,</span> <span class="n">command_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+<span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="n">pool</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
 <span class="k">try</span><span class="p">:</span>
-    <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT 1&#39;</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT 1&#39;</span><span class="p">)</span>
 <span class="k">finally</span><span class="p">:</span>
-    <span class="n">await</span> <span class="n">pool</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">pool</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="admonition warning">
@@ -1671,16 +1678,16 @@ open cursors and other resources <em>except</em> prepared statements.</p>
 </tbody>
 </table>
 <p>Can be used in an <code class="docutils literal notranslate"><span class="pre">await</span></code> expression or with an <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span></code> block.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="k">with</span> <span class="n">pool</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
-    <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">with</span> <span class="n">pool</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
+    <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Or:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">con</span> <span class="o">=</span> <span class="n">await</span> <span class="n">pool</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="n">pool</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
 <span class="k">try</span><span class="p">:</span>
-    <span class="n">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
 <span class="k">finally</span><span class="p">:</span>
-    <span class="n">await</span> <span class="n">pool</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">pool</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -2194,7 +2201,7 @@ the BitString’s exact length is lost.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.20.0.dev0',
+            VERSION:'0.21.0.dev0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
