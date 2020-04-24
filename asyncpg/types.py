@@ -85,41 +85,40 @@ class Range:
     def isempty(self):
         return self._empty
 
+    def _issubset_lower(self, other):
+        if other._lower is None:
+            return True
+        if self._lower is None:
+            return False
+
+        return self._lower > other._lower or (
+            self._lower == other._lower and (other._lower_inc or not self._lower_inc)
+        )
+
+    def _issubset_upper(self, other):
+        if other._upper is None:
+            return True
+        if self._upper is None:
+            return False
+
+        return self._upper < other._upper or (
+            self._upper == other._upper and (other._upper_inc or not self._upper_inc)
+        )
+
     def issubset(self, other):
         if self._empty:
             return True
         if other._empty:
             return False
 
-        if other._lower is None:
-            lowerOk = True
-        else:
-            if self._lower is None:
-                return False
-            if other._lower_inc or not self._lower_inc:
-                lowerOk = self._lower >= other._lower
-            else:
-                lowerOk = self._lower > other._lower
-
-        if not lowerOk:
-            return False
-
-        if other._upper is None:
-            upperOk = True
-        else:
-            if self._upper is None:
-                return False
-            if other._upper_inc or not self._upper_inc:
-                upperOk = self._upper <= other._upper
-            else:
-                upperOk = self._upper < other._upper
-
-        return lowerOk and upperOk
+        return self._issubset_lower(other) and self._issubset_upper(other)
 
     def issuperset(self, other):
         return other.issubset(self)
 
     def size(self, step=None):
+        if self._empty:
+            return 0
         if self._upper is None or self._lower is None:
             return None
         if step is None or self._upper_inc != self._lower_inc:
