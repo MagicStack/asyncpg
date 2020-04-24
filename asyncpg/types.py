@@ -85,6 +85,52 @@ class Range:
     def isempty(self):
         return self._empty
 
+    def issubset(self, other):
+        if self._empty:
+            return True
+        if other._empty:
+            return False
+
+        if other._lower is None:
+            lowerOk = True
+        else:
+            if self._lower is None:
+                return False
+            if other._lower_inc or not self._lower_inc:
+                lowerOk = self._lower >= other._lower
+            else:
+                lowerOk = self._lower > other._lower
+
+        if not lowerOk:
+            return False
+
+        if other._upper is None:
+            upperOk = True
+        else:
+            if self._upper is None:
+                return False
+            if other._upper_inc or not self._upper_inc:
+                upperOk = self._upper <= other._upper
+            else:
+                upperOk = self._upper < other._upper
+
+        return lowerOk and upperOk
+
+    def issuperset(self, other):
+        return other.issubset(self)
+
+    def size(self, step=None):
+        if self._upper is None or self._lower is None:
+            return None
+        if step is None or self._upper_inc != self._lower_inc:
+            step = 0
+        else:
+            step = abs(step)
+            if not self._upper_inc:
+                step *= -1
+
+        return step + self._upper - self._lower
+
     def __bool__(self):
         return not self._empty
 
