@@ -116,20 +116,6 @@ class Range:
     def issuperset(self, other):
         return other.issubset(self)
 
-    def size(self, step=None):
-        if self._empty:
-            return 0
-        if self._upper is None or self._lower is None:
-            return None
-        if step is None or self._upper_inc != self._lower_inc:
-            step = 0
-        else:
-            step = abs(step)
-            if not self._upper_inc:
-                step *= -1
-
-        return step + self._upper - self._lower
-
     def __bool__(self):
         return not self._empty
 
