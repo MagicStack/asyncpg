@@ -185,11 +185,16 @@ class Connection(metaclass=ConnectionMeta):
         :param callable callback:
             A callable receiving one argument:
             **connection**: a Connection the callback is registered with.
+
+        .. versionadded:: 0.21.0
         """
         self._close_listeners.add(callback)
 
     def remove_close_listener(self, callback):
-        """Remove a listening callback for the connection closing."""
+        """Remove a listening callback for the connection closing.
+
+        .. versionadded:: 0.21.0
+        """
         self._close_listeners.discard(callback)
 
     def get_server_pid(self):

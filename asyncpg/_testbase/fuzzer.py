@@ -145,6 +145,10 @@ class TCPFuzzingProxy:
         if conn_task is not None:
             conn_task.cancel()
 
+    def close_all_connections(self):
+        for conn in list(self.connections):
+            self.loop.call_soon_threadsafe(self._close_connection, conn)
+
 
 class Connection:
     def __init__(self, client_sock, backend_sock, proxy):
@@ -215,10 +219,11 @@ class Connection:
             else:
                 return read_task.result()
         finally:
-            if not read_task.done():
-                read_task.cancel()
-            if not conn_event_task.done():
-                conn_event_task.cancel()
+            if not self.loop.is_closed():
+                if not read_task.done():
+                    read_task.cancel()
+                if not conn_event_task.done():
+                    conn_event_task.cancel()
 
     async def _write(self, sock, data):
         write_task = asyncio.ensure_future(
@@ -236,10 +241,11 @@ class Connection:
             else:
                 return write_task.result()
         finally:
-            if not write_task.done():
-                write_task.cancel()
-            if not conn_event_task.done():
-                conn_event_task.cancel()
+            if not self.loop.is_closed():
+                if not write_task.done():
+                    write_task.cancel()
+                if not conn_event_task.done():
+                    conn_event_task.cancel()
 
     async def proxy_to_backend(self):
         buf = None
@@ -264,7 +270,8 @@ class Connection:
             pass
 
         finally:
-            self.loop.call_soon(self.close)
+            if not self.loop.is_closed():
+                self.loop.call_soon(self.close)
 
     async def proxy_from_backend(self):
         buf = None
@@ -289,4 +296,5 @@ class Connection:
             pass
 
         finally:
-            self.loop.call_soon(self.close)
+            if not self.loop.is_closed():
+                self.loop.call_soon(self.close)
