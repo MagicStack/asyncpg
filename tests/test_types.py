@@ -47,5 +47,9 @@ class TestTypes(tb.TestCase):
         ]
 
         for (sub, sup), res in zip(product(subs, sups), results):
-            self.assertIs(sub.issubset(sup), res, "Sub:{}, Sup:{}".format(sub, sup))
-            self.assertIs(sup.issuperset(sub), res, "Sub:{}, Sup:{}".format(sub, sup))
+            self.assertIs(
+                sub.issubset(sup), res, "Sub:{}, Sup:{}".format(sub, sup)
+            )
+            self.assertIs(
+                sup.issuperset(sub), res, "Sub:{}, Sup:{}".format(sub, sup)
+            )

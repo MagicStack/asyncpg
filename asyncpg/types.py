@@ -92,7 +92,8 @@ class Range:
             return False
 
         return self._lower > other._lower or (
-            self._lower == other._lower and (other._lower_inc or not self._lower_inc)
+            self._lower == other._lower
+            and (other._lower_inc or not self._lower_inc)
         )
 
     def _issubset_upper(self, other):
@@ -102,7 +103,8 @@ class Range:
             return False
 
         return self._upper < other._upper or (
-            self._upper == other._upper and (other._upper_inc or not self._upper_inc)
+            self._upper == other._upper
+            and (other._upper_inc or not self._upper_inc)
         )
 
     def issubset(self, other):
