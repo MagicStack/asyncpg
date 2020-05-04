@@ -283,9 +283,9 @@ class TestLogListeners(tb.ConnectedTestCase):
     platform.system() == 'Windows' and
     sys.version_info >= (3, 8),
     'not compatible with ProactorEventLoop which is default in Python 3.8')
-class TestConnectionCloseListener(tb.ProxiedClusterTestCase):
+class TestConnectionTerminationListener(tb.ProxiedClusterTestCase):
 
-    async def test_connection_close_callback_called_on_remote(self):
+    async def test_connection_termination_callback_called_on_remote(self):
 
         called = False
 
@@ -294,7 +294,7 @@ class TestConnectionCloseListener(tb.ProxiedClusterTestCase):
             called = True
 
         con = await self.connect()
-        con.add_close_listener(close_cb)
+        con.add_termination_listener(close_cb)
         self.proxy.close_all_connections()
         try:
             await con.fetchval('SELECT 1')
@@ -302,7 +302,7 @@ class TestConnectionCloseListener(tb.ProxiedClusterTestCase):
             pass
         self.assertTrue(called)
 
-    async def test_connection_close_callback_called_on_local(self):
+    async def test_connection_termination_callback_called_on_local(self):
 
         called = False
 
@@ -311,6 +311,6 @@ class TestConnectionCloseListener(tb.ProxiedClusterTestCase):
             called = True
 
         con = await self.connect()
-        con.add_close_listener(close_cb)
+        con.add_termination_listener(close_cb)
         await con.close()
         self.assertTrue(called)
