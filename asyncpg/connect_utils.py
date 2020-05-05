@@ -21,6 +21,7 @@ import time
 import typing
 import urllib.parse
 import warnings
+import inspect
 
 from . import compat
 from . import exceptions
@@ -601,6 +602,16 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
         raise asyncio.TimeoutError
 
     connected = _create_future(loop)
+
+    params_input = params
+    if callable(params.password):
+        if inspect.iscoroutinefunction(params.password):
+            password = await params.password()
+        else:
+            password = params.password()
+
+        params = params._replace(password=password)
+
     proto_factory = lambda: protocol.Protocol(
         addr, connected, params, loop)
 
@@ -644,7 +655,7 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
         tr.close()
         raise
 
-    con = connection_class(pr, tr, loop, addr, config, params)
+    con = connection_class(pr, tr, loop, addr, config, params_input)
     pr.set_connection(con)
     return con
 

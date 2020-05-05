@@ -138,7 +138,7 @@ matrix:
         # Also use this job to publish the releases and build
         # the documentation.
         - os: linux
-          dist: xenial
+          dist: bionic
           sudo: required
           language: python
           python: "3.6"

@@ -69,7 +69,6 @@ type_samples = [
         decimal.Decimal("-1.00000000000000"),
         decimal.Decimal("-2.00000000000000"),
         decimal.Decimal("1000000000000000.00000000000000"),
-        decimal.Decimal("-0.00000000000000"),
         decimal.Decimal(1234),
         decimal.Decimal(-1234),
         decimal.Decimal("1234000000.00088883231"),
@@ -111,7 +110,7 @@ type_samples = [
         decimal.Decimal("0.0"),
         decimal.Decimal("-1.0"),
         decimal.Decimal("1.0E-1000"),
-        decimal.Decimal("1.0E1000"),
+        decimal.Decimal("1E1000"),
         decimal.Decimal("0.000000000000000000000000001"),
         decimal.Decimal("0.000000000000010000000000001"),
         decimal.Decimal("0.00000000000000000000000001"),
@@ -141,6 +140,16 @@ type_samples = [
         decimal.Decimal("0.001"),
         decimal.Decimal("0.01"),
         decimal.Decimal("0.1"),
+        decimal.Decimal("0.10"),
+        decimal.Decimal("0.100"),
+        decimal.Decimal("0.1000"),
+        decimal.Decimal("0.10000"),
+        decimal.Decimal("0.100000"),
+        decimal.Decimal("0.00001000"),
+        decimal.Decimal("0.000010000"),
+        decimal.Decimal("0.0000100000"),
+        decimal.Decimal("0.00001000000"),
+        decimal.Decimal("1" + "0" * 117 + "." + "0" * 161)
     )),
     ('bytea', 'bytea', (
         bytes(range(256)),
@@ -501,6 +510,14 @@ class TestCodecs(tb.ConnectedTestCase):
                                 err_msg)
                     else:
                         self.assertEqual(result, outputval, err_msg)
+
+                    if (typname == 'numeric' and
+                            isinstance(inputval, decimal.Decimal)):
+                        self.assertEqual(
+                            result.as_tuple(),
+                            outputval.as_tuple(),
+                            err_msg,
+                        )
 
             with self.subTest(sample=None, typname=typname):
                 # Test that None is handled for all types.

@@ -813,7 +813,7 @@ class Connection(metaclass=ConnectionMeta):
 
         if path is not None:
             # a path
-            f = await run_in_executor(None, open, path, 'wb')
+            f = await run_in_executor(None, open, path, 'rb')
             opened_by_us = True
         elif hasattr(source, 'read'):
             # file-like
@@ -1566,6 +1566,10 @@ async def connect(dsn=None, *,
         other users and applications may be able to read it without needing
         specific privileges.  It is recommended to use *passfile* instead.
 
+        Password may be either a string, or a callable that returns a string.
+        If a callable is provided, it will be called each time a new connection
+        is established.
+
     :param passfile:
         The name of the file used to store passwords
         (defaults to ``~/.pgpass``, or ``%APPDATA%\postgresql\pgpass.conf``
@@ -1645,6 +1649,9 @@ async def connect(dsn=None, *,
     .. versionadded:: 0.18.0
        Added ability to specify multiple hosts in the *dsn*
        and *host* arguments.
+
+    .. versionchanged:: 0.21.0
+       The *password* argument now accepts a callable or an async function.
 
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
