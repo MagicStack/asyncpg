@@ -1500,7 +1500,7 @@ async def connect(dsn=None, *,
     If both *dsn* and keyword arguments are specified, the latter
     override the corresponding values parsed from the connection URI.
     The default values for the majority of arguments can be specified
-    using `environment variables <postgres envvars>`_.
+    using `environment variables <postgres envvars_>`_.
 
     Returns a new :class:`~asyncpg.connection.Connection` object.
 
@@ -1609,7 +1609,7 @@ async def connect(dsn=None, *,
     :param dict server_settings:
         An optional dict of server runtime parameters.  Refer to
         PostgreSQL documentation for
-        a `list of supported options <server settings>`_.
+        a `list of supported options <server settings_>`_.
 
     :param Connection connection_class:
         Class of the returned connection object.  Must be a subclass of
