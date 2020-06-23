@@ -286,16 +286,21 @@ cdef inline array_decode(ConnectionSettings settings, FRBuffer *buf,
         Codec elem_codec
 
     if ndims == 0:
-        result = cpython.PyList_New(0)
-        return result
+        return []
 
     if ndims > ARRAY_MAXDIM:
         raise exceptions.ProtocolError(
             'number of array dimensions ({}) exceed the maximum expected ({})'.
             format(ndims, ARRAY_MAXDIM))
+    elif ndims < 0:
+        raise exceptions.ProtocolError(
+            'unexpected array dimensions value: {}'.format(ndims))
 
     for i in range(ndims):
         dims[i] = hton.unpack_int32(frb_read(buf, 4))
+        if dims[i] < 0:
+            raise exceptions.ProtocolError(
+                'unexpected array dimension size: {}'.format(dims[i]))
         # Ignore the lower bound information
         frb_read(buf, 4)
 
@@ -340,14 +345,18 @@ cdef _nested_array_decode(ConnectionSettings settings,
         # An array of current positions at each array level.
         int32_t indexes[ARRAY_MAXDIM]
 
-    if PG_DEBUG:
-        if ndims <= 0:
-            raise exceptions.ProtocolError(
-                'unexpected ndims value: {}'.format(ndims))
-
     for i in range(ndims):
         array_len *= dims[i]
         indexes[i] = 0
+        strides[i] = NULL
+
+    if array_len == 0:
+        # A multidimensional array with a zero-sized dimension?
+        return []
+
+    elif array_len < 0:
+        # Array length overflow
+        raise exceptions.ProtocolError('array length overflow')
 
     for i in range(array_len):
         # Decode the element.
