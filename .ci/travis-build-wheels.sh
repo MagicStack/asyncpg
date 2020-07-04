@@ -3,7 +3,7 @@
 set -e -x
 
 
-if [[ "${TRAVIS_BRANCH}" != "release" || "${BUILD}" != *wheels* ]]; then
+if [[ "${TRAVIS_BRANCH}" != "releases" || "${BUILD}" != *wheels* ]]; then
     # Not a release
     exit 0
 fi
