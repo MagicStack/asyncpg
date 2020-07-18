@@ -802,9 +802,11 @@ def create_pool(dsn=None, *,
         async with asyncpg.create_pool(user='postgres',
                                        command_timeout=60) as pool:
             async with pool.acquire() as con:
-                await con.execute('CREATE TABLE \
-                        names (id serial PRIMARY KEY, \
-                        name VARCHAR (255) NOT NULL)')
+                await con.execute("""
+CREATE TABLE names (
+    id serial PRIMARY KEY,
+    name VARCHAR (255) NOT NULL)
+                """)
                 await con.fetch('SELECT 1')
 
     Or directly with ``await`` (not recommended):
