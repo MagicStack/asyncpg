@@ -210,8 +210,8 @@
                  <span class="s1">&#39;_listeners&#39;</span><span class="p">,</span> <span class="s1">&#39;_server_version&#39;</span><span class="p">,</span> <span class="s1">&#39;_server_caps&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_intro_query&#39;</span><span class="p">,</span> <span class="s1">&#39;_reset_query&#39;</span><span class="p">,</span> <span class="s1">&#39;_proxy&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_stmt_exclusive_section&#39;</span><span class="p">,</span> <span class="s1">&#39;_config&#39;</span><span class="p">,</span> <span class="s1">&#39;_params&#39;</span><span class="p">,</span> <span class="s1">&#39;_addr&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;_log_listeners&#39;</span><span class="p">,</span> <span class="s1">&#39;_cancellations&#39;</span><span class="p">,</span> <span class="s1">&#39;_source_traceback&#39;</span><span class="p">,</span>
-                 <span class="s1">&#39;__weakref__&#39;</span><span class="p">)</span>
+                 <span class="s1">&#39;_log_listeners&#39;</span><span class="p">,</span> <span class="s1">&#39;_termination_listeners&#39;</span><span class="p">,</span> <span class="s1">&#39;_cancellations&#39;</span><span class="p">,</span>
+                 <span class="s1">&#39;_source_traceback&#39;</span><span class="p">,</span> <span class="s1">&#39;__weakref__&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">protocol</span><span class="p">,</span> <span class="n">transport</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span>
                  <span class="n">addr</span><span class="p">:</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">,</span>
@@ -242,6 +242,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_listeners</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cancellations</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_termination_listeners</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
 
         <span class="n">settings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
         <span class="n">ver_string</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">server_version</span>
@@ -341,6 +342,28 @@
 <span class="sd">        .. versionadded:: 0.12.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_listeners</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Connection.add_termination_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.add_termination_listener">[docs]</a>    <span class="k">def</span> <span class="nf">add_termination_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add a listener that will be called when the connection is closed.</span>
+
+<span class="sd">        :param callable callback:</span>
+<span class="sd">            A callable receiving one argument:</span>
+<span class="sd">            **connection**: a Connection the callback is registered with.</span>
+
+<span class="sd">        .. versionadded:: 0.21.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_termination_listeners</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Connection.remove_termination_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.remove_termination_listener">[docs]</a>    <span class="k">def</span> <span class="nf">remove_termination_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Remove a listening callback for connection termination.</span>
+
+<span class="sd">        :param callable callback:</span>
+<span class="sd">            The callable that was passed to</span>
+<span class="sd">            :meth:`Connection.add_termination_listener`.</span>
+
+<span class="sd">        .. versionadded:: 0.21.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_termination_listeners</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Connection.get_server_pid"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.get_server_pid">[docs]</a>    <span class="k">def</span> <span class="nf">get_server_pid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return the PID of the Postgres server the connection is bound to.&quot;&quot;&quot;</span>
@@ -1284,6 +1307,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span> <span class="nf">_cleanup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_call_termination_listeners</span><span class="p">()</span>
         <span class="c1"># Free the resources associated with this connection.</span>
         <span class="c1"># This must be called when a connection is terminated.</span>
 
@@ -1400,6 +1424,25 @@
                            <span class="s1">&#39;listener callback </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cb</span><span class="p">),</span>
                 <span class="s1">&#39;exception&#39;</span><span class="p">:</span> <span class="n">ex</span>
             <span class="p">})</span>
+
+    <span class="k">def</span> <span class="nf">_call_termination_listeners</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_termination_listeners</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">con_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unwrap</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_termination_listeners</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">cb</span><span class="p">(</span><span class="n">con_ref</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_exception_handler</span><span class="p">({</span>
+                    <span class="s1">&#39;message&#39;</span><span class="p">:</span> <span class="p">(</span>
+                        <span class="s1">&#39;Unhandled exception in asyncpg connection &#39;</span>
+                        <span class="s1">&#39;termination listener callback </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+                    <span class="p">),</span>
+                    <span class="s1">&#39;exception&#39;</span><span class="p">:</span> <span class="n">ex</span>
+                <span class="p">})</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_termination_listeners</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">_process_notification</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">payload</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">channel</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">:</span>

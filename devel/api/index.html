@@ -362,6 +362,24 @@ DEBUG, INFO, or LOG.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="asyncpg.connection.Connection.add_termination_listener">
+<code class="descname">add_termination_listener</code><span class="sig-paren">(</span><em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.add_termination_listener"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.add_termination_listener" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a listener that will be called when the connection is closed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>callback</strong> (<em>callable</em>) – A callable receiving one argument:
+<strong>connection</strong>: a Connection the callback is registered with.</td>
+</tr>
+</tbody>
+</table>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.21.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="method">
 <dt id="asyncpg.connection.Connection.close">
 <em class="property">coroutine </em><code class="descname">close</code><span class="sig-paren">(</span><em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.close" title="Permalink to this definition">¶</a></dt>
 <dd><p>Close the connection gracefully.</p>
@@ -891,6 +909,24 @@ asyncpg that the database schema has changed.</p>
 <dd><p>Remove a listening callback for log messages.</p>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.12.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.remove_termination_listener">
+<code class="descname">remove_termination_listener</code><span class="sig-paren">(</span><em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.remove_termination_listener"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.remove_termination_listener" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a listening callback for connection termination.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>callback</strong> (<em>callable</em>) – The callable that was passed to
+<a class="reference internal" href="#asyncpg.connection.Connection.add_termination_listener" title="asyncpg.connection.Connection.add_termination_listener"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Connection.add_termination_listener()</span></code></a>.</td>
+</tr>
+</tbody>
+</table>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.21.0.</span></p>
 </div>
 </dd></dl>
 
