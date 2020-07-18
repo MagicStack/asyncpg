@@ -18,13 +18,17 @@ if [ "${PACKAGE_VERSION}" == "${PYPI_VERSION}" ]; then
 fi
 
 # Check if all expected wheels have been built and uploaded.
-release_platforms=(
-    "macosx_10_??_x86_64"
-    "manylinux1_i686"
-    "manylinux1_x86_64"
-    "win32"
-    "win_amd64"
-)
+if [[ "$(uname -m)" = "x86_64" ]]; then
+    release_platforms=(
+        "macosx_10_??_x86_64"
+        "manylinux1_i686"
+        "manylinux1_x86_64"
+        "win32"
+        "win_amd64"
+    )
+elif [[ "$(uname -m)" = "aarch64" ]]; then
+    release_platforms="manylinux2014_aarch64"
+fi
 
 P="${PYMODULE}-${PACKAGE_VERSION}"
 expected_wheels=()

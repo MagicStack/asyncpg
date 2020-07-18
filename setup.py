@@ -19,15 +19,13 @@ import subprocess
 
 # We use vanilla build_ext, to avoid importing Cython via
 # the setuptools version.
-from distutils import extension as distutils_extension
-from distutils.command import build_ext as distutils_build_ext
-
 import setuptools
 from setuptools.command import build_py as setuptools_build_py
 from setuptools.command import sdist as setuptools_sdist
+from setuptools.command import build_ext as setuptools_build_ext
 
 
-CYTHON_DEPENDENCY = 'Cython==0.29.14'
+CYTHON_DEPENDENCY = 'Cython==0.29.20'
 
 # Minimal dependencies required to test asyncpg.
 TEST_DEPENDENCIES = [
@@ -138,9 +136,9 @@ class build_py(setuptools_build_py.build_py, VersionMixin):
         return outfile, copied
 
 
-class build_ext(distutils_build_ext.build_ext):
+class build_ext(setuptools_build_ext.build_ext):
 
-    user_options = distutils_build_ext.build_ext.user_options + [
+    user_options = setuptools_build_ext.build_ext.user_options + [
         ('cython-always', None,
             'run cythonize() even if .c files are present'),
         ('cython-annotate', None,
@@ -264,6 +262,7 @@ setuptools.setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: Implementation :: CPython',
         'Topic :: Database :: Front-Ends',
     ],
@@ -278,13 +277,13 @@ setuptools.setup(
     provides=['asyncpg'],
     include_package_data=True,
     ext_modules=[
-        distutils_extension.Extension(
+        setuptools.extension.Extension(
             "asyncpg.pgproto.pgproto",
             ["asyncpg/pgproto/pgproto.pyx"],
             extra_compile_args=CFLAGS,
             extra_link_args=LDFLAGS),
 
-        distutils_extension.Extension(
+        setuptools.extension.Extension(
             "asyncpg.protocol.protocol",
             ["asyncpg/protocol/record/recordobj.c",
              "asyncpg/protocol/protocol.pyx"],

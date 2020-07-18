@@ -18,12 +18,6 @@ env:
 
         - DOCS_PUSH_KEY_LABEL=0760b951e99c
 
-addons:
-    apt:
-        sources:
-            - sourceline: 'deb https://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main'
-              key_url: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
-
 branches:
     # Avoid building PR branches.
     only:
@@ -32,132 +26,190 @@ branches:
         - releases
         - /^v\d+(\.\d+)*$/
 
-matrix:
+jobs:
     fast_finish:
         true
 
     include:
         # Do quick test runs for each supported version of PostgreSQL
         # minus the latest.
-        - os: linux
-          dist: xenial
+        - name: "Quicktest psql 9.5"
+          os: linux
+          dist: focal
           language: python
-          python: "3.6"
-          env: BUILD=quicktests PGVERSION=9.2
-          addons:
-              apt: {packages: [postgresql-9.2, postgresql-contrib-9.2]}
-
-        - os: linux
-          dist: xenial
-          language: python
-          python: "3.6"
-          env: BUILD=quicktests PGVERSION=9.3
-          addons:
-              apt: {packages: [postgresql-9.3, postgresql-contrib-9.3]}
-
-        - os: linux
-          dist: xenial
-          language: python
-          python: "3.6"
-          env: BUILD=quicktests PGVERSION=9.4
-          addons:
-              apt: {packages: [postgresql-9.4, postgresql-contrib-9.4]}
-
-        - os: linux
-          dist: xenial
-          language: python
-          python: "3.6"
+          python: "3.8"
           env: BUILD=quicktests PGVERSION=9.5
           addons:
-              apt: {packages: [postgresql-9.5, postgresql-contrib-9.5]}
+              apt:
+                  sources:
+                      - sourceline: 'deb https://apt.postgresql.org/pub/repos/apt/ focal-pgdg main'
+                        key_url: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
+                  packages:
+                      - postgresql-9.5
+                      - postgresql-contrib-9.5
 
-        - os: linux
-          dist: xenial
+        - name: "Quicktest psql 9.6"
+          os: linux
+          dist: focal
           language: python
-          python: "3.6"
+          python: "3.8"
           env: BUILD=quicktests PGVERSION=9.6
           addons:
-              apt: {packages: [postgresql-9.6, postgresql-contrib-9.6]}
+              apt:
+                  sources:
+                      - sourceline: 'deb https://apt.postgresql.org/pub/repos/apt/ focal-pgdg main'
+                        key_url: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
+                  packages:
+                      - postgresql-9.6
+                      - postgresql-contrib-9.6
 
-        - os: linux
-          dist: xenial
+        - name: "Quicktest psql 10"
+          os: linux
+          dist: focal
           language: python
-          python: "3.6"
+          python: "3.8"
           env: BUILD=quicktests PGVERSION=10
           addons:
-              apt: {packages: [postgresql-10]}
+              apt:
+                  sources:
+                      - sourceline: 'deb https://apt.postgresql.org/pub/repos/apt/ focal-pgdg main'
+                        key_url: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
+                  packages:
+                      - postgresql-10
 
-        - os: linux
-          dist: xenial
+        - name: "Quicktest psql 11"
+          os: linux
+          dist: focal
           language: python
-          python: "3.6"
+          python: "3.8"
           env: BUILD=quicktests PGVERSION=11
           addons:
-              apt: {packages: [postgresql-11]}
+              apt:
+                  sources:
+                      - sourceline: 'deb https://apt.postgresql.org/pub/repos/apt/ focal-pgdg main'
+                        key_url: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
+                  packages:
+                      - postgresql-11
 
         # Do a full test run on the latest supported version of PostgreSQL
         # on each supported version of Python.
-        - os: linux
-          dist: xenial
-          sudo: required
+        - name: "Test py 3.5"
+          os: linux
+          dist: focal
           language: python
           python: "3.5"
           env: BUILD=tests PGVERSION=12
           addons:
-              apt: {packages: [postgresql-12]}
+              apt:
+                  sources:
+                      - sourceline: 'deb https://apt.postgresql.org/pub/repos/apt/ focal-pgdg main'
+                        key_url: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
+                  packages:
+                      - postgresql-12
 
-        - os: linux
-          dist: xenial
-          sudo: required
+        - name: "Test py 3.6"
+          os: linux
+          dist: focal
           language: python
           python: "3.6"
           env: BUILD=tests PGVERSION=12
           addons:
-              apt: {packages: [postgresql-12]}
+              apt:
+                  sources:
+                      - sourceline: 'deb https://apt.postgresql.org/pub/repos/apt/ focal-pgdg main'
+                        key_url: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
+                  packages:
+                      - postgresql-12
 
-        - os: linux
-          dist: xenial
-          sudo: true
+        - name: "Test py 3.7"
+          os: linux
+          dist: focal
           language: python
           python: "3.7"
           env: BUILD=tests PGVERSION=12
           addons:
-              apt: {packages: [postgresql-12]}
+              apt:
+                  sources:
+                      - sourceline: 'deb https://apt.postgresql.org/pub/repos/apt/ focal-pgdg main'
+                        key_url: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
+                  packages:
+                      - postgresql-12
 
-        - os: linux
-          dist: xenial
-          sudo: true
+        - name: "Test py 3.8"
+          os: linux
+          dist: focal
           language: python
           python: "3.8"
           env: BUILD=tests PGVERSION=12
           addons:
-              apt: {packages: [postgresql-12]}
+              apt:
+                  sources:
+                      - sourceline: 'deb https://apt.postgresql.org/pub/repos/apt/ focal-pgdg main'
+                        key_url: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
+                  packages:
+                      - postgresql-12
+
+        # Only test on recent aarch64 distribution
+        # 3.7 is the latest supported by Travis
+        # https://docs.travis-ci.com/user/languages/python/#python-versions
+        # The shipped Postgres 9.X collides with the 12 on aarch64
+        # until fixed, use official ubuntu repos
+        - name: "Test aarch64 py 3.8-dev"
+          os: linux
+          arch: arm64
+          dist: focal
+          language: python
+          python: "3.8-dev"
+          env: BUILD=tests PGVERSION=12
+          addons:
+              postgresql: "12"
 
         # Build manylinux wheels.  Each wheel will be tested,
         # so there is no need for BUILD=tests here.
         # Also use this job to publish the releases and build
         # the documentation.
-        - os: linux
-          dist: bionic
-          sudo: required
+        - name: "x86 wheels and docs"
+          os: linux
+          dist: focal
           language: python
-          python: "3.6"
+          python: "3.8"
           env: BUILD=wheels,docs,release PGVERSION=12
           services: [docker]
           addons:
-              apt: {packages: [postgresql-12]}
+              apt:
+                  sources:
+                      - sourceline: 'deb https://apt.postgresql.org/pub/repos/apt/ focal-pgdg main'
+                        key_url: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
+                  packages:
+                      - postgresql-12
 
-        - os: osx
-          env: BUILD=tests,wheels PYTHON_VERSION=3.5.7 PGVERSION=10
+        # Same for the aarch64 manylinux wheel
+        - name: "aarch64 wheels"
+          os: linux
+          arch: arm64
+          dist: focal
+          language: python
+          python: "3.8-dev"
+          env: BUILD=wheels,release PGVERSION=12
+          services: [docker]
+          addons:
+              postgresql: "12"
 
-        - os: osx
-          env: BUILD=tests,wheels PYTHON_VERSION=3.6.9 PGVERSION=10
+        - name: "OSX py 3.5"
+          os: osx
+          env: BUILD=tests,wheels PYTHON_VERSION=3.5.9 PGVERSION=12
 
-        - os: osx
-          env: BUILD=tests,wheels PYTHON_VERSION=3.7.4 PGVERSION=10
+        - name: "OSX py 3.6"
+          os: osx
+          env: BUILD=tests,wheels PYTHON_VERSION=3.6.10 PGVERSION=12
 
-        - os: osx
-          env: BUILD=tests,wheels PYTHON_VERSION=3.8.0 PGVERSION=10
+        - name: "OSX py 3.7"
+          os: osx
+          env: BUILD=tests,wheels PYTHON_VERSION=3.7.7 PGVERSION=12
+
+        - name: "OSX py 3.8"
+          os: osx
+          env: BUILD=tests,wheels PYTHON_VERSION=3.8.3 PGVERSION=12
 
 cache:
     pip

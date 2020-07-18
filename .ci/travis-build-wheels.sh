@@ -45,9 +45,16 @@ if [ "${TRAVIS_OS_NAME}" == "linux" ]; then
                    s='m' if tuple('${pyver}'.split('.')) < ('3', '8') \
                      else ''))")
 
+        if [[ "$(uname -m)" = "x86_64" ]]; then
+            ARCHES="x86_64 i686"
+            MANYLINUX_VERSION="1"
+        elif [[ "$(uname -m)" = "aarch64" ]]; then
+            ARCHES="aarch64"
+            MANYLINUX_VERSION="2014"
+        fi
 
-        for arch in x86_64 i686; do
-            ML_IMAGE="quay.io/pypa/manylinux1_${arch}"
+        for arch in $ARCHES; do
+            ML_IMAGE="quay.io/pypa/manylinux${MANYLINUX_VERSION}_${arch}"
             docker pull "${ML_IMAGE}"
             docker run --rm \
                 -v "${_root}":/io \
@@ -64,9 +71,11 @@ elif [ "${TRAVIS_OS_NAME}" == "osx" ]; then
     export PGINSTALLATION="/usr/local/opt/postgresql@${PGVERSION}/bin"
 
     make clean
-    python setup.py bdist_wheel
+    python setup.py bdist_wheel --dist-dir /tmp/
 
-    pip install ${PYMODULE} -f "file:///${_root}/dist"
+    pip install /tmp/*.whl
+    mkdir -p "${_root}/dist"
+    mv /tmp/*.whl "${_root}/dist/"
     make -C "${_root}" ASYNCPG_VERSION="${PACKAGE_VERSION}" testinstalled
 
     _upload_wheels
