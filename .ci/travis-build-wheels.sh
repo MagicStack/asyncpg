@@ -39,9 +39,12 @@ pip install -U -r ".ci/requirements-publish.txt"
 if [ "${TRAVIS_OS_NAME}" == "linux" ]; then
     for pyver in ${RELEASE_PYTHON_VERSIONS}; do
         ML_PYTHON_VERSION=$(python3 -c \
-            "print('cp{maj}{min}-cp{maj}{min}m'.format( \
+            "print('cp{maj}{min}-cp{maj}{min}{s}'.format( \
                    maj='${pyver}'.split('.')[0], \
-                   min='${pyver}'.split('.')[1]))")
+                   min='${pyver}'.split('.')[1],
+                   s='m' if tuple('${pyver}'.split('.')) < ('3', '8') \
+                     else ''))")
+
 
         for arch in x86_64 i686; do
             ML_IMAGE="quay.io/pypa/manylinux1_${arch}"
@@ -63,7 +66,7 @@ elif [ "${TRAVIS_OS_NAME}" == "osx" ]; then
     make clean
     python setup.py bdist_wheel
 
-    pip install ${PYMODULE}[test] -f "file:///${_root}/dist"
+    pip install ${PYMODULE} -f "file:///${_root}/dist"
     make -C "${_root}" ASYNCPG_VERSION="${PACKAGE_VERSION}" testinstalled
 
     _upload_wheels

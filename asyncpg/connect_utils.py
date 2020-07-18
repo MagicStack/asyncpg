@@ -21,6 +21,7 @@ import time
 import typing
 import urllib.parse
 import warnings
+import inspect
 
 from . import compat
 from . import exceptions
@@ -504,6 +505,95 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
     return addrs, params, config
 
 
+class TLSUpgradeProto(asyncio.Protocol):
+    def __init__(self, loop, host, port, ssl_context, ssl_is_advisory):
+        self.on_data = _create_future(loop)
+        self.host = host
+        self.port = port
+        self.ssl_context = ssl_context
+        self.ssl_is_advisory = ssl_is_advisory
+
+    def data_received(self, data):
+        if data == b'S':
+            self.on_data.set_result(True)
+        elif (self.ssl_is_advisory and
+                self.ssl_context.verify_mode == ssl_module.CERT_NONE and
+                data == b'N'):
+            # ssl_is_advisory will imply that ssl.verify_mode == CERT_NONE,
+            # since the only way to get ssl_is_advisory is from
+            # sslmode=prefer (or sslmode=allow). But be extra sure to
+            # disallow insecure connections when the ssl context asks for
+            # real security.
+            self.on_data.set_result(False)
+        else:
+            self.on_data.set_exception(
+                ConnectionError(
+                    'PostgreSQL server at "{host}:{port}" '
+                    'rejected SSL upgrade'.format(
+                        host=self.host, port=self.port)))
+
+    def connection_lost(self, exc):
+        if not self.on_data.done():
+            if exc is None:
+                exc = ConnectionError('unexpected connection_lost() call')
+            self.on_data.set_exception(exc)
+
+
+async def _create_ssl_connection(protocol_factory, host, port, *,
+                                 loop, ssl_context, ssl_is_advisory=False):
+
+    if ssl_context is True:
+        ssl_context = ssl_module.create_default_context()
+
+    tr, pr = await loop.create_connection(
+        lambda: TLSUpgradeProto(loop, host, port,
+                                ssl_context, ssl_is_advisory),
+        host, port)
+
+    tr.write(struct.pack('!ll', 8, 80877103))  # SSLRequest message.
+
+    try:
+        do_ssl_upgrade = await pr.on_data
+    except (Exception, asyncio.CancelledError):
+        tr.close()
+        raise
+
+    if hasattr(loop, 'start_tls'):
+        if do_ssl_upgrade:
+            try:
+                new_tr = await loop.start_tls(
+                    tr, pr, ssl_context, server_hostname=host)
+            except (Exception, asyncio.CancelledError):
+                tr.close()
+                raise
+        else:
+            new_tr = tr
+
+        pg_proto = protocol_factory()
+        pg_proto.connection_made(new_tr)
+        new_tr.set_protocol(pg_proto)
+
+        return new_tr, pg_proto
+    else:
+        conn_factory = functools.partial(
+            loop.create_connection, protocol_factory)
+
+        if do_ssl_upgrade:
+            conn_factory = functools.partial(
+                conn_factory, ssl=ssl_context, server_hostname=host)
+
+        sock = _get_socket(tr)
+        sock = sock.dup()
+        _set_nodelay(sock)
+        tr.close()
+
+        try:
+            return await conn_factory(sock=sock)
+        except (Exception, asyncio.CancelledError):
+            sock.close()
+            raise
+
+
 async def _connect_addr(*, addr, loop, timeout, params, config,
                         connection_class):
     assert loop is not None
@@ -512,6 +602,16 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
         raise asyncio.TimeoutError
 
     connected = _create_future(loop)
+
+    params_input = params
+    if callable(params.password):
+        if inspect.iscoroutinefunction(params.password):
+            password = await params.password()
+        else:
+            password = params.password()
+
+        params = params._replace(password=password)
+
     proto_factory = lambda: protocol.Protocol(
         addr, connected, params, loop)
 
@@ -526,20 +626,25 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
     else:
         connector = loop.create_connection(proto_factory, *addr)
 
+    connector = asyncio.ensure_future(connector)
     before = time.monotonic()
-    tr, pr = await asyncio.wait_for(
-        connector, timeout=timeout, loop=loop)
+    try:
+        tr, pr = await asyncio.wait_for(
+            connector, timeout=timeout)
+    except asyncio.CancelledError:
+        connector.add_done_callback(_close_leaked_connection)
+        raise
     timeout -= time.monotonic() - before
 
     try:
         if timeout <= 0:
             raise asyncio.TimeoutError
-        await asyncio.wait_for(connected, loop=loop, timeout=timeout)
-    except Exception:
+        await asyncio.wait_for(connected, timeout=timeout)
+    except (Exception, asyncio.CancelledError):
         tr.close()
         raise
 
-    con = connection_class(pr, tr, loop, addr, config, params)
+    con = connection_class(pr, tr, loop, addr, config, params_input)
     pr.set_connection(con)
     return con
 
@@ -569,78 +674,41 @@ async def _connect(*, loop, timeout, connection_class, **kwargs):
     raise last_error
 
 
-async def _negotiate_ssl_connection(host, port, conn_factory, *, loop, ssl,
-                                    server_hostname, ssl_is_advisory=False):
-    # Note: ssl_is_advisory only affects behavior when the server does not
-    # accept SSLRequests. If the SSLRequest is accepted but either the SSL
-    # negotiation fails or the PostgreSQL user isn't permitted to use SSL,
-    # there's nothing that would attempt to reconnect with a non-SSL socket.
-    reader, writer = await asyncio.open_connection(host, port, loop=loop)
+async def _cancel(*, loop, addr, params: _ConnectionParameters,
+                  backend_pid, backend_secret):
 
-    tr = writer.transport
-    try:
-        sock = _get_socket(tr)
-        _set_nodelay(sock)
+    class CancelProto(asyncio.Protocol):
 
-        writer.write(struct.pack('!ll', 8, 80877103))  # SSLRequest message.
-        await writer.drain()
-        resp = await reader.readexactly(1)
+        def __init__(self):
+            self.on_disconnect = _create_future(loop)
 
-        if resp == b'S':
-            conn_factory = functools.partial(
-                conn_factory, ssl=ssl, server_hostname=server_hostname)
-        elif (ssl_is_advisory and
-                ssl.verify_mode == ssl_module.CERT_NONE and
-                resp == b'N'):
-            # ssl_is_advisory will imply that ssl.verify_mode == CERT_NONE,
-            # since the only way to get ssl_is_advisory is from sslmode=prefer
-            # (or sslmode=allow). But be extra sure to disallow insecure
-            # connections when the ssl context asks for real security.
-            pass
-        else:
-            raise ConnectionError(
-                'PostgreSQL server at "{}:{}" rejected SSL upgrade'.format(
-                    host, port))
+        def connection_lost(self, exc):
+            if not self.on_disconnect.done():
+                self.on_disconnect.set_result(True)
 
-        sock = sock.dup()  # Must come before tr.close()
-    finally:
-        tr.close()
-
-    try:
-        return await conn_factory(sock=sock)  # Must come after tr.close()
-    except Exception:
-        sock.close()
-        raise
-
-
-async def _create_ssl_connection(protocol_factory, host, port, *,
-                                 loop, ssl_context, ssl_is_advisory=False):
-    return await _negotiate_ssl_connection(
-        host, port,
-        functools.partial(loop.create_connection, protocol_factory),
-        loop=loop,
-        ssl=ssl_context,
-        server_hostname=host,
-        ssl_is_advisory=ssl_is_advisory)
-
-
-async def _open_connection(*, loop, addr, params: _ConnectionParameters):
     if isinstance(addr, str):
-        r, w = await asyncio.open_unix_connection(addr, loop=loop)
+        tr, pr = await loop.create_unix_connection(CancelProto, addr)
     else:
         if params.ssl:
-            r, w = await _negotiate_ssl_connection(
+            tr, pr = await _create_ssl_connection(
+                CancelProto,
                 *addr,
-                functools.partial(asyncio.open_connection, loop=loop),
                 loop=loop,
-                ssl=params.ssl,
-                server_hostname=addr[0],
+                ssl_context=params.ssl,
                 ssl_is_advisory=params.ssl_is_advisory)
         else:
-            r, w = await asyncio.open_connection(*addr, loop=loop)
-            _set_nodelay(_get_socket(w.transport))
+            tr, pr = await loop.create_connection(
+                CancelProto, *addr)
+            _set_nodelay(_get_socket(tr))
 
-    return r, w
+    # Pack a CancelRequest message
+    msg = struct.pack('!llll', 16, 80877102, backend_pid, backend_secret)
+
+    try:
+        tr.write(msg)
+        await pr.on_disconnect
+    finally:
+        tr.close()
 
 
 def _get_socket(transport):
@@ -664,3 +732,12 @@ def _create_future(loop):
         return asyncio.Future(loop=loop)
     else:
         return create_future()
+
+
+def _close_leaked_connection(fut):
+    try:
+        tr, pr = fut.result()
+        if tr:
+            tr.close()
+    except asyncio.CancelledError:
+        pass  # hide the exception

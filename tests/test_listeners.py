@@ -17,8 +17,8 @@ class TestListeners(tb.ClusterTestCase):
         async with self.create_pool(database='postgres') as pool:
             async with pool.acquire() as con:
 
-                q1 = asyncio.Queue(loop=self.loop)
-                q2 = asyncio.Queue(loop=self.loop)
+                q1 = asyncio.Queue()
+                q2 = asyncio.Queue()
 
                 def listener1(*args):
                     q1.put_nowait(args)
@@ -46,25 +46,22 @@ class TestListeners(tb.ClusterTestCase):
                     await q1.get(),
                     (con, con.get_server_pid(), 'test', 'aaaa'))
                 with self.assertRaises(asyncio.TimeoutError):
-                    await asyncio.wait_for(q2.get(),
-                                           timeout=0.05, loop=self.loop)
+                    await asyncio.wait_for(q2.get(), timeout=0.05)
 
                 await con.reset()
                 await con.remove_listener('test', listener1)
                 await con.execute("NOTIFY test, 'aaaa'")
 
                 with self.assertRaises(asyncio.TimeoutError):
-                    await asyncio.wait_for(q1.get(),
-                                           timeout=0.05, loop=self.loop)
+                    await asyncio.wait_for(q1.get(), timeout=0.05)
                 with self.assertRaises(asyncio.TimeoutError):
-                    await asyncio.wait_for(q2.get(),
-                                           timeout=0.05, loop=self.loop)
+                    await asyncio.wait_for(q2.get(), timeout=0.05)
 
     async def test_listen_02(self):
         async with self.create_pool(database='postgres') as pool:
             async with pool.acquire() as con1, pool.acquire() as con2:
 
-                q1 = asyncio.Queue(loop=self.loop)
+                q1 = asyncio.Queue()
 
                 def listener1(*args):
                     q1.put_nowait(args)
@@ -82,7 +79,7 @@ class TestListeners(tb.ClusterTestCase):
         async with self.create_pool(database='postgres') as pool:
             async with pool.acquire() as con1, pool.acquire() as con2:
 
-                q1 = asyncio.Queue(loop=self.loop)
+                q1 = asyncio.Queue()
 
                 def listener1(*args):
                     q1.put_nowait(args)
@@ -115,7 +112,7 @@ class TestLogListeners(tb.ConnectedTestCase):
         'client_min_messages': 'notice'
     })
     async def test_log_listener_01(self):
-        q1 = asyncio.Queue(loop=self.loop)
+        q1 = asyncio.Queue()
 
         def notice_callb(con, message):
             # Message fields depend on PG version, hide some values.
@@ -194,7 +191,7 @@ class TestLogListeners(tb.ConnectedTestCase):
         'client_min_messages': 'notice'
     })
     async def test_log_listener_02(self):
-        q1 = asyncio.Queue(loop=self.loop)
+        q1 = asyncio.Queue()
 
         cur_id = None
 
@@ -235,7 +232,7 @@ class TestLogListeners(tb.ConnectedTestCase):
         'client_min_messages': 'notice'
     })
     async def test_log_listener_03(self):
-        q1 = asyncio.Queue(loop=self.loop)
+        q1 = asyncio.Queue()
 
         async def raise_message(level, code):
             await self.con.execute("""

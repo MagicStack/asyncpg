@@ -93,7 +93,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         self.closing = False
         self.is_reading = True
-        self.writing_allowed = asyncio.Event(loop=self.loop)
+        self.writing_allowed = asyncio.Event()
         self.writing_allowed.set()
 
         self.timeout_handle = None
@@ -348,9 +348,8 @@ cdef class BaseProtocol(CoreProtocol):
                         with timer:
                             await asyncio.wait_for(
                                 sink(buffer),
-                                timeout=timer.get_remaining_budget(),
-                                loop=self.loop)
-                    except Exception as ex:
+                                timeout=timer.get_remaining_budget())
+                    except (Exception, asyncio.CancelledError) as ex:
                         # Abort the COPY operation on any error in
                         # output sink.
                         self._request_cancel()
@@ -456,8 +455,7 @@ cdef class BaseProtocol(CoreProtocol):
                         with timer:
                             chunk = await asyncio.wait_for(
                                 iterator.__anext__(),
-                                timeout=timer.get_remaining_budget(),
-                                loop=self.loop)
+                                timeout=timer.get_remaining_budget())
                         self._write_copy_data_msg(chunk)
                 except builtins.StopAsyncIteration:
                     pass
@@ -476,7 +474,7 @@ cdef class BaseProtocol(CoreProtocol):
             else:
                 raise apg_exc.InternalClientError('TimoutError was not raised')
 
-        except Exception as e:
+        except (Exception, asyncio.CancelledError) as e:
             self._write_copy_fail_msg(str(e))
             self._request_cancel()
             # Make asyncio shut up about unretrieved QueryCanceledError
@@ -588,6 +586,13 @@ cdef class BaseProtocol(CoreProtocol):
             })
             self.abort()
 
+        if self.state == PROTOCOL_PREPARE:
+            # we need to send a SYNC to server if we cancel during the PREPARE phase
+            # because the PREPARE sequence does not send a SYNC itself.
+            # we cannot send this extra SYNC if we are not in PREPARE phase,
+            # because then we would issue two SYNCs and we would get two ReadyForQuery
+            # replies, which our current state machine implementation cannot handle
+            self._write(SYNC_MESSAGE)
         self._set_state(PROTOCOL_CANCELLED)
 
     def _on_timeout(self, fut):

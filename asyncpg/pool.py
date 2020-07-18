@@ -146,7 +146,7 @@ class PoolConnectionHolder:
         if self._setup is not None:
             try:
                 await self._setup(proxy)
-            except Exception as ex:
+            except (Exception, asyncio.CancelledError) as ex:
                 # If a user-defined `setup` function fails, we don't
                 # know if the connection is safe for re-use, hence
                 # we close it.  A new connection will be created
@@ -199,12 +199,12 @@ class PoolConnectionHolder:
                 started = time.monotonic()
                 await asyncio.wait_for(
                     self._con._protocol._wait_for_cancellation(),
-                    budget, loop=self._pool._loop)
+                    budget)
                 if budget is not None:
                     budget -= time.monotonic() - started
 
             await self._con.reset(timeout=budget)
-        except Exception as ex:
+        except (Exception, asyncio.CancelledError) as ex:
             # If the `reset` call failed, terminate the connection.
             # A new one will be created when `acquire` is called
             # again.
@@ -304,11 +304,14 @@ class Pool:
     Pools are created by calling :func:`~asyncpg.pool.create_pool`.
     """
 
-    __slots__ = ('_queue', '_loop', '_minsize', '_maxsize',
-                 '_init', '_connect_args', '_connect_kwargs',
-                 '_working_addr', '_working_config', '_working_params',
-                 '_holders', '_initialized', '_initializing', '_closing',
-                 '_closed', '_connection_class', '_generation')
+    __slots__ = (
+        '_queue', '_loop', '_minsize', '_maxsize',
+        '_init', '_connect_args', '_connect_kwargs',
+        '_working_addr', '_working_config', '_working_params',
+        '_holders', '_initialized', '_initializing', '_closing',
+        '_closed', '_connection_class', '_generation',
+        '_setup', '_max_queries', '_max_inactive_connection_lifetime'
+    )
 
     def __init__(self, *connect_args,
                  min_size,
@@ -362,7 +365,7 @@ class Pool:
         self._holders = []
         self._initialized = False
         self._initializing = False
-        self._queue = asyncio.LifoQueue(maxsize=self._maxsize, loop=self._loop)
+        self._queue = None
 
         self._working_addr = None
         self._working_config = None
@@ -377,15 +380,10 @@ class Pool:
         self._connect_args = connect_args
         self._connect_kwargs = connect_kwargs
 
-        for _ in range(max_size):
-            ch = PoolConnectionHolder(
-                self,
-                max_queries=max_queries,
-                max_inactive_time=max_inactive_connection_lifetime,
-                setup=setup)
-
-            self._holders.append(ch)
-            self._queue.put_nowait(ch)
+        self._setup = setup
+        self._max_queries = max_queries
+        self._max_inactive_connection_lifetime = \
+            max_inactive_connection_lifetime
 
     async def _async__init__(self):
         if self._initialized:
@@ -404,6 +402,17 @@ class Pool:
             self._initialized = True
 
     async def _initialize(self):
+        self._queue = asyncio.LifoQueue(maxsize=self._maxsize)
+        for _ in range(self._maxsize):
+            ch = PoolConnectionHolder(
+                self,
+                max_queries=self._max_queries,
+                max_inactive_time=self._max_inactive_connection_lifetime,
+                setup=self._setup)
+
+            self._holders.append(ch)
+            self._queue.put_nowait(ch)
+
         if self._minsize:
             # Since we use a LIFO queue, the first items in the queue will be
             # the last ones in `self._holders`.  We want to pre-connect the
@@ -424,7 +433,7 @@ class Pool:
                         break
                     connect_tasks.append(ch.connect())
 
-                await asyncio.gather(*connect_tasks, loop=self._loop)
+                await asyncio.gather(*connect_tasks)
 
     def set_connect_args(self, dsn=None, **connect_kwargs):
         r"""Set the new connection arguments for this pool.
@@ -480,7 +489,7 @@ class Pool:
         if self._init is not None:
             try:
                 await self._init(con)
-            except Exception as ex:
+            except (Exception, asyncio.CancelledError) as ex:
                 # If a user-defined `init` function fails, we don't
                 # know if the connection is safe for re-use, hence
                 # we close it.  A new connection will be created
@@ -587,7 +596,7 @@ class Pool:
             ch = await self._queue.get()  # type: PoolConnectionHolder
             try:
                 proxy = await ch.acquire()  # type: PoolConnectionProxy
-            except Exception:
+            except (Exception, asyncio.CancelledError):
                 self._queue.put_nowait(ch)
                 raise
             else:
@@ -604,7 +613,7 @@ class Pool:
             return await _acquire_impl()
         else:
             return await asyncio.wait_for(
-                _acquire_impl(), timeout=timeout, loop=self._loop)
+                _acquire_impl(), timeout=timeout)
 
     async def release(self, connection, *, timeout=None):
         """Release a database connection back to the pool.
@@ -642,7 +651,7 @@ class Pool:
         # Use asyncio.shield() to guarantee that task cancellation
         # does not prevent the connection from being returned to the
         # pool properly.
-        return await asyncio.shield(ch.release(timeout), loop=self._loop)
+        return await asyncio.shield(ch.release(timeout))
 
     async def close(self):
         """Attempt to gracefully close all connections in the pool.
@@ -673,13 +682,13 @@ class Pool:
 
             release_coros = [
                 ch.wait_until_released() for ch in self._holders]
-            await asyncio.gather(*release_coros, loop=self._loop)
+            await asyncio.gather(*release_coros)
 
             close_coros = [
                 ch.close() for ch in self._holders]
-            await asyncio.gather(*close_coros, loop=self._loop)
+            await asyncio.gather(*close_coros)
 
-        except Exception:
+        except (Exception, asyncio.CancelledError):
             self.terminate()
             raise
 

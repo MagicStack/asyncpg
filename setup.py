@@ -27,12 +27,16 @@ from setuptools.command import build_py as setuptools_build_py
 from setuptools.command import sdist as setuptools_sdist
 
 
-CYTHON_DEPENDENCY = 'Cython==0.29'
+CYTHON_DEPENDENCY = 'Cython==0.29.14'
 
 # Minimal dependencies required to test asyncpg.
 TEST_DEPENDENCIES = [
-    'flake8~=3.5.0',
-    'uvloop~=0.12.0;platform_system!="Windows"',
+    # pycodestyle is a dependency of flake8, but it must be frozen because
+    # their combination breaks too often
+    # (example breakage: https://gitlab.com/pycqa/flake8/issues/427)
+    'pycodestyle~=2.5.0',
+    'flake8~=3.7.9',
+    'uvloop~=0.14.0;platform_system!="Windows"',
 ]
 
 # Dependencies required to build documentation.
@@ -246,7 +250,7 @@ if (not (_ROOT / 'asyncpg' / 'protocol' / 'protocol.c').exists() or
 setuptools.setup(
     name='asyncpg',
     version=VERSION,
-    description='An asyncio PosgtreSQL driver',
+    description='An asyncio PostgreSQL driver',
     long_description=readme,
     classifiers=[
         'Development Status :: 5 - Production/Stable',

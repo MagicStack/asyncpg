@@ -204,6 +204,44 @@ class TestAuthentication(tb.ConnectedTestCase):
                 user='password_user',
                 password='wrongpassword')
 
+    async def test_auth_password_cleartext_callable(self):
+        def get_correctpassword():
+            return 'correctpassword'
+
+        def get_wrongpassword():
+            return 'wrongpassword'
+
+        conn = await self.connect(
+            user='password_user',
+            password=get_correctpassword)
+        await conn.close()
+
+        with self.assertRaisesRegex(
+                asyncpg.InvalidPasswordError,
+                'password authentication failed for user "password_user"'):
+            await self._try_connect(
+                user='password_user',
+                password=get_wrongpassword)
+
+    async def test_auth_password_cleartext_callable_coroutine(self):
+        async def get_correctpassword():
+            return 'correctpassword'
+
+        async def get_wrongpassword():
+            return 'wrongpassword'
+
+        conn = await self.connect(
+            user='password_user',
+            password=get_correctpassword)
+        await conn.close()
+
+        with self.assertRaisesRegex(
+                asyncpg.InvalidPasswordError,
+                'password authentication failed for user "password_user"'):
+            await self._try_connect(
+                user='password_user',
+                password=get_wrongpassword)
+
     async def test_auth_password_md5(self):
         conn = await self.connect(
             user='md5_user', password='correctpassword')
@@ -934,14 +972,14 @@ class TestConnectParams(tb.TestCase):
     async def test_connect_args_validation(self):
         for val in {-1, 'a', True, False, 0}:
             with self.assertRaisesRegex(ValueError, 'greater than 0'):
-                await asyncpg.connect(command_timeout=val, loop=self.loop)
+                await asyncpg.connect(command_timeout=val)
 
         for arg in {'max_cacheable_statement_size',
                     'max_cached_statement_lifetime',
                     'statement_cache_size'}:
             for val in {None, -1, True, False}:
                 with self.assertRaisesRegex(ValueError, 'greater or equal'):
-                    await asyncpg.connect(**{arg: val}, loop=self.loop)
+                    await asyncpg.connect(**{arg: val})
 
 
 class TestConnection(tb.ConnectedTestCase):
@@ -1040,8 +1078,7 @@ class TestConnection(tb.ConnectedTestCase):
         con = await asyncpg.connect(
             port=conn_spec.get('port'),
             database=conn_spec.get('database'),
-            user=conn_spec.get('user'),
-            loop=self.loop)
+            user=conn_spec.get('user'))
         await con.close()
 
 
@@ -1207,7 +1244,7 @@ class TestSSLConnection(tb.ConnectedTestCase):
                 self.assertEqual(await con.fetchval('SELECT 43'), 43)
 
         tasks = [worker() for _ in range(100)]
-        await asyncio.gather(*tasks, loop=self.loop)
+        await asyncio.gather(*tasks)
         await pool.close()
 
 

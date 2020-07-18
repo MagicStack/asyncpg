@@ -16,7 +16,7 @@ for whl in /io/dist/*.whl; do
     rm /io/dist/*-linux_*.whl
 done
 
-${PIP} install ${PYMODULE}[test] -f "file:///io/dist"
+${PIP} install ${PYMODULE} -f "file:///io/dist"
 
 # Grab docker host, where Postgres should be running.
 export PGHOST=$(ip route | awk '/default/ { print $3 }' | uniq)

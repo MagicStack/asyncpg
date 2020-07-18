@@ -8,12 +8,18 @@
 
 import asyncio
 import os
+import platform
 import unittest
+import sys
 
 from asyncpg import _testbase as tb
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
+@unittest.skipIf(
+    platform.system() == 'Windows' and
+    sys.version_info >= (3, 8),
+    'not compatible with ProactorEventLoop which is default in Python 3.8')
 class TestConnectionLoss(tb.ProxiedClusterTestCase):
     @tb.with_timeout(30.0)
     async def test_connection_close_timeout(self):
@@ -62,6 +68,6 @@ class TestConnectionLoss(tb.ProxiedClusterTestCase):
                 workers = [worker(pool) for _ in range(concurrency)]
                 self.loop.call_later(1, kill_connectivity)
                 await asyncio.gather(
-                    *workers, loop=self.loop, return_exceptions=True)
+                    *workers, return_exceptions=True)
             finally:
                 pool.terminate()

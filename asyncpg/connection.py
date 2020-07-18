@@ -10,7 +10,6 @@ import asyncpg
 import collections
 import collections.abc
 import itertools
-import struct
 import sys
 import time
 import traceback
@@ -814,7 +813,7 @@ class Connection(metaclass=ConnectionMeta):
 
         if path is not None:
             # a path
-            f = await run_in_executor(None, open, path, 'wb')
+            f = await run_in_executor(None, open, path, 'rb')
             opened_by_us = True
         elif hasattr(source, 'read'):
             # file-like
@@ -1080,7 +1079,7 @@ class Connection(metaclass=ConnectionMeta):
         try:
             if not self.is_closed():
                 await self._protocol.close(timeout)
-        except Exception:
+        except (Exception, asyncio.CancelledError):
             # If we fail to close gracefully, abort the connection.
             self._abort()
             raise
@@ -1186,24 +1185,16 @@ class Connection(metaclass=ConnectionMeta):
             await self._protocol.close_statement(stmt, protocol.NO_TIMEOUT)
 
     async def _cancel(self, waiter):
-        r = w = None
-
         try:
             # Open new connection to the server
-            r, w = await connect_utils._open_connection(
-                loop=self._loop, addr=self._addr, params=self._params)
-
-            # Pack CancelRequest message
-            msg = struct.pack('!llll', 16, 80877102,
-                              self._protocol.backend_pid,
-                              self._protocol.backend_secret)
-
-            w.write(msg)
-            await r.read()  # Wait until EOF
+            await connect_utils._cancel(
+                loop=self._loop, addr=self._addr, params=self._params,
+                backend_pid=self._protocol.backend_pid,
+                backend_secret=self._protocol.backend_secret)
         except ConnectionResetError as ex:
             # On some systems Postgres will reset the connection
             # after processing the cancellation command.
-            if r is None and not waiter.done():
+            if not waiter.done():
                 waiter.set_exception(ex)
         except asyncio.CancelledError:
             # There are two scenarios in which the cancellation
@@ -1213,7 +1204,7 @@ class Connection(metaclass=ConnectionMeta):
             # the CancelledError, and don't want the loop to warn about
             # an unretrieved exception.
             pass
-        except Exception as ex:
+        except (Exception, asyncio.CancelledError) as ex:
             if not waiter.done():
                 waiter.set_exception(ex)
         finally:
@@ -1221,8 +1212,6 @@ class Connection(metaclass=ConnectionMeta):
                 compat.current_asyncio_task(self._loop))
             if not waiter.done():
                 waiter.set_result(None)
-            if w is not None:
-                w.close()
 
     def _cancel_current_command(self, waiter):
         self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
@@ -1577,6 +1566,10 @@ async def connect(dsn=None, *,
         other users and applications may be able to read it without needing
         specific privileges.  It is recommended to use *passfile* instead.
 
+        Password may be either a string, or a callable that returns a string.
+        If a callable is provided, it will be called each time a new connection
+        is established.
+
     :param passfile:
         The name of the file used to store passwords
         (defaults to ``~/.pgpass``, or ``%APPDATA%\postgresql\pgpass.conf``
@@ -1656,6 +1649,9 @@ async def connect(dsn=None, *,
     .. versionadded:: 0.18.0
        Added ability to specify multiple hosts in the *dsn*
        and *host* arguments.
+
+    .. versionchanged:: 0.21.0
+       The *password* argument now accepts a callable or an async function.
 
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:

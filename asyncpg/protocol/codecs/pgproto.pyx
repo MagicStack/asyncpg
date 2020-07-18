@@ -382,12 +382,12 @@ cdef init_numeric_codecs():
 cdef init_network_codecs():
     register_core_codec(CIDROID,
                         <encode_func>pgproto.cidr_encode,
-                        <decode_func>pgproto.net_decode,
+                        <decode_func>pgproto.cidr_decode,
                         PG_FORMAT_BINARY)
 
     register_core_codec(INETOID,
                         <encode_func>pgproto.inet_encode,
-                        <decode_func>pgproto.net_decode,
+                        <decode_func>pgproto.inet_decode,
                         PG_FORMAT_BINARY)
 
     register_core_codec(MACADDROID,

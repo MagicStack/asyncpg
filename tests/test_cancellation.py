@@ -55,7 +55,7 @@ class TestCancellation(tb.ConnectedTestCase):
             with self.subTest(testfunc=test), self.assertRunUnder(1):
                 st = await self.con.prepare('SELECT pg_sleep(20)')
                 task = self.loop.create_task(st.fetch())
-                await asyncio.sleep(0.05, loop=self.loop)
+                await asyncio.sleep(0.05)
                 task.cancel()
 
                 with self.assertRaises(asyncio.CancelledError):
@@ -67,7 +67,7 @@ class TestCancellation(tb.ConnectedTestCase):
     async def test_cancellation_02(self):
         st = await self.con.prepare('SELECT 1')
         task = self.loop.create_task(st.fetch())
-        await asyncio.sleep(0.05, loop=self.loop)
+        await asyncio.sleep(0.05)
         task.cancel()
         self.assertEqual(await task, [(1,)])
 
@@ -76,7 +76,7 @@ class TestCancellation(tb.ConnectedTestCase):
             async with self.con.transaction():
                 task = self.loop.create_task(
                     self.con.fetch('SELECT pg_sleep(20)'))
-                await asyncio.sleep(0.05, loop=self.loop)
+                await asyncio.sleep(0.05)
                 task.cancel()
 
                 with self.assertRaises(asyncio.CancelledError):
@@ -90,7 +90,7 @@ class TestCancellation(tb.ConnectedTestCase):
 
     async def test_cancellation_04(self):
         await self.con.fetchval('SELECT pg_sleep(0)')
-        waiter = asyncio.Future(loop=self.loop)
+        waiter = asyncio.Future()
         self.con._cancel_current_command(waiter)
         await waiter
         self.assertEqual(await self.con.fetchval('SELECT 42'), 42)

@@ -38,7 +38,7 @@ class TestTimeout(tb.ConnectedTestCase):
     async def test_timeout_03(self):
         task = self.loop.create_task(
             self.con.fetch('select pg_sleep(10)', timeout=0.2))
-        await asyncio.sleep(0.05, loop=self.loop)
+        await asyncio.sleep(0.05)
         task.cancel()
         with self.assertRaises(asyncio.CancelledError), \
                 self.assertRunUnder(MAX_RUNTIME):
@@ -139,7 +139,7 @@ class TestConnectionCommandTimeout(tb.ConnectedTestCase):
 class SlowPrepareConnection(pg_connection.Connection):
     """Connection class to test timeouts."""
     async def _get_statement(self, query, timeout):
-        await asyncio.sleep(0.3, loop=self._loop)
+        await asyncio.sleep(0.3)
         return await super()._get_statement(query, timeout)
 
 

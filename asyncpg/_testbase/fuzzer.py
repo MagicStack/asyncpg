@@ -36,15 +36,13 @@ class TCPFuzzingProxy:
         self.listen_task = None
 
     async def _wait(self, work):
-        work_task = asyncio.ensure_future(work, loop=self.loop)
-        stop_event_task = asyncio.ensure_future(self.stop_event.wait(),
-                                                loop=self.loop)
+        work_task = asyncio.ensure_future(work)
+        stop_event_task = asyncio.ensure_future(self.stop_event.wait())
 
         try:
             await asyncio.wait(
                 [work_task, stop_event_task],
-                return_when=asyncio.FIRST_COMPLETED,
-                loop=self.loop)
+                return_when=asyncio.FIRST_COMPLETED)
 
             if self.stop_event.is_set():
                 raise StopServer()
@@ -58,7 +56,8 @@ class TCPFuzzingProxy:
 
     def start(self):
         started = threading.Event()
-        self.thread = threading.Thread(target=self._start, args=(started,))
+        self.thread = threading.Thread(
+            target=self._start_thread, args=(started,))
         self.thread.start()
         if not started.wait(timeout=2):
             raise RuntimeError('fuzzer proxy failed to start')
@@ -70,13 +69,14 @@ class TCPFuzzingProxy:
     def _stop(self):
         self.stop_event.set()
 
-    def _start(self, started_event):
+    def _start_thread(self, started_event):
         self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
 
-        self.connectivity = asyncio.Event(loop=self.loop)
+        self.connectivity = asyncio.Event()
         self.connectivity.set()
-        self.connectivity_loss = asyncio.Event(loop=self.loop)
-        self.stop_event = asyncio.Event(loop=self.loop)
+        self.connectivity_loss = asyncio.Event()
+        self.stop_event = asyncio.Event()
 
         if self.listening_port is None:
             self.listening_port = cluster.find_available_port()
@@ -92,7 +92,7 @@ class TCPFuzzingProxy:
             self.loop.close()
 
     async def _main(self, started_event):
-        self.listen_task = asyncio.ensure_future(self.listen(), loop=self.loop)
+        self.listen_task = asyncio.ensure_future(self.listen())
         # Notify the main thread that we are ready to go.
         started_event.set()
         try:
@@ -100,7 +100,7 @@ class TCPFuzzingProxy:
         finally:
             for c in list(self.connections):
                 c.close()
-            await asyncio.sleep(0.01, loop=self.loop)
+            await asyncio.sleep(0.01)
             if hasattr(self.loop, 'remove_reader'):
                 self.loop.remove_reader(self.sock.fileno())
             self.sock.close()
@@ -176,15 +176,15 @@ class Connection:
 
     async def handle(self):
         self.proxy_to_backend_task = asyncio.ensure_future(
-            self.proxy_to_backend(), loop=self.loop)
+            self.proxy_to_backend())
 
         self.proxy_from_backend_task = asyncio.ensure_future(
-            self.proxy_from_backend(), loop=self.loop)
+            self.proxy_from_backend())
 
         try:
             await asyncio.wait(
                 [self.proxy_to_backend_task, self.proxy_from_backend_task],
-                loop=self.loop, return_when=asyncio.FIRST_COMPLETED)
+                return_when=asyncio.FIRST_COMPLETED)
 
         finally:
             # Asyncio fails to properly remove the readers and writers
@@ -201,17 +201,14 @@ class Connection:
 
     async def _read(self, sock, n):
         read_task = asyncio.ensure_future(
-            self.loop.sock_recv(sock, n),
-            loop=self.loop)
+            self.loop.sock_recv(sock, n))
         conn_event_task = asyncio.ensure_future(
-            self.connectivity_loss.wait(),
-            loop=self.loop)
+            self.connectivity_loss.wait())
 
         try:
             await asyncio.wait(
                 [read_task, conn_event_task],
-                return_when=asyncio.FIRST_COMPLETED,
-                loop=self.loop)
+                return_when=asyncio.FIRST_COMPLETED)
 
             if self.connectivity_loss.is_set():
                 return None
@@ -225,15 +222,14 @@ class Connection:
 
     async def _write(self, sock, data):
         write_task = asyncio.ensure_future(
-            self.loop.sock_sendall(sock, data), loop=self.loop)
+            self.loop.sock_sendall(sock, data))
         conn_event_task = asyncio.ensure_future(
-            self.connectivity_loss.wait(), loop=self.loop)
+            self.connectivity_loss.wait())
 
         try:
             await asyncio.wait(
                 [write_task, conn_event_task],
-                return_when=asyncio.FIRST_COMPLETED,
-                loop=self.loop)
+                return_when=asyncio.FIRST_COMPLETED)
 
             if self.connectivity_loss.is_set():
                 return None

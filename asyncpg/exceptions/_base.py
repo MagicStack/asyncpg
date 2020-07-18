@@ -142,7 +142,8 @@ class PostgresMessage(metaclass=PostgresMessageMeta):
                   purpose;
 
                 * if you have no option of avoiding the use of pgbouncer,
-                  then you must switch pgbouncer's pool_mode to "session".
+                  then you can set statement_cache_size to 0 when creating
+                  the asyncpg connection object.
             """)
 
             dct['hint'] = hint

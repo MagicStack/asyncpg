@@ -72,7 +72,7 @@ class TestExecuteScript(tb.ConnectedTestCase):
         fut = self.loop.create_task(
             self.con.execute('''SELECT pg_sleep(10)'''))
 
-        await asyncio.sleep(0.2, loop=self.loop)
+        await asyncio.sleep(0.2)
 
         self.assertFalse(self.con.is_closed())
         await self.con.close()
@@ -85,7 +85,7 @@ class TestExecuteScript(tb.ConnectedTestCase):
         fut = self.loop.create_task(
             self.con.execute('''SELECT pg_sleep(10)'''))
 
-        await asyncio.sleep(0.2, loop=self.loop)
+        await asyncio.sleep(0.2)
 
         self.assertFalse(self.con.is_closed())
         self.con.terminate()
