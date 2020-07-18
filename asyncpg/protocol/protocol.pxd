@@ -42,6 +42,7 @@ cdef class BaseProtocol(CoreProtocol):
         object timeout_callback
         object completed_callback
         object conref
+        type record_class
         bint is_reading
 
         str last_query

@@ -11,6 +11,8 @@ cdef class PreparedStatementState:
         readonly str query
         readonly bint closed
         readonly int refs
+        readonly type record_class
+
 
         list         row_desc
         list         parameters_desc

@@ -46,7 +46,7 @@ extern PyTypeObject ApgRecordDesc_Type;
 			(((ApgRecordObject *)(op))->ob_item[i])
 
 PyTypeObject *ApgRecord_InitTypes(void);
-PyObject *ApgRecord_New(PyObject *, Py_ssize_t);
+PyObject *ApgRecord_New(PyTypeObject *, PyObject *, Py_ssize_t);
 PyObject *ApgRecordDesc_New(PyObject *, PyObject *);
 
 #endif

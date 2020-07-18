@@ -7,6 +7,7 @@
 
 from collections.abc import Mapping as MappingABC
 
+import asyncpg
 from asyncpg import exceptions
 
 
@@ -232,7 +233,7 @@ cdef class Codec:
                 schema=self.schema,
                 data_type=self.name,
             )
-        result = record.ApgRecord_New(self.record_desc, elem_count)
+        result = record.ApgRecord_New(asyncpg.Record, self.record_desc, elem_count)
         for i in range(elem_count):
             elem_typ = self.element_type_oids[i]
             received_elem_typ = <uint32_t>hton.unpack_int32(frb_read(buf, 4))

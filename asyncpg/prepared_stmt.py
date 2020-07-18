@@ -103,9 +103,15 @@ class PreparedStatement(connresource.ConnectionResource):
 
         :return: A :class:`~cursor.CursorFactory` object.
         """
-        return cursor.CursorFactory(self._connection, self._query,
-                                    self._state, args, prefetch,
-                                    timeout)
+        return cursor.CursorFactory(
+            self._connection,
+            self._query,
+            self._state,
+            args,
+            prefetch,
+            timeout,
+            self._state.record_class,
+        )
 
     @connresource.guarded
     async def explain(self, *args, analyze=False):

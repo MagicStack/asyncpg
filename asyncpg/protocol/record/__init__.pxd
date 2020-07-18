@@ -13,7 +13,7 @@ cdef extern from "record/recordobj.h":
 	cpython.PyTypeObject *ApgRecord_InitTypes() except NULL
 
 	int ApgRecord_CheckExact(object)
-	object ApgRecord_New(object, int)
+	object ApgRecord_New(type, object, int)
 	void ApgRecord_SET_ITEM(object, int, object)
 
 	object ApgRecordDesc_New(object, object)

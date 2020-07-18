@@ -594,8 +594,16 @@ async def _create_ssl_connection(protocol_factory, host, port, *,
             raise
 
 
-async def _connect_addr(*, addr, loop, timeout, params, config,
-                        connection_class):
+async def _connect_addr(
+    *,
+    addr,
+    loop,
+    timeout,
+    params,
+    config,
+    connection_class,
+    record_class
+):
     assert loop is not None
 
     if timeout <= 0:
@@ -613,7 +621,7 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
         params = params._replace(password=password)
 
     proto_factory = lambda: protocol.Protocol(
-        addr, connected, params, loop)
+        addr, connected, params, record_class, loop)
 
     if isinstance(addr, str):
         # UNIX socket
@@ -649,7 +657,7 @@ async def _connect_addr(*, addr, loop, timeout, params, config,
     return con
 
 
-async def _connect(*, loop, timeout, connection_class, **kwargs):
+async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
     if loop is None:
         loop = asyncio.get_event_loop()
 
@@ -661,9 +669,14 @@ async def _connect(*, loop, timeout, connection_class, **kwargs):
         before = time.monotonic()
         try:
             con = await _connect_addr(
-                addr=addr, loop=loop, timeout=timeout,
-                params=params, config=config,
-                connection_class=connection_class)
+                addr=addr,
+                loop=loop,
+                timeout=timeout,
+                params=params,
+                config=config,
+                connection_class=connection_class,
+                record_class=record_class,
+            )
         except (OSError, asyncio.TimeoutError, ConnectionError) as ex:
             last_error = ex
         else:

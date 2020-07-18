@@ -15,6 +15,7 @@ import warnings
 from . import connection
 from . import connect_utils
 from . import exceptions
+from . import protocol
 
 
 logger = logging.getLogger(__name__)
@@ -309,7 +310,7 @@ class Pool:
         '_init', '_connect_args', '_connect_kwargs',
         '_working_addr', '_working_config', '_working_params',
         '_holders', '_initialized', '_initializing', '_closing',
-        '_closed', '_connection_class', '_generation',
+        '_closed', '_connection_class', '_record_class', '_generation',
         '_setup', '_max_queries', '_max_inactive_connection_lifetime'
     )
 
@@ -322,6 +323,7 @@ class Pool:
                  init,
                  loop,
                  connection_class,
+                 record_class,
                  **connect_kwargs):
 
         if len(connect_args) > 1:
@@ -359,6 +361,11 @@ class Pool:
                 'connection_class is expected to be a subclass of '
                 'asyncpg.Connection, got {!r}'.format(connection_class))
 
+        if not issubclass(record_class, protocol.Record):
+            raise TypeError(
+                'record_class is expected to be a subclass of '
+                'asyncpg.Record, got {!r}'.format(record_class))
+
         self._minsize = min_size
         self._maxsize = max_size
 
@@ -372,6 +379,7 @@ class Pool:
         self._working_params = None
 
         self._connection_class = connection_class
+        self._record_class = record_class
 
         self._closing = False
         self._closed = False
@@ -469,6 +477,7 @@ class Pool:
                 *self._connect_args,
                 loop=self._loop,
                 connection_class=self._connection_class,
+                record_class=self._record_class,
                 **self._connect_kwargs)
 
             self._working_addr = con._addr
@@ -484,7 +493,9 @@ class Pool:
                 timeout=self._working_params.connect_timeout,
                 config=self._working_config,
                 params=self._working_params,
-                connection_class=self._connection_class)
+                connection_class=self._connection_class,
+                record_class=self._record_class,
+            )
 
         if self._init is not None:
             try:
@@ -793,6 +804,7 @@ def create_pool(dsn=None, *,
                 init=None,
                 loop=None,
                 connection_class=connection.Connection,
+                record_class=protocol.Record,
                 **connect_kwargs):
     r"""Create a connection pool.
 
@@ -851,6 +863,11 @@ def create_pool(dsn=None, *,
         The class to use for connections.  Must be a subclass of
         :class:`~asyncpg.connection.Connection`.
 
+    :param type record_class:
+        If specified, the class to use for records returned by queries on
+        the connections in this pool.  Must be a subclass of
+        :class:`~asyncpg.Record`.
+
     :param int min_size:
         Number of connection the pool will be initialized with.
 
@@ -901,10 +918,14 @@ def create_pool(dsn=None, *,
        or :meth:`Connection.add_log_listener()
        <connection.Connection.add_log_listener>`) present on the connection
        at the moment of its release to the pool.
+
+    .. versionchanged:: 0.22.0
+       Added the *record_class* parameter.
     """
     return Pool(
         dsn,
         connection_class=connection_class,
+        record_class=record_class,
         min_size=min_size, max_size=max_size,
         max_queries=max_queries, loop=loop, setup=setup, init=init,
         max_inactive_connection_lifetime=max_inactive_connection_lifetime,

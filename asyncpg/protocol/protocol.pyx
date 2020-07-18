@@ -73,7 +73,7 @@ NO_TIMEOUT = object()
 
 
 cdef class BaseProtocol(CoreProtocol):
-    def __init__(self, addr, connected_fut, con_params, loop):
+    def __init__(self, addr, connected_fut, con_params, record_class: type, loop):
         # type of `con_params` is `_ConnectionParameters`
         CoreProtocol.__init__(self, con_params)
 
@@ -85,6 +85,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         self.address = addr
         self.settings = ConnectionSettings((self.address, con_params.database))
+        self.record_class = record_class
 
         self.statement = None
         self.return_extra = False
@@ -122,6 +123,9 @@ cdef class BaseProtocol(CoreProtocol):
     def get_settings(self):
         return self.settings
 
+    def get_record_class(self):
+        return self.record_class
+
     def is_in_transaction(self):
         # PQTRANS_INTRANS = idle, within transaction block
         # PQTRANS_INERROR = idle, within failed transaction
@@ -139,7 +143,9 @@ cdef class BaseProtocol(CoreProtocol):
 
     @cython.iterable_coroutine
     async def prepare(self, stmt_name, query, timeout,
-                      PreparedStatementState state=None):
+                      *,
+                      PreparedStatementState state=None,
+                      record_class):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
         if self.cancel_sent_waiter is not None:
@@ -154,7 +160,8 @@ cdef class BaseProtocol(CoreProtocol):
             self._prepare(stmt_name, query)  # network op
             self.last_query = query
             if state is None:
-                state = PreparedStatementState(stmt_name, query, self)
+                state = PreparedStatementState(
+                    stmt_name, query, self, record_class)
             self.statement = state
         except Exception as ex:
             waiter.set_exception(ex)
@@ -955,7 +962,7 @@ def _create_record(object mapping, tuple elems):
         desc = record.ApgRecordDesc_New(
             mapping, tuple(mapping) if mapping else ())
 
-    rec = record.ApgRecord_New(desc, len(elems))
+    rec = record.ApgRecord_New(Record, desc, len(elems))
     for i in range(len(elems)):
         elem = elems[i]
         cpython.Py_INCREF(elem)

@@ -11,7 +11,13 @@ from asyncpg import exceptions
 @cython.final
 cdef class PreparedStatementState:
 
-    def __cinit__(self, str name, str query, BaseProtocol protocol):
+    def __cinit__(
+        self,
+        str name,
+        str query,
+        BaseProtocol protocol,
+        type record_class
+    ):
         self.name = name
         self.query = query
         self.settings = protocol.settings
@@ -21,6 +27,7 @@ cdef class PreparedStatementState:
         self.cols_desc = None
         self.closed = False
         self.refs = 0
+        self.record_class = record_class
 
     def _get_parameters(self):
         cdef Codec codec
@@ -264,7 +271,7 @@ cdef class PreparedStatementState:
                 'different from what was described ({})'.format(
                     fnum, self.cols_num))
 
-        dec_row = record.ApgRecord_New(self.cols_desc, fnum)
+        dec_row = record.ApgRecord_New(self.record_class, self.cols_desc, fnum)
         for i in range(fnum):
             flen = hton.unpack_int32(frb_read(&rbuf, 4))
 

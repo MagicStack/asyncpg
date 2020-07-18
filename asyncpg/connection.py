@@ -50,7 +50,7 @@ class Connection(metaclass=ConnectionMeta):
                  '_source_traceback', '__weakref__')
 
     def __init__(self, protocol, transport, loop,
-                 addr: (str, int) or str,
+                 addr,
                  config: connect_utils._ClientConfiguration,
                  params: connect_utils._ConnectionParameters):
         self._protocol = protocol
@@ -294,7 +294,13 @@ class Connection(metaclass=ConnectionMeta):
         if not args:
             return await self._protocol.query(query, timeout)
 
-        _, status, _ = await self._execute(query, args, 0, timeout, True)
+        _, status, _ = await self._execute(
+            query,
+            args,
+            0,
+            timeout,
+            return_status=True,
+        )
         return status.decode()
 
     async def executemany(self, command: str, args, *, timeout: float=None):
@@ -327,10 +333,20 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
         return await self._executemany(command, args, timeout)
 
-    async def _get_statement(self, query, timeout, *, named: bool=False,
-                             use_cache: bool=True):
+    async def _get_statement(
+        self,
+        query,
+        timeout,
+        *,
+        named: bool=False,
+        use_cache: bool=True,
+        record_class=None
+    ):
+        if record_class is None:
+            record_class = self._protocol.get_record_class()
+
         if use_cache:
-            statement = self._stmt_cache.get(query)
+            statement = self._stmt_cache.get((query, record_class))
             if statement is not None:
                 return statement
 
@@ -348,7 +364,12 @@ class Connection(metaclass=ConnectionMeta):
         else:
             stmt_name = ''
 
-        statement = await self._protocol.prepare(stmt_name, query, timeout)
+        statement = await self._protocol.prepare(
+            stmt_name,
+            query,
+            timeout,
+            record_class=record_class,
+        )
         need_reprepare = False
         types_with_missing_codecs = statement._init_types()
         tries = 0
@@ -384,10 +405,15 @@ class Connection(metaclass=ConnectionMeta):
 
         if need_reprepare:
             await self._protocol.prepare(
-                stmt_name, query, timeout, state=statement)
+                stmt_name,
+                query,
+                timeout,
+                state=statement,
+                record_class=record_class,
+            )
 
         if use_cache:
-            self._stmt_cache.put(query, statement)
+            self._stmt_cache.put((query, record_class), statement)
 
         # If we've just created a new statement object, check if there
         # are any statements for GC.
@@ -400,47 +426,124 @@ class Connection(metaclass=ConnectionMeta):
         return await self.__execute(
             self._intro_query, (list(typeoids),), 0, timeout)
 
-    def cursor(self, query, *args, prefetch=None, timeout=None):
+    def cursor(
+        self,
+        query,
+        *args,
+        prefetch=None,
+        timeout=None,
+        record_class=None
+    ):
         """Return a *cursor factory* for the specified query.
 
-        :param args: Query arguments.
-        :param int prefetch: The number of rows the *cursor iterator*
-                             will prefetch (defaults to ``50``.)
-        :param float timeout: Optional timeout in seconds.
+        :param args:
+            Query arguments.
+        :param int prefetch:
+            The number of rows the *cursor iterator*
+            will prefetch (defaults to ``50``.)
+        :param float timeout:
+            Optional timeout in seconds.
+        :param type record_class:
+            If specified, the class to use for records returned by this cursor.
+            Must be a subclass of :class:`~asyncpg.Record`.  If not specified,
+            a per-connection *record_class* is used.
 
-        :return: A :class:`~cursor.CursorFactory` object.
+        :return:
+            A :class:`~cursor.CursorFactory` object.
+
+        .. versionchanged:: 0.22.0
+            Added the *record_class* parameter.
         """
         self._check_open()
-        return cursor.CursorFactory(self, query, None, args,
-                                    prefetch, timeout)
+        return cursor.CursorFactory(
+            self,
+            query,
+            None,
+            args,
+            prefetch,
+            timeout,
+            record_class,
+        )
 
-    async def prepare(self, query, *, timeout=None):
+    async def prepare(self, query, *, timeout=None, record_class=None):
         """Create a *prepared statement* for the specified query.
 
-        :param str query: Text of the query to create a prepared statement for.
-        :param float timeout: Optional timeout value in seconds.
+        :param str query:
+            Text of the query to create a prepared statement for.
+        :param float timeout:
+            Optional timeout value in seconds.
+        :param type record_class:
+            If specified, the class to use for records returned by the
+            prepared statement.  Must be a subclass of
+            :class:`~asyncpg.Record`.  If not specified, a per-connection
+            *record_class* is used.
 
-        :return: A :class:`~prepared_stmt.PreparedStatement` instance.
+        :return:
+            A :class:`~prepared_stmt.PreparedStatement` instance.
+
+        .. versionchanged:: 0.22.0
+            Added the *record_class* parameter.
         """
-        return await self._prepare(query, timeout=timeout, use_cache=False)
+        return await self._prepare(
+            query,
+            timeout=timeout,
+            use_cache=False,
+            record_class=record_class,
+        )
 
-    async def _prepare(self, query, *, timeout=None, use_cache: bool=False):
+    async def _prepare(
+        self,
+        query,
+        *,
+        timeout=None,
+        use_cache: bool=False,
+        record_class=None
+    ):
         self._check_open()
-        stmt = await self._get_statement(query, timeout, named=True,
-                                         use_cache=use_cache)
+        stmt = await self._get_statement(
+            query,
+            timeout,
+            named=True,
+            use_cache=use_cache,
+            record_class=record_class,
+        )
         return prepared_stmt.PreparedStatement(self, query, stmt)
 
-    async def fetch(self, query, *args, timeout=None) -> list:
+    async def fetch(
+        self,
+        query,
+        *args,
+        timeout=None,
+        record_class=None
+    ) -> list:
         """Run a query and return the results as a list of :class:`Record`.
 
-        :param str query: Query text.
-        :param args: Query arguments.
-        :param float timeout: Optional timeout value in seconds.
+        :param str query:
+            Query text.
+        :param args:
+            Query arguments.
+        :param float timeout:
+            Optional timeout value in seconds.
+        :param type record_class:
+            If specified, the class to use for records returned by this method.
+            Must be a subclass of :class:`~asyncpg.Record`.  If not specified,
+            a per-connection *record_class* is used.
 
-        :return list: A list of :class:`Record` instances.
+        :return list:
+            A list of :class:`~asyncpg.Record` instances.  If specified, the
+            actual type of list elements would be *record_class*.
+
+        .. versionchanged:: 0.22.0
+            Added the *record_class* parameter.
         """
         self._check_open()
-        return await self._execute(query, args, 0, timeout)
+        return await self._execute(
+            query,
+            args,
+            0,
+            timeout,
+            record_class=record_class,
+        )
 
     async def fetchval(self, query, *args, column=0, timeout=None):
         """Run a query and return a value in the first row.
@@ -463,18 +566,42 @@ class Connection(metaclass=ConnectionMeta):
             return None
         return data[0][column]
 
-    async def fetchrow(self, query, *args, timeout=None):
+    async def fetchrow(
+        self,
+        query,
+        *args,
+        timeout=None,
+        record_class=None
+    ):
         """Run a query and return the first row.
 
-        :param str query: Query text
-        :param args: Query arguments
-        :param float timeout: Optional timeout value in seconds.
+        :param str query:
+            Query text
+        :param args:
+            Query arguments
+        :param float timeout:
+            Optional timeout value in seconds.
+        :param type record_class:
+            If specified, the class to use for the value returned by this
+            method.  Must be a subclass of :class:`~asyncpg.Record`.
+            If not specified, a per-connection *record_class* is used.
 
-        :return: The first row as a :class:`Record` instance, or None if
-                 no records were returned by the query.
+        :return:
+            The first row as a :class:`~asyncpg.Record` instance, or None if
+            no records were returned by the query.  If specified,
+            *record_class* is used as the type for the result value.
+
+        .. versionchanged:: 0.22.0
+            Added the *record_class* parameter.
         """
         self._check_open()
-        data = await self._execute(query, args, 1, timeout)
+        data = await self._execute(
+            query,
+            args,
+            1,
+            timeout,
+            record_class=record_class,
+        )
         if not data:
             return None
         return data[0]
@@ -1185,7 +1312,10 @@ class Connection(metaclass=ConnectionMeta):
         self._stmts_to_close.clear()
 
     def _maybe_gc_stmt(self, stmt):
-        if stmt.refs == 0 and not self._stmt_cache.has(stmt.query):
+        if (
+            stmt.refs == 0
+            and not self._stmt_cache.has((stmt.query, stmt.record_class))
+        ):
             # If low-level `stmt` isn't referenced from any high-level
             # `PreparedStatement` object and is not in the `_stmt_cache`:
             #
@@ -1440,18 +1570,46 @@ class Connection(metaclass=ConnectionMeta):
         self._drop_global_type_cache()
         self._drop_global_statement_cache()
 
-    async def _execute(self, query, args, limit, timeout, return_status=False):
+    async def _execute(
+        self,
+        query,
+        args,
+        limit,
+        timeout,
+        *,
+        return_status=False,
+        record_class=None
+    ):
         with self._stmt_exclusive_section:
             result, _ = await self.__execute(
-                query, args, limit, timeout, return_status=return_status)
+                query,
+                args,
+                limit,
+                timeout,
+                return_status=return_status,
+                record_class=record_class,
+            )
         return result
 
-    async def __execute(self, query, args, limit, timeout,
-                        return_status=False):
+    async def __execute(
+        self,
+        query,
+        args,
+        limit,
+        timeout,
+        *,
+        return_status=False,
+        record_class=None
+    ):
         executor = lambda stmt, timeout: self._protocol.bind_execute(
             stmt, args, '', limit, return_status, timeout)
         timeout = self._protocol._get_timeout(timeout)
-        return await self._do_execute(query, executor, timeout)
+        return await self._do_execute(
+            query,
+            executor,
+            timeout,
+            record_class=record_class,
+        )
 
     async def _executemany(self, query, args, timeout):
         executor = lambda stmt, timeout: self._protocol.bind_execute_many(
@@ -1461,12 +1619,28 @@ class Connection(metaclass=ConnectionMeta):
             result, _ = await self._do_execute(query, executor, timeout)
         return result
 
-    async def _do_execute(self, query, executor, timeout, retry=True):
+    async def _do_execute(
+        self,
+        query,
+        executor,
+        timeout,
+        retry=True,
+        *,
+        record_class=None
+    ):
         if timeout is None:
-            stmt = await self._get_statement(query, None)
+            stmt = await self._get_statement(
+                query,
+                None,
+                record_class=record_class,
+            )
         else:
             before = time.monotonic()
-            stmt = await self._get_statement(query, timeout)
+            stmt = await self._get_statement(
+                query,
+                timeout,
+                record_class=record_class,
+            )
             after = time.monotonic()
             timeout -= after - before
             before = after
@@ -1535,6 +1709,7 @@ async def connect(dsn=None, *,
                   command_timeout=None,
                   ssl=None,
                   connection_class=Connection,
+                  record_class=protocol.Record,
                   server_settings=None):
     r"""A coroutine to establish a connection to a PostgreSQL server.
 
@@ -1654,9 +1829,14 @@ async def connect(dsn=None, *,
         PostgreSQL documentation for
         a `list of supported options <server settings_>`_.
 
-    :param Connection connection_class:
+    :param type connection_class:
         Class of the returned connection object.  Must be a subclass of
         :class:`~asyncpg.connection.Connection`.
+
+    :param type record_class:
+        If specified, the class to use for records returned by queries on
+        this connection object.  Must be a subclass of
+        :class:`~asyncpg.Record`.
 
     :return: A :class:`~asyncpg.connection.Connection` instance.
 
@@ -1696,6 +1876,9 @@ async def connect(dsn=None, *,
     .. versionchanged:: 0.21.0
        The *password* argument now accepts a callable or an async function.
 
+    .. versionchanged:: 0.22.0
+       Added the *record_class* parameter.
+
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
         https://docs.python.org/3/library/ssl.html#ssl.create_default_context
@@ -1712,19 +1895,33 @@ async def connect(dsn=None, *,
             'connection_class is expected to be a subclass of '
             'asyncpg.Connection, got {!r}'.format(connection_class))
 
+    if not issubclass(record_class, protocol.Record):
+        raise TypeError(
+            'record_class is expected to be a subclass of '
+            'asyncpg.Record, got {!r}'.format(record_class))
+
     if loop is None:
         loop = asyncio.get_event_loop()
 
     return await connect_utils._connect(
-        loop=loop, timeout=timeout, connection_class=connection_class,
-        dsn=dsn, host=host, port=port, user=user,
-        password=password, passfile=passfile,
-        ssl=ssl, database=database,
+        loop=loop,
+        timeout=timeout,
+        connection_class=connection_class,
+        record_class=record_class,
+        dsn=dsn,
+        host=host,
+        port=port,
+        user=user,
+        password=password,
+        passfile=passfile,
+        ssl=ssl,
+        database=database,
         server_settings=server_settings,
         command_timeout=command_timeout,
         statement_cache_size=statement_cache_size,
         max_cached_statement_lifetime=max_cached_statement_lifetime,
-        max_cacheable_statement_size=max_cacheable_statement_size)
+        max_cacheable_statement_size=max_cacheable_statement_size,
+    )
 
 
 class _StatementCacheEntry:

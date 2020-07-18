@@ -22,6 +22,14 @@ R_AC = collections.OrderedDict([('a', 0), ('c', 1)])
 R_ABC = collections.OrderedDict([('a', 0), ('b', 1), ('c', 2)])
 
 
+class CustomRecord(asyncpg.Record):
+    pass
+
+
+class AnotherCustomRecord(asyncpg.Record):
+    pass
+
+
 class TestRecord(tb.ConnectedTestCase):
 
     @contextlib.contextmanager
@@ -339,3 +347,169 @@ class TestRecord(tb.ConnectedTestCase):
         with self.assertRaisesRegex(
                 TypeError, "cannot create 'asyncpg.Record' instances"):
             asyncpg.Record()
+
+    @tb.with_connection_options(record_class=CustomRecord)
+    async def test_record_subclass_01(self):
+        r = await self.con.fetchrow("SELECT 1 as a, '2' as b")
+        self.assertIsInstance(r, CustomRecord)
+
+        r = await self.con.fetch("SELECT 1 as a, '2' as b")
+        self.assertIsInstance(r[0], CustomRecord)
+
+        async with self.con.transaction():
+            cur = await self.con.cursor("SELECT 1 as a, '2' as b")
+            r = await cur.fetchrow()
+            self.assertIsInstance(r, CustomRecord)
+
+            cur = await self.con.cursor("SELECT 1 as a, '2' as b")
+            r = await cur.fetch(1)
+            self.assertIsInstance(r[0], CustomRecord)
+
+        async with self.con.transaction():
+            cur = self.con.cursor("SELECT 1 as a, '2' as b")
+            async for r in cur:
+                self.assertIsInstance(r, CustomRecord)
+
+        ps = await self.con.prepare("SELECT 1 as a, '2' as b")
+        r = await ps.fetchrow()
+        self.assertIsInstance(r, CustomRecord)
+
+    async def test_record_subclass_02(self):
+        r = await self.con.fetchrow(
+            "SELECT 1 as a, '2' as b",
+            record_class=CustomRecord,
+        )
+        self.assertIsInstance(r, CustomRecord)
+
+        r = await self.con.fetch(
+            "SELECT 1 as a, '2' as b",
+            record_class=CustomRecord,
+        )
+        self.assertIsInstance(r[0], CustomRecord)
+
+        async with self.con.transaction():
+            cur = await self.con.cursor(
+                "SELECT 1 as a, '2' as b",
+                record_class=CustomRecord,
+            )
+            r = await cur.fetchrow()
+            self.assertIsInstance(r, CustomRecord)
+
+            cur = await self.con.cursor(
+                "SELECT 1 as a, '2' as b",
+                record_class=CustomRecord,
+            )
+            r = await cur.fetch(1)
+            self.assertIsInstance(r[0], CustomRecord)
+
+        async with self.con.transaction():
+            cur = self.con.cursor(
+                "SELECT 1 as a, '2' as b",
+                record_class=CustomRecord,
+            )
+            async for r in cur:
+                self.assertIsInstance(r, CustomRecord)
+
+        ps = await self.con.prepare(
+            "SELECT 1 as a, '2' as b",
+            record_class=CustomRecord,
+        )
+        r = await ps.fetchrow()
+        self.assertIsInstance(r, CustomRecord)
+
+        r = await ps.fetch()
+        self.assertIsInstance(r[0], CustomRecord)
+
+    @tb.with_connection_options(record_class=AnotherCustomRecord)
+    async def test_record_subclass_03(self):
+        r = await self.con.fetchrow(
+            "SELECT 1 as a, '2' as b",
+            record_class=CustomRecord,
+        )
+        self.assertIsInstance(r, CustomRecord)
+
+        r = await self.con.fetch(
+            "SELECT 1 as a, '2' as b",
+            record_class=CustomRecord,
+        )
+        self.assertIsInstance(r[0], CustomRecord)
+
+        async with self.con.transaction():
+            cur = await self.con.cursor(
+                "SELECT 1 as a, '2' as b",
+                record_class=CustomRecord,
+            )
+            r = await cur.fetchrow()
+            self.assertIsInstance(r, CustomRecord)
+
+            cur = await self.con.cursor(
+                "SELECT 1 as a, '2' as b",
+                record_class=CustomRecord,
+            )
+            r = await cur.fetch(1)
+            self.assertIsInstance(r[0], CustomRecord)
+
+        async with self.con.transaction():
+            cur = self.con.cursor(
+                "SELECT 1 as a, '2' as b",
+                record_class=CustomRecord,
+            )
+            async for r in cur:
+                self.assertIsInstance(r, CustomRecord)
+
+        ps = await self.con.prepare(
+            "SELECT 1 as a, '2' as b",
+            record_class=CustomRecord,
+        )
+        r = await ps.fetchrow()
+        self.assertIsInstance(r, CustomRecord)
+
+        r = await ps.fetch()
+        self.assertIsInstance(r[0], CustomRecord)
+
+    @tb.with_connection_options(record_class=CustomRecord)
+    async def test_record_subclass_04(self):
+        r = await self.con.fetchrow(
+            "SELECT 1 as a, '2' as b",
+            record_class=asyncpg.Record,
+        )
+        self.assertIs(type(r), asyncpg.Record)
+
+        r = await self.con.fetch(
+            "SELECT 1 as a, '2' as b",
+            record_class=asyncpg.Record,
+        )
+        self.assertIs(type(r[0]), asyncpg.Record)
+
+        async with self.con.transaction():
+            cur = await self.con.cursor(
+                "SELECT 1 as a, '2' as b",
+                record_class=asyncpg.Record,
+            )
+            r = await cur.fetchrow()
+            self.assertIs(type(r), asyncpg.Record)
+
+            cur = await self.con.cursor(
+                "SELECT 1 as a, '2' as b",
+                record_class=asyncpg.Record,
+            )
+            r = await cur.fetch(1)
+            self.assertIs(type(r[0]), asyncpg.Record)
+
+        async with self.con.transaction():
+            cur = self.con.cursor(
+                "SELECT 1 as a, '2' as b",
+                record_class=asyncpg.Record,
+            )
+            async for r in cur:
+                self.assertIs(type(r), asyncpg.Record)
+
+        ps = await self.con.prepare(
+            "SELECT 1 as a, '2' as b",
+            record_class=asyncpg.Record,
+        )
+        r = await ps.fetchrow()
+        self.assertIs(type(r), asyncpg.Record)
+
+        r = await ps.fetch()
+        self.assertIs(type(r[0]), asyncpg.Record)
