@@ -180,7 +180,7 @@ URI in <em>dsn</em>, or as specific keyword arguments, or both.
 If both <em>dsn</em> and keyword arguments are specified, the latter
 override the corresponding values parsed from the connection URI.
 The default values for the majority of arguments can be specified
-using <a class="reference external" href="postgresenvvars">environment variables</a>.</p>
+using <a class="reference external" href="https://www.postgresql.org/docs/current/static/libpq-envars.html">environment variables</a>.</p>
 <p>Returns a new <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a> object.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -265,7 +265,7 @@ returned by <a class="reference external" href="https://docs.python.org/3/librar
 will be used.</li>
 <li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.8)"><em>dict</em></a>) – An optional dict of server runtime parameters.  Refer to
 PostgreSQL documentation for
-a <a class="reference external" href="serversettings">list of supported options</a>.</li>
+a <a class="reference external" href="https://www.postgresql.org/docs/current/static/runtime-config.html">list of supported options</a>.</li>
 <li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – Class of the returned connection object.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</li>
 </ul>
