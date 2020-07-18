@@ -490,9 +490,9 @@ be registered on a connection using <a class="reference internal" href="api/inde
 <span class="k">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
     <span class="n">conn</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
     <span class="c1"># Assuming the hstore extension exists in the public schema.</span>
-    <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">set_builtin_type_codec</span><span class="p">(</span>
+    <span class="k">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">set_builtin_type_codec</span><span class="p">(</span>
         <span class="s1">&#39;hstore&#39;</span><span class="p">,</span> <span class="n">codec_name</span><span class="o">=</span><span class="s1">&#39;pg_contrib.hstore&#39;</span><span class="p">)</span>
-    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span><span class="s2">&quot;SELECT &#39;a=&gt;1,b=&gt;2&#39;::hstore&quot;</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span><span class="s2">&quot;SELECT &#39;a=&gt;1,b=&gt;2&#39;::hstore&quot;</span><span class="p">)</span>
     <span class="k">assert</span> <span class="n">result</span> <span class="o">==</span> <span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
 
 <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
