@@ -966,10 +966,23 @@
 
 <span class="sd">        async with asyncpg.create_pool(user=&#39;postgres&#39;,</span>
 <span class="sd">                                       command_timeout=60) as pool:</span>
+<span class="sd">            await pool.fetch(&#39;SELECT 1&#39;)</span>
+
+<span class="sd">    Or to perform multiple operations on a single connection:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        async with asyncpg.create_pool(user=&#39;postgres&#39;,</span>
+<span class="sd">                                       command_timeout=60) as pool:</span>
 <span class="sd">            async with pool.acquire() as con:</span>
+<span class="sd">                await con.execute(&#39;&#39;&#39;</span>
+<span class="sd">                   CREATE TABLE names (</span>
+<span class="sd">                      id serial PRIMARY KEY,</span>
+<span class="sd">                      name VARCHAR (255) NOT NULL)</span>
+<span class="sd">                &#39;&#39;&#39;)</span>
 <span class="sd">                await con.fetch(&#39;SELECT 1&#39;)</span>
 
-<span class="sd">    Or directly with ``await``:</span>
+<span class="sd">    Or directly with ``await`` (not recommended):</span>
 
 <span class="sd">    .. code-block:: python</span>
 
