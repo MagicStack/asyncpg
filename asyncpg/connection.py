@@ -46,8 +46,8 @@ class Connection(metaclass=ConnectionMeta):
                  '_listeners', '_server_version', '_server_caps',
                  '_intro_query', '_reset_query', '_proxy',
                  '_stmt_exclusive_section', '_config', '_params', '_addr',
-                 '_log_listeners', '_cancellations', '_source_traceback',
-                 '__weakref__')
+                 '_log_listeners', '_termination_listeners', '_cancellations',
+                 '_source_traceback', '__weakref__')
 
     def __init__(self, protocol, transport, loop,
                  addr: (str, int) or str,
@@ -78,6 +78,7 @@ class Connection(metaclass=ConnectionMeta):
         self._listeners = {}
         self._log_listeners = set()
         self._cancellations = set()
+        self._termination_listeners = set()
 
         settings = self._protocol.get_settings()
         ver_string = settings.server_version
@@ -177,6 +178,28 @@ class Connection(metaclass=ConnectionMeta):
         .. versionadded:: 0.12.0
         """
         self._log_listeners.discard(callback)
+
+    def add_termination_listener(self, callback):
+        """Add a listener that will be called when the connection is closed.
+
+        :param callable callback:
+            A callable receiving one argument:
+            **connection**: a Connection the callback is registered with.
+
+        .. versionadded:: 0.21.0
+        """
+        self._termination_listeners.add(callback)
+
+    def remove_termination_listener(self, callback):
+        """Remove a listening callback for connection termination.
+
+        :param callable callback:
+            The callable that was passed to
+            :meth:`Connection.add_termination_listener`.
+
+        .. versionadded:: 0.21.0
+        """
+        self._termination_listeners.discard(callback)
 
     def get_server_pid(self):
         """Return the PID of the Postgres server the connection is bound to."""
@@ -1120,6 +1143,7 @@ class Connection(metaclass=ConnectionMeta):
         self._protocol = None
 
     def _cleanup(self):
+        self._call_termination_listeners()
         # Free the resources associated with this connection.
         # This must be called when a connection is terminated.
 
@@ -1236,6 +1260,25 @@ class Connection(metaclass=ConnectionMeta):
                            'listener callback {!r}'.format(cb),
                 'exception': ex
             })
+
+    def _call_termination_listeners(self):
+        if not self._termination_listeners:
+            return
+
+        con_ref = self._unwrap()
+        for cb in self._termination_listeners:
+            try:
+                cb(con_ref)
+            except Exception as ex:
+                self._loop.call_exception_handler({
+                    'message': (
+                        'Unhandled exception in asyncpg connection '
+                        'termination listener callback {!r}'.format(cb)
+                    ),
+                    'exception': ex
+                })
+
+        self._termination_listeners.clear()
 
     def _process_notification(self, pid, channel, payload):
         if channel not in self._listeners:
