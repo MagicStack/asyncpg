@@ -320,8 +320,8 @@ be registered on a connection using :meth:`Connection.set_builtin_type_codec()
         # Assuming the hstore extension exists in the public schema.
         await conn.set_builtin_type_codec(
             'hstore', codec_name='pg_contrib.hstore')
-        result = await conn.fetchval("SELECT 'a=>1,b=>2'::hstore")
-        assert result == {'a': 1, 'b': 2}
+        result = await conn.fetchval("SELECT 'a=>1,b=>2,c=>NULL'::hstore")
+        assert result == {'a': '1', 'b': '2', 'c': None}
 
     asyncio.get_event_loop().run_until_complete(run())
 
