@@ -132,12 +132,11 @@ record_length(ApgRecordObject *o)
 static Py_hash_t
 record_hash(ApgRecordObject *v)
 {
-    Py_ssize_t i;
     Py_uhash_t acc = _PyHASH_XXPRIME_5;
-    Py_ssize_t len = Py_SIZE(v);
+    size_t i, len = (size_t)Py_SIZE(v);
     PyObject **els = v->ob_item;
     for (i = 0; i < len; i++) {
-        Py_uhash_t lane = PyObject_Hash(els[i]);
+        Py_uhash_t lane = (Py_uhash_t)PyObject_Hash(els[i]);
         if (lane == (Py_uhash_t)-1) {
             return -1;
         }
