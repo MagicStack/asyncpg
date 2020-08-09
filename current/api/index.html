@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.20.1
+                0.21.0
               </div>
             
           
@@ -180,7 +180,7 @@ URI in <em>dsn</em>, or as specific keyword arguments, or both.
 If both <em>dsn</em> and keyword arguments are specified, the latter
 override the corresponding values parsed from the connection URI.
 The default values for the majority of arguments can be specified
-using <a class="reference external" href="postgresenvvars">environment variables</a>.</p>
+using <a class="reference external" href="https://www.postgresql.org/docs/current/static/libpq-envars.html">environment variables</a>.</p>
 <p>Returns a new <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a> object.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -233,12 +233,16 @@ operating system name of the user running the application.</p>
 or the value of the <code class="docutils literal notranslate"><span class="pre">PGDATABASE</span></code> environment variable, or the
 operating system name of the user running the application.</p>
 </li>
-<li><strong>password</strong> – Password to be used for authentication, if the server requires
+<li><strong>password</strong> – <p>Password to be used for authentication, if the server requires
 one.  If not specified, the value parsed from the <em>dsn</em> argument
 is used, or the value of the <code class="docutils literal notranslate"><span class="pre">PGPASSWORD</span></code> environment variable.
 Note that the use of the environment variable is discouraged as
 other users and applications may be able to read it without needing
-specific privileges.  It is recommended to use <em>passfile</em> instead.</li>
+specific privileges.  It is recommended to use <em>passfile</em> instead.</p>
+<p>Password may be either a string, or a callable that returns a string.
+If a callable is provided, it will be called each time a new connection
+is established.</p>
+</li>
 <li><strong>passfile</strong> – The name of the file used to store passwords
 (defaults to <code class="docutils literal notranslate"><span class="pre">~/.pgpass</span></code>, or <code class="docutils literal notranslate"><span class="pre">%APPDATA%\postgresql\pgpass.conf</span></code>
 on Windows).</li>
@@ -261,7 +265,7 @@ returned by <a class="reference external" href="https://docs.python.org/3/librar
 will be used.</li>
 <li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.8)"><em>dict</em></a>) – An optional dict of server runtime parameters.  Refer to
 PostgreSQL documentation for
-a <a class="reference external" href="serversettings">list of supported options</a>.</li>
+a <a class="reference external" href="https://www.postgresql.org/docs/current/static/runtime-config.html">list of supported options</a>.</li>
 <li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – Class of the returned connection object.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</li>
 </ul>
@@ -302,6 +306,9 @@ for that.</p>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.18.0: </span>Added ability to specify multiple hosts in the <em>dsn</em>
 and <em>host</em> arguments.</p>
+</div>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.21.0: </span>The <em>password</em> argument now accepts a callable or an async function.</p>
 </div>
 </dd></dl>
 
@@ -351,6 +358,24 @@ DEBUG, INFO, or LOG.</p>
 </table>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.12.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.add_termination_listener">
+<code class="descname">add_termination_listener</code><span class="sig-paren">(</span><em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.add_termination_listener"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.add_termination_listener" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a listener that will be called when the connection is closed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>callback</strong> (<em>callable</em>) – A callable receiving one argument:
+<strong>connection</strong>: a Connection the callback is registered with.</td>
+</tr>
+</tbody>
+</table>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.21.0.</span></p>
 </div>
 </dd></dl>
 
@@ -884,6 +909,24 @@ asyncpg that the database schema has changed.</p>
 <dd><p>Remove a listening callback for log messages.</p>
 <div class="versionadded">
 <p><span class="versionmodified">New in version 0.12.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.connection.Connection.remove_termination_listener">
+<code class="descname">remove_termination_listener</code><span class="sig-paren">(</span><em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.remove_termination_listener"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.remove_termination_listener" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a listening callback for connection termination.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>callback</strong> (<em>callable</em>) – The callable that was passed to
+<a class="reference internal" href="#asyncpg.connection.Connection.add_termination_listener" title="asyncpg.connection.Connection.add_termination_listener"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Connection.add_termination_listener()</span></code></a>.</td>
+</tr>
+</tbody>
+</table>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.21.0.</span></p>
 </div>
 </dd></dl>
 
@@ -1570,11 +1613,22 @@ fetch subsets of the query results.</p>
 <p>Can be used either with an <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span></code> block:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">with</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">create_pool</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">,</span>
                                <span class="n">command_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+    <span class="k">await</span> <span class="n">pool</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT 1&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Or to perform multiple operations on a single connection:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">with</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">create_pool</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">,</span>
+                               <span class="n">command_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
     <span class="k">async</span> <span class="k">with</span> <span class="n">pool</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">           CREATE TABLE names (</span>
+<span class="s1">              id serial PRIMARY KEY,</span>
+<span class="s1">              name VARCHAR (255) NOT NULL)</span>
+<span class="s1">        &#39;&#39;&#39;</span><span class="p">)</span>
         <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;SELECT 1&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Or directly with <code class="docutils literal notranslate"><span class="pre">await</span></code>:</p>
+<p>Or directly with <code class="docutils literal notranslate"><span class="pre">await</span></code> (not recommended):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pool</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">create_pool</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">,</span> <span class="n">command_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
 <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="n">pool</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
 <span class="k">try</span><span class="p">:</span>
@@ -2194,7 +2248,7 @@ the BitString’s exact length is lost.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.20.1',
+            VERSION:'0.21.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
