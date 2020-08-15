@@ -12,6 +12,7 @@ import logging
 import time
 import warnings
 
+from . import compat
 from . import connection
 from . import connect_utils
 from . import exceptions
@@ -198,7 +199,7 @@ class PoolConnectionHolder:
                 # If the connection is in cancellation state,
                 # wait for the cancellation
                 started = time.monotonic()
-                await asyncio.wait_for(
+                await compat.wait_for(
                     self._con._protocol._wait_for_cancellation(),
                     budget)
                 if budget is not None:
@@ -623,7 +624,7 @@ class Pool:
         if timeout is None:
             return await _acquire_impl()
         else:
-            return await asyncio.wait_for(
+            return await compat.wait_for(
                 _acquire_impl(), timeout=timeout)
 
     async def release(self, connection, *, timeout=None):

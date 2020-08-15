@@ -636,18 +636,13 @@ async def _connect_addr(
 
     connector = asyncio.ensure_future(connector)
     before = time.monotonic()
-    try:
-        tr, pr = await asyncio.wait_for(
-            connector, timeout=timeout)
-    except asyncio.CancelledError:
-        connector.add_done_callback(_close_leaked_connection)
-        raise
+    tr, pr = await compat.wait_for(connector, timeout=timeout)
     timeout -= time.monotonic() - before
 
     try:
         if timeout <= 0:
             raise asyncio.TimeoutError
-        await asyncio.wait_for(connected, timeout=timeout)
+        await compat.wait_for(connected, timeout=timeout)
     except (Exception, asyncio.CancelledError):
         tr.close()
         raise
@@ -745,12 +740,3 @@ def _create_future(loop):
         return asyncio.Future(loop=loop)
     else:
         return create_future()
-
-
-def _close_leaked_connection(fut):
-    try:
-        tr, pr = fut.result()
-        if tr:
-            tr.close()
-    except asyncio.CancelledError:
-        pass  # hide the exception

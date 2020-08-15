@@ -90,3 +90,19 @@ async def wait_closed(stream):
             # On Windows wait_closed() sometimes propagates
             # ConnectionResetError which is totally unnecessary.
             pass
+
+
+# Workaround for https://bugs.python.org/issue37658
+async def wait_for(fut, timeout):
+    if timeout is None:
+        return await fut
+
+    fut = asyncio.ensure_future(fut)
+
+    try:
+        return await asyncio.wait_for(fut, timeout)
+    except asyncio.CancelledError:
+        if fut.done():
+            return fut.result()
+        else:
+            raise
