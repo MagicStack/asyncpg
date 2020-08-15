@@ -179,6 +179,7 @@
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">connection</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">connect_utils</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">exceptions</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">protocol</span>
 
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -473,7 +474,7 @@
         <span class="s1">&#39;_init&#39;</span><span class="p">,</span> <span class="s1">&#39;_connect_args&#39;</span><span class="p">,</span> <span class="s1">&#39;_connect_kwargs&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_working_addr&#39;</span><span class="p">,</span> <span class="s1">&#39;_working_config&#39;</span><span class="p">,</span> <span class="s1">&#39;_working_params&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_holders&#39;</span><span class="p">,</span> <span class="s1">&#39;_initialized&#39;</span><span class="p">,</span> <span class="s1">&#39;_initializing&#39;</span><span class="p">,</span> <span class="s1">&#39;_closing&#39;</span><span class="p">,</span>
-        <span class="s1">&#39;_closed&#39;</span><span class="p">,</span> <span class="s1">&#39;_connection_class&#39;</span><span class="p">,</span> <span class="s1">&#39;_generation&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;_closed&#39;</span><span class="p">,</span> <span class="s1">&#39;_connection_class&#39;</span><span class="p">,</span> <span class="s1">&#39;_record_class&#39;</span><span class="p">,</span> <span class="s1">&#39;_generation&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_setup&#39;</span><span class="p">,</span> <span class="s1">&#39;_max_queries&#39;</span><span class="p">,</span> <span class="s1">&#39;_max_inactive_connection_lifetime&#39;</span>
     <span class="p">)</span>
 
@@ -486,6 +487,7 @@
                  <span class="n">init</span><span class="p">,</span>
                  <span class="n">loop</span><span class="p">,</span>
                  <span class="n">connection_class</span><span class="p">,</span>
+                 <span class="n">record_class</span><span class="p">,</span>
                  <span class="o">**</span><span class="n">connect_kwargs</span><span class="p">):</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">connect_args</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
@@ -523,6 +525,11 @@
                 <span class="s1">&#39;connection_class is expected to be a subclass of &#39;</span>
                 <span class="s1">&#39;asyncpg.Connection, got </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">connection_class</span><span class="p">))</span>
 
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">record_class</span><span class="p">,</span> <span class="n">protocol</span><span class="o">.</span><span class="n">Record</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s1">&#39;record_class is expected to be a subclass of &#39;</span>
+                <span class="s1">&#39;asyncpg.Record, got </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">record_class</span><span class="p">))</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_minsize</span> <span class="o">=</span> <span class="n">min_size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_maxsize</span> <span class="o">=</span> <span class="n">max_size</span>
 
@@ -536,6 +543,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_working_params</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_connection_class</span> <span class="o">=</span> <span class="n">connection_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_class</span> <span class="o">=</span> <span class="n">record_class</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_closing</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">False</span>
@@ -633,6 +641,7 @@
                 <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_connect_args</span><span class="p">,</span>
                 <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">,</span>
                 <span class="n">connection_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection_class</span><span class="p">,</span>
+                <span class="n">record_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_record_class</span><span class="p">,</span>
                 <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_connect_kwargs</span><span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">_working_addr</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_addr</span>
@@ -648,7 +657,9 @@
                 <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_working_params</span><span class="o">.</span><span class="n">connect_timeout</span><span class="p">,</span>
                 <span class="n">config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_working_config</span><span class="p">,</span>
                 <span class="n">params</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_working_params</span><span class="p">,</span>
-                <span class="n">connection_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection_class</span><span class="p">)</span>
+                <span class="n">connection_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection_class</span><span class="p">,</span>
+                <span class="n">record_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_record_class</span><span class="p">,</span>
+            <span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
@@ -957,6 +968,7 @@
                 <span class="n">init</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">connection_class</span><span class="o">=</span><span class="n">connection</span><span class="o">.</span><span class="n">Connection</span><span class="p">,</span>
+                <span class="n">record_class</span><span class="o">=</span><span class="n">protocol</span><span class="o">.</span><span class="n">Record</span><span class="p">,</span>
                 <span class="o">**</span><span class="n">connect_kwargs</span><span class="p">):</span>
     <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Create a connection pool.</span>
 
@@ -1015,6 +1027,11 @@
 <span class="sd">        The class to use for connections.  Must be a subclass of</span>
 <span class="sd">        :class:`~asyncpg.connection.Connection`.</span>
 
+<span class="sd">    :param type record_class:</span>
+<span class="sd">        If specified, the class to use for records returned by queries on</span>
+<span class="sd">        the connections in this pool.  Must be a subclass of</span>
+<span class="sd">        :class:`~asyncpg.Record`.</span>
+
 <span class="sd">    :param int min_size:</span>
 <span class="sd">        Number of connection the pool will be initialized with.</span>
 
@@ -1065,10 +1082,14 @@
 <span class="sd">       or :meth:`Connection.add_log_listener()</span>
 <span class="sd">       &lt;connection.Connection.add_log_listener&gt;`) present on the connection</span>
 <span class="sd">       at the moment of its release to the pool.</span>
+
+<span class="sd">    .. versionchanged:: 0.22.0</span>
+<span class="sd">       Added the *record_class* parameter.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">Pool</span><span class="p">(</span>
         <span class="n">dsn</span><span class="p">,</span>
         <span class="n">connection_class</span><span class="o">=</span><span class="n">connection_class</span><span class="p">,</span>
+        <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
         <span class="n">min_size</span><span class="o">=</span><span class="n">min_size</span><span class="p">,</span> <span class="n">max_size</span><span class="o">=</span><span class="n">max_size</span><span class="p">,</span>
         <span class="n">max_queries</span><span class="o">=</span><span class="n">max_queries</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">,</span> <span class="n">setup</span><span class="o">=</span><span class="n">setup</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="n">init</span><span class="p">,</span>
         <span class="n">max_inactive_connection_lifetime</span><span class="o">=</span><span class="n">max_inactive_connection_lifetime</span><span class="p">,</span>

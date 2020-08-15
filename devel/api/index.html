@@ -173,7 +173,7 @@
 <span id="asyncpg-api-connection"></span><h2>Connection<a class="headerlink" href="#connection" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="asyncpg.connection.connect">
-<code class="descname">connect</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>host=None</em>, <em>port=None</em>, <em>user=None</em>, <em>password=None</em>, <em>passfile=None</em>, <em>database=None</em>, <em>loop=None</em>, <em>timeout=60</em>, <em>statement_cache_size=100</em>, <em>max_cached_statement_lifetime=300</em>, <em>max_cacheable_statement_size=15360</em>, <em>command_timeout=None</em>, <em>ssl=None</em>, <em>connection_class=&lt;class 'asyncpg.connection.Connection'&gt;</em>, <em>server_settings=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.connect" title="Permalink to this definition">¶</a></dt>
+<code class="descname">connect</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>host=None</em>, <em>port=None</em>, <em>user=None</em>, <em>password=None</em>, <em>passfile=None</em>, <em>database=None</em>, <em>loop=None</em>, <em>timeout=60</em>, <em>statement_cache_size=100</em>, <em>max_cached_statement_lifetime=300</em>, <em>max_cacheable_statement_size=15360</em>, <em>command_timeout=None</em>, <em>ssl=None</em>, <em>connection_class=&lt;class 'asyncpg.connection.Connection'&gt;</em>, <em>record_class=&lt;class 'asyncpg.Record'&gt;</em>, <em>server_settings=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.connect" title="Permalink to this definition">¶</a></dt>
 <dd><p>A coroutine to establish a connection to a PostgreSQL server.</p>
 <p>The connection parameters may be specified either as a connection
 URI in <em>dsn</em>, or as specific keyword arguments, or both.
@@ -266,8 +266,11 @@ will be used.</li>
 <li><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.8)"><em>dict</em></a>) – An optional dict of server runtime parameters.  Refer to
 PostgreSQL documentation for
 a <a class="reference external" href="https://www.postgresql.org/docs/current/static/runtime-config.html">list of supported options</a>.</li>
-<li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – Class of the returned connection object.  Must be a subclass of
+<li><strong>connection_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.8)"><em>type</em></a>) – Class of the returned connection object.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</li>
+<li><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.8)"><em>type</em></a>) – If specified, the class to use for records returned by queries on
+this connection object.  Must be a subclass of
+<a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code></a>.</li>
 </ul>
 </td>
 </tr>
@@ -310,11 +313,14 @@ and <em>host</em> arguments.</p>
 <div class="versionchanged">
 <p><span class="versionmodified">Changed in version 0.21.0: </span>The <em>password</em> argument now accepts a callable or an async function.</p>
 </div>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.22.0: </span>Added the <em>record_class</em> parameter.</p>
+</div>
 </dd></dl>
 
 <dl class="class">
 <dt id="asyncpg.connection.Connection">
-<em class="property">class </em><code class="descname">Connection</code><span class="sig-paren">(</span><em>protocol</em>, <em>transport</em>, <em>loop</em>, <em>addr: (&lt;class 'str'&gt;</em>, <em>&lt;class 'int'&gt;)</em>, <em>config: asyncpg.connect_utils.ConnectionConfiguration</em>, <em>params: asyncpg.connect_utils.ConnectionParameters</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Connection</code><span class="sig-paren">(</span><em>protocol</em>, <em>transport</em>, <em>loop</em>, <em>addr</em>, <em>config: asyncpg.connect_utils.ConnectionConfiguration</em>, <em>params: asyncpg.connect_utils.ConnectionParameters</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection" title="Permalink to this definition">¶</a></dt>
 <dd><p>A representation of a database session.</p>
 <p>Connections are created by calling <a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">connect()</span></code></a>.</p>
 <dl class="method">
@@ -592,7 +598,7 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.cursor">
-<code class="descname">cursor</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>prefetch=None</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.cursor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.cursor" title="Permalink to this definition">¶</a></dt>
+<code class="descname">cursor</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>prefetch=None</em>, <em>timeout=None</em>, <em>record_class=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.cursor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.cursor" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a <em>cursor factory</em> for the specified query.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -603,6 +609,9 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <li><strong>prefetch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><em>int</em></a>) – The number of rows the <em>cursor iterator</em>
 will prefetch (defaults to <code class="docutils literal notranslate"><span class="pre">50</span></code>.)</li>
 <li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.8)"><em>float</em></a>) – Optional timeout in seconds.</li>
+<li><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.8)"><em>type</em></a>) – If specified, the class to use for records returned by this cursor.
+Must be a subclass of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code></a>.  If not specified,
+a per-connection <em>record_class</em> is used.</li>
 </ul>
 </td>
 </tr>
@@ -611,6 +620,9 @@ will prefetch (defaults to <code class="docutils literal notranslate"><span clas
 </tr>
 </tbody>
 </table>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.22.0: </span>Added the <em>record_class</em> parameter.</p>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -694,7 +706,7 @@ it is much more efficient for this purpose.</p>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.fetch">
-<em class="property">coroutine </em><code class="descname">fetch</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.fetch" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">fetch</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>timeout=None</em>, <em>record_class=None</em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.fetch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run a query and return the results as a list of <code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -704,19 +716,26 @@ it is much more efficient for this purpose.</p>
 <li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a>) – Query text.</li>
 <li><strong>args</strong> – Query arguments.</li>
 <li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.8)"><em>float</em></a>) – Optional timeout value in seconds.</li>
+<li><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.8)"><em>type</em></a>) – If specified, the class to use for records returned by this method.
+Must be a subclass of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code></a>.  If not specified,
+a per-connection <em>record_class</em> is used.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Return list:</th><td class="field-body"><p class="first last">A list of <code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code> instances.</p>
+<tr class="field-even field"><th class="field-name">Return list:</th><td class="field-body"><p class="first last">A list of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code></a> instances.  If specified, the
+actual type of list elements would be <em>record_class</em>.</p>
 </td>
 </tr>
 </tbody>
 </table>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.22.0: </span>Added the <em>record_class</em> parameter.</p>
+</div>
 </dd></dl>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.fetchrow">
-<em class="property">coroutine </em><code class="descname">fetchrow</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.fetchrow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.fetchrow" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">fetchrow</code><span class="sig-paren">(</span><em>query</em>, <em>*args</em>, <em>timeout=None</em>, <em>record_class=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.fetchrow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.fetchrow" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run a query and return the first row.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -726,15 +745,22 @@ it is much more efficient for this purpose.</p>
 <li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a>) – Query text</li>
 <li><strong>args</strong> – Query arguments</li>
 <li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.8)"><em>float</em></a>) – Optional timeout value in seconds.</li>
+<li><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.8)"><em>type</em></a>) – If specified, the class to use for the value returned by this
+method.  Must be a subclass of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code></a>.
+If not specified, a per-connection <em>record_class</em> is used.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The first row as a <code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code> instance, or None if
-no records were returned by the query.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The first row as a <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code></a> instance, or None if
+no records were returned by the query.  If specified,
+<em>record_class</em> is used as the type for the result value.</p>
 </td>
 </tr>
 </tbody>
 </table>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.22.0: </span>Added the <em>record_class</em> parameter.</p>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -835,7 +861,7 @@ otherwise.</td>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.prepare">
-<em class="property">coroutine </em><code class="descname">prepare</code><span class="sig-paren">(</span><em>query</em>, <em>*</em>, <em>timeout=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.prepare"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.prepare" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">prepare</code><span class="sig-paren">(</span><em>query</em>, <em>*</em>, <em>timeout=None</em>, <em>record_class=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.prepare"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.prepare" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a <em>prepared statement</em> for the specified query.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -844,6 +870,10 @@ otherwise.</td>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a>) – Text of the query to create a prepared statement for.</li>
 <li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.8)"><em>float</em></a>) – Optional timeout value in seconds.</li>
+<li><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.8)"><em>type</em></a>) – If specified, the class to use for records returned by the
+prepared statement.  Must be a subclass of
+<a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code></a>.  If not specified, a per-connection
+<em>record_class</em> is used.</li>
 </ul>
 </td>
 </tr>
@@ -852,6 +882,9 @@ otherwise.</td>
 </tr>
 </tbody>
 </table>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.22.0: </span>Added the <em>record_class</em> parameter.</p>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -1608,7 +1641,7 @@ fetch subsets of the query results.</p>
 <span id="asyncpg-api-pool"></span><h2>Connection Pools<a class="headerlink" href="#connection-pools" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="asyncpg.pool.create_pool">
-<code class="descname">create_pool</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>min_size=10</em>, <em>max_size=10</em>, <em>max_queries=50000</em>, <em>max_inactive_connection_lifetime=300.0</em>, <em>setup=None</em>, <em>init=None</em>, <em>loop=None</em>, <em>connection_class=&lt;class 'asyncpg.connection.Connection'&gt;</em>, <em>**connect_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#create_pool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.create_pool" title="Permalink to this definition">¶</a></dt>
+<code class="descname">create_pool</code><span class="sig-paren">(</span><em>dsn=None</em>, <em>*</em>, <em>min_size=10</em>, <em>max_size=10</em>, <em>max_queries=50000</em>, <em>max_inactive_connection_lifetime=300.0</em>, <em>setup=None</em>, <em>init=None</em>, <em>loop=None</em>, <em>connection_class=&lt;class 'asyncpg.connection.Connection'&gt;</em>, <em>record_class=&lt;class 'asyncpg.Record'&gt;</em>, <em>**connect_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#create_pool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.pool.create_pool" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a connection pool.</p>
 <p>Can be used either with an <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span></code> block:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">with</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">create_pool</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">,</span>
@@ -1659,6 +1692,9 @@ the following format:
 function.</li>
 <li><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – The class to use for connections.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</li>
+<li><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.8)"><em>type</em></a>) – If specified, the class to use for records returned by queries on
+the connections in this pool.  Must be a subclass of
+<a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code></a>.</li>
 <li><strong>min_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><em>int</em></a>) – Number of connection the pool will be initialized with.</li>
 <li><strong>max_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><em>int</em></a>) – Max number of connections in the pool.</li>
 <li><strong>max_queries</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><em>int</em></a>) – Number of queries after a connection is closed and replaced
@@ -1698,6 +1734,9 @@ if there are any active listeners (added via
 <code class="xref py py-meth docutils literal notranslate"><span class="pre">Connection.add_listener()</span></code>
 or <code class="xref py py-meth docutils literal notranslate"><span class="pre">Connection.add_log_listener()</span></code>) present on the connection
 at the moment of its release to the pool.</p>
+</div>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.22.0: </span>Added the <em>record_class</em> parameter.</p>
 </div>
 </dd></dl>
 

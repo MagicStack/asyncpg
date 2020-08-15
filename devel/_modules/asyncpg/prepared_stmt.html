@@ -267,9 +267,15 @@
 
 <span class="sd">        :return: A :class:`~cursor.CursorFactory` object.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">CursorFactory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span>
-                                    <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">prefetch</span><span class="p">,</span>
-                                    <span class="n">timeout</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">CursorFactory</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span>
+            <span class="n">args</span><span class="p">,</span>
+            <span class="n">prefetch</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">record_class</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 <div class="viewcode-block" id="PreparedStatement.explain"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.explain">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">explain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">analyze</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
