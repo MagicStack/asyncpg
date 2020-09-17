@@ -12,6 +12,7 @@ cdef class PreparedStatementState:
         readonly bint closed
         readonly int refs
         readonly type record_class
+        readonly bint ignore_custom_codec
 
 
         list         row_desc

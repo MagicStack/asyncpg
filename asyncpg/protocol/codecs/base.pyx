@@ -692,18 +692,20 @@ cdef class DataCodecConfig:
 
         return codec
 
-    cdef inline Codec get_codec(self, uint32_t oid, ServerDataFormat format):
+    cdef inline Codec get_codec(self, uint32_t oid, ServerDataFormat format,
+                                bint ignore_custom_codec=False):
         cdef Codec codec
 
-        codec = self.get_any_local_codec(oid)
-        if codec is not None:
-            if codec.format != format:
-                # The codec for this OID has been overridden by
-                # set_{builtin}_type_codec with a different format.
-                # We must respect that and not return a core codec.
-                return None
-            else:
-                return codec
+        if not ignore_custom_codec:
+            codec = self.get_any_local_codec(oid)
+            if codec is not None:
+                if codec.format != format:
+                    # The codec for this OID has been overridden by
+                    # set_{builtin}_type_codec with a different format.
+                    # We must respect that and not return a core codec.
+                    return None
+                else:
+                    return codec
 
         codec = get_core_codec(oid, format)
         if codec is not None:

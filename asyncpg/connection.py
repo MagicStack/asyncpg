@@ -342,13 +342,16 @@ class Connection(metaclass=ConnectionMeta):
         *,
         named: bool=False,
         use_cache: bool=True,
+        ignore_custom_codec=False,
         record_class=None
     ):
         if record_class is None:
             record_class = self._protocol.get_record_class()
 
         if use_cache:
-            statement = self._stmt_cache.get((query, record_class))
+            statement = self._stmt_cache.get(
+                (query, record_class, ignore_custom_codec)
+            )
             if statement is not None:
                 return statement
 
@@ -371,6 +374,7 @@ class Connection(metaclass=ConnectionMeta):
             query,
             timeout,
             record_class=record_class,
+            ignore_custom_codec=ignore_custom_codec,
         )
         need_reprepare = False
         types_with_missing_codecs = statement._init_types()
@@ -415,7 +419,8 @@ class Connection(metaclass=ConnectionMeta):
             )
 
         if use_cache:
-            self._stmt_cache.put((query, record_class), statement)
+            self._stmt_cache.put(
+                (query, record_class, ignore_custom_codec), statement)
 
         # If we've just created a new statement object, check if there
         # are any statements for GC.
@@ -426,7 +431,12 @@ class Connection(metaclass=ConnectionMeta):
 
     async def _introspect_types(self, typeoids, timeout):
         return await self.__execute(
-            self._intro_query, (list(typeoids),), 0, timeout)
+            self._intro_query,
+            (list(typeoids),),
+            0,
+            timeout,
+            ignore_custom_codec=True,
+        )
 
     async def _introspect_type(self, typename, schema):
         if (
@@ -439,20 +449,22 @@ class Connection(metaclass=ConnectionMeta):
                 [typeoid],
                 limit=0,
                 timeout=None,
+                ignore_custom_codec=True,
             )
-            if rows:
-                typeinfo = rows[0]
-            else:
-                typeinfo = None
         else:
-            typeinfo = await self.fetchrow(
-                introspection.TYPE_BY_NAME, typename, schema)
+            rows = await self._execute(
+                introspection.TYPE_BY_NAME,
+                [typename, schema],
+                limit=1,
+                timeout=None,
+                ignore_custom_codec=True,
+            )
 
-        if not typeinfo:
+        if not rows:
             raise ValueError(
                 'unknown type: {}.{}'.format(schema, typename))
 
-        return typeinfo
+        return rows[0]
 
     def cursor(
         self,
@@ -1325,7 +1337,9 @@ class Connection(metaclass=ConnectionMeta):
     def _maybe_gc_stmt(self, stmt):
         if (
             stmt.refs == 0
-            and not self._stmt_cache.has((stmt.query, stmt.record_class))
+            and not self._stmt_cache.has(
+                (stmt.query, stmt.record_class, stmt.ignore_custom_codec)
+            )
         ):
             # If low-level `stmt` isn't referenced from any high-level
             # `PreparedStatement` object and is not in the `_stmt_cache`:
@@ -1589,6 +1603,7 @@ class Connection(metaclass=ConnectionMeta):
         timeout,
         *,
         return_status=False,
+        ignore_custom_codec=False,
         record_class=None
     ):
         with self._stmt_exclusive_section:
@@ -1599,6 +1614,7 @@ class Connection(metaclass=ConnectionMeta):
                 timeout,
                 return_status=return_status,
                 record_class=record_class,
+                ignore_custom_codec=ignore_custom_codec,
             )
         return result
 
@@ -1610,6 +1626,7 @@ class Connection(metaclass=ConnectionMeta):
         timeout,
         *,
         return_status=False,
+        ignore_custom_codec=False,
         record_class=None
     ):
         executor = lambda stmt, timeout: self._protocol.bind_execute(
@@ -1620,6 +1637,7 @@ class Connection(metaclass=ConnectionMeta):
             executor,
             timeout,
             record_class=record_class,
+            ignore_custom_codec=ignore_custom_codec,
         )
 
     async def _executemany(self, query, args, timeout):
@@ -1637,6 +1655,7 @@ class Connection(metaclass=ConnectionMeta):
         timeout,
         retry=True,
         *,
+        ignore_custom_codec=False,
         record_class=None
     ):
         if timeout is None:
@@ -1644,6 +1663,7 @@ class Connection(metaclass=ConnectionMeta):
                 query,
                 None,
                 record_class=record_class,
+                ignore_custom_codec=ignore_custom_codec,
             )
         else:
             before = time.monotonic()
@@ -1651,6 +1671,7 @@ class Connection(metaclass=ConnectionMeta):
                 query,
                 timeout,
                 record_class=record_class,
+                ignore_custom_codec=ignore_custom_codec,
             )
             after = time.monotonic()
             timeout -= after - before

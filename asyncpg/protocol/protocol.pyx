@@ -145,6 +145,7 @@ cdef class BaseProtocol(CoreProtocol):
     async def prepare(self, stmt_name, query, timeout,
                       *,
                       PreparedStatementState state=None,
+                      ignore_custom_codec=False,
                       record_class):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
@@ -161,7 +162,7 @@ cdef class BaseProtocol(CoreProtocol):
             self.last_query = query
             if state is None:
                 state = PreparedStatementState(
-                    stmt_name, query, self, record_class)
+                    stmt_name, query, self, record_class, ignore_custom_codec)
             self.statement = state
         except Exception as ex:
             waiter.set_exception(ex)
