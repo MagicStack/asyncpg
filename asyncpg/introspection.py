@@ -147,6 +147,18 @@ WHERE
 '''
 
 
+TYPE_BY_OID = '''\
+SELECT
+    t.oid,
+    t.typelem     AS elemtype,
+    t.typtype     AS kind
+FROM
+    pg_catalog.pg_type AS t
+WHERE
+    t.oid = $1
+'''
+
+
 # 'b' for a base type, 'd' for a domain, 'e' for enum.
 SCALAR_TYPE_KINDS = (b'b', b'd', b'e')
 

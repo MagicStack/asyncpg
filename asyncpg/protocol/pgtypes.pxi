@@ -216,5 +216,23 @@ BUILTIN_TYPE_NAME_MAP['double precision'] = \
 BUILTIN_TYPE_NAME_MAP['timestamp with timezone'] = \
     BUILTIN_TYPE_NAME_MAP['timestamptz']
 
+BUILTIN_TYPE_NAME_MAP['timestamp without timezone'] = \
+    BUILTIN_TYPE_NAME_MAP['timestamp']
+
 BUILTIN_TYPE_NAME_MAP['time with timezone'] = \
     BUILTIN_TYPE_NAME_MAP['timetz']
+
+BUILTIN_TYPE_NAME_MAP['time without timezone'] = \
+    BUILTIN_TYPE_NAME_MAP['time']
+
+BUILTIN_TYPE_NAME_MAP['char'] = \
+    BUILTIN_TYPE_NAME_MAP['bpchar']
+
+BUILTIN_TYPE_NAME_MAP['character'] = \
+    BUILTIN_TYPE_NAME_MAP['bpchar']
+
+BUILTIN_TYPE_NAME_MAP['character varying'] = \
+    BUILTIN_TYPE_NAME_MAP['varchar']
+
+BUILTIN_TYPE_NAME_MAP['bit varying'] = \
+    BUILTIN_TYPE_NAME_MAP['varbit']
