@@ -440,6 +440,8 @@ class Connection(metaclass=ConnectionMeta):
             )
             if rows:
                 typeinfo = rows[0]
+            else:
+                typeinfo = None
         else:
             typeinfo = await self.fetchrow(
                 introspection.TYPE_BY_NAME, typename, schema)
