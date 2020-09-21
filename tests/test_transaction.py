@@ -211,36 +211,38 @@ class TestTransaction(tb.ConnectedTestCase):
                     await self.con.reset()
 
     async def test_nested_isolation_level(self):
+        set_sql = 'SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL '
         isolation_levels = {
-            None,
-            'read_committed',
-            'repeatable_read',
-            'serializable',
+            'read_committed': 'read committed',
+            'repeatable_read': 'repeatable read',
+            'serializable': 'serializable',
         }
-        for inner in isolation_levels:
-            for outer in isolation_levels:
-                with self.subTest(outer=outer, inner=inner):
-                    async with self.con.transaction(isolation=outer):
-                        if outer and inner and outer != inner:
-                            with self.assertRaisesRegex(
-                                asyncpg.InterfaceError,
-                                'current {!r} != outer {!r}'.format(
-                                    inner, outer
-                                )
-                            ):
-                                async with self.con.transaction(
-                                        isolation=inner,
-                                ):
-                                    pass
-                        elif not outer and inner:
-                            with self.assertWarnsRegex(
-                                asyncpg.InterfaceWarning,
-                                'current {!r}, outer unknown'.format(inner),
-                            ):
-                                async with self.con.transaction(
-                                        isolation=inner,
-                                ):
-                                    pass
+        for inner in [None] + list(isolation_levels):
+            for outer, outer_sql_level in isolation_levels.items():
+                for implicit in [False, True]:
+                    with self.subTest(
+                        implicit=implicit, outer=outer, inner=inner,
+                    ):
+                        if implicit:
+                            await self.con.execute(set_sql + outer_sql_level)
+                            outer_level = None
                         else:
-                            async with self.con.transaction(isolation=inner):
-                                pass
+                            outer_level = outer
+
+                        async with self.con.transaction(isolation=outer_level):
+                            if inner and outer != inner:
+                                with self.assertRaisesRegex(
+                                    asyncpg.InterfaceError,
+                                    'current {!r} != outer {!r}'.format(
+                                        inner, outer
+                                    )
+                                ):
+                                    async with self.con.transaction(
+                                            isolation=inner,
+                                    ):
+                                        pass
+                            else:
+                                async with self.con.transaction(
+                                        isolation=inner,
+                                ):
+                                    pass

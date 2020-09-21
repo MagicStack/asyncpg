@@ -6,7 +6,6 @@
 
 
 import enum
-import warnings
 
 from . import connresource
 from . import exceptions as apg_errors
@@ -21,6 +20,11 @@ class TransactionState(enum.Enum):
 
 
 ISOLATION_LEVELS = {'read_committed', 'serializable', 'repeatable_read'}
+ISOLATION_LEVELS_BY_VALUE = {
+    'read committed': 'read_committed',
+    'serializable': 'serializable',
+    'repeatable read': 'repeatable_read',
+}
 
 
 class Transaction(connresource.ConnectionResource):
@@ -111,20 +115,17 @@ class Transaction(connresource.ConnectionResource):
             con._top_xact = self
         else:
             # Nested transaction block
-            top_xact = con._top_xact
-            if top_xact._isolation is None:
-                if self._isolation:
-                    w = apg_errors.InterfaceWarning(
-                        'nested transaction may have a different isolation '
-                        'level: current {!r}, outer unknown'.format(
-                            self._isolation))
-                    warnings.warn(w)
-            elif self._isolation:
-                if self._isolation != top_xact._isolation:
+            if self._isolation:
+                top_xact_isolation = con._top_xact._isolation
+                if top_xact_isolation is None:
+                    top_xact_isolation = ISOLATION_LEVELS_BY_VALUE[
+                        await self._connection.fetchval(
+                            'SHOW transaction_isolation;')]
+                if self._isolation != top_xact_isolation:
                     raise apg_errors.InterfaceError(
                         'nested transaction has a different isolation level: '
                         'current {!r} != outer {!r}'.format(
-                            self._isolation, top_xact._isolation))
+                            self._isolation, top_xact_isolation))
             self._nested = True
 
         if self._nested:
