@@ -6,6 +6,7 @@
 
 
 import enum
+import warnings
 
 from . import connresource
 from . import exceptions as apg_errors
@@ -36,12 +37,12 @@ class Transaction(connresource.ConnectionResource):
     def __init__(self, connection, isolation, readonly, deferrable):
         super().__init__(connection)
 
-        if isolation not in ISOLATION_LEVELS:
+        if isolation and isolation not in ISOLATION_LEVELS:
             raise ValueError(
                 'isolation is expected to be either of {}, '
                 'got {!r}'.format(ISOLATION_LEVELS, isolation))
 
-        if isolation != 'serializable':
+        if isolation and isolation != 'serializable':
             if readonly:
                 raise ValueError(
                     '"readonly" is only supported for '
@@ -111,19 +112,29 @@ class Transaction(connresource.ConnectionResource):
         else:
             # Nested transaction block
             top_xact = con._top_xact
-            if self._isolation != top_xact._isolation:
-                raise apg_errors.InterfaceError(
-                    'nested transaction has a different isolation level: '
-                    'current {!r} != outer {!r}'.format(
-                        self._isolation, top_xact._isolation))
+            if top_xact._isolation is None:
+                if self._isolation:
+                    w = apg_errors.InterfaceWarning(
+                        'nested transaction may have a different isolation '
+                        'level: current {!r}, outer unknown'.format(
+                            self._isolation))
+                    warnings.warn(w)
+            elif self._isolation:
+                if self._isolation != top_xact._isolation:
+                    raise apg_errors.InterfaceError(
+                        'nested transaction has a different isolation level: '
+                        'current {!r} != outer {!r}'.format(
+                            self._isolation, top_xact._isolation))
             self._nested = True
 
         if self._nested:
             self._id = con._get_unique_id('savepoint')
             query = 'SAVEPOINT {};'.format(self._id)
         else:
-            if self._isolation == 'read_committed':
+            if self._isolation is None:
                 query = 'BEGIN;'
+            elif self._isolation == 'read_committed':
+                query = 'BEGIN ISOLATION LEVEL READ COMMITTED;'
             elif self._isolation == 'repeatable_read':
                 query = 'BEGIN ISOLATION LEVEL REPEATABLE READ;'
             else:

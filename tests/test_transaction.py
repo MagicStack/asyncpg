@@ -179,3 +179,68 @@ class TestTransaction(tb.ConnectedTestCase):
 
         self.assertIsNone(self.con._top_xact)
         self.assertFalse(self.con.is_in_transaction())
+
+    async def test_isolation_level(self):
+        await self.con.reset()
+        default_isolation = await self.con.fetchval(
+            'SHOW default_transaction_isolation'
+        )
+        isolation_levels = {
+            None: default_isolation,
+            'read_committed': 'read committed',
+            'repeatable_read': 'repeatable read',
+            'serializable': 'serializable',
+        }
+        set_sql = 'SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL '
+        get_sql = 'SHOW TRANSACTION ISOLATION LEVEL'
+        for tx_level in isolation_levels:
+            for conn_level in isolation_levels:
+                with self.subTest(conn=conn_level, tx=tx_level):
+                    if conn_level:
+                        await self.con.execute(
+                            set_sql + isolation_levels[conn_level]
+                        )
+                    level = await self.con.fetchval(get_sql)
+                    self.assertEqual(level, isolation_levels[conn_level])
+                    async with self.con.transaction(isolation=tx_level):
+                        level = await self.con.fetchval(get_sql)
+                        self.assertEqual(
+                            level,
+                            isolation_levels[tx_level or conn_level],
+                        )
+                    await self.con.reset()
+
+    async def test_nested_isolation_level(self):
+        isolation_levels = {
+            None,
+            'read_committed',
+            'repeatable_read',
+            'serializable',
+        }
+        for inner in isolation_levels:
+            for outer in isolation_levels:
+                with self.subTest(outer=outer, inner=inner):
+                    async with self.con.transaction(isolation=outer):
+                        if outer and inner and outer != inner:
+                            with self.assertRaisesRegex(
+                                asyncpg.InterfaceError,
+                                'current {!r} != outer {!r}'.format(
+                                    inner, outer
+                                )
+                            ):
+                                async with self.con.transaction(
+                                        isolation=inner,
+                                ):
+                                    pass
+                        elif not outer and inner:
+                            with self.assertWarnsRegex(
+                                asyncpg.InterfaceWarning,
+                                'current {!r}, outer unknown'.format(inner),
+                            ):
+                                async with self.con.transaction(
+                                        isolation=inner,
+                                ):
+                                    pass
+                        else:
+                            async with self.con.transaction(isolation=inner):
+                                pass
