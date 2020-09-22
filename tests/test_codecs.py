@@ -1255,6 +1255,39 @@ class TestCodecs(tb.ConnectedTestCase):
         finally:
             await self.con.execute('DROP DOMAIN custom_codec_t')
 
+    async def test_custom_codec_on_stdsql_types(self):
+        types = [
+            'smallint',
+            'int',
+            'integer',
+            'bigint',
+            'decimal',
+            'real',
+            'double precision',
+            'timestamp with timezone',
+            'time with timezone',
+            'timestamp without timezone',
+            'time without timezone',
+            'char',
+            'character',
+            'character varying',
+            'bit varying',
+            'CHARACTER VARYING'
+        ]
+
+        for t in types:
+            with self.subTest(type=t):
+                try:
+                    await self.con.set_type_codec(
+                        t,
+                        schema='pg_catalog',
+                        encoder=str,
+                        decoder=str,
+                        format='text'
+                    )
+                finally:
+                    await self.con.reset_type_codec(t, schema='pg_catalog')
+
     async def test_custom_codec_on_enum(self):
         """Test encoding/decoding using a custom codec on an enum."""
         await self.con.execute('''

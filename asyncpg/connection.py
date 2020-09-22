@@ -428,6 +428,32 @@ class Connection(metaclass=ConnectionMeta):
         return await self.__execute(
             self._intro_query, (list(typeoids),), 0, timeout)
 
+    async def _introspect_type(self, typename, schema):
+        if (
+            schema == 'pg_catalog'
+            and typename.lower() in protocol.BUILTIN_TYPE_NAME_MAP
+        ):
+            typeoid = protocol.BUILTIN_TYPE_NAME_MAP[typename.lower()]
+            rows = await self._execute(
+                introspection.TYPE_BY_OID,
+                [typeoid],
+                limit=0,
+                timeout=None,
+            )
+            if rows:
+                typeinfo = rows[0]
+            else:
+                typeinfo = None
+        else:
+            typeinfo = await self.fetchrow(
+                introspection.TYPE_BY_NAME, typename, schema)
+
+        if not typeinfo:
+            raise ValueError(
+                'unknown type: {}.{}'.format(schema, typename))
+
+        return typeinfo
+
     def cursor(
         self,
         query,
@@ -1110,12 +1136,7 @@ class Connection(metaclass=ConnectionMeta):
             ``format``.
         """
         self._check_open()
-
-        typeinfo = await self.fetchrow(
-            introspection.TYPE_BY_NAME, typename, schema)
-        if not typeinfo:
-            raise ValueError('unknown type: {}.{}'.format(schema, typename))
-
+        typeinfo = await self._introspect_type(typename, schema)
         if not introspection.is_scalar_type(typeinfo):
             raise ValueError(
                 'cannot use custom codec on non-scalar type {}.{}'.format(
@@ -1142,15 +1163,9 @@ class Connection(metaclass=ConnectionMeta):
         .. versionadded:: 0.12.0
         """
 
-        typeinfo = await self.fetchrow(
-            introspection.TYPE_BY_NAME, typename, schema)
-        if not typeinfo:
-            raise ValueError('unknown type: {}.{}'.format(schema, typename))
-
-        oid = typeinfo['oid']
-
+        typeinfo = await self._introspect_type(typename, schema)
         self._protocol.get_settings().remove_python_codec(
-            oid, typename, schema)
+            typeinfo['oid'], typename, schema)
 
         # Statement cache is no longer valid due to codec changes.
         self._drop_local_statement_cache()
@@ -1191,13 +1206,7 @@ class Connection(metaclass=ConnectionMeta):
             core data type.  Added the *format* keyword argument.
         """
         self._check_open()
-
-        typeinfo = await self.fetchrow(
-            introspection.TYPE_BY_NAME, typename, schema)
-        if not typeinfo:
-            raise exceptions.InterfaceError(
-                'unknown type: {}.{}'.format(schema, typename))
-
+        typeinfo = await self._introspect_type(typename, schema)
         if not introspection.is_scalar_type(typeinfo):
             raise exceptions.InterfaceError(
                 'cannot alias non-scalar type {}.{}'.format(
