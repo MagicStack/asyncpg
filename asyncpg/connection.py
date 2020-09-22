@@ -228,7 +228,7 @@ class Connection(metaclass=ConnectionMeta):
         """
         return self._protocol.get_settings()
 
-    def transaction(self, *, isolation='read_committed', readonly=False,
+    def transaction(self, *, isolation=None, readonly=False,
                     deferrable=False):
         """Create a :class:`~transaction.Transaction` object.
 
@@ -237,7 +237,9 @@ class Connection(metaclass=ConnectionMeta):
 
         :param isolation: Transaction isolation mode, can be one of:
                           `'serializable'`, `'repeatable_read'`,
-                          `'read_committed'`.
+                          `'read_committed'`. If not specified, the behavior
+                          is up to the server and session, which is usually
+                          ``read_committed``.
 
         :param readonly: Specifies whether or not this transaction is
                          read-only.
