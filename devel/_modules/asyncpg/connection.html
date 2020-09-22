@@ -592,6 +592,32 @@
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__execute</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">typeoids</span><span class="p">),),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
 
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_introspect_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">schema</span> <span class="o">==</span> <span class="s1">&#39;pg_catalog&#39;</span>
+            <span class="ow">and</span> <span class="n">typename</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">protocol</span><span class="o">.</span><span class="n">BUILTIN_TYPE_NAME_MAP</span>
+        <span class="p">):</span>
+            <span class="n">typeoid</span> <span class="o">=</span> <span class="n">protocol</span><span class="o">.</span><span class="n">BUILTIN_TYPE_NAME_MAP</span><span class="p">[</span><span class="n">typename</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
+            <span class="n">rows</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span>
+                <span class="n">introspection</span><span class="o">.</span><span class="n">TYPE_BY_OID</span><span class="p">,</span>
+                <span class="p">[</span><span class="n">typeoid</span><span class="p">],</span>
+                <span class="n">limit</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">rows</span><span class="p">:</span>
+                <span class="n">typeinfo</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">typeinfo</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">typeinfo</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">(</span>
+                <span class="n">introspection</span><span class="o">.</span><span class="n">TYPE_BY_NAME</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">typeinfo</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;unknown type: </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">typeinfo</span>
+
 <div class="viewcode-block" id="Connection.cursor"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.cursor">[docs]</a>    <span class="k">def</span> <span class="nf">cursor</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">query</span><span class="p">,</span>
@@ -1274,12 +1300,7 @@
 <span class="sd">            ``format``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
-
-        <span class="n">typeinfo</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">(</span>
-            <span class="n">introspection</span><span class="o">.</span><span class="n">TYPE_BY_NAME</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">typeinfo</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;unknown type: </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
-
+        <span class="n">typeinfo</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_introspect_type</span><span class="p">(</span><span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">introspection</span><span class="o">.</span><span class="n">is_scalar_type</span><span class="p">(</span><span class="n">typeinfo</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s1">&#39;cannot use custom codec on non-scalar type </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
@@ -1306,15 +1327,9 @@
 <span class="sd">        .. versionadded:: 0.12.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="n">typeinfo</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">(</span>
-            <span class="n">introspection</span><span class="o">.</span><span class="n">TYPE_BY_NAME</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">typeinfo</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;unknown type: </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
-
-        <span class="n">oid</span> <span class="o">=</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;oid&#39;</span><span class="p">]</span>
-
+        <span class="n">typeinfo</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_introspect_type</span><span class="p">(</span><span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">remove_python_codec</span><span class="p">(</span>
-            <span class="n">oid</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
+            <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;oid&#39;</span><span class="p">],</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
 
         <span class="c1"># Statement cache is no longer valid due to codec changes.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_statement_cache</span><span class="p">()</span></div>
@@ -1355,13 +1370,7 @@
 <span class="sd">            core data type.  Added the *format* keyword argument.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
-
-        <span class="n">typeinfo</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">(</span>
-            <span class="n">introspection</span><span class="o">.</span><span class="n">TYPE_BY_NAME</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">typeinfo</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
-                <span class="s1">&#39;unknown type: </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
-
+        <span class="n">typeinfo</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_introspect_type</span><span class="p">(</span><span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">introspection</span><span class="o">.</span><span class="n">is_scalar_type</span><span class="p">(</span><span class="n">typeinfo</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
                 <span class="s1">&#39;cannot alias non-scalar type </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
