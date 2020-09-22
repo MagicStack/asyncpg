@@ -392,7 +392,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="Connection.transaction"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.transaction">[docs]</a>    <span class="k">def</span> <span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">isolation</span><span class="o">=</span><span class="s1">&#39;read_committed&#39;</span><span class="p">,</span> <span class="n">readonly</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<div class="viewcode-block" id="Connection.transaction"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.transaction">[docs]</a>    <span class="k">def</span> <span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">isolation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">readonly</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                     <span class="n">deferrable</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create a :class:`~transaction.Transaction` object.</span>
 
@@ -401,7 +401,9 @@
 
 <span class="sd">        :param isolation: Transaction isolation mode, can be one of:</span>
 <span class="sd">                          `&#39;serializable&#39;`, `&#39;repeatable_read&#39;`,</span>
-<span class="sd">                          `&#39;read_committed&#39;`.</span>
+<span class="sd">                          `&#39;read_committed&#39;`. If not specified, the behavior</span>
+<span class="sd">                          is up to the server and session, which is usually</span>
+<span class="sd">                          ``read_committed``.</span>
 
 <span class="sd">        :param readonly: Specifies whether or not this transaction is</span>
 <span class="sd">                         read-only.</span>

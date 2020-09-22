@@ -1149,7 +1149,7 @@ format.</p>
 
 <dl class="method">
 <dt id="asyncpg.connection.Connection.transaction">
-<code class="descname">transaction</code><span class="sig-paren">(</span><em>*</em>, <em>isolation='read_committed'</em>, <em>readonly=False</em>, <em>deferrable=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.transaction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.transaction" title="Permalink to this definition">¶</a></dt>
+<code class="descname">transaction</code><span class="sig-paren">(</span><em>*</em>, <em>isolation=None</em>, <em>readonly=False</em>, <em>deferrable=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.transaction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.connection.Connection.transaction" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a <code class="xref py py-class docutils literal notranslate"><span class="pre">Transaction</span></code> object.</p>
 <p>Refer to <a class="reference external" href="https://www.postgresql.org/docs/current/static/sql-set-transaction.html">PostgreSQL documentation</a> on the meaning of transaction
 parameters.</p>
@@ -1160,7 +1160,9 @@ parameters.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>isolation</strong> – Transaction isolation mode, can be one of:
 <cite>‘serializable’</cite>, <cite>‘repeatable_read’</cite>,
-<cite>‘read_committed’</cite>.</li>
+<cite>‘read_committed’</cite>. If not specified, the behavior
+is up to the server and session, which is usually
+<code class="docutils literal notranslate"><span class="pre">read_committed</span></code>.</li>
 <li><strong>readonly</strong> – Specifies whether or not this transaction is
 read-only.</li>
 <li><strong>deferrable</strong> – Specifies whether or not this transaction is
