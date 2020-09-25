@@ -209,7 +209,9 @@ cdef _write_textarray_data(ConnectionSettings settings, object obj,
 
                 try:
                     if not apg_strcasecmp_char(elem_str, b'NULL'):
-                        array_data.write_bytes(b'"NULL"')
+                        array_data.write_byte(b'"')
+                        array_data.write_cstr(elem_str, 4)
+                        array_data.write_byte(b'"')
                     else:
                         quoted_elem_len = elem_len
                         need_quoting = False
