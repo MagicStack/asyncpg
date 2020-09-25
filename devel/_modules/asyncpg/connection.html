@@ -506,13 +506,16 @@
         <span class="o">*</span><span class="p">,</span>
         <span class="n">named</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">use_cache</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
         <span class="k">if</span> <span class="n">record_class</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">record_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_record_class</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="n">use_cache</span><span class="p">:</span>
-            <span class="n">statement</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">query</span><span class="p">,</span> <span class="n">record_class</span><span class="p">))</span>
+            <span class="n">statement</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">record_class</span><span class="p">,</span> <span class="n">ignore_custom_codec</span><span class="p">)</span>
+            <span class="p">)</span>
             <span class="k">if</span> <span class="n">statement</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">statement</span>
 
@@ -535,6 +538,7 @@
             <span class="n">query</span><span class="p">,</span>
             <span class="n">timeout</span><span class="p">,</span>
             <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+            <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="n">ignore_custom_codec</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">need_reprepare</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="n">types_with_missing_codecs</span> <span class="o">=</span> <span class="n">statement</span><span class="o">.</span><span class="n">_init_types</span><span class="p">()</span>
@@ -579,7 +583,8 @@
             <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">use_cache</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">query</span><span class="p">,</span> <span class="n">record_class</span><span class="p">),</span> <span class="n">statement</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">put</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">record_class</span><span class="p">,</span> <span class="n">ignore_custom_codec</span><span class="p">),</span> <span class="n">statement</span><span class="p">)</span>
 
         <span class="c1"># If we&#39;ve just created a new statement object, check if there</span>
         <span class="c1"># are any statements for GC.</span>
@@ -590,7 +595,12 @@
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_introspect_types</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typeoids</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__execute</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">typeoids</span><span class="p">),),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span><span class="p">,</span>
+            <span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">typeoids</span><span class="p">),),</span>
+            <span class="mi">0</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="p">,</span>
+            <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_introspect_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">):</span>
         <span class="k">if</span> <span class="p">(</span>
@@ -603,20 +613,22 @@
                 <span class="p">[</span><span class="n">typeoid</span><span class="p">],</span>
                 <span class="n">limit</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                 <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="k">if</span> <span class="n">rows</span><span class="p">:</span>
-                <span class="n">typeinfo</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">typeinfo</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">typeinfo</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">(</span>
-                <span class="n">introspection</span><span class="o">.</span><span class="n">TYPE_BY_NAME</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
+            <span class="n">rows</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span>
+                <span class="n">introspection</span><span class="o">.</span><span class="n">TYPE_BY_NAME</span><span class="p">,</span>
+                <span class="p">[</span><span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">],</span>
+                <span class="n">limit</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">typeinfo</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">rows</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s1">&#39;unknown type: </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
 
-        <span class="k">return</span> <span class="n">typeinfo</span>
+        <span class="k">return</span> <span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
 <div class="viewcode-block" id="Connection.cursor"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.cursor">[docs]</a>    <span class="k">def</span> <span class="nf">cursor</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -1489,7 +1501,9 @@
     <span class="k">def</span> <span class="nf">_maybe_gc_stmt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stmt</span><span class="p">):</span>
         <span class="k">if</span> <span class="p">(</span>
             <span class="n">stmt</span><span class="o">.</span><span class="n">refs</span> <span class="o">==</span> <span class="mi">0</span>
-            <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">has</span><span class="p">((</span><span class="n">stmt</span><span class="o">.</span><span class="n">query</span><span class="p">,</span> <span class="n">stmt</span><span class="o">.</span><span class="n">record_class</span><span class="p">))</span>
+            <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">has</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">stmt</span><span class="o">.</span><span class="n">query</span><span class="p">,</span> <span class="n">stmt</span><span class="o">.</span><span class="n">record_class</span><span class="p">,</span> <span class="n">stmt</span><span class="o">.</span><span class="n">ignore_custom_codec</span><span class="p">)</span>
+            <span class="p">)</span>
         <span class="p">):</span>
             <span class="c1"># If low-level `stmt` isn&#39;t referenced from any high-level</span>
             <span class="c1"># `PreparedStatement` object and is not in the `_stmt_cache`:</span>
@@ -1753,6 +1767,7 @@
         <span class="n">timeout</span><span class="p">,</span>
         <span class="o">*</span><span class="p">,</span>
         <span class="n">return_status</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_exclusive_section</span><span class="p">:</span>
@@ -1763,6 +1778,7 @@
                 <span class="n">timeout</span><span class="p">,</span>
                 <span class="n">return_status</span><span class="o">=</span><span class="n">return_status</span><span class="p">,</span>
                 <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+                <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="n">ignore_custom_codec</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="n">result</span>
 
@@ -1774,6 +1790,7 @@
         <span class="n">timeout</span><span class="p">,</span>
         <span class="o">*</span><span class="p">,</span>
         <span class="n">return_status</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
         <span class="n">executor</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">stmt</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span>
@@ -1784,6 +1801,7 @@
             <span class="n">executor</span><span class="p">,</span>
             <span class="n">timeout</span><span class="p">,</span>
             <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+            <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="n">ignore_custom_codec</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_executemany</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
@@ -1801,6 +1819,7 @@
         <span class="n">timeout</span><span class="p">,</span>
         <span class="n">retry</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="o">*</span><span class="p">,</span>
+        <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
         <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -1808,6 +1827,7 @@
                 <span class="n">query</span><span class="p">,</span>
                 <span class="kc">None</span><span class="p">,</span>
                 <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+                <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="n">ignore_custom_codec</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">before</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
@@ -1815,6 +1835,7 @@
                 <span class="n">query</span><span class="p">,</span>
                 <span class="n">timeout</span><span class="p">,</span>
                 <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+                <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="n">ignore_custom_codec</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">after</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
             <span class="n">timeout</span> <span class="o">-=</span> <span class="n">after</span> <span class="o">-</span> <span class="n">before</span>
