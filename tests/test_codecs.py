@@ -1774,6 +1774,43 @@ class TestCodecs(tb.ConnectedTestCase):
         st = await self.con.prepare('rollback')
         self.assertTupleEqual(st.get_attributes(), ())
 
+    async def test_array_with_custom_json_text_codec(self):
+        import json
+
+        await self.con.execute('CREATE TABLE tab (id serial, val json[]);')
+        insert_sql = 'INSERT INTO tab (val) VALUES (cast($1 AS json[]));'
+        query_sql = 'SELECT val FROM tab ORDER BY id DESC;'
+        try:
+            for custom_codec in [False, True]:
+                if custom_codec:
+                    await self.con.set_type_codec(
+                        'json',
+                        encoder=lambda v: v,
+                        decoder=json.loads,
+                        schema="pg_catalog",
+                    )
+
+                for val in ['"null"', '22', 'null', '[2]', '{"a": null}']:
+                    await self.con.execute(insert_sql, [val])
+                    result = await self.con.fetchval(query_sql)
+                    if custom_codec:
+                        self.assertEqual(result, [json.loads(val)])
+                    else:
+                        self.assertEqual(result, [val])
+
+                await self.con.execute(insert_sql, [None])
+                result = await self.con.fetchval(query_sql)
+                self.assertEqual(result, [None])
+
+                await self.con.execute(insert_sql, None)
+                result = await self.con.fetchval(query_sql)
+                self.assertEqual(result, None)
+
+        finally:
+            await self.con.execute('''
+                DROP TABLE tab;
+            ''')
+
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
 class TestCodecsLargeOIDs(tb.ConnectedTestCase):
