@@ -43,6 +43,20 @@ class TestIntrospection(tb.ConnectedTestCase):
 
         super().tearDownClass()
 
+    def setUp(self):
+        super().setUp()
+        self.loop.run_until_complete(self._add_custom_codec(self.con))
+
+    async def _add_custom_codec(self, conn):
+        # mess up with the codec - builtin introspection shouldn't be affected
+        await conn.set_type_codec(
+            "oid",
+            schema="pg_catalog",
+            encoder=lambda value: None,
+            decoder=lambda value: None,
+            format="text",
+        )
+
     @tb.with_connection_options(database='asyncpg_intro_test')
     async def test_introspection_on_large_db(self):
         await self.con.execute(
@@ -142,6 +156,7 @@ class TestIntrospection(tb.ConnectedTestCase):
         # query would cause introspection to retry.
         slow_intro_conn = await self.connect(
             connection_class=SlowIntrospectionConnection)
+        await self._add_custom_codec(slow_intro_conn)
         try:
             await self.con.execute('''
                 CREATE DOMAIN intro_1_t AS int;

@@ -16,7 +16,8 @@ cdef class PreparedStatementState:
         str name,
         str query,
         BaseProtocol protocol,
-        type record_class
+        type record_class,
+        bint ignore_custom_codec
     ):
         self.name = name
         self.query = query
@@ -28,6 +29,7 @@ cdef class PreparedStatementState:
         self.closed = False
         self.refs = 0
         self.record_class = record_class
+        self.ignore_custom_codec = ignore_custom_codec
 
     def _get_parameters(self):
         cdef Codec codec
@@ -205,7 +207,8 @@ cdef class PreparedStatementState:
             cols_mapping[col_name] = i
             cols_names.append(col_name)
             oid = row[3]
-            codec = self.settings.get_data_codec(oid)
+            codec = self.settings.get_data_codec(
+                oid, ignore_custom_codec=self.ignore_custom_codec)
             if codec is None or not codec.has_decoder():
                 raise exceptions.InternalClientError(
                     'no decoder for OID {}'.format(oid))
@@ -230,7 +233,8 @@ cdef class PreparedStatementState:
 
         for i from 0 <= i < self.args_num:
             p_oid = self.parameters_desc[i]
-            codec = self.settings.get_data_codec(p_oid)
+            codec = self.settings.get_data_codec(
+                p_oid, ignore_custom_codec=self.ignore_custom_codec)
             if codec is None or not codec.has_encoder():
                 raise exceptions.InternalClientError(
                     'no encoder for OID {}'.format(p_oid))

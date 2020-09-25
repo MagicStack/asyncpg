@@ -87,14 +87,18 @@ cdef class ConnectionSettings(pgproto.CodecContext):
                                                  typekind, alias_to, _format)
 
     cpdef inline Codec get_data_codec(self, uint32_t oid,
-                                      ServerDataFormat format=PG_FORMAT_ANY):
+                                      ServerDataFormat format=PG_FORMAT_ANY,
+                                      bint ignore_custom_codec=False):
         if format == PG_FORMAT_ANY:
-            codec = self._data_codecs.get_codec(oid, PG_FORMAT_BINARY)
+            codec = self._data_codecs.get_codec(
+                oid, PG_FORMAT_BINARY, ignore_custom_codec)
             if codec is None:
-                codec = self._data_codecs.get_codec(oid, PG_FORMAT_TEXT)
+                codec = self._data_codecs.get_codec(
+                    oid, PG_FORMAT_TEXT, ignore_custom_codec)
             return codec
         else:
-            return self._data_codecs.get_codec(oid, format)
+            return self._data_codecs.get_codec(
+                oid, format, ignore_custom_codec)
 
     def __getattr__(self, name):
         if not name.startswith('_'):
