@@ -652,6 +652,7 @@ async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
     if loop is None:
         loop = asyncio.get_event_loop()
 
+    query_logging = kwargs.pop('query_logging', False)
     addrs, params, config = _parse_connect_arguments(timeout=timeout, **kwargs)
 
     last_error = None
@@ -667,7 +668,7 @@ async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
                 config=config,
                 connection_class=connection_class,
                 record_class=record_class,
-                query_logging=kwargs.get('query_logging', False)
+                query_logging=query_logging
             )
         except (OSError, asyncio.TimeoutError, ConnectionError) as ex:
             last_error = ex
