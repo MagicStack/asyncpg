@@ -643,7 +643,8 @@ async def _connect_addr(
         tr.close()
         raise
 
-    con = connection_class(pr, tr, loop, addr, config, params_input, query_logging)
+    con = connection_class(pr, tr, loop, addr, config, params_input,
+                           query_logging)
     pr.set_connection(con)
     return con
 

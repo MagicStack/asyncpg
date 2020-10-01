@@ -239,7 +239,7 @@ class TestPool(tb.ConnectedTestCase):
             with self.assertRaisesRegex(
                     asyncpg.InterfaceError,
                     r'cannot call Cursor\.forward.*released '
-                    r'back to the pool'.format(meth=meth)):
+                    r'back to the pool'):
 
                 c.forward(1)
 
