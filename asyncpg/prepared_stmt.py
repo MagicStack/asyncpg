@@ -212,6 +212,10 @@ class PreparedStatement(connresource.ConnectionResource):
 
         .. versionadded:: 0.22.0
         """
+        if self._connection._query_logger:
+            self._connection._query_logger.log(
+                5, 'Executing %s with arguments: %r', self._state.name, args
+            )
         return await self.__do_execute(
             lambda protocol: protocol.bind_execute_many(
                 self._state, args, '', timeout))
@@ -230,6 +234,11 @@ class PreparedStatement(connresource.ConnectionResource):
             raise
 
     async def __bind_execute(self, args, limit, timeout):
+        if self._connection._query_logger:
+            self._connection._query_logger.log(
+                5, 'Executing %s with limit %r and arguments: %r',
+                self._state.name, limit, args
+            )
         data, status, _ = await self.__do_execute(
             lambda protocol: protocol.bind_execute(
                 self._state, args, '', limit, True, timeout))

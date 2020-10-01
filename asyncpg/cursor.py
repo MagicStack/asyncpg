@@ -103,6 +103,10 @@ class BaseCursor(connresource.ConnectionResource):
         self._exhausted = False
         self._query = query
         self._record_class = record_class
+        logger = connection._query_logger
+        if logger:
+            logger.debug('Created cursor for query', query)
+            logger.log(5, 'Cursor query arguments %r', args)
 
     def _check_ready(self):
         if self._state is None:
@@ -126,8 +130,15 @@ class BaseCursor(connresource.ConnectionResource):
 
         con = self._connection
         protocol = con._protocol
+        logger = con._query_logger
 
         self._portal_name = con._get_unique_id('portal')
+        if logger:
+            logger.log(5, 'Opened cursor portal %r for query: %s',
+                       self._portal_name, self._query)
+            logger.log(5, 'Fetching %d records from cursor %r', n,
+                       self._portal_name)
+
         buffer, _, self._exhausted = await protocol.bind_execute(
             self._state, self._args, self._portal_name, n, True, timeout)
         return buffer
@@ -143,6 +154,10 @@ class BaseCursor(connresource.ConnectionResource):
         protocol = con._protocol
 
         self._portal_name = con._get_unique_id('portal')
+        if con._query_logger:
+            con._query_logger.log(5, 'Opened cursor portal %r for query: %s',
+                                  self._portal_name, self._query)
+
         buffer = await protocol.bind(self._state, self._args,
                                      self._portal_name,
                                      timeout)
@@ -154,6 +169,11 @@ class BaseCursor(connresource.ConnectionResource):
         if not self._portal_name:
             raise exceptions.InterfaceError(
                 'cursor does not have an open portal')
+
+        if self._connection._query_logger:
+            self._connection._query_logger.log(
+                5, 'Fetching %d records from cursor %r', n, self._portal_name
+            )
 
         protocol = self._connection._protocol
         buffer, _, self._exhausted = await protocol.execute(
