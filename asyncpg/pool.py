@@ -308,7 +308,7 @@ class Pool:
 
     __slots__ = (
         '_queue', '_loop', '_minsize', '_maxsize',
-        '_init', '_connect_args', '_connect_kwargs',
+        '_init', '_connect_args', '_connect_kwargs', '_query_logging',
         '_working_addr', '_working_config', '_working_params',
         '_holders', '_initialized', '_initializing', '_closing',
         '_closed', '_connection_class', '_record_class', '_generation',
@@ -325,6 +325,7 @@ class Pool:
                  loop,
                  connection_class,
                  record_class,
+                 query_logging=False,
                  **connect_kwargs):
 
         if len(connect_args) > 1:
@@ -393,6 +394,7 @@ class Pool:
         self._max_queries = max_queries
         self._max_inactive_connection_lifetime = \
             max_inactive_connection_lifetime
+        self._query_logging = query_logging
 
     async def _async__init__(self):
         if self._initialized:
@@ -479,6 +481,7 @@ class Pool:
                 loop=self._loop,
                 connection_class=self._connection_class,
                 record_class=self._record_class,
+                query_logging=self._query_logging,
                 **self._connect_kwargs)
 
             self._working_addr = con._addr
@@ -496,6 +499,7 @@ class Pool:
                 params=self._working_params,
                 connection_class=self._connection_class,
                 record_class=self._record_class,
+                query_logging=self._query_logging,
             )
 
         if self._init is not None:
