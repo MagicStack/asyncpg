@@ -1767,7 +1767,7 @@ async def connect(dsn=None, *,
                   connection_class=Connection,
                   record_class=protocol.Record,
                   server_settings=None):
-    r"""A coroutine to establish a connection to a PostgreSQL server.
+    """A coroutine to establish a connection to a PostgreSQL server.
 
     The connection parameters may be specified either as a connection
     URI in *dsn*, or as specific keyword arguments, or both.
@@ -1851,7 +1851,7 @@ async def connect(dsn=None, *,
 
     :param passfile:
         The name of the file used to store passwords
-        (defaults to ``~/.pgpass``, or ``%APPDATA%\postgresql\pgpass.conf``
+        (defaults to ``~/.pgpass``, or ``%APPDATA%\\postgresql\\pgpass.conf``
         on Windows).
 
     :param loop:
