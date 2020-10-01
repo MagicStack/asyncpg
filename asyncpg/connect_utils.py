@@ -598,7 +598,8 @@ async def _connect_addr(
     params,
     config,
     connection_class,
-    record_class
+    record_class,
+    query_logging
 ):
     assert loop is not None
 
@@ -642,7 +643,7 @@ async def _connect_addr(
         tr.close()
         raise
 
-    con = connection_class(pr, tr, loop, addr, config, params_input)
+    con = connection_class(pr, tr, loop, addr, config, params_input, query_logging)
     pr.set_connection(con)
     return con
 
@@ -666,6 +667,7 @@ async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
                 config=config,
                 connection_class=connection_class,
                 record_class=record_class,
+                query_logging=kwargs.get('query_logging', False)
             )
         except (OSError, asyncio.TimeoutError, ConnectionError) as ex:
             last_error = ex

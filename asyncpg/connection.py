@@ -10,6 +10,7 @@ import asyncpg
 import collections
 import collections.abc
 import itertools
+import logging
 import sys
 import time
 import traceback
@@ -41,7 +42,7 @@ class Connection(metaclass=ConnectionMeta):
     """
 
     __slots__ = ('_protocol', '_transport', '_loop',
-                 '_top_xact', '_aborted',
+                 '_top_xact', '_aborted', '_query_logger',
                  '_pool_release_ctr', '_stmt_cache', '_stmts_to_close',
                  '_listeners', '_server_version', '_server_caps',
                  '_intro_query', '_reset_query', '_proxy',
@@ -52,7 +53,8 @@ class Connection(metaclass=ConnectionMeta):
     def __init__(self, protocol, transport, loop,
                  addr,
                  config: connect_utils._ClientConfiguration,
-                 params: connect_utils._ConnectionParameters):
+                 params: connect_utils._ConnectionParameters,
+                 query_logging=False):
         self._protocol = protocol
         self._transport = transport
         self._loop = loop
@@ -66,6 +68,11 @@ class Connection(metaclass=ConnectionMeta):
         self._addr = addr
         self._config = config
         self._params = params
+
+        if query_logging:
+            # use distinct logger name
+            self._query_logger = logging.getLogger('asyncpg.query')
+            self._query_logger.info('Query logging enabled')
 
         self._stmt_cache = _StatementCache(
             loop=loop,
@@ -294,6 +301,8 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
 
         if not args:
+            if self._query_logger:
+                self._query_logger.debug('Executing: %s', query)
             return await self._protocol.query(query, timeout)
 
         _, status, _ = await self._execute(
@@ -356,6 +365,9 @@ class Connection(metaclass=ConnectionMeta):
                 (query, record_class, ignore_custom_codec)
             )
             if statement is not None:
+                if self._query_logger:
+                    self._query_logger.debug('Cache hit %s for query: %s',
+                                             statement.name, query)
                 return statement
 
             # Only use the cache when:
@@ -366,6 +378,15 @@ class Connection(metaclass=ConnectionMeta):
                     self._config.max_cacheable_statement_size and
                     len(query) > self._config.max_cacheable_statement_size):
                 use_cache = False
+
+                if self._query_logger:
+                    self._query_logger.debug(
+                        # cut query length by max_cacheable_statement_size
+                        'Uncachable query: %.{}s...'.format(
+                            self._config.max_cacheable_statement_size
+                        ),
+                        query
+                    )
 
         if use_cache or named:
             stmt_name = self._get_unique_id('stmt')
@@ -424,6 +445,11 @@ class Connection(metaclass=ConnectionMeta):
         if use_cache:
             self._stmt_cache.put(
                 (query, record_class, ignore_custom_codec), statement)
+
+        if self._query_logger:
+            self._query_logger.debug('New cached query %s: %s' if use_cache
+                                     else 'Prepared query %s: %s',
+                                     statement.name, query)
 
         # If we've just created a new statement object, check if there
         # are any statements for GC.
@@ -986,6 +1012,8 @@ class Connection(metaclass=ConnectionMeta):
             writer = _writer
 
         try:
+            if self._query_logger:
+                self._query_logger.debug('Copy out query: %s', copy_stmt)
             return await self._protocol.copy_out(copy_stmt, writer, timeout)
         finally:
             if opened_by_us:
@@ -1038,6 +1066,8 @@ class Connection(metaclass=ConnectionMeta):
             reader = _Reader()
 
         try:
+            if self._query_logger:
+                self._query_logger.debug('Copy in query: %s', copy_stmt)
             return await self._protocol.copy_in(
                 copy_stmt, reader, data, None, None, timeout)
         finally:
@@ -1045,6 +1075,8 @@ class Connection(metaclass=ConnectionMeta):
                 await run_in_executor(None, f.close)
 
     async def _copy_in_records(self, copy_stmt, records, intro_stmt, timeout):
+        if self._query_logger:
+            self._query_logger.debug('Copy in query: %s', copy_stmt)
         return await self._protocol.copy_in(
             copy_stmt, None, None, records, intro_stmt, timeout)
 
@@ -1656,6 +1688,11 @@ class Connection(metaclass=ConnectionMeta):
         executor = lambda stmt, timeout: self._protocol.bind_execute(
             stmt, args, '', limit, return_status, timeout)
         timeout = self._protocol._get_timeout(timeout)
+
+        if self._query_logger:
+            self._query_logger.debug('Executing query: %s', query)
+            self._query_logger.log(5, 'Arguments: %r', args)
+
         return await self._do_execute(
             query,
             executor,
@@ -1668,6 +1705,11 @@ class Connection(metaclass=ConnectionMeta):
         executor = lambda stmt, timeout: self._protocol.bind_execute_many(
             stmt, args, '', timeout)
         timeout = self._protocol._get_timeout(timeout)
+
+        if self._query_logger:
+            self._query_logger.debug('Executemany query: %s', query)
+            self._query_logger.log(5, 'Arguments: %r', args)
+
         with self._stmt_exclusive_section:
             result, _ = await self._do_execute(query, executor, timeout)
         return result
@@ -1766,7 +1808,8 @@ async def connect(dsn=None, *,
                   ssl=None,
                   connection_class=Connection,
                   record_class=protocol.Record,
-                  server_settings=None):
+                  server_settings=None,
+                  query_logging=False):
     """A coroutine to establish a connection to a PostgreSQL server.
 
     The connection parameters may be specified either as a connection
@@ -1920,6 +1963,10 @@ async def connect(dsn=None, *,
         this connection object.  Must be a subclass of
         :class:`~asyncpg.Record`.
 
+    :param bool query_logging:
+        If set, a logger named `asyncpg.query` will be created and used for
+        query and query argument logging.
+
     :return: A :class:`~asyncpg.connection.Connection` instance.
 
     Example:
@@ -2004,6 +2051,7 @@ async def connect(dsn=None, *,
         statement_cache_size=statement_cache_size,
         max_cached_statement_lifetime=max_cached_statement_lifetime,
         max_cacheable_statement_size=max_cacheable_statement_size,
+        query_logging=query_logging
     )
 
 
