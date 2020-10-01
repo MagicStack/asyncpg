@@ -73,6 +73,8 @@ class Connection(metaclass=ConnectionMeta):
             # use distinct logger name
             self._query_logger = logging.getLogger('asyncpg.query')
             self._query_logger.info('Query logging enabled')
+        else:
+            self._query_logger = None
 
         self._stmt_cache = _StatementCache(
             loop=loop,
