@@ -570,6 +570,8 @@ class Connection(metaclass=ConnectionMeta):
         use_cache: bool=False,
         record_class=None
     ):
+        if self._query_logger:
+            self._query_logger.debug('Preparing query: %s', query)
         self._check_open()
         stmt = await self._get_statement(
             query,
