@@ -368,8 +368,7 @@ class Connection(metaclass=ConnectionMeta):
             )
             if statement is not None:
                 if self._query_logger:
-                    self._query_logger.debug('Cache hit %s for query: %s',
-                                             statement.name, query)
+                    self._query_logger.debug('Cache hit: %s', statement.name)
                 return statement
 
             # Only use the cache when:
@@ -449,9 +448,9 @@ class Connection(metaclass=ConnectionMeta):
                 (query, record_class, ignore_custom_codec), statement)
 
         if self._query_logger:
-            self._query_logger.debug('New cached query %s: %s' if use_cache
-                                     else 'Prepared query %s: %s',
-                                     statement.name, query)
+            self._query_logger.debug('New cached query: %s' if use_cache
+                                     else 'Prepared query: %s',
+                                     statement.name)
 
         # If we've just created a new statement object, check if there
         # are any statements for GC.
