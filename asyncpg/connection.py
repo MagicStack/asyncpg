@@ -381,9 +381,10 @@ class Connection(metaclass=ConnectionMeta):
                 use_cache = False
 
                 if self._query_logger:
-                    self._query_logger.debug(
+                    self._query_logger.log(
+                        5,
                         # cut query length by max_cacheable_statement_size
-                        'Uncachable query: %.{}s...'.format(
+                        'Uncacheable query: %.{}s...'.format(
                             self._config.max_cacheable_statement_size
                         ),
                         query
