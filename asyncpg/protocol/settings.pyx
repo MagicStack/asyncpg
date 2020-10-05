@@ -107,7 +107,7 @@ cdef class ConnectionSettings(pgproto.CodecContext):
             except KeyError:
                 raise AttributeError(name) from None
 
-        return object.__getattr__(self, name)
+        return object.__getattribute__(self, name)
 
     def __repr__(self):
         return '<ConnectionSettings {!r}>'.format(self._settings)
