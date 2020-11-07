@@ -291,6 +291,7 @@ setuptools.setup(
             extra_compile_args=CFLAGS,
             extra_link_args=LDFLAGS),
     ],
+    install_requires=['typing-extensions>=3.7.4.3;python_version<"3.8"'],
     cmdclass={'build_ext': build_ext, 'build_py': build_py, 'sdist': sdist},
     test_suite='tests.suite',
     extras_require=EXTRA_DEPENDENCIES,
