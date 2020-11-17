@@ -1919,8 +1919,8 @@ async def connect(dsn=None, *,
     .. _postgres envvars:
         https://www.postgresql.org/docs/current/static/libpq-envars.html
     .. _libpq connection URI format:
-        https://www.postgresql.org/docs/current/static/\
-    libpq-connect.html#LIBPQ-CONNSTRING
+        https://www.postgresql.org/docs/current/static/
+        libpq-connect.html#LIBPQ-CONNSTRING
     """
     if not issubclass(connection_class, Connection):
         raise TypeError(
