@@ -126,11 +126,6 @@ cdef class BaseProtocol(CoreProtocol):
     def get_record_class(self):
         return self.record_class
 
-    def is_in_transaction(self):
-        # PQTRANS_INTRANS = idle, within transaction block
-        # PQTRANS_INERROR = idle, within failed transaction
-        return self.xact_status in (PQTRANS_INTRANS, PQTRANS_INERROR)
-
     cdef inline resume_reading(self):
         if not self.is_reading:
             self.is_reading = True
@@ -224,7 +219,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         waiter = self._new_waiter(timeout)
         try:
-            self._bind_execute_many(
+            more = self._bind_execute_many(
                 portal_name,
                 state.name,
                 arg_bufs)  # network op
@@ -233,6 +228,14 @@ cdef class BaseProtocol(CoreProtocol):
             self.statement = state
             self.return_extra = False
             self.queries_count += 1
+
+            while more:
+                await self.writing_allowed.wait()
+                # On Windows the above event somehow won't allow context
+                # switch, so forcing one with sleep(0) here
+                await asyncio.sleep(0)
+                more = self._bind_execute_many_more()  # network op
+
         except Exception as ex:
             waiter.set_exception(ex)
             self._coreproto_error()
@@ -892,6 +895,9 @@ cdef class BaseProtocol(CoreProtocol):
 
     cdef _write(self, buf):
         self.transport.write(memoryview(buf))
+
+    cdef _writelines(self, list buffers):
+        self.transport.writelines(buffers)
 
     # asyncio callbacks:
 
