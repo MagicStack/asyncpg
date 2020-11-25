@@ -3,7 +3,7 @@ language: generic
 env:
     global:
         - PYMODULE=asyncpg
-        - RELEASE_PYTHON_VERSIONS="3.5 3.6 3.7 3.8"
+        - RELEASE_PYTHON_VERSIONS="3.5 3.6 3.7 3.8 3.9"
 
         - S3_UPLOAD_USERNAME=oss-ci-bot
         - S3_UPLOAD_BUCKET=magicstack-oss-releases
@@ -149,17 +149,31 @@ jobs:
                   packages:
                       - postgresql-12
 
+        - name: "Test py 3.9"
+          os: linux
+          dist: focal
+          language: python
+          python: "3.9"
+          env: BUILD=tests PGVERSION=12
+          addons:
+              apt:
+                  sources:
+                      - sourceline: 'deb https://apt.postgresql.org/pub/repos/apt/ focal-pgdg main'
+                        key_url: 'https://www.postgresql.org/media/keys/ACCC4CF8.asc'
+                  packages:
+                      - postgresql-12
+
         # Only test on recent aarch64 distribution
-        # 3.7 is the latest supported by Travis
+        # 3.10 is the latest supported by Travis
         # https://docs.travis-ci.com/user/languages/python/#python-versions
         # The shipped Postgres 9.X collides with the 12 on aarch64
         # until fixed, use official ubuntu repos
-        - name: "Test aarch64 py 3.8-dev"
+        - name: "Test aarch64 py 3.10-dev"
           os: linux
           arch: arm64
           dist: focal
           language: python
-          python: "3.8-dev"
+          python: "3.10-dev"
           env: BUILD=tests PGVERSION=12
           addons:
               postgresql: "12"
@@ -189,7 +203,7 @@ jobs:
           arch: arm64
           dist: focal
           language: python
-          python: "3.8-dev"
+          python: "3.10-dev"
           env: BUILD=wheels,release PGVERSION=12
           services: [docker]
           addons:
@@ -197,19 +211,24 @@ jobs:
 
         - name: "OSX py 3.5"
           os: osx
-          env: BUILD=tests,wheels PYTHON_VERSION=3.5.9 PGVERSION=12
+          env: BUILD=tests,wheels PYTHON_VERSION=3.5.10 PGVERSION=12
 
         - name: "OSX py 3.6"
           os: osx
-          env: BUILD=tests,wheels PYTHON_VERSION=3.6.10 PGVERSION=12
+          env: BUILD=tests,wheels PYTHON_VERSION=3.6.12 PGVERSION=12
 
         - name: "OSX py 3.7"
           os: osx
-          env: BUILD=tests,wheels PYTHON_VERSION=3.7.7 PGVERSION=12
+          env: BUILD=tests,wheels PYTHON_VERSION=3.7.9 PGVERSION=12
 
         - name: "OSX py 3.8"
           os: osx
-          env: BUILD=tests,wheels PYTHON_VERSION=3.8.3 PGVERSION=12
+          env: BUILD=tests,wheels PYTHON_VERSION=3.8.6 PGVERSION=12
+
+        - name: "OSX py 3.9"
+          os: osx
+          env: BUILD=tests,wheels PYTHON_VERSION=3.9.0 PGVERSION=12
+
 
 cache:
     pip
