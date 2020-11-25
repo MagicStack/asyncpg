@@ -197,18 +197,22 @@ jobs:
 
         - name: "OSX py 3.5"
           os: osx
+          osx_image: xcode10.2
           env: BUILD=tests,wheels PYTHON_VERSION=3.5.9 PGVERSION=12
 
         - name: "OSX py 3.6"
           os: osx
+          osx_image: xcode10.2
           env: BUILD=tests,wheels PYTHON_VERSION=3.6.10 PGVERSION=12
 
         - name: "OSX py 3.7"
           os: osx
+          osx_image: xcode10.2
           env: BUILD=tests,wheels PYTHON_VERSION=3.7.7 PGVERSION=12
 
         - name: "OSX py 3.8"
           os: osx
+          osx_image: xcode10.2
           env: BUILD=tests,wheels PYTHON_VERSION=3.8.3 PGVERSION=12
 
 cache:
