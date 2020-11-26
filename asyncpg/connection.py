@@ -1869,7 +1869,28 @@ async def connect(dsn=None, *,
         Pass ``True`` or an `ssl.SSLContext <SSLContext_>`_ instance to
         require an SSL connection.  If ``True``, a default SSL context
         returned by `ssl.create_default_context() <create_default_context_>`_
-        will be used.
+        will be used.  The value can also be one of the following strings:
+
+        - ``'disable'`` - SSL is disabled (equivalent to ``False``)
+        - ``'prefer'`` - try SSL first, fallback to non-SSL connection
+          if SSL connection fails
+        - ``'allow'`` - currently equivalent to ``'prefer'``
+        - ``'require'`` - only try an SSL connection.  Certificate
+          verifiction errors are ignored
+        - ``'verify-ca'`` - only try an SSL connection, and verify
+          that the server certificate is issued by a trusted certificate
+          authority (CA)
+        - ``'verify-full'`` - only try an SSL connection, verify
+          that the server certificate is issued by a trusted CA and
+          that the requested server host name matches that in the
+          certificate.
+
+        The default is ``'prefer'``: try an SSL connection and fallback to
+        non-SSL connection if that fails.
+
+        .. note::
+
+           *ssl* is ignored for Unix domain socket communication.
 
     :param dict server_settings:
         An optional dict of server runtime parameters.  Refer to
@@ -1925,6 +1946,9 @@ async def connect(dsn=None, *,
 
     .. versionchanged:: 0.22.0
        Added the *record_class* parameter.
+
+    .. versionchanged:: 0.22.0
+       The *ssl* argument now defaults to ``'prefer'``.
 
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
