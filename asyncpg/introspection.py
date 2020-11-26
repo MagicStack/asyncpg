@@ -168,3 +168,7 @@ def is_scalar_type(typeinfo) -> bool:
         typeinfo['kind'] in SCALAR_TYPE_KINDS and
         not typeinfo['elemtype']
     )
+
+
+def is_domain_type(typeinfo) -> bool:
+    return typeinfo['kind'] == b'd'

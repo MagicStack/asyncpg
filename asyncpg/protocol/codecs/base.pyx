@@ -66,14 +66,14 @@ cdef class Codec:
                 self.decoder = <codec_decode_func>&self.decode_array_text
         elif type == CODEC_RANGE:
             if format != PG_FORMAT_BINARY:
-                raise NotImplementedError(
+                raise exceptions.UnsupportedClientFeatureError(
                     'cannot decode type "{}"."{}": text encoding of '
                     'range types is not supported'.format(schema, name))
             self.encoder = <codec_encode_func>&self.encode_range
             self.decoder = <codec_decode_func>&self.decode_range
         elif type == CODEC_COMPOSITE:
             if format != PG_FORMAT_BINARY:
-                raise NotImplementedError(
+                raise exceptions.UnsupportedClientFeatureError(
                     'cannot decode type "{}"."{}": text encoding of '
                     'composite types is not supported'.format(schema, name))
             self.encoder = <codec_encode_func>&self.encode_composite
@@ -675,9 +675,8 @@ cdef class DataCodecConfig:
             # added builtin types, for which this version of
             # asyncpg is lacking support.
             #
-            raise NotImplementedError(
-                'unhandled standard data type {!r} (OID {})'.format(
-                    name, oid))
+            raise exceptions.UnsupportedClientFeatureError(
+                f'unhandled standard data type {name!r} (OID {oid})')
         else:
             # This is a non-BKI type, and as such, has no
             # stable OID, so no possibility of a builtin codec.
