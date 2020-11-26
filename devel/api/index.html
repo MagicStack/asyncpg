@@ -702,6 +702,13 @@ it is much more efficient for this purpose.</p>
 <div class="versionchanged">
 <p><span class="versionmodified">Changed in version 0.11.0: </span><cite>timeout</cite> became a keyword-only parameter.</p>
 </div>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.22.0: </span>The execution was changed to be in an implicit transaction if there
+was no explicit transaction, so that it will no longer end up with
+partial success. If you still need the previous behavior to
+progressively execute many args, please use a loop with prepared
+statement instead.</p>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -1234,6 +1241,30 @@ will prefetch (defaults to <code class="docutils literal notranslate"><span clas
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="method">
+<dt id="asyncpg.prepared_stmt.PreparedStatement.executemany">
+<code class="descname">executemany</code><span class="sig-paren">(</span><em>args</em>, <em>*</em>, <em>timeout: float = None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.executemany"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.executemany" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute the statement for each sequence of arguments in <em>args</em>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>args</strong> – An iterable containing sequences of arguments.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return None:</th><td class="field-body"><p class="first last">This method discards the results of the operations.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 0.22.0.</span></p>
+</div>
 </dd></dl>
 
 <dl class="method">

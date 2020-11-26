@@ -495,6 +495,13 @@
 
 <span class="sd">        .. versionchanged:: 0.11.0</span>
 <span class="sd">           `timeout` became a keyword-only parameter.</span>
+
+<span class="sd">        .. versionchanged:: 0.22.0</span>
+<span class="sd">           The execution was changed to be in an implicit transaction if there</span>
+<span class="sd">           was no explicit transaction, so that it will no longer end up with</span>
+<span class="sd">           partial success. If you still need the previous behavior to</span>
+<span class="sd">           progressively execute many args, please use a loop with prepared</span>
+<span class="sd">           statement instead.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_executemany</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
@@ -1174,6 +1181,9 @@
             <span class="n">f</span> <span class="o">=</span> <span class="n">source</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">AsyncIterable</span><span class="p">):</span>
             <span class="c1"># assuming calling output returns an awaitable.</span>
+            <span class="c1"># copy_in() is designed to handle very large amounts of data, and</span>
+            <span class="c1"># the source async iterable is allowed to return an arbitrary</span>
+            <span class="c1"># amount of data on every iteration.</span>
             <span class="n">reader</span> <span class="o">=</span> <span class="n">source</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># assuming source is an instance supporting the buffer protocol.</span>

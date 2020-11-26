@@ -366,11 +366,24 @@
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">__bind_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
+<div class="viewcode-block" id="PreparedStatement.executemany"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.executemany">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">executemany</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Execute the statement for each sequence of arguments in *args*.</span>
+
+<span class="sd">        :param args: An iterable containing sequences of arguments.</span>
+<span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
+<span class="sd">        :return None: This method discards the results of the operations.</span>
+
+<span class="sd">        .. versionadded:: 0.22.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__do_execute</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">protocol</span><span class="p">:</span> <span class="n">protocol</span><span class="o">.</span><span class="n">bind_execute_many</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">timeout</span><span class="p">))</span></div>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">__do_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">executor</span><span class="p">):</span>
         <span class="n">protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_protocol</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">data</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="n">executor</span><span class="p">(</span><span class="n">protocol</span><span class="p">)</span>
         <span class="k">except</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">OutdatedSchemaCacheError</span><span class="p">:</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">reload_schema_state</span><span class="p">()</span>
             <span class="c1"># We can not find all manually created prepared statements, so just</span>
@@ -379,6 +392,11 @@
             <span class="c1"># invalidate themselves (unfortunately, clearing caches again).</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">mark_closed</span><span class="p">()</span>
             <span class="k">raise</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">__bind_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
+        <span class="n">data</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__do_execute</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">protocol</span><span class="p">:</span> <span class="n">protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_last_status</span> <span class="o">=</span> <span class="n">status</span>
         <span class="k">return</span> <span class="n">data</span>
 
