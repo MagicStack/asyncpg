@@ -1773,6 +1773,11 @@ async def connect(dsn=None, *,
         Unlike libpq, asyncpg will treat unrecognized options
         as `server settings`_ to be used for the connection.
 
+        .. note::
+
+           The URI must be *valid*, which means that all components must
+           be properly quoted with :py:func:`urllib.parse.quote`.
+
     :param host:
         Database host address as one of the following:
 
