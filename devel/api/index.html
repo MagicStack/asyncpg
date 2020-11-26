@@ -187,13 +187,19 @@ using <a class="reference external" href="https://www.postgresql.org/docs/curren
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>dsn</strong> – Connection arguments specified using as a single string in the
+<li><strong>dsn</strong> – <p>Connection arguments specified using as a single string in the
 <a class="reference external" href="https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING">libpq connection URI format</a>:
 <code class="docutils literal notranslate"><span class="pre">postgres://user:password&#64;host:port/database?option=value</span></code>.
 The following options are recognized by asyncpg: host, port,
 user, database (or dbname), password, passfile, sslmode.
 Unlike libpq, asyncpg will treat unrecognized options
-as <a class="reference external" href="https://www.postgresql.org/docs/current/static/runtime-config.html">server settings</a> to be used for the connection.</li>
+as <a class="reference external" href="https://www.postgresql.org/docs/current/static/runtime-config.html">server settings</a> to be used for the connection.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The URI must be <em>valid</em>, which means that all components must
+be properly quoted with <a class="reference external" href="https://docs.python.org/3/library/urllib.parse.html#urllib.parse.quote" title="(in Python v3.9)"><code class="xref py py-func docutils literal notranslate"><span class="pre">urllib.parse.quote()</span></code></a>.</p>
+</div>
+</li>
 <li><strong>host</strong> – <p>Database host address as one of the following:</p>
 <ul>
 <li>an IP address or a domain name;</li>

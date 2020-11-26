@@ -1937,6 +1937,11 @@
 <span class="sd">        Unlike libpq, asyncpg will treat unrecognized options</span>
 <span class="sd">        as `server settings`_ to be used for the connection.</span>
 
+<span class="sd">        .. note::</span>
+
+<span class="sd">           The URI must be *valid*, which means that all components must</span>
+<span class="sd">           be properly quoted with :py:func:`urllib.parse.quote`.</span>
+
 <span class="sd">    :param host:</span>
 <span class="sd">        Database host address as one of the following:</span>
 
