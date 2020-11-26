@@ -126,11 +126,6 @@ cdef class BaseProtocol(CoreProtocol):
     def get_record_class(self):
         return self.record_class
 
-    def is_in_transaction(self):
-        # PQTRANS_INTRANS = idle, within transaction block
-        # PQTRANS_INERROR = idle, within failed transaction
-        return self.xact_status in (PQTRANS_INTRANS, PQTRANS_INERROR)
-
     cdef inline resume_reading(self):
         if not self.is_reading:
             self.is_reading = True
@@ -215,6 +210,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         self._check_state()
         timeout = self._get_timeout_impl(timeout)
+        timer = Timer(timeout)
 
         # Make sure the argument sequence is encoded lazily with
         # this generator expression to keep the memory pressure under
@@ -224,7 +220,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         waiter = self._new_waiter(timeout)
         try:
-            self._bind_execute_many(
+            more = self._bind_execute_many(
                 portal_name,
                 state.name,
                 arg_bufs)  # network op
@@ -233,6 +229,22 @@ cdef class BaseProtocol(CoreProtocol):
             self.statement = state
             self.return_extra = False
             self.queries_count += 1
+
+            while more:
+                with timer:
+                    await asyncio.wait_for(
+                        self.writing_allowed.wait(),
+                        timeout=timer.get_remaining_budget())
+                    # On Windows the above event somehow won't allow context
+                    # switch, so forcing one with sleep(0) here
+                    await asyncio.sleep(0)
+                if not timer.has_budget_greater_than(0):
+                    raise asyncio.TimeoutError
+                more = self._bind_execute_many_more()  # network op
+
+        except asyncio.TimeoutError as e:
+            self._bind_execute_many_fail(e)  # network op
+
         except Exception as ex:
             waiter.set_exception(ex)
             self._coreproto_error()
@@ -893,6 +905,9 @@ cdef class BaseProtocol(CoreProtocol):
     cdef _write(self, buf):
         self.transport.write(memoryview(buf))
 
+    cdef _writelines(self, list buffers):
+        self.transport.writelines(buffers)
+
     # asyncio callbacks:
 
     def data_received(self, data):
@@ -944,6 +959,13 @@ class Timer:
 
     def get_remaining_budget(self):
         return self._budget
+
+    def has_budget_greater_than(self, amount):
+        if self._budget is None:
+            # Unlimited budget.
+            return True
+        else:
+            return self._budget > amount
 
 
 class Protocol(BaseProtocol, asyncio.Protocol):
