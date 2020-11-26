@@ -2122,11 +2122,11 @@ else return <em>default</em>. If <em>default</em> is not given, return <code cla
 
 <dl class="class">
 <dt id="asyncpg.types.BitString">
-<em class="property">class </em><code class="descname">BitString</code><span class="sig-paren">(</span><em>bitstring=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">BitString</code><span class="sig-paren">(</span><em>bitstring: Optional[bytes] = None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>bit</cite> and <cite>varbit</cite> types.</p>
 <dl class="classmethod">
 <dt id="asyncpg.types.BitString.from_int">
-<em class="property">classmethod </em><code class="descname">from_int</code><span class="sig-paren">(</span><em>x</em>, <em>length</em>, <em>bitorder='big'</em>, <em>*</em>, <em>signed=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString.from_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString.from_int" title="Permalink to this definition">¶</a></dt>
+<em class="property">classmethod </em><code class="descname">from_int</code><span class="sig-paren">(</span><em>x: int</em>, <em>length: int</em>, <em>bitorder: Literal[big</em>, <em>little] = 'big'</em>, <em>*</em>, <em>signed: bool = False</em><span class="sig-paren">)</span> &#x2192; _BitString<a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString.from_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString.from_int" title="Permalink to this definition">¶</a></dt>
 <dd><p>Represent the Python int x as a BitString.
 Acts similarly to int.to_bytes.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -2164,7 +2164,7 @@ form specified by the other input args.</p>
 
 <dl class="method">
 <dt id="asyncpg.types.BitString.to_int">
-<code class="descname">to_int</code><span class="sig-paren">(</span><em>bitorder='big'</em>, <em>*</em>, <em>signed=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString.to_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString.to_int" title="Permalink to this definition">¶</a></dt>
+<code class="descname">to_int</code><span class="sig-paren">(</span><em>bitorder: Literal[big</em>, <em>little] = 'big'</em>, <em>*</em>, <em>signed: bool = False</em><span class="sig-paren">)</span> &#x2192; int<a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString.to_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.BitString.to_int" title="Permalink to this definition">¶</a></dt>
 <dd><p>Interpret the BitString as a Python int.
 Acts similarly to int.from_bytes.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -2204,7 +2204,7 @@ the BitString’s exact length is lost.</p>
 
 <dl class="class">
 <dt id="asyncpg.types.Path">
-<em class="property">class </em><code class="descname">Path</code><span class="sig-paren">(</span><em>*points</em>, <em>is_closed=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Path" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descname">Path</code><span class="sig-paren">(</span><em>*points</em>, <em>is_closed: bool = False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#asyncpg.types.Path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>path</cite> type.</p>
 </dd></dl>
 
