@@ -1075,7 +1075,7 @@ class TestCodecs(tb.ConnectedTestCase):
             # This should fail, as there is no binary codec for
             # my_dec_t and text decoding of composites is not
             # implemented.
-            with self.assertRaises(NotImplementedError):
+            with self.assertRaises(asyncpg.UnsupportedClientFeatureError):
                 res = await self.con.fetchval('''
                     SELECT ($1::my_dec_t, 'a=>1'::hstore)::rec_t AS result
                 ''', 44)
@@ -1132,7 +1132,7 @@ class TestCodecs(tb.ConnectedTestCase):
             self.assertEqual(at[0].type, pt[0])
 
             err = 'cannot use custom codec on non-scalar type public._hstore'
-            with self.assertRaisesRegex(ValueError, err):
+            with self.assertRaisesRegex(asyncpg.InterfaceError, err):
                 await self.con.set_type_codec('_hstore',
                                               encoder=hstore_encoder,
                                               decoder=hstore_decoder)
@@ -1144,7 +1144,7 @@ class TestCodecs(tb.ConnectedTestCase):
             try:
                 err = 'cannot use custom codec on non-scalar type ' + \
                       'public.mytype'
-                with self.assertRaisesRegex(ValueError, err):
+                with self.assertRaisesRegex(asyncpg.InterfaceError, err):
                     await self.con.set_type_codec(
                         'mytype', encoder=hstore_encoder,
                         decoder=hstore_decoder)
@@ -1245,13 +1245,14 @@ class TestCodecs(tb.ConnectedTestCase):
         ''')
 
         try:
-            await self.con.set_type_codec(
-                'custom_codec_t',
-                encoder=lambda v: str(v),
-                decoder=lambda v: int(v))
-
-            v = await self.con.fetchval('SELECT $1::custom_codec_t', 10)
-            self.assertEqual(v, 10)
+            with self.assertRaisesRegex(
+                asyncpg.UnsupportedClientFeatureError,
+                'custom codecs on domain types are not supported'
+            ):
+                await self.con.set_type_codec(
+                    'custom_codec_t',
+                    encoder=lambda v: str(v),
+                    decoder=lambda v: int(v))
         finally:
             await self.con.execute('DROP DOMAIN custom_codec_t')
 
@@ -1650,7 +1651,7 @@ class TestCodecs(tb.ConnectedTestCase):
             # Text encoding of ranges and composite types
             # is not supported yet.
             with self.assertRaisesRegex(
-                    RuntimeError,
+                    asyncpg.UnsupportedClientFeatureError,
                     'text encoding of range types is not supported'):
 
                 await self.con.fetchval('''
@@ -1659,7 +1660,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 ''', ['a', 'z'])
 
             with self.assertRaisesRegex(
-                    RuntimeError,
+                    asyncpg.UnsupportedClientFeatureError,
                     'text encoding of composite types is not supported'):
 
                 await self.con.fetchval('''
@@ -1831,7 +1832,7 @@ class TestCodecsLargeOIDs(tb.ConnectedTestCase):
 
             expected_oid = self.LARGE_OID
             if self.server_version >= (11, 0):
-                # PostgreSQL 11 automatically create a domain array type
+                # PostgreSQL 11 automatically creates a domain array type
                 # _before_ the domain type, so the expected OID is
                 # off by one.
                 expected_oid += 1
@@ -1839,15 +1840,6 @@ class TestCodecsLargeOIDs(tb.ConnectedTestCase):
             self.assertEqual(oid, expected_oid)
 
             # Test that introspection handles large OIDs
-            v = await self.con.fetchval('SELECT $1::test_domain_t', 10)
-            self.assertEqual(v, 10)
-
-            # Test that custom codec logic handles large OIDs
-            await self.con.set_type_codec(
-                'test_domain_t',
-                encoder=lambda v: str(v),
-                decoder=lambda v: int(v))
-
             v = await self.con.fetchval('SELECT $1::test_domain_t', 10)
             self.assertEqual(v, 10)
 

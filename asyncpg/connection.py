@@ -1160,9 +1160,18 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
         typeinfo = await self._introspect_type(typename, schema)
         if not introspection.is_scalar_type(typeinfo):
-            raise ValueError(
+            raise exceptions.InterfaceError(
                 'cannot use custom codec on non-scalar type {}.{}'.format(
                     schema, typename))
+        if introspection.is_domain_type(typeinfo):
+            raise exceptions.UnsupportedClientFeatureError(
+                'custom codecs on domain types are not supported',
+                hint='Set the codec on the base type.',
+                detail=(
+                    'PostgreSQL does not distinguish domains from '
+                    'their base types in query results at the protocol level.'
+                )
+            )
 
         oid = typeinfo['oid']
         self._protocol.get_settings().add_python_codec(
