@@ -6,11 +6,9 @@
 
 
 import asyncio
-import errno
 import os
 import os.path
 import platform
-import random
 import re
 import shutil
 import socket
@@ -36,29 +34,15 @@ else:
         return name
 
 
-def find_available_port(port_range=(49152, 65535), max_tries=1000):
-    low, high = port_range
-
-    port = low
-    try_no = 0
-
-    while try_no < max_tries:
-        try_no += 1
-        port = random.randint(low, high)
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            sock.bind(('127.0.0.1', port))
-        except socket.error as e:
-            if e.errno == errno.EADDRINUSE:
-                continue
-        finally:
-            sock.close()
-
-        break
-    else:
-        port = None
-
-    return port
+def find_available_port():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind(('127.0.0.1', 0))
+        return sock.getsockname()[1]
+    except Exception:
+        return None
+    finally:
+        sock.close()
 
 
 class ClusterError(Exception):
@@ -124,6 +108,10 @@ class Cluster:
                 'cluster in {!r} has already been initialized'.format(
                     self._data_dir))
 
+        settings = dict(settings)
+        if 'encoding' not in settings:
+            settings['encoding'] = 'UTF-8'
+
         if settings:
             settings_args = ['--{}={}'.format(k, v)
                              for k, v in settings.items()]
@@ -164,8 +152,8 @@ class Cluster:
         sockdir = server_settings.get('unix_socket_directories')
         if sockdir is None:
             sockdir = server_settings.get('unix_socket_directory')
-        if sockdir is None:
-            sockdir = '/tmp'
+        if sockdir is None and _system != 'Windows':
+            sockdir = tempfile.gettempdir()
 
         ssl_key = server_settings.get('ssl_key_file')
         if ssl_key:
@@ -176,12 +164,13 @@ class Cluster:
             server_settings = server_settings.copy()
             server_settings['ssl_key_file'] = keyfile
 
-        if self._pg_version < (9, 3):
-            sockdir_opt = 'unix_socket_directory'
-        else:
-            sockdir_opt = 'unix_socket_directories'
+        if sockdir is not None:
+            if self._pg_version < (9, 3):
+                sockdir_opt = 'unix_socket_directory'
+            else:
+                sockdir_opt = 'unix_socket_directories'
 
-        server_settings[sockdir_opt] = sockdir
+            server_settings[sockdir_opt] = sockdir
 
         for k, v in server_settings.items():
             extra_args.extend(['-c', '{}={}'.format(k, v)])
@@ -193,6 +182,14 @@ class Cluster:
             # privileges.
             if os.getenv('ASYNCPG_DEBUG_SERVER'):
                 stdout = sys.stdout
+                print(
+                    'asyncpg.cluster: Running',
+                    ' '.join([
+                        self._pg_ctl, 'start', '-D', self._data_dir,
+                        '-o', ' '.join(extra_args)
+                    ]),
+                    file=sys.stderr,
+                )
             else:
                 stdout = subprocess.DEVNULL
 
@@ -642,7 +639,7 @@ class HotStandbyCluster(TempCluster):
         if self._pg_version >= (12, 0):
             server_settings = server_settings.copy()
             server_settings['primary_conninfo'] = (
-                'host={host} port={port} user={user}'.format(
+                '"host={host} port={port} user={user}"'.format(
                     host=self._master['host'],
                     port=self._master['port'],
                     user=self._repl_user,

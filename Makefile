@@ -33,7 +33,7 @@ test:
 
 
 testinstalled:
-	cd /tmp && $(PYTHON) $(ROOT)/tests/__init__.py
+	cd "$${HOME}" && $(PYTHON) $(ROOT)/tests/__init__.py
 
 
 quicktest:
