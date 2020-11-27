@@ -1,0 +1,25 @@
+name: Trigger Release
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  check-review:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Validate release PR
+      uses: edgedb/action-release/validate-pr@master
+      id: release
+      continue-on-error: true
+      with:
+        github_token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
+        version_file: asyncpg/_version.py
+        version_line_pattern: |
+          __version__\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
+    - name: Trigger release
+      uses: edgedb/action-release/trigger@master
+      if: steps.release.outputs.version != 0
+      with:
+        github_token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
+        release_validation_check: "validate-release-request"

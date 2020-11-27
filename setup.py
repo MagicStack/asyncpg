@@ -69,7 +69,7 @@ with open(str(_ROOT / 'README.rst')) as f:
     readme = f.read()
 
 
-with open(str(_ROOT / 'asyncpg' / '__init__.py')) as f:
+with open(str(_ROOT / 'asyncpg' / '_version.py')) as f:
     for line in f:
         if line.startswith('__version__ ='):
             _, _, version = line.partition('=')
@@ -77,7 +77,7 @@ with open(str(_ROOT / 'asyncpg' / '__init__.py')) as f:
             break
     else:
         raise RuntimeError(
-            'unable to read the version from asyncpg/__init__.py')
+            'unable to read the version from asyncpg/_version.py')
 
 
 if (_ROOT / '.git').is_dir() and 'dev' in VERSION:
