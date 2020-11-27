@@ -33,7 +33,13 @@ _TYPE_ALIASES = {
     'real': 'float4',
     'double precision': 'float8',
     'timestamp with timezone': 'timestamptz',
+    'timestamp without timezone': 'timestamp',
     'time with timezone': 'timetz',
+    'time without timezone': 'time',
+    'char': 'bpchar',
+    'character': 'bpchar',
+    'character varying': 'varchar',
+    'bit varying': 'varbit'
 }
 
 
