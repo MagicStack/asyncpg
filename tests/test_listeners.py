@@ -144,7 +144,6 @@ class TestLogListeners(tb.ConnectedTestCase):
         expected_msg = {
             'context': 'PL/pgSQL function inline_code_block line 2 at RAISE',
             'message': 'catch me!',
-            'server_source_filename': 'pl_exec.c',
             'server_source_function': 'exec_stmt_raise',
         }
 
@@ -171,12 +170,16 @@ class TestLogListeners(tb.ConnectedTestCase):
         await raise_notice()
         await raise_warning()
 
+        msg = await q1.get()
+        msg[2].pop('server_source_filename', None)
         self.assertEqual(
-            await q1.get(),
+            msg,
             (con, exceptions.PostgresLogMessage, expected_msg_notice))
 
+        msg = await q1.get()
+        msg[2].pop('server_source_filename', None)
         self.assertEqual(
-            await q1.get(),
+            msg,
             (con, exceptions.PostgresWarning, expected_msg_warn))
 
         con.remove_log_listener(notice_callb)
