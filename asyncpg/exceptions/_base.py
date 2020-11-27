@@ -210,6 +210,15 @@ class InterfaceError(InterfaceMessage, Exception):
         InterfaceMessage.__init__(self, detail=detail, hint=hint)
         Exception.__init__(self, msg)
 
+    def with_msg(self, msg):
+        return type(self)(
+            msg,
+            detail=self.detail,
+            hint=self.hint,
+        ).with_traceback(
+            self.__traceback__
+        )
+
 
 class DataError(InterfaceError, ValueError):
     """An error caused by invalid query input."""
