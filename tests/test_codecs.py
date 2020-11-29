@@ -892,6 +892,13 @@ class TestCodecs(tb.ConnectedTestCase):
 
         self.assertEqual(res, (None, 1234, '5678', (42, '42')))
 
+        with self.assertRaisesRegex(
+            asyncpg.UnsupportedClientFeatureError,
+            'query argument \\$1: input of anonymous '
+            'composite types is not supported',
+        ):
+            await self.con.fetchval("SELECT (1, 'foo') = $1", (1, 'foo'))
+
         try:
             st = await self.con.prepare('''
                 SELECT ROW(

@@ -156,9 +156,11 @@ cdef class PreparedStatementState:
                 except (AssertionError, exceptions.InternalClientError):
                     # These are internal errors and should raise as-is.
                     raise
-                except exceptions.InterfaceError:
-                    # This is already a descriptive error.
-                    raise
+                except exceptions.InterfaceError as e:
+                    # This is already a descriptive error, but annotate
+                    # with argument name for clarity.
+                    raise e.with_msg(
+                        f'query argument ${idx + 1}: {e.args[0]}') from None
                 except Exception as e:
                     # Everything else is assumed to be an encoding error
                     # due to invalid input.
