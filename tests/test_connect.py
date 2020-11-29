@@ -318,7 +318,9 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host', 123)], {
                 'user': 'user',
                 'password': 'passw',
-                'database': 'testdb'})
+                'database': 'testdb',
+                'ssl': True,
+                'ssl_is_advisory': True})
         },
 
         {
@@ -384,7 +386,7 @@ class TestConnectParams(tb.TestCase):
                 'user': 'user3',
                 'password': '123123',
                 'database': 'abcdef',
-                'ssl': ssl.SSLContext,
+                'ssl': True,
                 'ssl_is_advisory': True})
         },
 
@@ -461,7 +463,7 @@ class TestConnectParams(tb.TestCase):
                 'user': 'me',
                 'password': 'ask',
                 'database': 'db',
-                'ssl': ssl.SSLContext,
+                'ssl': True,
                 'ssl_is_advisory': False})
         },
 
@@ -545,6 +547,7 @@ class TestConnectParams(tb.TestCase):
                 {
                     'user': 'user',
                     'database': 'user',
+                    'ssl': None
                 }
             )
         },
@@ -574,7 +577,9 @@ class TestConnectParams(tb.TestCase):
                     ('localhost', 5433)
                 ], {
                     'user': 'spam',
-                    'database': 'db'
+                    'database': 'db',
+                    'ssl': True,
+                    'ssl_is_advisory': True
                 }
             )
         },
@@ -617,7 +622,7 @@ class TestConnectParams(tb.TestCase):
         password = testcase.get('password')
         passfile = testcase.get('passfile')
         database = testcase.get('database')
-        ssl = testcase.get('ssl')
+        sslmode = testcase.get('ssl')
         server_settings = testcase.get('server_settings')
 
         expected = testcase.get('result')
@@ -640,21 +645,26 @@ class TestConnectParams(tb.TestCase):
 
             addrs, params = connect_utils._parse_connect_dsn_and_args(
                 dsn=dsn, host=host, port=port, user=user, password=password,
-                passfile=passfile, database=database, ssl=ssl,
+                passfile=passfile, database=database, ssl=sslmode,
                 connect_timeout=None, server_settings=server_settings)
 
-            params = {k: v for k, v in params._asdict().items()
-                      if v is not None}
+            params = {
+                k: v for k, v in params._asdict().items()
+                if v is not None or (expected is not None and k in expected[1])
+            }
+
+            if isinstance(params.get('ssl'), ssl.SSLContext):
+                params['ssl'] = True
 
             result = (addrs, params)
 
         if expected is not None:
-            for k, v in expected[1].items():
-                # If `expected` contains a type, allow that to "match" any
-                # instance of that type tyat `result` may contain. We need
-                # this because different SSLContexts don't compare equal.
-                if isinstance(v, type) and isinstance(result[1].get(k), v):
-                    result[1][k] = v
+            if 'ssl' not in expected[1]:
+                # Avoid the hassle of specifying the default SSL mode
+                # unless explicitly tested for.
+                params.pop('ssl', None)
+                params.pop('ssl_is_advisory', None)
+
             self.assertEqual(expected, result, 'Testcase: {}'.format(testcase))
 
     def test_test_connect_params_environ(self):
@@ -1062,16 +1072,6 @@ class TestConnection(tb.ConnectedTestCase):
         await verify_fails('require')
         await verify_fails('verify-ca')
         await verify_fails('verify-full')
-
-    async def test_connection_ssl_unix(self):
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-        ssl_context.load_verify_locations(SSL_CA_CERT_FILE)
-
-        with self.assertRaisesRegex(asyncpg.InterfaceError,
-                                    'can only be enabled for TCP addresses'):
-            await self.connect(
-                host='/tmp',
-                ssl=ssl_context)
 
     async def test_connection_implicit_host(self):
         conn_spec = self.get_connection_spec()
