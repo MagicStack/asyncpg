@@ -16,6 +16,6 @@ from ._version import __version__  # NOQA
 
 
 __all__ = (
-    ('connect', 'create_pool', 'Pool', 'Record', 'Connection') 
+    ('connect', 'create_pool', 'Pool', 'Record', 'Connection')
     + exceptions.__all__  # NOQA
 )
