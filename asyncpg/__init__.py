@@ -7,7 +7,7 @@
 
 from .connection import connect, Connection  # NOQA
 from .exceptions import *  # NOQA
-from .pool import create_pool  # NOQA
+from .pool import create_pool, Pool  # NOQA
 from .protocol import Record  # NOQA
 from .types import *  # NOQA
 
@@ -15,5 +15,7 @@ from .types import *  # NOQA
 from ._version import __version__  # NOQA
 
 
-__all__ = ('connect', 'create_pool', 'Record', 'Connection') + \
-          exceptions.__all__  # NOQA
+__all__ = (
+    ('connect', 'create_pool', 'Pool', 'Record', 'Connection')
+    + exceptions.__all__  # NOQA
+)
