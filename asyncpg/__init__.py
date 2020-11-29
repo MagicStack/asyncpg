@@ -7,12 +7,12 @@
 
 from .connection import connect, Connection  # NOQA
 from .exceptions import *  # NOQA
-from .pool import create_pool  # NOQA
+from .pool import create_pool, Pool  # NOQA
 from .protocol import Record  # NOQA
 from .types import *  # NOQA
 
 
-__all__ = ('connect', 'create_pool', 'Record', 'Connection') + \
+__all__ = ('connect', 'create_pool', 'Pool', 'Record', 'Connection') + \
           exceptions.__all__  # NOQA
 
 # The rules of changing __version__:
