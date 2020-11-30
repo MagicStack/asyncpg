@@ -18,10 +18,10 @@ of asyncpg at some point in the future.
 Can I use asyncpg with SQLAlchemy ORM?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Short answer: no.  asyncpg uses asynchronous execution model
-and API, which is fundamentally incompatible with SQLAlchemy.
-However, it is possible to use asyncpg and SQLAlchemy Core
-with the help of a third-party adapter, such as asyncpgsa_ or databases_.
+Yes.  SQLAlchemy version 1.4 and later supports the asyncpg dialect natively.
+Please refer to its documentation for details.  Older SQLAlchemy versions
+may be used in tandem with a third-party adapter such as
+asyncpgsa_ or databases_.
 
 
 Can I use dot-notation with :class:`asyncpg.Record`?  It looks cleaner.
@@ -29,7 +29,10 @@ Can I use dot-notation with :class:`asyncpg.Record`?  It looks cleaner.
 
 We decided against making :class:`asyncpg.Record` a named tuple
 because we want to keep the ``Record`` method namespace separate
-from the column namespace.
+from the column namespace.  That said, you can provide a custom ``Record``
+class that implements dot-notation via the ``record_class`` argument to
+:func:`connect() <asyncpg.connection.connect>` or any of the Record-returning
+methods.
 
 
 Why can't I use a :ref:`cursor <asyncpg-api-cursor>` outside of a transaction?
@@ -56,15 +59,23 @@ already exists`` errors, you are most likely not connecting to the
 PostgreSQL server directly, but via
 `pgbouncer <https://pgbouncer.github.io/>`_.  pgbouncer, when
 in the ``"transaction"`` or ``"statement"`` pooling mode, does not support
-prepared statements.  You have two options:
+prepared statements.  You have several options:
 
-* if you are using pgbouncer for connection pooling to a single server,
+* if you are using pgbouncer only to reduce the cost of new connections
+  (as opposed to using pgbouncer for connection pooling from
+  a large number of clients in the interest of better scalability),
   switch to the :ref:`connection pool <asyncpg-connection-pool>`
   functionality provided by asyncpg, it is a much better option for this
   purpose;
 
-* if you have no option of avoiding the use of pgbouncer, then you need to
-  switch pgbouncer's ``pool_mode`` to ``session``.
+* disable automatic use of prepared statements by passing
+  ``statement_cache_size=0``
+  to :func:`asyncpg.connect() <asyncpg.connection.connect>` and
+  :func:`asyncpg.create_pool() <asyncpg.pool.create_pool>`
+  (and, obviously, avoid the use of
+  :meth:`Connection.prepare() <asyncpg.connection.Connection.prepare>`);
+
+* switch pgbouncer's ``pool_mode`` to ``session``.
 
 
 Why do I get ``PostgresSyntaxError`` when using ``expression IN $1``?

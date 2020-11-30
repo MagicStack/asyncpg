@@ -14,7 +14,8 @@ framework.  You can read more about asyncpg in an introductory
 `blog post <http://magic.io/blog/asyncpg-1m-rows-from-postgres-to-python/>`_.
 
 asyncpg requires Python 3.5 or later and is supported for PostgreSQL
-versions 9.2 to 12.
+versions 9.5 to 13.  Older PostgreSQL versions or other databases implementing
+the PostgreSQL protocol *may* work, but are not being actively tested.
 
 
 Documentation
@@ -31,10 +32,11 @@ In our testing asyncpg is, on average, **3x** faster than psycopg2
 (and its asyncio variant -- aiopg).
 
 .. image:: performance.png
-    :target: http://magic.io/blog/asyncpg-1m-rows-from-postgres-to-python/
+    :target: https://gistpreview.github.io/?b8eac294ac85da177ff82f784ff2cb60
 
 The above results are a geometric mean of benchmarks obtained with PostgreSQL
-`client driver benchmarking toolbench <https://github.com/MagicStack/pgbench>`_.
+`client driver benchmarking toolbench <https://github.com/MagicStack/pgbench>`_
+in November 2020.
 
 
 Features
@@ -74,7 +76,10 @@ Basic Usage
     async def run():
         conn = await asyncpg.connect(user='user', password='password',
                                      database='database', host='127.0.0.1')
-        values = await conn.fetch('''SELECT * FROM mytable''')
+        values = await conn.fetch(
+            'SELECT * FROM mytable WHERE id = $1',
+            10,
+        )
         await conn.close()
 
     loop = asyncio.get_event_loop()

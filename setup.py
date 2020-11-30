@@ -25,7 +25,7 @@ from setuptools.command import sdist as setuptools_sdist
 from setuptools.command import build_ext as setuptools_build_ext
 
 
-CYTHON_DEPENDENCY = 'Cython==0.29.20'
+CYTHON_DEPENDENCY = 'Cython(>=0.29.20,<0.30.0)'
 
 # Minimal dependencies required to test asyncpg.
 TEST_DEPENDENCIES = [
@@ -263,6 +263,7 @@ setuptools.setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: Implementation :: CPython',
         'Topic :: Database :: Front-Ends',
     ],
