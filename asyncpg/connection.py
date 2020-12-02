@@ -1156,6 +1156,15 @@ class Connection(metaclass=ConnectionMeta):
         .. versionchanged:: 0.13.0
             The ``binary`` keyword argument was removed in favor of
             ``format``.
+
+        .. note::
+
+           It is recommended to use the ``'binary'`` or ``'tuple'`` *format*
+           whenever possible and if the underlying type supports it. Asyncpg
+           currently does not support text I/O for composite and range types,
+           and some other functionality, such as
+           :meth:`Connection.copy_to_table`, does not support types with text
+           codecs.
         """
         self._check_open()
         typeinfo = await self._introspect_type(typename, schema)

@@ -168,4 +168,5 @@ cdef class DataCodecConfig:
 
     cdef inline Codec get_codec(self, uint32_t oid, ServerDataFormat format,
                                 bint ignore_custom_codec=*)
-    cdef inline Codec get_any_local_codec(self, uint32_t oid)
+    cdef inline Codec get_custom_codec(self, uint32_t oid,
+                                       ServerDataFormat format)

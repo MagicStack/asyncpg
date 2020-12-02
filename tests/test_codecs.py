@@ -1329,6 +1329,34 @@ class TestCodecs(tb.ConnectedTestCase):
         finally:
             await self.con.execute('DROP TYPE custom_codec_t')
 
+    async def test_custom_codec_on_enum_array(self):
+        """Test encoding/decoding using a custom codec on an enum array.
+
+        Bug: https://github.com/MagicStack/asyncpg/issues/590
+        """
+        await self.con.execute('''
+            CREATE TYPE custom_codec_t AS ENUM ('foo', 'bar', 'baz')
+        ''')
+
+        try:
+            await self.con.set_type_codec(
+                'custom_codec_t',
+                encoder=lambda v: str(v).lstrip('enum :'),
+                decoder=lambda v: 'enum: ' + str(v))
+
+            v = await self.con.fetchval(
+                "SELECT ARRAY['foo', 'bar']::custom_codec_t[]")
+            self.assertEqual(v, ['enum: foo', 'enum: bar'])
+
+            v = await self.con.fetchval(
+                'SELECT ARRAY[$1]::custom_codec_t[]', 'foo')
+            self.assertEqual(v, ['enum: foo'])
+
+            v = await self.con.fetchval("SELECT 'foo'::custom_codec_t")
+            self.assertEqual(v, 'enum: foo')
+        finally:
+            await self.con.execute('DROP TYPE custom_codec_t')
+
     async def test_custom_codec_override_binary(self):
         """Test overriding core codecs."""
         import json
@@ -1374,6 +1402,14 @@ class TestCodecs(tb.ConnectedTestCase):
             res = await conn.fetchval('SELECT $1::json', data)
             self.assertEqual(data, res)
 
+            res = await conn.fetchval('SELECT $1::json[]', [data])
+            self.assertEqual([data], res)
+
+            await conn.execute('CREATE DOMAIN my_json AS json')
+
+            res = await conn.fetchval('SELECT $1::my_json', data)
+            self.assertEqual(data, res)
+
             def _encoder(value):
                 return value
 
@@ -1389,6 +1425,7 @@ class TestCodecs(tb.ConnectedTestCase):
             res = await conn.fetchval('SELECT $1::uuid', data)
             self.assertEqual(res, data)
         finally:
+            await conn.execute('DROP DOMAIN IF EXISTS my_json')
             await conn.close()
 
     async def test_custom_codec_override_tuple(self):
