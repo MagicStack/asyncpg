@@ -271,6 +271,9 @@ type_samples = [
         '[1, 2, 3, 4]',
         '{"a": [1, 2], "b": 0}'
     ], (9, 4)),
+    ('jsonpath', 'jsonpath', [
+        '$."track"."segments"[*]."HR"?(@ > 130)',
+    ], (12, 0)),
     ('oid[]', 'oid[]', [
         [1, 2, 3, 4],
         []
@@ -389,6 +392,19 @@ type_samples = [
     ('txid_snapshot', 'txid_snapshot', [
         (100, 1000, (100, 200, 300, 400))
     ]),
+    ('pg_snapshot', 'pg_snapshot', [
+        (100, 1000, (100, 200, 300, 400))
+    ], (13, 0)),
+    ('xid', 'xid', (
+        2 ** 32 - 1,
+        0,
+        1,
+    )),
+    ('xid8', 'xid8', (
+        2 ** 64 - 1,
+        0,
+        1,
+    ), (13, 0)),
     ('varbit', 'varbit', [
         asyncpg.BitString('0000 0001'),
         asyncpg.BitString('00010001'),
