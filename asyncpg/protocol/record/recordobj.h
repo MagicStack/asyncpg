@@ -37,6 +37,7 @@ extern PyTypeObject ApgRecordItems_Type;
 
 extern PyTypeObject ApgRecordDesc_Type;
 
+#define ApgRecord_Check(self) PyObject_TypeCheck(self, &ApgRecord_Type)
 #define ApgRecord_CheckExact(o) (Py_TYPE(o) == &ApgRecord_Type)
 #define ApgRecordDesc_CheckExact(o) (Py_TYPE(o) == &ApgRecordDesc_Type)
 

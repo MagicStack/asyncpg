@@ -354,6 +354,8 @@ class Connection(metaclass=ConnectionMeta):
     ):
         if record_class is None:
             record_class = self._protocol.get_record_class()
+        else:
+            _check_record_class(record_class)
 
         if use_cache:
             statement = self._stmt_cache.get(
@@ -1980,14 +1982,12 @@ async def connect(dsn=None, *,
         libpq-connect.html#LIBPQ-CONNSTRING
     """
     if not issubclass(connection_class, Connection):
-        raise TypeError(
+        raise exceptions.InterfaceError(
             'connection_class is expected to be a subclass of '
             'asyncpg.Connection, got {!r}'.format(connection_class))
 
-    if not issubclass(record_class, protocol.Record):
-        raise TypeError(
-            'record_class is expected to be a subclass of '
-            'asyncpg.Record, got {!r}'.format(record_class))
+    if record_class is not protocol.Record:
+        _check_record_class(record_class)
 
     if loop is None:
         loop = asyncio.get_event_loop()
@@ -2251,6 +2251,27 @@ def _extract_stack(limit=10):
 
     stack.reverse()
     return ''.join(traceback.format_list(stack))
+
+
+def _check_record_class(record_class):
+    if record_class is protocol.Record:
+        pass
+    elif (
+        isinstance(record_class, type)
+        and issubclass(record_class, protocol.Record)
+    ):
+        if (
+            record_class.__new__ is not object.__new__
+            or record_class.__init__ is not object.__init__
+        ):
+            raise exceptions.InterfaceError(
+                'record_class must not redefine __new__ or __init__'
+            )
+    else:
+        raise exceptions.InterfaceError(
+            'record_class is expected to be a subclass of '
+            'asyncpg.Record, got {!r}'.format(record_class)
+        )
 
 
 _uid = 0
