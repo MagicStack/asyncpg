@@ -31,12 +31,12 @@ Performance
 In our testing asyncpg is, on average, **3x** faster than psycopg2
 (and its asyncio variant -- aiopg).
 
-.. image:: performance.png
+.. image:: https://raw.githubusercontent.com/MagicStack/asyncpg/master/performance.png
     :target: https://gistpreview.github.io/?b8eac294ac85da177ff82f784ff2cb60
 
 The above results are a geometric mean of benchmarks obtained with PostgreSQL
 `client driver benchmarking toolbench <https://github.com/MagicStack/pgbench>`_
-in November 2020.
+in November 2020 (click on the chart to see full details).
 
 
 Features
