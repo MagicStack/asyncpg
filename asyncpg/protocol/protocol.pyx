@@ -102,6 +102,9 @@ cdef class BaseProtocol(CoreProtocol):
         self.completed_callback = self._on_waiter_completed
 
         self.queries_count = 0
+        self.pending_results = collections.deque()
+
+        self._test = 'N/A'
 
         try:
             self.create_future = loop.create_future
@@ -360,6 +363,7 @@ cdef class BaseProtocol(CoreProtocol):
 
                 with timer:
                     buffer, done, status_msg = await waiter
+                    print(f'{self._test} copy_out() got result {len(buffer)} {done} {status_msg}')
 
                 # buffer will be empty if CopyDone was received apart from
                 # the last CopyData message.
@@ -585,6 +589,7 @@ cdef class BaseProtocol(CoreProtocol):
             # a ConnectionResetError will be thrown into the task.
             pass
         finally:
+            print(f'{self._test} close() waiter=None')
             self.waiter = None
         self.transport.abort()
 
@@ -643,6 +648,7 @@ cdef class BaseProtocol(CoreProtocol):
             if cause is not None:
                 exc.__cause__ = cause
             self.waiter.set_exception(exc)
+        print(f'{self._test} connection_lost() waiter=None')
         self.waiter = None
 
     cdef _set_server_parameter(self, name, val):
@@ -705,6 +711,8 @@ cdef class BaseProtocol(CoreProtocol):
                     raise apg_exc.InternalClientError(
                         'waiter is not done while handling critical '
                         'protocol error')
+
+                print(f'{self._test} coreproto_error() waiter=None')
                 self.waiter = None
         finally:
             self.abort()
@@ -713,12 +721,15 @@ cdef class BaseProtocol(CoreProtocol):
         if self.waiter is not None:
             raise apg_exc.InterfaceError(
                 'cannot perform operation: another operation is in progress')
-        self.waiter = self.create_future()
+        self.waiter = waiter = self.create_future()
         if timeout is not None:
             self.timeout_handle = self.loop.call_later(
                 timeout, self.timeout_callback, self.waiter)
         self.waiter.add_done_callback(self.completed_callback)
-        return self.waiter
+        if self.pending_results:
+            self._restore_result(self.pending_results.popleft())
+            self._on_result()
+        return waiter
 
     cdef _on_result__connect(self, object waiter):
         waiter.set_result(True)
@@ -780,6 +791,11 @@ cdef class BaseProtocol(CoreProtocol):
 
     cdef _dispatch_result(self):
         waiter = self.waiter
+
+        if waiter is None:
+            self.pending_results.append(self._get_result())
+            return
+
         self.waiter = None
 
         if PG_DEBUG:
@@ -859,6 +875,7 @@ cdef class BaseProtocol(CoreProtocol):
                 self.cancel_waiter.set_result(None)
             self.cancel_waiter = None
             if self.waiter is not None and self.waiter.done():
+                print(f'{self._test} on_result() with cancel_waiter waiter=None')
                 self.waiter = None
             if self.waiter is None:
                 return
@@ -889,6 +906,7 @@ cdef class BaseProtocol(CoreProtocol):
                     self.waiter.set_result(None)
                 else:
                     self.waiter.set_exception(exc)
+            print(f'{self._test} on_connection_lost() closing waiter=None')
             self.waiter = None
         else:
             # The connection was lost because it was
@@ -911,6 +929,7 @@ cdef class BaseProtocol(CoreProtocol):
     # asyncio callbacks:
 
     def data_received(self, data):
+        print(f'{self._test} data received', len(data))
         self.buffer.feed_data(data)
         self._read_server_messages()
 

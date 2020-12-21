@@ -425,6 +425,7 @@ class ConnectedTestCase(ClusterTestCase):
         test_func = getattr(self, self._testMethodName).__func__
         opts = getattr(test_func, '__connect_options__', {})
         self.con = self.loop.run_until_complete(self.connect(**opts))
+        self.con._protocol._test = str(self.id())
         self.server_version = self.con.get_server_version()
 
     def tearDown(self):

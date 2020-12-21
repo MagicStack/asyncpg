@@ -153,6 +153,8 @@ cdef class CoreProtocol:
 
     cdef _push_result(self)
     cdef _reset_result(self)
+    cdef _get_result(self)
+    cdef _restore_result(self, tuple result)
     cdef _set_state(self, ProtocolState new_state)
 
     cdef _ensure_connected(self)

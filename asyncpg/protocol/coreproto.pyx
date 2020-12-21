@@ -724,6 +724,26 @@ cdef class CoreProtocol:
         self._execute_portal_name = None
         self._execute_stmt_name = None
 
+    cdef _get_result(self):
+        return (
+            self.result_type,
+            self.result,
+            self.result_param_desc,
+            self.result_row_desc,
+            self.result_status_msg,
+            self.result_execute_completed,
+        )
+
+    cdef _restore_result(self, tuple result):
+        (
+            self.result_type,
+            self.result,
+            self.result_param_desc,
+            self.result_row_desc,
+            self.result_status_msg,
+            self.result_execute_completed,
+        ) = result
+
     cdef _set_state(self, ProtocolState new_state):
         if new_state == PROTOCOL_IDLE:
             if self.state == PROTOCOL_FAILED:
