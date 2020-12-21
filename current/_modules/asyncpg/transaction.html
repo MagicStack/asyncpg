@@ -67,7 +67,7 @@
             
             
               <div class="version">
-                0.21.0
+                0.22.0
               </div>
             
           
@@ -184,6 +184,11 @@
 
 
 <span class="n">ISOLATION_LEVELS</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;read_committed&#39;</span><span class="p">,</span> <span class="s1">&#39;serializable&#39;</span><span class="p">,</span> <span class="s1">&#39;repeatable_read&#39;</span><span class="p">}</span>
+<span class="n">ISOLATION_LEVELS_BY_VALUE</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;read committed&#39;</span><span class="p">:</span> <span class="s1">&#39;read_committed&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;serializable&#39;</span><span class="p">:</span> <span class="s1">&#39;serializable&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;repeatable read&#39;</span><span class="p">:</span> <span class="s1">&#39;repeatable_read&#39;</span><span class="p">,</span>
+<span class="p">}</span>
 
 
 <div class="viewcode-block" id="Transaction"><a class="viewcode-back" href="../../api/index.html#asyncpg.transaction.Transaction">[docs]</a><span class="k">class</span> <span class="nc">Transaction</span><span class="p">(</span><span class="n">connresource</span><span class="o">.</span><span class="n">ConnectionResource</span><span class="p">):</span>
@@ -200,12 +205,12 @@
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">isolation</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">deferrable</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">isolation</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ISOLATION_LEVELS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">isolation</span> <span class="ow">and</span> <span class="n">isolation</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ISOLATION_LEVELS</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s1">&#39;isolation is expected to be either of </span><span class="si">{}</span><span class="s1">, &#39;</span>
                 <span class="s1">&#39;got </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ISOLATION_LEVELS</span><span class="p">,</span> <span class="n">isolation</span><span class="p">))</span>
 
-        <span class="k">if</span> <span class="n">isolation</span> <span class="o">!=</span> <span class="s1">&#39;serializable&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">isolation</span> <span class="ow">and</span> <span class="n">isolation</span> <span class="o">!=</span> <span class="s1">&#39;serializable&#39;</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">readonly</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="s1">&#39;&quot;readonly&quot; is only supported for &#39;</span>
@@ -274,20 +279,27 @@
             <span class="n">con</span><span class="o">.</span><span class="n">_top_xact</span> <span class="o">=</span> <span class="bp">self</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Nested transaction block</span>
-            <span class="n">top_xact</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_top_xact</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="o">!=</span> <span class="n">top_xact</span><span class="o">.</span><span class="n">_isolation</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
-                    <span class="s1">&#39;nested transaction has a different isolation level: &#39;</span>
-                    <span class="s1">&#39;current </span><span class="si">{!r}</span><span class="s1"> != outer </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span><span class="p">,</span> <span class="n">top_xact</span><span class="o">.</span><span class="n">_isolation</span><span class="p">))</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span><span class="p">:</span>
+                <span class="n">top_xact_isolation</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_top_xact</span><span class="o">.</span><span class="n">_isolation</span>
+                <span class="k">if</span> <span class="n">top_xact_isolation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">top_xact_isolation</span> <span class="o">=</span> <span class="n">ISOLATION_LEVELS_BY_VALUE</span><span class="p">[</span>
+                        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span>
+                            <span class="s1">&#39;SHOW transaction_isolation;&#39;</span><span class="p">)]</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="o">!=</span> <span class="n">top_xact_isolation</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                        <span class="s1">&#39;nested transaction has a different isolation level: &#39;</span>
+                        <span class="s1">&#39;current </span><span class="si">{!r}</span><span class="s1"> != outer </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span><span class="p">,</span> <span class="n">top_xact_isolation</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_nested</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nested</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_id</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">(</span><span class="s1">&#39;savepoint&#39;</span><span class="p">)</span>
             <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;SAVEPOINT </span><span class="si">{}</span><span class="s1">;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_id</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="o">==</span> <span class="s1">&#39;read_committed&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;BEGIN;&#39;</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="o">==</span> <span class="s1">&#39;read_committed&#39;</span><span class="p">:</span>
+                <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;BEGIN ISOLATION LEVEL READ COMMITTED;&#39;</span>
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="o">==</span> <span class="s1">&#39;repeatable_read&#39;</span><span class="p">:</span>
                 <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;BEGIN ISOLATION LEVEL REPEATABLE READ;&#39;</span>
             <span class="k">else</span><span class="p">:</span>
@@ -434,7 +446,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.21.0',
+            VERSION:'0.22.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

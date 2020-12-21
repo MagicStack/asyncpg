@@ -67,7 +67,7 @@
             
             
               <div class="version">
-                0.21.0
+                0.22.0
               </div>
             
           
@@ -214,7 +214,7 @@
                  <span class="s1">&#39;_source_traceback&#39;</span><span class="p">,</span> <span class="s1">&#39;__weakref__&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">protocol</span><span class="p">,</span> <span class="n">transport</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span>
-                 <span class="n">addr</span><span class="p">:</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">addr</span><span class="p">,</span>
                  <span class="n">config</span><span class="p">:</span> <span class="n">connect_utils</span><span class="o">.</span><span class="n">_ClientConfiguration</span><span class="p">,</span>
                  <span class="n">params</span><span class="p">:</span> <span class="n">connect_utils</span><span class="o">.</span><span class="n">_ConnectionParameters</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span> <span class="o">=</span> <span class="n">protocol</span>
@@ -392,7 +392,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="Connection.transaction"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.transaction">[docs]</a>    <span class="k">def</span> <span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">isolation</span><span class="o">=</span><span class="s1">&#39;read_committed&#39;</span><span class="p">,</span> <span class="n">readonly</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<div class="viewcode-block" id="Connection.transaction"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.transaction">[docs]</a>    <span class="k">def</span> <span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">isolation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">readonly</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                     <span class="n">deferrable</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create a :class:`~transaction.Transaction` object.</span>
 
@@ -401,7 +401,9 @@
 
 <span class="sd">        :param isolation: Transaction isolation mode, can be one of:</span>
 <span class="sd">                          `&#39;serializable&#39;`, `&#39;repeatable_read&#39;`,</span>
-<span class="sd">                          `&#39;read_committed&#39;`.</span>
+<span class="sd">                          `&#39;read_committed&#39;`. If not specified, the behavior</span>
+<span class="sd">                          is up to the server and session, which is usually</span>
+<span class="sd">                          ``read_committed``.</span>
 
 <span class="sd">        :param readonly: Specifies whether or not this transaction is</span>
 <span class="sd">                         read-only.</span>
@@ -458,7 +460,13 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="p">:</span>
             <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
 
-        <span class="n">_</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span>
+            <span class="n">query</span><span class="p">,</span>
+            <span class="n">args</span><span class="p">,</span>
+            <span class="mi">0</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="p">,</span>
+            <span class="n">return_status</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="k">return</span> <span class="n">status</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Connection.executemany"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.executemany">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">executemany</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -477,24 +485,40 @@
 <span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 <span class="sd">        :return None: This method discards the results of the operations.</span>
 
-<span class="sd">        .. note::</span>
-
-<span class="sd">           When inserting a large number of rows,</span>
-<span class="sd">           use :meth:`Connection.copy_records_to_table()` instead,</span>
-<span class="sd">           it is much more efficient for this purpose.</span>
-
 <span class="sd">        .. versionadded:: 0.7.0</span>
 
 <span class="sd">        .. versionchanged:: 0.11.0</span>
 <span class="sd">           `timeout` became a keyword-only parameter.</span>
+
+<span class="sd">        .. versionchanged:: 0.22.0</span>
+<span class="sd">           ``executemany()`` is now an atomic operation, which means that</span>
+<span class="sd">           either all executions succeed, or none at all.  This is in contrast</span>
+<span class="sd">           to prior versions, where the effect of already-processed iterations</span>
+<span class="sd">           would remain in place when an error has occurred, unless</span>
+<span class="sd">           ``executemany()`` was called in a transaction.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_executemany</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">_get_statement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">named</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                             <span class="n">use_cache</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_get_statement</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">query</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">named</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">use_cache</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">record_class</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">record_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_record_class</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_check_record_class</span><span class="p">(</span><span class="n">record_class</span><span class="p">)</span>
+
         <span class="k">if</span> <span class="n">use_cache</span><span class="p">:</span>
-            <span class="n">statement</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+            <span class="n">statement</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">record_class</span><span class="p">,</span> <span class="n">ignore_custom_codec</span><span class="p">)</span>
+            <span class="p">)</span>
             <span class="k">if</span> <span class="n">statement</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">statement</span>
 
@@ -512,7 +536,13 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">stmt_name</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
 
-        <span class="n">statement</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="n">stmt_name</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="n">statement</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span>
+            <span class="n">stmt_name</span><span class="p">,</span>
+            <span class="n">query</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="p">,</span>
+            <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+            <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="n">ignore_custom_codec</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="n">need_reprepare</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="n">types_with_missing_codecs</span> <span class="o">=</span> <span class="n">statement</span><span class="o">.</span><span class="n">_init_types</span><span class="p">()</span>
         <span class="n">tries</span> <span class="o">=</span> <span class="mi">0</span>
@@ -548,10 +578,16 @@
 
         <span class="k">if</span> <span class="n">need_reprepare</span><span class="p">:</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span>
-                <span class="n">stmt_name</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="n">statement</span><span class="p">)</span>
+                <span class="n">stmt_name</span><span class="p">,</span>
+                <span class="n">query</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="p">,</span>
+                <span class="n">state</span><span class="o">=</span><span class="n">statement</span><span class="p">,</span>
+                <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+            <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">use_cache</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">statement</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">put</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">record_class</span><span class="p">,</span> <span class="n">ignore_custom_codec</span><span class="p">),</span> <span class="n">statement</span><span class="p">)</span>
 
         <span class="c1"># If we&#39;ve just created a new statement object, check if there</span>
         <span class="c1"># are any statements for GC.</span>
@@ -562,49 +598,159 @@
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_introspect_types</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typeoids</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__execute</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">typeoids</span><span class="p">),),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span><span class="p">,</span>
+            <span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">typeoids</span><span class="p">),),</span>
+            <span class="mi">0</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="p">,</span>
+            <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
 
-<div class="viewcode-block" id="Connection.cursor"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.cursor">[docs]</a>    <span class="k">def</span> <span class="nf">cursor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">prefetch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_introspect_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">schema</span> <span class="o">==</span> <span class="s1">&#39;pg_catalog&#39;</span>
+            <span class="ow">and</span> <span class="n">typename</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">protocol</span><span class="o">.</span><span class="n">BUILTIN_TYPE_NAME_MAP</span>
+        <span class="p">):</span>
+            <span class="n">typeoid</span> <span class="o">=</span> <span class="n">protocol</span><span class="o">.</span><span class="n">BUILTIN_TYPE_NAME_MAP</span><span class="p">[</span><span class="n">typename</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
+            <span class="n">rows</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span>
+                <span class="n">introspection</span><span class="o">.</span><span class="n">TYPE_BY_OID</span><span class="p">,</span>
+                <span class="p">[</span><span class="n">typeoid</span><span class="p">],</span>
+                <span class="n">limit</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rows</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span>
+                <span class="n">introspection</span><span class="o">.</span><span class="n">TYPE_BY_NAME</span><span class="p">,</span>
+                <span class="p">[</span><span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">],</span>
+                <span class="n">limit</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">rows</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;unknown type: </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Connection.cursor"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.cursor">[docs]</a>    <span class="k">def</span> <span class="nf">cursor</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">query</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+        <span class="n">prefetch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return a *cursor factory* for the specified query.</span>
 
-<span class="sd">        :param args: Query arguments.</span>
-<span class="sd">        :param int prefetch: The number of rows the *cursor iterator*</span>
-<span class="sd">                             will prefetch (defaults to ``50``.)</span>
-<span class="sd">        :param float timeout: Optional timeout in seconds.</span>
+<span class="sd">        :param args:</span>
+<span class="sd">            Query arguments.</span>
+<span class="sd">        :param int prefetch:</span>
+<span class="sd">            The number of rows the *cursor iterator*</span>
+<span class="sd">            will prefetch (defaults to ``50``.)</span>
+<span class="sd">        :param float timeout:</span>
+<span class="sd">            Optional timeout in seconds.</span>
+<span class="sd">        :param type record_class:</span>
+<span class="sd">            If specified, the class to use for records returned by this cursor.</span>
+<span class="sd">            Must be a subclass of :class:`~asyncpg.Record`.  If not specified,</span>
+<span class="sd">            a per-connection *record_class* is used.</span>
 
-<span class="sd">        :return: A :class:`~cursor.CursorFactory` object.</span>
+<span class="sd">        :return:</span>
+<span class="sd">            A :class:`~cursor.CursorFactory` object.</span>
+
+<span class="sd">        .. versionchanged:: 0.22.0</span>
+<span class="sd">            Added the *record_class* parameter.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
-        <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">CursorFactory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span>
-                                    <span class="n">prefetch</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">CursorFactory</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">query</span><span class="p">,</span>
+            <span class="kc">None</span><span class="p">,</span>
+            <span class="n">args</span><span class="p">,</span>
+            <span class="n">prefetch</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="p">,</span>
+            <span class="n">record_class</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
-<div class="viewcode-block" id="Connection.prepare"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.prepare">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="Connection.prepare"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.prepare">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create a *prepared statement* for the specified query.</span>
 
-<span class="sd">        :param str query: Text of the query to create a prepared statement for.</span>
-<span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
+<span class="sd">        :param str query:</span>
+<span class="sd">            Text of the query to create a prepared statement for.</span>
+<span class="sd">        :param float timeout:</span>
+<span class="sd">            Optional timeout value in seconds.</span>
+<span class="sd">        :param type record_class:</span>
+<span class="sd">            If specified, the class to use for records returned by the</span>
+<span class="sd">            prepared statement.  Must be a subclass of</span>
+<span class="sd">            :class:`~asyncpg.Record`.  If not specified, a per-connection</span>
+<span class="sd">            *record_class* is used.</span>
 
-<span class="sd">        :return: A :class:`~prepared_stmt.PreparedStatement` instance.</span>
+<span class="sd">        :return:</span>
+<span class="sd">            A :class:`~prepared_stmt.PreparedStatement` instance.</span>
+
+<span class="sd">        .. versionchanged:: 0.22.0</span>
+<span class="sd">            Added the *record_class* parameter.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span> <span class="n">use_cache</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare</span><span class="p">(</span>
+            <span class="n">query</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
+            <span class="n">use_cache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">_prepare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_cache</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_prepare</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">query</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">use_cache</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
-        <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">named</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                                         <span class="n">use_cache</span><span class="o">=</span><span class="n">use_cache</span><span class="p">)</span>
+        <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span>
+            <span class="n">query</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="p">,</span>
+            <span class="n">named</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">use_cache</span><span class="o">=</span><span class="n">use_cache</span><span class="p">,</span>
+            <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="k">return</span> <span class="n">prepared_stmt</span><span class="o">.</span><span class="n">PreparedStatement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">stmt</span><span class="p">)</span>
 
-<div class="viewcode-block" id="Connection.fetch"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.fetch">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<div class="viewcode-block" id="Connection.fetch"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.fetch">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetch</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">query</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Run a query and return the results as a list of :class:`Record`.</span>
 
-<span class="sd">        :param str query: Query text.</span>
-<span class="sd">        :param args: Query arguments.</span>
-<span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
+<span class="sd">        :param str query:</span>
+<span class="sd">            Query text.</span>
+<span class="sd">        :param args:</span>
+<span class="sd">            Query arguments.</span>
+<span class="sd">        :param float timeout:</span>
+<span class="sd">            Optional timeout value in seconds.</span>
+<span class="sd">        :param type record_class:</span>
+<span class="sd">            If specified, the class to use for records returned by this method.</span>
+<span class="sd">            Must be a subclass of :class:`~asyncpg.Record`.  If not specified,</span>
+<span class="sd">            a per-connection *record_class* is used.</span>
 
-<span class="sd">        :return list: A list of :class:`Record` instances.</span>
+<span class="sd">        :return list:</span>
+<span class="sd">            A list of :class:`~asyncpg.Record` instances.  If specified, the</span>
+<span class="sd">            actual type of list elements would be *record_class*.</span>
+
+<span class="sd">        .. versionchanged:: 0.22.0</span>
+<span class="sd">            Added the *record_class* parameter.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span>
+            <span class="n">query</span><span class="p">,</span>
+            <span class="n">args</span><span class="p">,</span>
+            <span class="mi">0</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="p">,</span>
+            <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 <div class="viewcode-block" id="Connection.fetchval"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.fetchval">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Run a query and return a value in the first row.</span>
@@ -627,18 +773,42 @@
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">column</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="Connection.fetchrow"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.fetchrow">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchrow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="Connection.fetchrow"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.fetchrow">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchrow</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">query</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Run a query and return the first row.</span>
 
-<span class="sd">        :param str query: Query text</span>
-<span class="sd">        :param args: Query arguments</span>
-<span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
+<span class="sd">        :param str query:</span>
+<span class="sd">            Query text</span>
+<span class="sd">        :param args:</span>
+<span class="sd">            Query arguments</span>
+<span class="sd">        :param float timeout:</span>
+<span class="sd">            Optional timeout value in seconds.</span>
+<span class="sd">        :param type record_class:</span>
+<span class="sd">            If specified, the class to use for the value returned by this</span>
+<span class="sd">            method.  Must be a subclass of :class:`~asyncpg.Record`.</span>
+<span class="sd">            If not specified, a per-connection *record_class* is used.</span>
 
-<span class="sd">        :return: The first row as a :class:`Record` instance, or None if</span>
-<span class="sd">                 no records were returned by the query.</span>
+<span class="sd">        :return:</span>
+<span class="sd">            The first row as a :class:`~asyncpg.Record` instance, or None if</span>
+<span class="sd">            no records were returned by the query.  If specified,</span>
+<span class="sd">            *record_class* is used as the type for the result value.</span>
+
+<span class="sd">        .. versionchanged:: 0.22.0</span>
+<span class="sd">            Added the *record_class* parameter.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span>
+            <span class="n">query</span><span class="p">,</span>
+            <span class="n">args</span><span class="p">,</span>
+            <span class="mi">1</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="p">,</span>
+            <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
@@ -1007,6 +1177,9 @@
             <span class="n">f</span> <span class="o">=</span> <span class="n">source</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">AsyncIterable</span><span class="p">):</span>
             <span class="c1"># assuming calling output returns an awaitable.</span>
+            <span class="c1"># copy_in() is designed to handle very large amounts of data, and</span>
+            <span class="c1"># the source async iterable is allowed to return an arbitrary</span>
+            <span class="c1"># amount of data on every iteration.</span>
             <span class="n">reader</span> <span class="o">=</span> <span class="n">source</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># assuming source is an instance supporting the buffer protocol.</span>
@@ -1143,18 +1316,31 @@
 <span class="sd">        .. versionchanged:: 0.13.0</span>
 <span class="sd">            The ``binary`` keyword argument was removed in favor of</span>
 <span class="sd">            ``format``.</span>
+
+<span class="sd">        .. note::</span>
+
+<span class="sd">           It is recommended to use the ``&#39;binary&#39;`` or ``&#39;tuple&#39;`` *format*</span>
+<span class="sd">           whenever possible and if the underlying type supports it. Asyncpg</span>
+<span class="sd">           currently does not support text I/O for composite and range types,</span>
+<span class="sd">           and some other functionality, such as</span>
+<span class="sd">           :meth:`Connection.copy_to_table`, does not support types with text</span>
+<span class="sd">           codecs.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
-
-        <span class="n">typeinfo</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">(</span>
-            <span class="n">introspection</span><span class="o">.</span><span class="n">TYPE_BY_NAME</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">typeinfo</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;unknown type: </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
-
+        <span class="n">typeinfo</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_introspect_type</span><span class="p">(</span><span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">introspection</span><span class="o">.</span><span class="n">is_scalar_type</span><span class="p">(</span><span class="n">typeinfo</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
                 <span class="s1">&#39;cannot use custom codec on non-scalar type </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">introspection</span><span class="o">.</span><span class="n">is_domain_type</span><span class="p">(</span><span class="n">typeinfo</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">UnsupportedClientFeatureError</span><span class="p">(</span>
+                <span class="s1">&#39;custom codecs on domain types are not supported&#39;</span><span class="p">,</span>
+                <span class="n">hint</span><span class="o">=</span><span class="s1">&#39;Set the codec on the base type.&#39;</span><span class="p">,</span>
+                <span class="n">detail</span><span class="o">=</span><span class="p">(</span>
+                    <span class="s1">&#39;PostgreSQL does not distinguish domains from &#39;</span>
+                    <span class="s1">&#39;their base types in query results at the protocol level.&#39;</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
 
         <span class="n">oid</span> <span class="o">=</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;oid&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">add_python_codec</span><span class="p">(</span>
@@ -1177,15 +1363,9 @@
 <span class="sd">        .. versionadded:: 0.12.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="n">typeinfo</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">(</span>
-            <span class="n">introspection</span><span class="o">.</span><span class="n">TYPE_BY_NAME</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">typeinfo</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;unknown type: </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
-
-        <span class="n">oid</span> <span class="o">=</span> <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;oid&#39;</span><span class="p">]</span>
-
+        <span class="n">typeinfo</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_introspect_type</span><span class="p">(</span><span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span><span class="o">.</span><span class="n">remove_python_codec</span><span class="p">(</span>
-            <span class="n">oid</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
+            <span class="n">typeinfo</span><span class="p">[</span><span class="s1">&#39;oid&#39;</span><span class="p">],</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
 
         <span class="c1"># Statement cache is no longer valid due to codec changes.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_statement_cache</span><span class="p">()</span></div>
@@ -1226,13 +1406,7 @@
 <span class="sd">            core data type.  Added the *format* keyword argument.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
-
-        <span class="n">typeinfo</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">(</span>
-            <span class="n">introspection</span><span class="o">.</span><span class="n">TYPE_BY_NAME</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">typeinfo</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
-                <span class="s1">&#39;unknown type: </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">typename</span><span class="p">))</span>
-
+        <span class="n">typeinfo</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_introspect_type</span><span class="p">(</span><span class="n">typename</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">introspection</span><span class="o">.</span><span class="n">is_scalar_type</span><span class="p">(</span><span class="n">typeinfo</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
                 <span class="s1">&#39;cannot alias non-scalar type </span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
@@ -1349,7 +1523,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_stmts_to_close</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">_maybe_gc_stmt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stmt</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">stmt</span><span class="o">.</span><span class="n">refs</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">has</span><span class="p">(</span><span class="n">stmt</span><span class="o">.</span><span class="n">query</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">stmt</span><span class="o">.</span><span class="n">refs</span> <span class="o">==</span> <span class="mi">0</span>
+            <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">has</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">stmt</span><span class="o">.</span><span class="n">query</span><span class="p">,</span> <span class="n">stmt</span><span class="o">.</span><span class="n">record_class</span><span class="p">,</span> <span class="n">stmt</span><span class="o">.</span><span class="n">ignore_custom_codec</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">):</span>
             <span class="c1"># If low-level `stmt` isn&#39;t referenced from any high-level</span>
             <span class="c1"># `PreparedStatement` object and is not in the `_stmt_cache`:</span>
             <span class="c1">#</span>
@@ -1604,18 +1783,50 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_drop_global_type_cache</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_drop_global_statement_cache</span><span class="p">()</span></div>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">return_status</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_execute</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">query</span><span class="p">,</span>
+        <span class="n">args</span><span class="p">,</span>
+        <span class="n">limit</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">return_status</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_exclusive_section</span><span class="p">:</span>
             <span class="n">result</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__execute</span><span class="p">(</span>
-                <span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">return_status</span><span class="o">=</span><span class="n">return_status</span><span class="p">)</span>
+                <span class="n">query</span><span class="p">,</span>
+                <span class="n">args</span><span class="p">,</span>
+                <span class="n">limit</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="p">,</span>
+                <span class="n">return_status</span><span class="o">=</span><span class="n">return_status</span><span class="p">,</span>
+                <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+                <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="n">ignore_custom_codec</span><span class="p">,</span>
+            <span class="p">)</span>
         <span class="k">return</span> <span class="n">result</span>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">__execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span>
-                        <span class="n">return_status</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">__execute</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">query</span><span class="p">,</span>
+        <span class="n">args</span><span class="p">,</span>
+        <span class="n">limit</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">return_status</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
         <span class="n">executor</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">stmt</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span>
             <span class="n">stmt</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">return_status</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="n">timeout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">_get_timeout</span><span class="p">(</span><span class="n">timeout</span><span class="p">)</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_do_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">executor</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_do_execute</span><span class="p">(</span>
+            <span class="n">query</span><span class="p">,</span>
+            <span class="n">executor</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="p">,</span>
+            <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+            <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="n">ignore_custom_codec</span><span class="p">,</span>
+        <span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_executemany</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
         <span class="n">executor</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">stmt</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">bind_execute_many</span><span class="p">(</span>
@@ -1625,12 +1836,31 @@
             <span class="n">result</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_do_execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">executor</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">result</span>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">_do_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">executor</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">retry</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_do_execute</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">query</span><span class="p">,</span>
+        <span class="n">executor</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="p">,</span>
+        <span class="n">retry</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
         <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span>
+                <span class="n">query</span><span class="p">,</span>
+                <span class="kc">None</span><span class="p">,</span>
+                <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+                <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="n">ignore_custom_codec</span><span class="p">,</span>
+            <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">before</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
-            <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+            <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span>
+                <span class="n">query</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="p">,</span>
+                <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+                <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="n">ignore_custom_codec</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="n">after</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
             <span class="n">timeout</span> <span class="o">-=</span> <span class="n">after</span> <span class="o">-</span> <span class="n">before</span>
             <span class="n">before</span> <span class="o">=</span> <span class="n">after</span>
@@ -1699,6 +1929,7 @@
                   <span class="n">command_timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                   <span class="n">ssl</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                   <span class="n">connection_class</span><span class="o">=</span><span class="n">Connection</span><span class="p">,</span>
+                  <span class="n">record_class</span><span class="o">=</span><span class="n">protocol</span><span class="o">.</span><span class="n">Record</span><span class="p">,</span>
                   <span class="n">server_settings</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sa">r</span><span class="sd">&quot;&quot;&quot;A coroutine to establish a connection to a PostgreSQL server.</span>
 
@@ -1719,6 +1950,11 @@
 <span class="sd">        user, database (or dbname), password, passfile, sslmode.</span>
 <span class="sd">        Unlike libpq, asyncpg will treat unrecognized options</span>
 <span class="sd">        as `server settings`_ to be used for the connection.</span>
+
+<span class="sd">        .. note::</span>
+
+<span class="sd">           The URI must be *valid*, which means that all components must</span>
+<span class="sd">           be properly quoted with :py:func:`urllib.parse.quote`.</span>
 
 <span class="sd">    :param host:</span>
 <span class="sd">        Database host address as one of the following:</span>
@@ -1811,16 +2047,42 @@
 <span class="sd">        Pass ``True`` or an `ssl.SSLContext &lt;SSLContext_&gt;`_ instance to</span>
 <span class="sd">        require an SSL connection.  If ``True``, a default SSL context</span>
 <span class="sd">        returned by `ssl.create_default_context() &lt;create_default_context_&gt;`_</span>
-<span class="sd">        will be used.</span>
+<span class="sd">        will be used.  The value can also be one of the following strings:</span>
+
+<span class="sd">        - ``&#39;disable&#39;`` - SSL is disabled (equivalent to ``False``)</span>
+<span class="sd">        - ``&#39;prefer&#39;`` - try SSL first, fallback to non-SSL connection</span>
+<span class="sd">          if SSL connection fails</span>
+<span class="sd">        - ``&#39;allow&#39;`` - currently equivalent to ``&#39;prefer&#39;``</span>
+<span class="sd">        - ``&#39;require&#39;`` - only try an SSL connection.  Certificate</span>
+<span class="sd">          verifiction errors are ignored</span>
+<span class="sd">        - ``&#39;verify-ca&#39;`` - only try an SSL connection, and verify</span>
+<span class="sd">          that the server certificate is issued by a trusted certificate</span>
+<span class="sd">          authority (CA)</span>
+<span class="sd">        - ``&#39;verify-full&#39;`` - only try an SSL connection, verify</span>
+<span class="sd">          that the server certificate is issued by a trusted CA and</span>
+<span class="sd">          that the requested server host name matches that in the</span>
+<span class="sd">          certificate.</span>
+
+<span class="sd">        The default is ``&#39;prefer&#39;``: try an SSL connection and fallback to</span>
+<span class="sd">        non-SSL connection if that fails.</span>
+
+<span class="sd">        .. note::</span>
+
+<span class="sd">           *ssl* is ignored for Unix domain socket communication.</span>
 
 <span class="sd">    :param dict server_settings:</span>
 <span class="sd">        An optional dict of server runtime parameters.  Refer to</span>
 <span class="sd">        PostgreSQL documentation for</span>
 <span class="sd">        a `list of supported options &lt;server settings_&gt;`_.</span>
 
-<span class="sd">    :param Connection connection_class:</span>
+<span class="sd">    :param type connection_class:</span>
 <span class="sd">        Class of the returned connection object.  Must be a subclass of</span>
 <span class="sd">        :class:`~asyncpg.connection.Connection`.</span>
+
+<span class="sd">    :param type record_class:</span>
+<span class="sd">        If specified, the class to use for records returned by queries on</span>
+<span class="sd">        this connection object.  Must be a subclass of</span>
+<span class="sd">        :class:`~asyncpg.Record`.</span>
 
 <span class="sd">    :return: A :class:`~asyncpg.connection.Connection` instance.</span>
 
@@ -1860,6 +2122,12 @@
 <span class="sd">    .. versionchanged:: 0.21.0</span>
 <span class="sd">       The *password* argument now accepts a callable or an async function.</span>
 
+<span class="sd">    .. versionchanged:: 0.22.0</span>
+<span class="sd">       Added the *record_class* parameter.</span>
+
+<span class="sd">    .. versionchanged:: 0.22.0</span>
+<span class="sd">       The *ssl* argument now defaults to ``&#39;prefer&#39;``.</span>
+
 <span class="sd">    .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext</span>
 <span class="sd">    .. _create_default_context:</span>
 <span class="sd">        https://docs.python.org/3/library/ssl.html#ssl.create_default_context</span>
@@ -1868,27 +2136,39 @@
 <span class="sd">    .. _postgres envvars:</span>
 <span class="sd">        https://www.postgresql.org/docs/current/static/libpq-envars.html</span>
 <span class="sd">    .. _libpq connection URI format:</span>
-<span class="sd">        https://www.postgresql.org/docs/current/static/\</span>
+<span class="sd">        https://www.postgresql.org/docs/current/static/</span>
 <span class="sd">        libpq-connect.html#LIBPQ-CONNSTRING</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">connection_class</span><span class="p">,</span> <span class="n">Connection</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+        <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
             <span class="s1">&#39;connection_class is expected to be a subclass of &#39;</span>
             <span class="s1">&#39;asyncpg.Connection, got </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">connection_class</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">record_class</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">protocol</span><span class="o">.</span><span class="n">Record</span><span class="p">:</span>
+        <span class="n">_check_record_class</span><span class="p">(</span><span class="n">record_class</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">loop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
 
     <span class="k">return</span> <span class="k">await</span> <span class="n">connect_utils</span><span class="o">.</span><span class="n">_connect</span><span class="p">(</span>
-        <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span> <span class="n">connection_class</span><span class="o">=</span><span class="n">connection_class</span><span class="p">,</span>
-        <span class="n">dsn</span><span class="o">=</span><span class="n">dsn</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="n">user</span><span class="p">,</span>
-        <span class="n">password</span><span class="o">=</span><span class="n">password</span><span class="p">,</span> <span class="n">passfile</span><span class="o">=</span><span class="n">passfile</span><span class="p">,</span>
-        <span class="n">ssl</span><span class="o">=</span><span class="n">ssl</span><span class="p">,</span> <span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">,</span>
+        <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
+        <span class="n">connection_class</span><span class="o">=</span><span class="n">connection_class</span><span class="p">,</span>
+        <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
+        <span class="n">dsn</span><span class="o">=</span><span class="n">dsn</span><span class="p">,</span>
+        <span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span>
+        <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span>
+        <span class="n">user</span><span class="o">=</span><span class="n">user</span><span class="p">,</span>
+        <span class="n">password</span><span class="o">=</span><span class="n">password</span><span class="p">,</span>
+        <span class="n">passfile</span><span class="o">=</span><span class="n">passfile</span><span class="p">,</span>
+        <span class="n">ssl</span><span class="o">=</span><span class="n">ssl</span><span class="p">,</span>
+        <span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">,</span>
         <span class="n">server_settings</span><span class="o">=</span><span class="n">server_settings</span><span class="p">,</span>
         <span class="n">command_timeout</span><span class="o">=</span><span class="n">command_timeout</span><span class="p">,</span>
         <span class="n">statement_cache_size</span><span class="o">=</span><span class="n">statement_cache_size</span><span class="p">,</span>
         <span class="n">max_cached_statement_lifetime</span><span class="o">=</span><span class="n">max_cached_statement_lifetime</span><span class="p">,</span>
-        <span class="n">max_cacheable_statement_size</span><span class="o">=</span><span class="n">max_cacheable_statement_size</span><span class="p">)</span></div>
+        <span class="n">max_cacheable_statement_size</span><span class="o">=</span><span class="n">max_cacheable_statement_size</span><span class="p">,</span>
+    <span class="p">)</span></div>
 
 
 <span class="k">class</span> <span class="nc">_StatementCacheEntry</span><span class="p">:</span>
@@ -2131,6 +2411,27 @@
     <span class="k">return</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_list</span><span class="p">(</span><span class="n">stack</span><span class="p">))</span>
 
 
+<span class="k">def</span> <span class="nf">_check_record_class</span><span class="p">(</span><span class="n">record_class</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">record_class</span> <span class="ow">is</span> <span class="n">protocol</span><span class="o">.</span><span class="n">Record</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">elif</span> <span class="p">(</span>
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">record_class</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">record_class</span><span class="p">,</span> <span class="n">protocol</span><span class="o">.</span><span class="n">Record</span><span class="p">)</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">record_class</span><span class="o">.</span><span class="fm">__new__</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__new__</span>
+            <span class="ow">or</span> <span class="n">record_class</span><span class="o">.</span><span class="fm">__init__</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__init__</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                <span class="s1">&#39;record_class must not redefine __new__ or __init__&#39;</span>
+            <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+            <span class="s1">&#39;record_class is expected to be a subclass of &#39;</span>
+            <span class="s1">&#39;asyncpg.Record, got </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">record_class</span><span class="p">)</span>
+        <span class="p">)</span>
+
+
 <span class="n">_uid</span> <span class="o">=</span> <span class="mi">0</span>
 </pre></div>
 
@@ -2167,7 +2468,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.21.0',
+            VERSION:'0.22.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

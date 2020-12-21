@@ -67,7 +67,7 @@
             
             
               <div class="version">
-                0.21.0
+                0.22.0
               </div>
             
           
@@ -178,16 +178,19 @@ of asyncpg at some point in the future.</p>
 </div>
 <div class="section" id="can-i-use-asyncpg-with-sqlalchemy-orm">
 <h2>Can I use asyncpg with SQLAlchemy ORM?<a class="headerlink" href="#can-i-use-asyncpg-with-sqlalchemy-orm" title="Permalink to this headline">¶</a></h2>
-<p>Short answer: no.  asyncpg uses asynchronous execution model
-and API, which is fundamentally incompatible with SQLAlchemy.
-However, it is possible to use asyncpg and SQLAlchemy Core
-with the help of a third-party adapter, such as <a class="reference external" href="https://github.com/CanopyTax/asyncpgsa">asyncpgsa</a> or <a class="reference external" href="https://github.com/encode/databases">databases</a>.</p>
+<p>Yes.  SQLAlchemy version 1.4 and later supports the asyncpg dialect natively.
+Please refer to its documentation for details.  Older SQLAlchemy versions
+may be used in tandem with a third-party adapter such as
+<a class="reference external" href="https://github.com/CanopyTax/asyncpgsa">asyncpgsa</a> or <a class="reference external" href="https://github.com/encode/databases">databases</a>.</p>
 </div>
 <div class="section" id="can-i-use-dot-notation-with-asyncpg-record-it-looks-cleaner">
 <h2>Can I use dot-notation with <a class="reference internal" href="api/index.html#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Record</span></code></a>?  It looks cleaner.<a class="headerlink" href="#can-i-use-dot-notation-with-asyncpg-record-it-looks-cleaner" title="Permalink to this headline">¶</a></h2>
 <p>We decided against making <a class="reference internal" href="api/index.html#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Record</span></code></a> a named tuple
 because we want to keep the <code class="docutils literal notranslate"><span class="pre">Record</span></code> method namespace separate
-from the column namespace.</p>
+from the column namespace.  That said, you can provide a custom <code class="docutils literal notranslate"><span class="pre">Record</span></code>
+class that implements dot-notation via the <code class="docutils literal notranslate"><span class="pre">record_class</span></code> argument to
+<a class="reference internal" href="api/index.html#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">connect()</span></code></a> or any of the Record-returning
+methods.</p>
 </div>
 <div class="section" id="why-can-t-i-use-a-cursor-outside-of-a-transaction">
 <h2>Why can’t I use a <a class="reference internal" href="api/index.html#asyncpg-api-cursor"><span class="std std-ref">cursor</span></a> outside of a transaction?<a class="headerlink" href="#why-can-t-i-use-a-cursor-outside-of-a-transaction" title="Permalink to this headline">¶</a></h2>
@@ -207,14 +210,21 @@ To create a cursor usable outside of a transaction, use the
 PostgreSQL server directly, but via
 <a class="reference external" href="https://pgbouncer.github.io/">pgbouncer</a>.  pgbouncer, when
 in the <code class="docutils literal notranslate"><span class="pre">&quot;transaction&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;statement&quot;</span></code> pooling mode, does not support
-prepared statements.  You have two options:</p>
+prepared statements.  You have several options:</p>
 <ul class="simple">
-<li>if you are using pgbouncer for connection pooling to a single server,
+<li>if you are using pgbouncer only to reduce the cost of new connections
+(as opposed to using pgbouncer for connection pooling from
+a large number of clients in the interest of better scalability),
 switch to the <a class="reference internal" href="usage.html#asyncpg-connection-pool"><span class="std std-ref">connection pool</span></a>
 functionality provided by asyncpg, it is a much better option for this
 purpose;</li>
-<li>if you have no option of avoiding the use of pgbouncer, then you need to
-switch pgbouncer’s <code class="docutils literal notranslate"><span class="pre">pool_mode</span></code> to <code class="docutils literal notranslate"><span class="pre">session</span></code>.</li>
+<li>disable automatic use of prepared statements by passing
+<code class="docutils literal notranslate"><span class="pre">statement_cache_size=0</span></code>
+to <a class="reference internal" href="api/index.html#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncpg.connect()</span></code></a> and
+<a class="reference internal" href="api/index.html#asyncpg.pool.create_pool" title="asyncpg.pool.create_pool"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncpg.create_pool()</span></code></a>
+(and, obviously, avoid the use of
+<a class="reference internal" href="api/index.html#asyncpg.connection.Connection.prepare" title="asyncpg.connection.Connection.prepare"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Connection.prepare()</span></code></a>);</li>
+<li>switch pgbouncer’s <code class="docutils literal notranslate"><span class="pre">pool_mode</span></code> to <code class="docutils literal notranslate"><span class="pre">session</span></code>.</li>
 </ul>
 </div>
 <div class="section" id="why-do-i-get-postgressyntaxerror-when-using-expression-in-1">
@@ -266,7 +276,7 @@ where <code class="docutils literal notranslate"><span class="pre">mytype</span>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.21.0',
+            VERSION:'0.22.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

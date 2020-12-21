@@ -67,7 +67,7 @@
             
             
               <div class="version">
-                0.21.0
+                0.22.0
               </div>
             
           
@@ -169,31 +169,18 @@
 
 <span class="kn">from</span> <span class="nn">.connection</span> <span class="kn">import</span> <span class="n">connect</span><span class="p">,</span> <span class="n">Connection</span>  <span class="c1"># NOQA</span>
 <span class="kn">from</span> <span class="nn">.exceptions</span> <span class="kn">import</span> <span class="o">*</span>  <span class="c1"># NOQA</span>
-<span class="kn">from</span> <span class="nn">.pool</span> <span class="kn">import</span> <span class="n">create_pool</span>  <span class="c1"># NOQA</span>
+<span class="kn">from</span> <span class="nn">.pool</span> <span class="kn">import</span> <span class="n">create_pool</span><span class="p">,</span> <span class="n">Pool</span>  <span class="c1"># NOQA</span>
 <span class="kn">from</span> <span class="nn">.protocol</span> <span class="kn">import</span> <span class="n">Record</span>  <span class="c1"># NOQA</span>
 <span class="kn">from</span> <span class="nn">.types</span> <span class="kn">import</span> <span class="o">*</span>  <span class="c1"># NOQA</span>
 
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;connect&#39;</span><span class="p">,</span> <span class="s1">&#39;create_pool&#39;</span><span class="p">,</span> <span class="s1">&#39;Record&#39;</span><span class="p">,</span> <span class="s1">&#39;Connection&#39;</span><span class="p">)</span> <span class="o">+</span> \
-          <span class="n">exceptions</span><span class="o">.</span><span class="n">__all__</span>  <span class="c1"># NOQA</span>
+<span class="kn">from</span> <span class="nn">._version</span> <span class="kn">import</span> <span class="n">__version__</span>  <span class="c1"># NOQA</span>
 
-<span class="c1"># The rules of changing __version__:</span>
-<span class="c1">#</span>
-<span class="c1">#    In a release revision, __version__ must be set to &#39;x.y.z&#39;,</span>
-<span class="c1">#    and the release revision tagged with the &#39;vx.y.z&#39; tag.</span>
-<span class="c1">#    For example, asyncpg release 0.15.0 should have</span>
-<span class="c1">#    __version__ set to &#39;0.15.0&#39;, and tagged with &#39;v0.15.0&#39;.</span>
-<span class="c1">#</span>
-<span class="c1">#    In between releases, __version__ must be set to</span>
-<span class="c1">#    &#39;x.y+1.0.dev0&#39;, so asyncpg revisions between 0.15.0 and</span>
-<span class="c1">#    0.16.0 should have __version__ set to &#39;0.16.0.dev0&#39; in</span>
-<span class="c1">#    the source.</span>
-<span class="c1">#</span>
-<span class="c1">#    Source and wheel distributions built from development</span>
-<span class="c1">#    snapshots will automatically include the git revision</span>
-<span class="c1">#    in __version__, for example: &#39;0.16.0.dev0+ge06ad03&#39;</span>
 
-<span class="n">__version__</span> <span class="o">=</span> <span class="s1">&#39;0.21.0&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">(</span><span class="s1">&#39;connect&#39;</span><span class="p">,</span> <span class="s1">&#39;create_pool&#39;</span><span class="p">,</span> <span class="s1">&#39;Pool&#39;</span><span class="p">,</span> <span class="s1">&#39;Record&#39;</span><span class="p">,</span> <span class="s1">&#39;Connection&#39;</span><span class="p">)</span>
+    <span class="o">+</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">__all__</span>  <span class="c1"># NOQA</span>
+<span class="p">)</span>
 </pre></div>
 
            </div>
@@ -229,7 +216,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.21.0',
+            VERSION:'0.22.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
