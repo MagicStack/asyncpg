@@ -321,23 +321,17 @@ class Connection(metaclass=ConnectionMeta):
         :param float timeout: Optional timeout value in seconds.
         :return None: This method discards the results of the operations.
 
-        .. note::
-
-           When inserting a large number of rows,
-           use :meth:`Connection.copy_records_to_table()` instead,
-           it is much more efficient for this purpose.
-
         .. versionadded:: 0.7.0
 
         .. versionchanged:: 0.11.0
            `timeout` became a keyword-only parameter.
 
         .. versionchanged:: 0.22.0
-           The execution was changed to be in an implicit transaction if there
-           was no explicit transaction, so that it will no longer end up with
-           partial success. If you still need the previous behavior to
-           progressively execute many args, please use a loop with prepared
-           statement instead.
+           ``executemany()`` is now an atomic operation, which means that
+           either all executions succeed, or none at all.  This is in contrast
+           to prior versions, where the effect of already-processed iterations
+           would remain in place when an error has occurred, unless
+           ``executemany()`` was called in a transaction.
         """
         self._check_open()
         return await self._executemany(command, args, timeout)
