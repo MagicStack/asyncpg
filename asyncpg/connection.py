@@ -1890,7 +1890,7 @@ async def connect(dsn=None, *,
           if SSL connection fails
         - ``'allow'`` - currently equivalent to ``'prefer'``
         - ``'require'`` - only try an SSL connection.  Certificate
-          verifiction errors are ignored
+          verification errors are ignored
         - ``'verify-ca'`` - only try an SSL connection, and verify
           that the server certificate is issued by a trusted certificate
           authority (CA)
