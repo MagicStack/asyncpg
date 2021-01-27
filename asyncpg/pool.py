@@ -810,6 +810,7 @@ def create_pool(dsn=None, *,
                 loop=None,
                 connection_class=connection.Connection,
                 record_class=protocol.Record,
+                query_logging=False,
                 **connect_kwargs):
     r"""Create a connection pool.
 
@@ -901,6 +902,10 @@ def create_pool(dsn=None, *,
         An asyncio event loop instance.  If ``None``, the default
         event loop will be used.
 
+    :param bool query_logging:
+        If set, a logger named `asyncpg.query` will be created and used for
+        query and query argument logging for every connection created.
+
     :param \*\*connect_kwargs:
         Keyword arguments for the :func:`~asyncpg.connection.connect`
         function.
@@ -934,4 +939,5 @@ def create_pool(dsn=None, *,
         min_size=min_size, max_size=max_size,
         max_queries=max_queries, loop=loop, setup=setup, init=init,
         max_inactive_connection_lifetime=max_inactive_connection_lifetime,
+        query_logging=query_logging,
         **connect_kwargs)
