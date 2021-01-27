@@ -409,3 +409,61 @@ Web service that computes the requested power of two.
     web.run_app(app)
 
 See :ref:`asyncpg-api-pool` API documentation for more information.
+
+Query logging
+=============
+
+Sometimes one may need to see queries being executed.
+For example, if they are built dynamically.  ``asyncpg`` uses python standard
+``logging`` library to emit debug messages of levels ``DEBUG`` and ``TRACE``.
+Logging is disabled by default to avoid perfomance affection.
+
+
+.. note::
+   ``TRACE`` level is custom and not defined inside ``asyncpg``. Define it
+   yourself if you plan to use it with numeric value ``5``
+   (using :func:`logging.addLevelName() <python:logging.addLevelName>`) or just
+   use ``5`` as level value.
+
+
+.. code-block:: python
+
+    import asyncio
+    import asyncpg
+    import datetime
+    import logging
+
+    async def main():
+        # Establish a connection to an existing database named "test"
+        # as a "postgres" user.
+        conn = await asyncpg.connect('postgresql://postgres@localhost/test',
+                                     query_logging=True)
+        # Execute a statement to create a new table.
+        await conn.execute('''
+            CREATE TABLE users(
+                id serial PRIMARY KEY,
+                name text,
+                dob date
+            )
+        ''')
+
+        # by default root logger level is set to logging.WARNING,
+        # lets lower it to DEBUG to see the query
+        logging.getLogger().setLevel(logging.DEBUG)
+        # Insert a record into the created table.
+        await conn.execute('''
+            INSERT INTO users(name, dob) VALUES($1, $2)
+        ''', 'Bob', datetime.date(1984, 3, 1))
+
+        # lets lower it to TRACE to see query parameters
+        logging.getLogger().setLevel(5)
+        # Select a row from the table.
+        row = await conn.fetchrow(
+            'SELECT * FROM users WHERE name = $1', 'Bob')
+        # *row* now contains
+        # asyncpg.Record(id=1, name='Bob', dob=datetime.date(1984, 3, 1))
+
+        # Close the connection.
+        await conn.close()
+
+    asyncio.get_event_loop().run_until_complete(main())
