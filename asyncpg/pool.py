@@ -860,10 +860,6 @@ def create_pool(dsn=None, *,
         the following format:
         ``postgres://user:pass@host:port/database?option=value``.
 
-    :param \*\*connect_kwargs:
-        Keyword arguments for the :func:`~asyncpg.connection.connect`
-        function.
-
     :param Connection connection_class:
         The class to use for connections.  Must be a subclass of
         :class:`~asyncpg.connection.Connection`.
@@ -904,6 +900,10 @@ def create_pool(dsn=None, *,
     :param loop:
         An asyncio event loop instance.  If ``None``, the default
         event loop will be used.
+
+    :param \*\*connect_kwargs:
+        Keyword arguments for the :func:`~asyncpg.connection.connect`
+        function.
 
     :return: An instance of :class:`~asyncpg.pool.Pool`.
 
