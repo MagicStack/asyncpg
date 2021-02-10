@@ -1540,16 +1540,7 @@ class Connection(metaclass=ConnectionMeta):
         if caps.sql_close_all:
             _reset_query.append('CLOSE ALL;')
         if caps.notifications and caps.plpgsql:
-            _reset_query.append('''
-                DO $$
-                BEGIN
-                    PERFORM * FROM pg_listening_channels() LIMIT 1;
-                    IF FOUND THEN
-                        UNLISTEN *;
-                    END IF;
-                END;
-                $$;
-            ''')
+            _reset_query.append('UNLISTEN *;')
         if caps.sql_reset:
             _reset_query.append('RESET ALL;')
 
