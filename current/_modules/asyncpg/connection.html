@@ -1665,16 +1665,7 @@
         <span class="k">if</span> <span class="n">caps</span><span class="o">.</span><span class="n">sql_close_all</span><span class="p">:</span>
             <span class="n">_reset_query</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;CLOSE ALL;&#39;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">caps</span><span class="o">.</span><span class="n">notifications</span> <span class="ow">and</span> <span class="n">caps</span><span class="o">.</span><span class="n">plpgsql</span><span class="p">:</span>
-            <span class="n">_reset_query</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
-<span class="s1">                DO $$</span>
-<span class="s1">                BEGIN</span>
-<span class="s1">                    PERFORM * FROM pg_listening_channels() LIMIT 1;</span>
-<span class="s1">                    IF FOUND THEN</span>
-<span class="s1">                        UNLISTEN *;</span>
-<span class="s1">                    END IF;</span>
-<span class="s1">                END;</span>
-<span class="s1">                $$;</span>
-<span class="s1">            &#39;&#39;&#39;</span><span class="p">)</span>
+            <span class="n">_reset_query</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;UNLISTEN *;&#39;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">caps</span><span class="o">.</span><span class="n">sql_reset</span><span class="p">:</span>
             <span class="n">_reset_query</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;RESET ALL;&#39;</span><span class="p">)</span>
 
@@ -2054,7 +2045,7 @@
 <span class="sd">          if SSL connection fails</span>
 <span class="sd">        - ``&#39;allow&#39;`` - currently equivalent to ``&#39;prefer&#39;``</span>
 <span class="sd">        - ``&#39;require&#39;`` - only try an SSL connection.  Certificate</span>
-<span class="sd">          verifiction errors are ignored</span>
+<span class="sd">          verification errors are ignored</span>
 <span class="sd">        - ``&#39;verify-ca&#39;`` - only try an SSL connection, and verify</span>
 <span class="sd">          that the server certificate is issued by a trusted certificate</span>
 <span class="sd">          authority (CA)</span>
