@@ -234,7 +234,7 @@ class Transaction(connresource.ConnectionResource):
         attrs = []
         attrs.append('state:{}'.format(self._state.name.lower()))
 
-        attrs.append(self._isolation)
+        attrs.append(str(self._isolation))
         if self._readonly:
             attrs.append('readonly')
         if self._deferrable:
