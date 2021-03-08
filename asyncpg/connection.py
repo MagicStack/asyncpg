@@ -872,6 +872,8 @@ class Connection(metaclass=ConnectionMeta):
 
         :param records:
             An iterable returning row tuples to copy into the table.
+            :term:`Asynchronous iterables <python:asynchronous iterable>`
+            are also supported.
 
         :param list columns:
             An optional list of column names to copy.
@@ -901,7 +903,28 @@ class Connection(metaclass=ConnectionMeta):
             >>> asyncio.get_event_loop().run_until_complete(run())
             'COPY 2'
 
+        Asynchronous record iterables are also supported:
+
+        .. code-block:: pycon
+
+            >>> import asyncpg
+            >>> import asyncio
+            >>> async def run():
+            ...     con = await asyncpg.connect(user='postgres')
+            ...     async def record_gen(size):
+            ...         for i in range(size):
+            ...             yield (i,)
+            ...     result = await con.copy_records_to_table(
+            ...         'mytable', records=record_gen(100))
+            ...     print(result)
+            ...
+            >>> asyncio.get_event_loop().run_until_complete(run())
+            'COPY 100'
+
         .. versionadded:: 0.11.0
+
+        .. versionchanged:: 0.24.0
+            The ``records`` argument may be an asynchronous iterable.
         """
         tabname = utils._quote_ident(table_name)
         if schema_name:
@@ -924,8 +947,8 @@ class Connection(metaclass=ConnectionMeta):
         copy_stmt = 'COPY {tab}{cols} FROM STDIN {opts}'.format(
             tab=tabname, cols=cols, opts=opts)
 
-        return await self._copy_in_records(
-            copy_stmt, records, intro_ps._state, timeout)
+        return await self._protocol.copy_in(
+            copy_stmt, None, None, records, intro_ps._state, timeout)
 
     def _format_copy_opts(self, *, format=None, oids=None, freeze=None,
                           delimiter=None, null=None, header=None, quote=None,
@@ -1046,10 +1069,6 @@ class Connection(metaclass=ConnectionMeta):
         finally:
             if opened_by_us:
                 await run_in_executor(None, f.close)
-
-    async def _copy_in_records(self, copy_stmt, records, intro_stmt, timeout):
-        return await self._protocol.copy_in(
-            copy_stmt, None, None, records, intro_stmt, timeout)
 
     async def set_type_codec(self, typename, *,
                              schema='public', encoder, decoder,

@@ -644,6 +644,29 @@ class TestCopyTo(tb.ConnectedTestCase):
         finally:
             await self.con.execute('DROP TABLE copytab')
 
+    async def test_copy_records_to_table_async(self):
+        await self.con.execute('''
+            CREATE TABLE copytab_async(a text, b int, c timestamptz);
+        ''')
+
+        try:
+            date = datetime.datetime.now(tz=datetime.timezone.utc)
+            delta = datetime.timedelta(days=1)
+
+            async def record_generator():
+                for i in range(100):
+                    yield ('a-{}'.format(i), i, date + delta)
+
+                yield ('a-100', None, None)
+
+            res = await self.con.copy_records_to_table(
+                'copytab_async', records=record_generator())
+
+            self.assertEqual(res, 'COPY 101')
+
+        finally:
+            await self.con.execute('DROP TABLE copytab_async')
+
     async def test_copy_records_to_table_no_binary_codec(self):
         await self.con.execute('''
             CREATE TABLE copytab(a uuid);
