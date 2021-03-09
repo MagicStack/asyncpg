@@ -952,7 +952,7 @@ cdef class CoreProtocol:
                     else:
                         # otherwise, append SYNC and send the buffers
                         packet.write_bytes(SYNC_MESSAGE)
-                        buffers.append(packet)
+                        buffers.append(memoryview(packet))
                         self._writelines(buffers)
                     return False
 
@@ -976,7 +976,7 @@ cdef class CoreProtocol:
                 )
 
             # collected one buffer
-            buffers.append(packet)
+            buffers.append(memoryview(packet))
 
         # write to the wire, and signal the caller for more to send
         self._writelines(buffers)
