@@ -1247,6 +1247,30 @@ class TestSSLConnection(tb.ConnectedTestCase):
         await asyncio.gather(*tasks)
         await pool.close()
 
+    async def test_executemany_uvloop_ssl_issue_700(self):
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        ssl_context.load_verify_locations(SSL_CA_CERT_FILE)
+
+        con = await self.connect(
+            host='localhost',
+            user='ssl_user',
+            ssl=ssl_context)
+
+        try:
+            await con.execute('CREATE TABLE test_many (v int)')
+            await con.executemany(
+                'INSERT INTO test_many VALUES ($1)',
+                [(x + 1,) for x in range(100)]
+            )
+            self.assertEqual(
+                await con.fetchval('SELECT sum(v) FROM test_many'), 5050
+            )
+        finally:
+            try:
+                await con.execute('DROP TABLE test_many')
+            finally:
+                await con.close()
+
 
 class TestConnectionGC(tb.ClusterTestCase):
 
