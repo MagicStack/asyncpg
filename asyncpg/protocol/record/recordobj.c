@@ -31,7 +31,7 @@ ApgRecord_New(PyTypeObject *type, PyObject *desc, Py_ssize_t size)
 {
     ApgRecordObject *o;
     Py_ssize_t i;
-   int need_gc_track = 0;
+    int need_gc_track = 0;
 
     if (size < 0 || desc == NULL || !ApgRecordDesc_CheckExact(desc)) {
         PyErr_BadInternalCall();
