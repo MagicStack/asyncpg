@@ -31,6 +31,7 @@ ApgRecord_New(PyTypeObject *type, PyObject *desc, Py_ssize_t size)
 {
     ApgRecordObject *o;
     Py_ssize_t i;
+   int need_gc_track = 0;
 
     if (size < 0 || desc == NULL || !ApgRecordDesc_CheckExact(desc)) {
         PyErr_BadInternalCall();
@@ -54,7 +55,7 @@ ApgRecord_New(PyTypeObject *type, PyObject *desc, Py_ssize_t size)
             }
         }
 
-        PyObject_GC_Track(o);
+        need_gc_track = 1;
     } else {
         assert(PyType_IsSubtype(type, &ApgRecord_Type));
 
@@ -78,6 +79,9 @@ ApgRecord_New(PyTypeObject *type, PyObject *desc, Py_ssize_t size)
     Py_INCREF(desc);
     o->desc = (ApgRecordDescObject*)desc;
     o->self_hash = -1;
+    if (need_gc_track) {
+        PyObject_GC_Track(o);
+    }
     return (PyObject *) o;
 }
 
