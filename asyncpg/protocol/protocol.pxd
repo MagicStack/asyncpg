@@ -52,6 +52,8 @@ cdef class BaseProtocol(CoreProtocol):
 
         readonly uint64_t queries_count
 
+        bint _is_ssl
+
         PreparedStatementState statement
 
     cdef get_connection(self)

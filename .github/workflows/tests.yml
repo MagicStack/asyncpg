@@ -62,6 +62,7 @@ jobs:
     - name: Install Python Deps
       if: steps.release.outputs.version == 0
       run: |
+        pip install -U pip setuptools
         pip install -e .[test]
 
     - name: Test
@@ -117,6 +118,7 @@ jobs:
     - name: Install Python Deps
       if: steps.release.outputs.version == 0
       run: |
+        pip install -U pip setuptools
         pip install -e .[test]
 
     - name: Test
