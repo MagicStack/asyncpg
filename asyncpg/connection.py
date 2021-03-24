@@ -1879,7 +1879,8 @@ async def connect(dsn=None, *,
         - ``'disable'`` - SSL is disabled (equivalent to ``False``)
         - ``'prefer'`` - try SSL first, fallback to non-SSL connection
           if SSL connection fails
-        - ``'allow'`` - currently equivalent to ``'prefer'``
+        - ``'allow'`` - try without SSL first, then retry with SSL if the first
+          attempt fails.
         - ``'require'`` - only try an SSL connection.  Certificate
           verification errors are ignored
         - ``'verify-ca'`` - only try an SSL connection, and verify
