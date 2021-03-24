@@ -624,13 +624,13 @@ async def _connect_addr(
         params_retry = params._replace(ssl=None)
     else:
         # skip retry if we don't have to
-        return await __connect_addr(params, timeout, *args)
+        return await __connect_addr(params, timeout, False, *args)
 
     # first attempt
     before = time.monotonic()
     try:
-        return await __connect_addr(params, timeout, *args)
-    except ConnectionError:
+        return await __connect_addr(params, timeout, True, *args)
+    except _Retry:
         pass
 
     # second attempt
@@ -638,12 +638,17 @@ async def _connect_addr(
     if timeout <= 0:
         raise asyncio.TimeoutError
     else:
-        return await __connect_addr(params_retry, timeout, *args)
+        return await __connect_addr(params_retry, timeout, False, *args)
+
+
+class _Retry(Exception):
+    pass
 
 
 async def __connect_addr(
     params,
     timeout,
+    retry,
     addr,
     loop,
     config,
@@ -681,17 +686,18 @@ async def __connect_addr(
     ):
         tr.close()
 
-        if (
+        # retry=True here is a redundant check because we don't want to
+        # accidentally raise the internal _Retry to the outer world
+        if retry and (
             params.sslmode == SSLMode.allow and not pr.is_ssl or
             params.sslmode == SSLMode.prefer and pr.is_ssl
         ):
-            # Elevate the error to ConnectionError to trigger retry when:
+            # Trigger retry when:
             #   1. First attempt with sslmode=allow, ssl=None failed
             #   2. First attempt with sslmode=prefer, ssl=ctx failed while the
             #      server claimed to support SSL (returning "S" for SSLRequest)
             #      (likely because pg_hba.conf rejected the connection)
-            raise ConnectionError("Connection rejected trying {} SSL".format(
-                'with' if pr.is_ssl else 'without'))
+            raise _Retry()
 
         else:
             # but will NOT retry if:
