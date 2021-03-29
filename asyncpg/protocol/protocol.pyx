@@ -103,6 +103,8 @@ cdef class BaseProtocol(CoreProtocol):
 
         self.queries_count = 0
 
+        self._is_ssl = False
+
         try:
             self.create_future = loop.create_future
         except AttributeError:
@@ -942,6 +944,14 @@ cdef class BaseProtocol(CoreProtocol):
 
     def resume_writing(self):
         self.writing_allowed.set()
+
+    @property
+    def is_ssl(self):
+        return self._is_ssl
+
+    @is_ssl.setter
+    def is_ssl(self, value):
+        self._is_ssl = value
 
 
 class Timer:

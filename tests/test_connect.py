@@ -24,6 +24,7 @@ from asyncpg import connection
 from asyncpg import connect_utils
 from asyncpg import cluster as pg_cluster
 from asyncpg import exceptions
+from asyncpg.connect_utils import SSLMode
 from asyncpg.serverversion import split_server_version_string
 
 _system = platform.uname().system
@@ -308,6 +309,7 @@ class TestConnectParams(tb.TestCase):
 
     TESTS = [
         {
+            'name': 'all_env_default_ssl',
             'env': {
                 'PGUSER': 'user',
                 'PGDATABASE': 'testdb',
@@ -320,10 +322,11 @@ class TestConnectParams(tb.TestCase):
                 'password': 'passw',
                 'database': 'testdb',
                 'ssl': True,
-                'ssl_is_advisory': True})
+                'sslmode': SSLMode.prefer})
         },
 
         {
+            'name': 'params_override_env',
             'env': {
                 'PGUSER': 'user',
                 'PGDATABASE': 'testdb',
@@ -345,6 +348,56 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'params_override_env_and_dsn',
+            'env': {
+                'PGUSER': 'user',
+                'PGDATABASE': 'testdb',
+                'PGPASSWORD': 'passw',
+                'PGHOST': 'host',
+                'PGPORT': '123',
+                'PGSSLMODE': 'allow'
+            },
+
+            'dsn': 'postgres://user3:123123@localhost/abcdef',
+
+            'host': 'host2',
+            'port': '456',
+            'user': 'user2',
+            'password': 'passw2',
+            'database': 'db2',
+            'ssl': False,
+
+            'result': ([('host2', 456)], {
+                'user': 'user2',
+                'password': 'passw2',
+                'database': 'db2',
+                'sslmode': SSLMode.disable,
+                'ssl': False})
+        },
+
+        {
+            'name': 'dsn_overrides_env_partially',
+            'env': {
+                'PGUSER': 'user',
+                'PGDATABASE': 'testdb',
+                'PGPASSWORD': 'passw',
+                'PGHOST': 'host',
+                'PGPORT': '123',
+                'PGSSLMODE': 'allow'
+            },
+
+            'dsn': 'postgres://user3:123123@localhost:5555/abcdef',
+
+            'result': ([('localhost', 5555)], {
+                'user': 'user3',
+                'password': '123123',
+                'database': 'abcdef',
+                'ssl': True,
+                'sslmode': SSLMode.allow})
+        },
+
+        {
+            'name': 'params_override_env_and_dsn_ssl_prefer',
             'env': {
                 'PGUSER': 'user',
                 'PGDATABASE': 'testdb',
@@ -367,10 +420,12 @@ class TestConnectParams(tb.TestCase):
                 'user': 'user2',
                 'password': 'passw2',
                 'database': 'db2',
+                'sslmode': SSLMode.disable,
                 'ssl': False})
         },
 
         {
+            'name': 'dsn_overrides_env_partially_ssl_prefer',
             'env': {
                 'PGUSER': 'user',
                 'PGDATABASE': 'testdb',
@@ -387,10 +442,11 @@ class TestConnectParams(tb.TestCase):
                 'password': '123123',
                 'database': 'abcdef',
                 'ssl': True,
-                'ssl_is_advisory': True})
+                'sslmode': SSLMode.prefer})
         },
 
         {
+            'name': 'dsn_only',
             'dsn': 'postgres://user3:123123@localhost:5555/abcdef',
             'result': ([('localhost', 5555)], {
                 'user': 'user3',
@@ -399,6 +455,7 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'dsn_only_multi_host',
             'dsn': 'postgresql://user@host1,host2/db',
             'result': ([('host1', 5432), ('host2', 5432)], {
                 'database': 'db',
@@ -407,6 +464,7 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'dsn_only_multi_host_and_port',
             'dsn': 'postgresql://user@host1:1111,host2:2222/db',
             'result': ([('host1', 1111), ('host2', 2222)], {
                 'database': 'db',
@@ -415,6 +473,7 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'dsn_combines_env_multi_host',
             'env': {
                 'PGHOST': 'host1:1111,host2:2222',
                 'PGUSER': 'foo',
@@ -427,6 +486,7 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'dsn_multi_host_combines_env',
             'env': {
                 'PGUSER': 'foo',
             },
@@ -438,6 +498,7 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'params_multi_host_dsn_env_mix',
             'env': {
                 'PGUSER': 'foo',
             },
@@ -450,6 +511,7 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'params_combine_dsn_settings_override_and_ssl',
             'dsn': 'postgresql://user3:123123@localhost:5555/'
                    'abcdef?param=sss&param=123&host=testhost&user=testuser'
                    '&port=2222&database=testdb&sslmode=require',
@@ -464,10 +526,11 @@ class TestConnectParams(tb.TestCase):
                 'password': 'ask',
                 'database': 'db',
                 'ssl': True,
-                'ssl_is_advisory': False})
+                'sslmode': SSLMode.require})
         },
 
         {
+            'name': 'params_settings_and_ssl_override_dsn',
             'dsn': 'postgresql://user3:123123@localhost:5555/'
                    'abcdef?param=sss&param=123&host=testhost&user=testuser'
                    '&port=2222&database=testdb&sslmode=disable',
@@ -483,10 +546,12 @@ class TestConnectParams(tb.TestCase):
                 'user': 'me',
                 'password': 'ask',
                 'database': 'db',
+                'sslmode': SSLMode.verify_full,
                 'ssl': True})
         },
 
         {
+            'name': 'dsn_only_unix',
             'dsn': 'postgresql:///dbname?host=/unix_sock/test&user=spam',
             'result': ([os.path.join('/unix_sock/test', '.s.PGSQL.5432')], {
                 'user': 'spam',
@@ -494,6 +559,7 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'dsn_only_quoted',
             'dsn': 'postgresql://us%40r:p%40ss@h%40st1,h%40st2:543%33/d%62',
             'result': (
                 [('h@st1', 5432), ('h@st2', 5433)],
@@ -506,6 +572,7 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'dsn_only_unquoted_host',
             'dsn': 'postgresql://user:p@ss@host/db',
             'result': (
                 [('ss@host', 5432)],
@@ -518,6 +585,7 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'dsn_only_quoted_params',
             'dsn': 'postgresql:///d%62?user=us%40r&host=h%40st&port=543%33',
             'result': (
                 [('h@st', 5433)],
@@ -529,10 +597,12 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'dsn_only_illegal_protocol',
             'dsn': 'pq:///dbname?host=/unix_sock/test&user=spam',
             'error': (ValueError, 'invalid DSN')
         },
         {
+            'name': 'dsn_params_ports_mismatch_dsn_multi_hosts',
             'dsn': 'postgresql://host1,host2,host3/db',
             'port': [111, 222],
             'error': (
@@ -541,17 +611,20 @@ class TestConnectParams(tb.TestCase):
             )
         },
         {
+            'name': 'dsn_only_quoted_unix_host_port_in_params',
             'dsn': 'postgres://user@?port=56226&host=%2Ftmp',
             'result': (
                 [os.path.join('/tmp', '.s.PGSQL.56226')],
                 {
                     'user': 'user',
                     'database': 'user',
+                    'sslmode': SSLMode.disable,
                     'ssl': None
                 }
             )
         },
         {
+            'name': 'dsn_only_cloudsql',
             'dsn': 'postgres:///db?host=/cloudsql/'
                    'project:region:instance-name&user=spam',
             'result': (
@@ -565,6 +638,7 @@ class TestConnectParams(tb.TestCase):
             )
         },
         {
+            'name': 'dsn_only_cloudsql_unix_and_tcp',
             'dsn': 'postgres:///db?host=127.0.0.1:5432,/cloudsql/'
                    'project:region:instance-name,localhost:5433&user=spam',
             'result': (
@@ -579,7 +653,7 @@ class TestConnectParams(tb.TestCase):
                     'user': 'spam',
                     'database': 'db',
                     'ssl': True,
-                    'ssl_is_advisory': True
+                    'sslmode': SSLMode.prefer,
                 }
             )
         },
@@ -663,7 +737,7 @@ class TestConnectParams(tb.TestCase):
                 # Avoid the hassle of specifying the default SSL mode
                 # unless explicitly tested for.
                 params.pop('ssl', None)
-                params.pop('ssl_is_advisory', None)
+                params.pop('sslmode', None)
 
             self.assertEqual(expected, result, 'Testcase: {}'.format(testcase))
 
@@ -1050,6 +1124,7 @@ class TestConnection(tb.ConnectedTestCase):
                     dsn='postgresql://foo/?sslmode=' + sslmode,
                     host='localhost')
                 self.assertEqual(await con.fetchval('SELECT 42'), 42)
+                self.assertFalse(con._protocol.is_ssl)
             finally:
                 if con:
                     await con.close()
@@ -1058,7 +1133,7 @@ class TestConnection(tb.ConnectedTestCase):
             con = None
             try:
                 with self.assertRaises(ConnectionError):
-                    await self.connect(
+                    con = await self.connect(
                         dsn='postgresql://foo/?sslmode=' + sslmode,
                         host='localhost')
                     await con.fetchval('SELECT 42')
@@ -1082,8 +1157,7 @@ class TestConnection(tb.ConnectedTestCase):
         await con.close()
 
 
-@unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
-class TestSSLConnection(tb.ConnectedTestCase):
+class BaseTestSSLConnection(tb.ConnectedTestCase):
     @classmethod
     def get_server_settings(cls):
         conf = super().get_server_settings()
@@ -1109,15 +1183,7 @@ class TestSSLConnection(tb.ConnectedTestCase):
         create_script = []
         create_script.append('CREATE ROLE ssl_user WITH LOGIN;')
 
-        self.cluster.add_hba_entry(
-            type='hostssl', address=ipaddress.ip_network('127.0.0.0/24'),
-            database='postgres', user='ssl_user',
-            auth_method='trust')
-
-        self.cluster.add_hba_entry(
-            type='hostssl', address=ipaddress.ip_network('::1/128'),
-            database='postgres', user='ssl_user',
-            auth_method='trust')
+        self._add_hba_entry()
 
         # Put hba changes into effect
         self.cluster.reload()
@@ -1135,6 +1201,23 @@ class TestSSLConnection(tb.ConnectedTestCase):
         self.loop.run_until_complete(self.con.execute(drop_script))
 
         super().tearDown()
+
+    def _add_hba_entry(self):
+        raise NotImplementedError()
+
+
+@unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
+class TestSSLConnection(BaseTestSSLConnection):
+    def _add_hba_entry(self):
+        self.cluster.add_hba_entry(
+            type='hostssl', address=ipaddress.ip_network('127.0.0.0/24'),
+            database='postgres', user='ssl_user',
+            auth_method='trust')
+
+        self.cluster.add_hba_entry(
+            type='hostssl', address=ipaddress.ip_network('::1/128'),
+            database='postgres', user='ssl_user',
+            auth_method='trust')
 
     async def test_ssl_connection_custom_context(self):
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
@@ -1164,6 +1247,7 @@ class TestSSLConnection(tb.ConnectedTestCase):
                     host=host,
                     user='ssl_user')
                 self.assertEqual(await con.fetchval('SELECT 42'), 42)
+                self.assertTrue(con._protocol.is_ssl)
             finally:
                 if con:
                     await con.close()
@@ -1176,7 +1260,7 @@ class TestSSLConnection(tb.ConnectedTestCase):
             try:
                 self.loop.set_exception_handler(lambda *args: None)
                 with self.assertRaises(exn_type):
-                    await self.connect(
+                    con = await self.connect(
                         dsn='postgresql://foo/?sslmode=' + sslmode,
                         host=host,
                         user='ssl_user')
@@ -1236,6 +1320,118 @@ class TestSSLConnection(tb.ConnectedTestCase):
 
         async def worker():
             async with pool.acquire() as con:
+                self.assertEqual(await con.fetchval('SELECT 42'), 42)
+
+                with self.assertRaises(asyncio.TimeoutError):
+                    await con.execute('SELECT pg_sleep(5)', timeout=0.5)
+
+                self.assertEqual(await con.fetchval('SELECT 43'), 43)
+
+        tasks = [worker() for _ in range(100)]
+        await asyncio.gather(*tasks)
+        await pool.close()
+
+    async def test_executemany_uvloop_ssl_issue_700(self):
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        ssl_context.load_verify_locations(SSL_CA_CERT_FILE)
+
+        con = await self.connect(
+            host='localhost',
+            user='ssl_user',
+            ssl=ssl_context)
+
+        try:
+            await con.execute('CREATE TABLE test_many (v int)')
+            await con.executemany(
+                'INSERT INTO test_many VALUES ($1)',
+                [(x + 1,) for x in range(100)]
+            )
+            self.assertEqual(
+                await con.fetchval('SELECT sum(v) FROM test_many'), 5050
+            )
+        finally:
+            try:
+                await con.execute('DROP TABLE test_many')
+            finally:
+                await con.close()
+
+
+@unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
+class TestNoSSLConnection(BaseTestSSLConnection):
+    def _add_hba_entry(self):
+        self.cluster.add_hba_entry(
+            type='hostnossl', address=ipaddress.ip_network('127.0.0.0/24'),
+            database='postgres', user='ssl_user',
+            auth_method='trust')
+
+        self.cluster.add_hba_entry(
+            type='hostnossl', address=ipaddress.ip_network('::1/128'),
+            database='postgres', user='ssl_user',
+            auth_method='trust')
+
+    async def test_nossl_connection_sslmode(self):
+        async def verify_works(sslmode, *, host='localhost'):
+            con = None
+            try:
+                con = await self.connect(
+                    dsn='postgresql://foo/?sslmode=' + sslmode,
+                    host=host,
+                    user='ssl_user')
+                self.assertEqual(await con.fetchval('SELECT 42'), 42)
+                self.assertFalse(con._protocol.is_ssl)
+            finally:
+                if con:
+                    await con.close()
+
+        async def verify_fails(sslmode, *, host='localhost',
+                               exn_type=ssl.SSLError):
+            # XXX: uvloop artifact
+            old_handler = self.loop.get_exception_handler()
+            con = None
+            try:
+                self.loop.set_exception_handler(lambda *args: None)
+                with self.assertRaises(exn_type):
+                    con = await self.connect(
+                        dsn='postgresql://foo/?sslmode=' + sslmode,
+                        host=host,
+                        user='ssl_user')
+                    await con.fetchval('SELECT 42')
+            finally:
+                if con:
+                    await con.close()
+                self.loop.set_exception_handler(old_handler)
+
+        invalid_auth_err = asyncpg.InvalidAuthorizationSpecificationError
+        await verify_works('disable')
+        await verify_works('allow')
+        await verify_works('prefer')
+        await verify_fails('require', exn_type=invalid_auth_err)
+        await verify_fails('verify-ca')
+        await verify_fails('verify-full')
+
+    async def test_nossl_connection_prefer_cancel(self):
+        con = await self.connect(
+            dsn='postgresql://foo/?sslmode=prefer',
+            host='localhost',
+            user='ssl_user')
+        self.assertFalse(con._protocol.is_ssl)
+        with self.assertRaises(asyncio.TimeoutError):
+            await con.execute('SELECT pg_sleep(5)', timeout=0.5)
+        val = await con.fetchval('SELECT 123')
+        self.assertEqual(val, 123)
+
+    async def test_nossl_connection_pool(self):
+        pool = await self.create_pool(
+            host='localhost',
+            user='ssl_user',
+            database='postgres',
+            min_size=5,
+            max_size=10,
+            ssl='prefer')
+
+        async def worker():
+            async with pool.acquire() as con:
+                self.assertFalse(con._protocol.is_ssl)
                 self.assertEqual(await con.fetchval('SELECT 42'), 42)
 
                 with self.assertRaises(asyncio.TimeoutError):
