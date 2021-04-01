@@ -474,9 +474,8 @@ class TestCopyTo(tb.ConnectedTestCase):
                 async def __anext__(self):
                     if self.rowcount >= 100:
                         raise StopAsyncIteration
-                    else:
-                        self.rowcount += 1
-                        return b'a1' * 500000 + b'\t' + b'b1' * 500000 + b'\n'
+                    self.rowcount += 1
+                    return b'a1' * 500000 + b'\t' + b'b1' * 500000 + b'\n'
 
             res = await self.con.copy_to_table('copytab', source=_Source())
 

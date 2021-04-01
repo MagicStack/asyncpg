@@ -46,8 +46,7 @@ class TCPFuzzingProxy:
 
             if self.stop_event.is_set():
                 raise StopServer()
-            else:
-                return work_task.result()
+            return work_task.result()
         finally:
             if not work_task.done():
                 work_task.cancel()

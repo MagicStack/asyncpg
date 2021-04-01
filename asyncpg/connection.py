@@ -2047,7 +2047,8 @@ class _StatementCache:
         return self._max_size
 
     def set_max_size(self, new_size):
-        assert new_size >= 0
+        if new_size < 0:
+            raise AssertionError
         self._max_size = new_size
         self._maybe_cleanup()
 
@@ -2055,7 +2056,8 @@ class _StatementCache:
         return self._max_lifetime
 
     def set_max_lifetime(self, new_lifetime):
-        assert new_lifetime >= 0
+        if new_lifetime < 0:
+            raise AssertionError
         self._max_lifetime = new_lifetime
         for entry in self._entries.values():
             # For every entry cancel the existing callback

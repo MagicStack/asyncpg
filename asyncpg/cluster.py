@@ -355,8 +355,7 @@ class Cluster:
             if address is None:
                 raise ValueError(
                     '{!r} entry requires a valid address'.format(type))
-            else:
-                record += ' {}'.format(address)
+            record += ' {}'.format(address)
 
         record += ' {}'.format(auth_method)
 
@@ -506,15 +505,14 @@ class Cluster:
         if process.returncode != 0:
             raise ClusterError('pg_config exited with status {:d}: {}'.format(
                 process.returncode, stderr))
-        else:
-            config = {}
+        config = {}
 
-            for line in stdout.splitlines():
-                k, eq, v = line.decode('utf-8').partition('=')
-                if eq:
-                    config[k.strip().lower()] = v.strip()
+        for line in stdout.splitlines():
+            k, eq, v = line.decode('utf-8').partition('=')
+            if eq:
+                config[k.strip().lower()] = v.strip()
 
-            return config
+        return config
 
     def _find_pg_config(self, pg_config_path):
         if pg_config_path is None:

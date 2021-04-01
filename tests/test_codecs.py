@@ -1274,8 +1274,8 @@ class TestCodecs(tb.ConnectedTestCase):
             ):
                 await self.con.set_type_codec(
                     'custom_codec_t',
-                    encoder=lambda v: str(v),
-                    decoder=lambda v: int(v))
+                    encoder=str,
+                    decoder=int)
         finally:
             await self.con.execute('DROP DOMAIN custom_codec_t')
 

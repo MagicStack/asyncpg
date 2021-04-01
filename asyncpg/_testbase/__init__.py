@@ -328,7 +328,9 @@ class ClusterTestCase(TestCase):
         cls._clusters = []
 
     @classmethod
-    def get_connection_spec(cls, kwargs={}):
+    def get_connection_spec(cls, kwargs=None):
+        if kwargs is None:
+            kwargs = {}
         conn_spec = cls.cluster.get_connection_spec()
         conn_spec.update(kwargs)
         if not os.environ.get('PGHOST'):

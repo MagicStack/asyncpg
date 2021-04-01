@@ -601,7 +601,8 @@ async def _connect_addr(
     connection_class,
     record_class
 ):
-    assert loop is not None
+    if loop is None:
+        raise AssertionError
 
     if timeout <= 0:
         raise asyncio.TimeoutError
@@ -637,8 +638,7 @@ async def _connect_addr(
     timeout -= time.monotonic() - before
     if timeout <= 0:
         raise asyncio.TimeoutError
-    else:
-        return await __connect_addr(params_retry, timeout, False, *args)
+    return await __connect_addr(params_retry, timeout, False, *args)
 
 
 class _Retry(Exception):
@@ -698,16 +698,14 @@ async def __connect_addr(
             #      server claimed to support SSL (returning "S" for SSLRequest)
             #      (likely because pg_hba.conf rejected the connection)
             raise _Retry()
-
-        else:
-            # but will NOT retry if:
-            #   1. First attempt with sslmode=prefer failed but the server
-            #      doesn't support SSL (returning 'N' for SSLRequest), because
-            #      we already tried to connect without SSL thru ssl_is_advisory
-            #   2. Second attempt with sslmode=prefer, ssl=None failed
-            #   3. Second attempt with sslmode=allow, ssl=ctx failed
-            #   4. Any other sslmode
-            raise
+        # but will NOT retry if:
+        #   1. First attempt with sslmode=prefer failed but the server
+        #      doesn't support SSL (returning 'N' for SSLRequest), because
+        #      we already tried to connect without SSL thru ssl_is_advisory
+        #   2. Second attempt with sslmode=prefer, ssl=None failed
+        #   3. Second attempt with sslmode=allow, ssl=ctx failed
+        #   4. Any other sslmode
+        raise
 
     except (Exception, asyncio.CancelledError):
         tr.close()
