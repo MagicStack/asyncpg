@@ -1757,7 +1757,7 @@ async def connect(dsn=None, *,
                   ssl=None,
                   connection_class=Connection,
                   record_class=protocol.Record,
-                  server_settings=None):
+                  server_settings=None) -> Connection:
     r"""A coroutine to establish a connection to a PostgreSQL server.
 
     The connection parameters may be specified either as a connection
