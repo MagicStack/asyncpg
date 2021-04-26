@@ -46,17 +46,6 @@ class Transaction(connresource.ConnectionResource):
                 'isolation is expected to be either of {}, '
                 'got {!r}'.format(ISOLATION_LEVELS, isolation))
 
-        if isolation and isolation != 'serializable':
-            if readonly:
-                raise ValueError(
-                    '"readonly" is only supported for '
-                    'serializable transactions')
-
-            if deferrable and not readonly:
-                raise ValueError(
-                    '"deferrable" is only supported for '
-                    'serializable readonly transactions')
-
         self._isolation = isolation
         self._readonly = readonly
         self._deferrable = deferrable
@@ -132,19 +121,18 @@ class Transaction(connresource.ConnectionResource):
             self._id = con._get_unique_id('savepoint')
             query = 'SAVEPOINT {};'.format(self._id)
         else:
-            if self._isolation is None:
-                query = 'BEGIN;'
-            elif self._isolation == 'read_committed':
-                query = 'BEGIN ISOLATION LEVEL READ COMMITTED;'
+            query = 'BEGIN'
+            if self._isolation == 'read_committed':
+                query += ' ISOLATION LEVEL READ COMMITTED'
             elif self._isolation == 'repeatable_read':
-                query = 'BEGIN ISOLATION LEVEL REPEATABLE READ;'
-            else:
-                query = 'BEGIN ISOLATION LEVEL SERIALIZABLE'
-                if self._readonly:
-                    query += ' READ ONLY'
-                if self._deferrable:
-                    query += ' DEFERRABLE'
-                query += ';'
+                query += ' ISOLATION LEVEL REPEATABLE READ'
+            elif self._isolation == 'serializable':
+                query += ' ISOLATION LEVEL SERIALIZABLE'
+            if self._readonly:
+                query += ' READ ONLY'
+            if self._deferrable:
+                query += ' DEFERRABLE'
+            query += ';'
 
         try:
             await self._connection.execute(query)
