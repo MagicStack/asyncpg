@@ -672,8 +672,8 @@ class TestCodecs(tb.ConnectedTestCase):
     async def test_invalid_input(self):
         # The latter message appears beginning in Python 3.10.
         integer_required = (
-            "(an integer is required|"
-            "\('str' object cannot be interpreted as an integer\))")
+            r"(an integer is required|"
+            r"\('str' object cannot be interpreted as an integer\))")
 
         cases = [
             ('bytea', 'a bytes-like object is required', [
