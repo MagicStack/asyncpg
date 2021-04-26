@@ -630,7 +630,7 @@ async def _connect_addr(
     before = time.monotonic()
     try:
         return await __connect_addr(params, timeout, True, *args)
-    except _Retry:
+    except _RetryConnectSignal:
         pass
 
     # second attempt
@@ -641,7 +641,7 @@ async def _connect_addr(
         return await __connect_addr(params_retry, timeout, False, *args)
 
 
-class _Retry(Exception):
+class _RetryConnectSignal(Exception):
     pass
 
 
@@ -687,7 +687,7 @@ async def __connect_addr(
         tr.close()
 
         # retry=True here is a redundant check because we don't want to
-        # accidentally raise the internal _Retry to the outer world
+        # accidentally raise the internal _RetryConnectSignal to the user
         if retry and (
             params.sslmode == SSLMode.allow and not pr.is_ssl or
             params.sslmode == SSLMode.prefer and pr.is_ssl
@@ -697,7 +697,7 @@ async def __connect_addr(
             #   2. First attempt with sslmode=prefer, ssl=ctx failed while the
             #      server claimed to support SSL (returning "S" for SSLRequest)
             #      (likely because pg_hba.conf rejected the connection)
-            raise _Retry()
+            raise _RetryConnectSignal()
 
         else:
             # but will NOT retry if:
