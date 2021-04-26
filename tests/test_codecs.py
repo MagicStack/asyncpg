@@ -670,6 +670,11 @@ class TestCodecs(tb.ConnectedTestCase):
             ''')
 
     async def test_invalid_input(self):
+        # The latter message appears beginning in Python 3.10.
+        integer_required = (
+            r"(an integer is required|"
+            r"\('str' object cannot be interpreted as an integer\))")
+
         cases = [
             ('bytea', 'a bytes-like object is required', [
                 1,
@@ -678,7 +683,7 @@ class TestCodecs(tb.ConnectedTestCase):
             ('bool', 'a boolean is required', [
                 1,
             ]),
-            ('int2', 'an integer is required', [
+            ('int2', integer_required, [
                 '2',
                 'aa',
             ]),
@@ -694,7 +699,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 4.1 * 10 ** 40,
                 -4.1 * 10 ** 40,
             ]),
-            ('int4', 'an integer is required', [
+            ('int4', integer_required, [
                 '2',
                 'aa',
             ]),
@@ -705,7 +710,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 2**31,
                 -2**31 - 1,
             ]),
-            ('int8', 'an integer is required', [
+            ('int8', integer_required, [
                 '2',
                 'aa',
             ]),
