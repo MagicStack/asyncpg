@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.22.0
+                0.23.0
               </div>
             
           
@@ -273,7 +273,8 @@ will be used.  The value can also be one of the following strings:</p>
 <li><code class="docutils literal notranslate"><span class="pre">'disable'</span></code> - SSL is disabled (equivalent to <code class="docutils literal notranslate"><span class="pre">False</span></code>)</li>
 <li><code class="docutils literal notranslate"><span class="pre">'prefer'</span></code> - try SSL first, fallback to non-SSL connection
 if SSL connection fails</li>
-<li><code class="docutils literal notranslate"><span class="pre">'allow'</span></code> - currently equivalent to <code class="docutils literal notranslate"><span class="pre">'prefer'</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">'allow'</span></code> - try without SSL first, then retry with SSL if the first
+attempt fails.</li>
 <li><code class="docutils literal notranslate"><span class="pre">'require'</span></code> - only try an SSL connection.  Certificate
 verification errors are ignored</li>
 <li><code class="docutils literal notranslate"><span class="pre">'verify-ca'</span></code> - only try an SSL connection, and verify
@@ -2354,7 +2355,7 @@ the BitString’s exact length is lost.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.22.0',
+            VERSION:'0.23.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

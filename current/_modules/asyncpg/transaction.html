@@ -67,7 +67,7 @@
             
             
               <div class="version">
-                0.22.0
+                0.23.0
               </div>
             
           
@@ -210,17 +210,6 @@
                 <span class="s1">&#39;isolation is expected to be either of </span><span class="si">{}</span><span class="s1">, &#39;</span>
                 <span class="s1">&#39;got </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ISOLATION_LEVELS</span><span class="p">,</span> <span class="n">isolation</span><span class="p">))</span>
 
-        <span class="k">if</span> <span class="n">isolation</span> <span class="ow">and</span> <span class="n">isolation</span> <span class="o">!=</span> <span class="s1">&#39;serializable&#39;</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">readonly</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s1">&#39;&quot;readonly&quot; is only supported for &#39;</span>
-                    <span class="s1">&#39;serializable transactions&#39;</span><span class="p">)</span>
-
-            <span class="k">if</span> <span class="n">deferrable</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">readonly</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s1">&#39;&quot;deferrable&quot; is only supported for &#39;</span>
-                    <span class="s1">&#39;serializable readonly transactions&#39;</span><span class="p">)</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="o">=</span> <span class="n">isolation</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_readonly</span> <span class="o">=</span> <span class="n">readonly</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_deferrable</span> <span class="o">=</span> <span class="n">deferrable</span>
@@ -296,19 +285,18 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_id</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">(</span><span class="s1">&#39;savepoint&#39;</span><span class="p">)</span>
             <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;SAVEPOINT </span><span class="si">{}</span><span class="s1">;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_id</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;BEGIN;&#39;</span>
-            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="o">==</span> <span class="s1">&#39;read_committed&#39;</span><span class="p">:</span>
-                <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;BEGIN ISOLATION LEVEL READ COMMITTED;&#39;</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;BEGIN&#39;</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="o">==</span> <span class="s1">&#39;read_committed&#39;</span><span class="p">:</span>
+                <span class="n">query</span> <span class="o">+=</span> <span class="s1">&#39; ISOLATION LEVEL READ COMMITTED&#39;</span>
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="o">==</span> <span class="s1">&#39;repeatable_read&#39;</span><span class="p">:</span>
-                <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;BEGIN ISOLATION LEVEL REPEATABLE READ;&#39;</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;BEGIN ISOLATION LEVEL SERIALIZABLE&#39;</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_readonly</span><span class="p">:</span>
-                    <span class="n">query</span> <span class="o">+=</span> <span class="s1">&#39; READ ONLY&#39;</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deferrable</span><span class="p">:</span>
-                    <span class="n">query</span> <span class="o">+=</span> <span class="s1">&#39; DEFERRABLE&#39;</span>
-                <span class="n">query</span> <span class="o">+=</span> <span class="s1">&#39;;&#39;</span>
+                <span class="n">query</span> <span class="o">+=</span> <span class="s1">&#39; ISOLATION LEVEL REPEATABLE READ&#39;</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="o">==</span> <span class="s1">&#39;serializable&#39;</span><span class="p">:</span>
+                <span class="n">query</span> <span class="o">+=</span> <span class="s1">&#39; ISOLATION LEVEL SERIALIZABLE&#39;</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_readonly</span><span class="p">:</span>
+                <span class="n">query</span> <span class="o">+=</span> <span class="s1">&#39; READ ONLY&#39;</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deferrable</span><span class="p">:</span>
+                <span class="n">query</span> <span class="o">+=</span> <span class="s1">&#39; DEFERRABLE&#39;</span>
+            <span class="n">query</span> <span class="o">+=</span> <span class="s1">&#39;;&#39;</span>
 
         <span class="k">try</span><span class="p">:</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
@@ -398,7 +386,8 @@
         <span class="n">attrs</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;state:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()))</span>
 
-        <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_isolation</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_readonly</span><span class="p">:</span>
             <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;readonly&#39;</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deferrable</span><span class="p">:</span>
@@ -446,7 +435,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.22.0',
+            VERSION:'0.23.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

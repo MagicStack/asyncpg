@@ -67,7 +67,7 @@
             
             
               <div class="version">
-                0.22.0
+                0.23.0
               </div>
             
           
@@ -2043,7 +2043,8 @@
 <span class="sd">        - ``&#39;disable&#39;`` - SSL is disabled (equivalent to ``False``)</span>
 <span class="sd">        - ``&#39;prefer&#39;`` - try SSL first, fallback to non-SSL connection</span>
 <span class="sd">          if SSL connection fails</span>
-<span class="sd">        - ``&#39;allow&#39;`` - currently equivalent to ``&#39;prefer&#39;``</span>
+<span class="sd">        - ``&#39;allow&#39;`` - try without SSL first, then retry with SSL if the first</span>
+<span class="sd">          attempt fails.</span>
 <span class="sd">        - ``&#39;require&#39;`` - only try an SSL connection.  Certificate</span>
 <span class="sd">          verification errors are ignored</span>
 <span class="sd">        - ``&#39;verify-ca&#39;`` - only try an SSL connection, and verify</span>
@@ -2459,7 +2460,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.22.0',
+            VERSION:'0.23.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
