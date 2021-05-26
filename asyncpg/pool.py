@@ -779,7 +779,7 @@ class PoolAcquireContext:
         self.connection = None
         self.done = False
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> connection.Connection:
         if self.connection is not None or self.done:
             raise exceptions.InterfaceError('a connection is already acquired')
         self.connection = await self.pool._acquire(self.timeout)
