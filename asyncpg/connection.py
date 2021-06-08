@@ -1758,6 +1758,10 @@ async def connect(dsn=None, *,
                   max_cacheable_statement_size=1024 * 15,
                   command_timeout=None,
                   ssl=None,
+                  sslcert=None,
+                  sslkey=None,
+                  sslrootcert=None,
+                  sslcrl=None,
                   connection_class=Connection,
                   record_class=protocol.Record,
                   server_settings=None):
@@ -1900,6 +1904,21 @@ async def connect(dsn=None, *,
         .. note::
 
            *ssl* is ignored for Unix domain socket communication.
+    
+    :param sslcert:
+        This parameter specifies the file name of the client SSL certificate.
+
+    :param sslkey:
+        This parameter specifies the location for the secret key used for
+        the client certificate.
+
+    :param sslrootcert:
+        This parameter specifies the name of a file containing SSL certificate
+        authority (CA) certificate(s).
+
+    :param sslcrl
+        This parameter specifies the file name of the SSL certificate
+        revocation list (CRL).
 
     :param dict server_settings:
         An optional dict of server runtime parameters.  Refer to
@@ -1993,6 +2012,10 @@ async def connect(dsn=None, *,
         password=password,
         passfile=passfile,
         ssl=ssl,
+        sslcert=sslcert,
+        sslkey=sslkey,
+        sslrootcert=sslrootcert,
+        sslcrl=sslcrl,
         database=database,
         server_settings=server_settings,
         command_timeout=command_timeout,
