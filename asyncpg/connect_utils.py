@@ -729,7 +729,7 @@ async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
     for addr in addrs:
         before = time.monotonic()
         try:
-            con = await _connect_addr(
+            return await _connect_addr(
                 addr=addr,
                 loop=loop,
                 timeout=timeout,
@@ -740,8 +740,6 @@ async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
             )
         except (OSError, asyncio.TimeoutError, ConnectionError) as ex:
             last_error = ex
-        else:
-            return con
         finally:
             timeout -= time.monotonic() - before
 
