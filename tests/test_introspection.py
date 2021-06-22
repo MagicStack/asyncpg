@@ -7,6 +7,8 @@
 
 import asyncio
 import json
+import unittest.mock
+import uuid
 
 from asyncpg import _testbase as tb
 from asyncpg import connection as apg_con
@@ -72,10 +74,9 @@ class TestIntrospection(tb.ConnectedTestCase):
         with self.assertRunUnder(MAX_RUNTIME):
             await self.con.fetchval('SELECT $1::int[]', [1, 2])
 
+    @unittest.mock.patch.object(apg_con.Connection, '_get_unique_id')
     @tb.with_connection_options(statement_cache_size=0)
-    async def test_introspection_no_stmt_cache_01(self):
-        old_uid = apg_con._uid
-
+    async def test_introspection_no_stmt_cache_01(self, mocked_get_unique_id):
         self.assertEqual(self.con._stmt_cache.get_max_size(), 0)
         await self.con.fetchval('SELECT $1::int[]', [1, 2])
 
@@ -91,13 +92,13 @@ class TestIntrospection(tb.ConnectedTestCase):
                 DROP EXTENSION hstore
             ''')
 
-        self.assertEqual(apg_con._uid, old_uid)
+        mocked_get_unique_id.assert_not_called()
 
+    @unittest.mock.patch.object(apg_con.Connection, '_get_unique_id')
     @tb.with_connection_options(max_cacheable_statement_size=1)
-    async def test_introspection_no_stmt_cache_02(self):
+    async def test_introspection_no_stmt_cache_02(self, mocked_get_unique_id):
         # max_cacheable_statement_size will disable caching both for
         # the user query and for the introspection query.
-        old_uid = apg_con._uid
 
         await self.con.fetchval('SELECT $1::int[]', [1, 2])
 
@@ -113,18 +114,23 @@ class TestIntrospection(tb.ConnectedTestCase):
                 DROP EXTENSION hstore
             ''')
 
-        self.assertEqual(apg_con._uid, old_uid)
+        mocked_get_unique_id.assert_not_called()
 
+    @unittest.mock.patch.object(apg_con.Connection, '_get_unique_id', return_value='uuid')
     @tb.with_connection_options(max_cacheable_statement_size=10000)
-    async def test_introspection_no_stmt_cache_03(self):
+    async def test_introspection_no_stmt_cache_03(self, mocked_get_unique_id):
         # max_cacheable_statement_size will disable caching for
         # the user query but not for the introspection query.
-        old_uid = apg_con._uid
 
         await self.con.fetchval(
             "SELECT $1::int[], '{foo}'".format(foo='a' * 10000), [1, 2])
 
-        self.assertEqual(apg_con._uid, old_uid + 1)
+        mocked_get_unique_id.assert_called_once()
+
+    def test_introspection_get_unique_id(self):
+        result = self.con._get_unique_id('prefix')
+        pattern = r'__asyncpg_prefix_[0-9a-f\-]{36}__'
+        self.assertRegexpMatches(result, pattern)
 
     async def test_introspection_sticks_for_ps(self):
         # Test that the introspected codec pipeline for a prepared

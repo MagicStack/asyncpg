@@ -6,6 +6,8 @@
 
 
 import asyncio
+import uuid
+
 import asyncpg
 import collections
 import collections.abc
@@ -1344,9 +1346,10 @@ class Connection(metaclass=ConnectionMeta):
             raise exceptions.InterfaceError('connection is closed')
 
     def _get_unique_id(self, prefix):
-        global _uid
-        _uid += 1
-        return '__asyncpg_{}_{:x}__'.format(prefix, _uid)
+        return '__asyncpg_{prefix}_{uuid}__'.format(
+            prefix=prefix,
+            uuid=uuid.uuid4(),
+        )
 
     def _mark_stmts_as_closed(self):
         for stmt in self._stmt_cache.iter_statements():
@@ -2258,6 +2261,3 @@ def _check_record_class(record_class):
             'record_class is expected to be a subclass of '
             'asyncpg.Record, got {!r}'.format(record_class)
         )
-
-
-_uid = 0
