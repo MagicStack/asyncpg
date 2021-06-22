@@ -17,10 +17,10 @@ def find_root():
 class TestFlake8(unittest.TestCase):
 
     def test_flake8(self):
-        # try:
-        #     import flake8  # NoQA
-        # except ImportError:
-        raise unittest.SkipTest('flake8 module is missing')
+        try:
+            import flake8  # NoQA
+        except ImportError:
+            raise unittest.SkipTest('flake8 module is missing')
 
         root_path = find_root()
         config_path = os.path.join(root_path, '.flake8')
