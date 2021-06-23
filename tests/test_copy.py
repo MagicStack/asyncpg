@@ -13,7 +13,6 @@ import tempfile
 
 import asyncpg
 from asyncpg import _testbase as tb
-from asyncpg import compat
 
 
 class TestCopyFrom(tb.ConnectedTestCase):

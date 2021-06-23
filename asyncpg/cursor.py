@@ -7,7 +7,6 @@
 
 import collections
 
-from . import compat
 from . import connresource
 from . import exceptions
 
