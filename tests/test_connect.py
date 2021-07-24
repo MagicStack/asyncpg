@@ -7,7 +7,6 @@
 
 import asyncio
 import contextlib
-import gc
 import ipaddress
 import os
 import platform
@@ -1448,13 +1447,10 @@ class TestConnectionGC(tb.ClusterTestCase):
 
     async def _run_no_explicit_close_test(self):
         con = await self.connect()
+        await con.fetchval("select 123")
         proto = con._protocol
         conref = weakref.ref(con)
         del con
-
-        gc.collect()
-        gc.collect()
-        gc.collect()
 
         self.assertIsNone(conref())
         self.assertTrue(proto.is_closed())
