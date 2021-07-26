@@ -23,7 +23,10 @@ def split_server_version_string(version_string):
     version_match = version_regex.search(version_string)
 
     if version_match is None:
-        raise ValueError(f'Unable to parse Postgres version from "{version_string}"')
+        raise ValueError(
+            "Unable to parse Postgres "
+            f'version from "{version_string}"'
+        )
 
     version = version_match.groupdict()
     for ver_key, ver_value in version.items():
