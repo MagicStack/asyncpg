@@ -126,7 +126,7 @@ class Connection(metaclass=ConnectionMeta):
             if not self._loop.is_closed():
                 self.terminate()
 
-    async def add_listener(self, channel, callback):
+    async def add_listener(self, channel, callback, quote=True):
         """Add a listener for Postgres notifications.
 
         :param str channel: Channel to listen on.
@@ -137,10 +137,18 @@ class Connection(metaclass=ConnectionMeta):
             **pid**: PID of the Postgres server that sent the notification;
             **channel**: name of the channel the notification was sent to;
             **payload**: the payload.
+
+        :param bool quote:
+            specifies the channel name should be sent as a quoted identifier
         """
         self._check_open()
+        if not quote:
+            channel = channel.lower()
         if channel not in self._listeners:
-            await self.fetch('LISTEN {}'.format(utils._quote_ident(channel)))
+            if quote:
+                await self.fetch('LISTEN {}'.format(utils._quote_ident(channel)))
+            else:
+                await self.fetch('LISTEN {}'.format(channel))
             self._listeners[channel] = set()
         self._listeners[channel].add(callback)
 
