@@ -9,6 +9,7 @@ from itertools import product
 from asyncpg.types import Range
 from asyncpg import _testbase as tb
 
+
 class TestTypes(tb.TestCase):
 
     def test_range_issubset(self):
