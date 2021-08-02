@@ -73,7 +73,7 @@ NO_TIMEOUT = object()
 
 
 cdef class BaseProtocol(CoreProtocol):
-    def __init__(self, addr, connected_fut, con_params, loop):
+    def __init__(self, addr, connected_fut, con_params, record_class: type, loop):
         # type of `con_params` is `_ConnectionParameters`
         CoreProtocol.__init__(self, con_params)
 
@@ -85,6 +85,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         self.address = addr
         self.settings = ConnectionSettings((self.address, con_params.database))
+        self.record_class = record_class
 
         self.statement = None
         self.return_extra = False
@@ -101,6 +102,8 @@ cdef class BaseProtocol(CoreProtocol):
         self.completed_callback = self._on_waiter_completed
 
         self.queries_count = 0
+
+        self._is_ssl = False
 
         try:
             self.create_future = loop.create_future
@@ -122,10 +125,8 @@ cdef class BaseProtocol(CoreProtocol):
     def get_settings(self):
         return self.settings
 
-    def is_in_transaction(self):
-        # PQTRANS_INTRANS = idle, within transaction block
-        # PQTRANS_INERROR = idle, within failed transaction
-        return self.xact_status in (PQTRANS_INTRANS, PQTRANS_INERROR)
+    def get_record_class(self):
+        return self.record_class
 
     cdef inline resume_reading(self):
         if not self.is_reading:
@@ -139,7 +140,10 @@ cdef class BaseProtocol(CoreProtocol):
 
     @cython.iterable_coroutine
     async def prepare(self, stmt_name, query, timeout,
-                      PreparedStatementState state=None):
+                      *,
+                      PreparedStatementState state=None,
+                      ignore_custom_codec=False,
+                      record_class):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
         if self.cancel_sent_waiter is not None:
@@ -154,7 +158,8 @@ cdef class BaseProtocol(CoreProtocol):
             self._prepare(stmt_name, query)  # network op
             self.last_query = query
             if state is None:
-                state = PreparedStatementState(stmt_name, query, self)
+                state = PreparedStatementState(
+                    stmt_name, query, self, record_class, ignore_custom_codec)
             self.statement = state
         except Exception as ex:
             waiter.set_exception(ex)
@@ -207,6 +212,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         self._check_state()
         timeout = self._get_timeout_impl(timeout)
+        timer = Timer(timeout)
 
         # Make sure the argument sequence is encoded lazily with
         # this generator expression to keep the memory pressure under
@@ -216,7 +222,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         waiter = self._new_waiter(timeout)
         try:
-            self._bind_execute_many(
+            more = self._bind_execute_many(
                 portal_name,
                 state.name,
                 arg_bufs)  # network op
@@ -225,6 +231,22 @@ cdef class BaseProtocol(CoreProtocol):
             self.statement = state
             self.return_extra = False
             self.queries_count += 1
+
+            while more:
+                with timer:
+                    await asyncio.wait_for(
+                        self.writing_allowed.wait(),
+                        timeout=timer.get_remaining_budget())
+                    # On Windows the above event somehow won't allow context
+                    # switch, so forcing one with sleep(0) here
+                    await asyncio.sleep(0)
+                if not timer.has_budget_greater_than(0):
+                    raise asyncio.TimeoutError
+                more = self._bind_execute_many_more()  # network op
+
+        except asyncio.TimeoutError as e:
+            self._bind_execute_many_fail(e)  # network op
+
         except Exception as ex:
             waiter.set_exception(ex)
             self._coreproto_error()
@@ -885,6 +907,9 @@ cdef class BaseProtocol(CoreProtocol):
     cdef _write(self, buf):
         self.transport.write(memoryview(buf))
 
+    cdef _writelines(self, list buffers):
+        self.transport.writelines(buffers)
+
     # asyncio callbacks:
 
     def data_received(self, data):
@@ -920,6 +945,14 @@ cdef class BaseProtocol(CoreProtocol):
     def resume_writing(self):
         self.writing_allowed.set()
 
+    @property
+    def is_ssl(self):
+        return self._is_ssl
+
+    @is_ssl.setter
+    def is_ssl(self, value):
+        self._is_ssl = value
+
 
 class Timer:
     def __init__(self, budget):
@@ -936,6 +969,13 @@ class Timer:
 
     def get_remaining_budget(self):
         return self._budget
+
+    def has_budget_greater_than(self, amount):
+        if self._budget is None:
+            # Unlimited budget.
+            return True
+        else:
+            return self._budget > amount
 
 
 class Protocol(BaseProtocol, asyncio.Protocol):
@@ -955,7 +995,7 @@ def _create_record(object mapping, tuple elems):
         desc = record.ApgRecordDesc_New(
             mapping, tuple(mapping) if mapping else ())
 
-    rec = record.ApgRecord_New(desc, len(elems))
+    rec = record.ApgRecord_New(Record, desc, len(elems))
     for i in range(len(elems)):
         elem = elems[i]
         cpython.Py_INCREF(elem)

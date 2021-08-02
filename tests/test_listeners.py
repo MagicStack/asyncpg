@@ -6,6 +6,10 @@
 
 
 import asyncio
+import os
+import platform
+import sys
+import unittest
 
 from asyncpg import _testbase as tb
 from asyncpg import exceptions
@@ -140,7 +144,6 @@ class TestLogListeners(tb.ConnectedTestCase):
         expected_msg = {
             'context': 'PL/pgSQL function inline_code_block line 2 at RAISE',
             'message': 'catch me!',
-            'server_source_filename': 'pl_exec.c',
             'server_source_function': 'exec_stmt_raise',
         }
 
@@ -167,12 +170,16 @@ class TestLogListeners(tb.ConnectedTestCase):
         await raise_notice()
         await raise_warning()
 
+        msg = await q1.get()
+        msg[2].pop('server_source_filename', None)
         self.assertEqual(
-            await q1.get(),
+            msg,
             (con, exceptions.PostgresLogMessage, expected_msg_notice))
 
+        msg = await q1.get()
+        msg[2].pop('server_source_filename', None)
         self.assertEqual(
-            await q1.get(),
+            msg,
             (con, exceptions.PostgresWarning, expected_msg_warn))
 
         con.remove_log_listener(notice_callb)
@@ -272,3 +279,41 @@ class TestLogListeners(tb.ConnectedTestCase):
                         pass
 
                     con.add_log_listener(listener1)
+
+
+@unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
+@unittest.skipIf(
+    platform.system() == 'Windows' and
+    sys.version_info >= (3, 8),
+    'not compatible with ProactorEventLoop which is default in Python 3.8')
+class TestConnectionTerminationListener(tb.ProxiedClusterTestCase):
+
+    async def test_connection_termination_callback_called_on_remote(self):
+
+        called = False
+
+        def close_cb(con):
+            nonlocal called
+            called = True
+
+        con = await self.connect()
+        con.add_termination_listener(close_cb)
+        self.proxy.close_all_connections()
+        try:
+            await con.fetchval('SELECT 1')
+        except Exception:
+            pass
+        self.assertTrue(called)
+
+    async def test_connection_termination_callback_called_on_local(self):
+
+        called = False
+
+        def close_cb(con):
+            nonlocal called
+            called = True
+
+        con = await self.connect()
+        con.add_termination_listener(close_cb)
+        await con.close()
+        self.assertTrue(called)

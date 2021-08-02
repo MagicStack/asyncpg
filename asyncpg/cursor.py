@@ -7,7 +7,6 @@
 
 import collections
 
-from . import compat
 from . import connresource
 from . import exceptions
 
@@ -19,34 +18,60 @@ class CursorFactory(connresource.ConnectionResource):
     results of a large query.
     """
 
-    __slots__ = ('_state', '_args', '_prefetch', '_query', '_timeout')
+    __slots__ = (
+        '_state',
+        '_args',
+        '_prefetch',
+        '_query',
+        '_timeout',
+        '_record_class',
+    )
 
-    def __init__(self, connection, query, state, args, prefetch, timeout):
+    def __init__(
+        self,
+        connection,
+        query,
+        state,
+        args,
+        prefetch,
+        timeout,
+        record_class
+    ):
         super().__init__(connection)
         self._args = args
         self._prefetch = prefetch
         self._query = query
         self._timeout = timeout
         self._state = state
+        self._record_class = record_class
         if state is not None:
             state.attach()
 
-    @compat.aiter_compat
     @connresource.guarded
     def __aiter__(self):
         prefetch = 50 if self._prefetch is None else self._prefetch
-        return CursorIterator(self._connection,
-                              self._query, self._state,
-                              self._args, prefetch,
-                              self._timeout)
+        return CursorIterator(
+            self._connection,
+            self._query,
+            self._state,
+            self._args,
+            self._record_class,
+            prefetch,
+            self._timeout,
+        )
 
     @connresource.guarded
     def __await__(self):
         if self._prefetch is not None:
             raise exceptions.InterfaceError(
                 'prefetch argument can only be specified for iterable cursor')
-        cursor = Cursor(self._connection, self._query,
-                        self._state, self._args)
+        cursor = Cursor(
+            self._connection,
+            self._query,
+            self._state,
+            self._args,
+            self._record_class,
+        )
         return cursor._init(self._timeout).__await__()
 
     def __del__(self):
@@ -57,9 +82,16 @@ class CursorFactory(connresource.ConnectionResource):
 
 class BaseCursor(connresource.ConnectionResource):
 
-    __slots__ = ('_state', '_args', '_portal_name', '_exhausted', '_query')
+    __slots__ = (
+        '_state',
+        '_args',
+        '_portal_name',
+        '_exhausted',
+        '_query',
+        '_record_class',
+    )
 
-    def __init__(self, connection, query, state, args):
+    def __init__(self, connection, query, state, args, record_class):
         super().__init__(connection)
         self._args = args
         self._state = state
@@ -68,6 +100,7 @@ class BaseCursor(connresource.ConnectionResource):
         self._portal_name = None
         self._exhausted = False
         self._query = query
+        self._record_class = record_class
 
     def _check_ready(self):
         if self._state is None:
@@ -151,8 +184,17 @@ class CursorIterator(BaseCursor):
 
     __slots__ = ('_buffer', '_prefetch', '_timeout')
 
-    def __init__(self, connection, query, state, args, prefetch, timeout):
-        super().__init__(connection, query, state, args)
+    def __init__(
+        self,
+        connection,
+        query,
+        state,
+        args,
+        record_class,
+        prefetch,
+        timeout
+    ):
+        super().__init__(connection, query, state, args, record_class)
 
         if prefetch <= 0:
             raise exceptions.InterfaceError(
@@ -162,7 +204,6 @@ class CursorIterator(BaseCursor):
         self._prefetch = prefetch
         self._timeout = timeout
 
-    @compat.aiter_compat
     @connresource.guarded
     def __aiter__(self):
         return self
@@ -171,7 +212,11 @@ class CursorIterator(BaseCursor):
     async def __anext__(self):
         if self._state is None:
             self._state = await self._connection._get_statement(
-                self._query, self._timeout, named=True)
+                self._query,
+                self._timeout,
+                named=True,
+                record_class=self._record_class,
+            )
             self._state.attach()
 
         if not self._portal_name:
@@ -196,7 +241,11 @@ class Cursor(BaseCursor):
     async def _init(self, timeout):
         if self._state is None:
             self._state = await self._connection._get_statement(
-                self._query, timeout, named=True)
+                self._query,
+                timeout,
+                named=True,
+                record_class=self._record_class,
+            )
             self._state.attach()
         self._check_ready()
         await self._bind(timeout)

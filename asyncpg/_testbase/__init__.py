@@ -19,6 +19,7 @@ import traceback
 import unittest
 
 
+import asyncpg
 from asyncpg import cluster as pg_cluster
 from asyncpg import connection as pg_connection
 from asyncpg import pool as pg_pool
@@ -266,6 +267,7 @@ def create_pool(dsn=None, *,
                 loop=None,
                 pool_class=pg_pool.Pool,
                 connection_class=pg_connection.Connection,
+                record_class=asyncpg.Record,
                 **connect_kwargs):
     return pool_class(
         dsn,
@@ -273,6 +275,7 @@ def create_pool(dsn=None, *,
         max_queries=max_queries, loop=loop, setup=setup, init=init,
         max_inactive_connection_lifetime=max_inactive_connection_lifetime,
         connection_class=connection_class,
+        record_class=record_class,
         **connect_kwargs)
 
 

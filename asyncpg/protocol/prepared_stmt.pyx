@@ -11,7 +11,14 @@ from asyncpg import exceptions
 @cython.final
 cdef class PreparedStatementState:
 
-    def __cinit__(self, str name, str query, BaseProtocol protocol):
+    def __cinit__(
+        self,
+        str name,
+        str query,
+        BaseProtocol protocol,
+        type record_class,
+        bint ignore_custom_codec
+    ):
         self.name = name
         self.query = query
         self.settings = protocol.settings
@@ -21,6 +28,8 @@ cdef class PreparedStatementState:
         self.cols_desc = None
         self.closed = False
         self.refs = 0
+        self.record_class = record_class
+        self.ignore_custom_codec = ignore_custom_codec
 
     def _get_parameters(self):
         cdef Codec codec
@@ -147,9 +156,11 @@ cdef class PreparedStatementState:
                 except (AssertionError, exceptions.InternalClientError):
                     # These are internal errors and should raise as-is.
                     raise
-                except exceptions.InterfaceError:
-                    # This is already a descriptive error.
-                    raise
+                except exceptions.InterfaceError as e:
+                    # This is already a descriptive error, but annotate
+                    # with argument name for clarity.
+                    raise e.with_msg(
+                        f'query argument ${idx + 1}: {e.args[0]}') from None
                 except Exception as e:
                     # Everything else is assumed to be an encoding error
                     # due to invalid input.
@@ -198,7 +209,8 @@ cdef class PreparedStatementState:
             cols_mapping[col_name] = i
             cols_names.append(col_name)
             oid = row[3]
-            codec = self.settings.get_data_codec(oid)
+            codec = self.settings.get_data_codec(
+                oid, ignore_custom_codec=self.ignore_custom_codec)
             if codec is None or not codec.has_decoder():
                 raise exceptions.InternalClientError(
                     'no decoder for OID {}'.format(oid))
@@ -223,7 +235,8 @@ cdef class PreparedStatementState:
 
         for i from 0 <= i < self.args_num:
             p_oid = self.parameters_desc[i]
-            codec = self.settings.get_data_codec(p_oid)
+            codec = self.settings.get_data_codec(
+                p_oid, ignore_custom_codec=self.ignore_custom_codec)
             if codec is None or not codec.has_encoder():
                 raise exceptions.InternalClientError(
                     'no encoder for OID {}'.format(p_oid))
@@ -264,7 +277,7 @@ cdef class PreparedStatementState:
                 'different from what was described ({})'.format(
                     fnum, self.cols_num))
 
-        dec_row = record.ApgRecord_New(self.cols_desc, fnum)
+        dec_row = record.ApgRecord_New(self.record_class, self.cols_desc, fnum)
         for i in range(fnum):
             flen = hton.unpack_int32(frb_read(&rbuf, 4))
 

@@ -26,4 +26,5 @@ cdef class ConnectionSettings(pgproto.CodecContext):
     cpdef inline set_builtin_type_codec(
         self, typeoid, typename, typeschema, typekind, alias_to, format)
     cpdef inline Codec get_data_codec(
-        self, uint32_t oid, ServerDataFormat format=*)
+        self, uint32_t oid, ServerDataFormat format=*,
+        bint ignore_custom_codec=*)

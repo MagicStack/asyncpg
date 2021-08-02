@@ -20,6 +20,11 @@ class TransactionState(enum.Enum):
 
 
 ISOLATION_LEVELS = {'read_committed', 'serializable', 'repeatable_read'}
+ISOLATION_LEVELS_BY_VALUE = {
+    'read committed': 'read_committed',
+    'serializable': 'serializable',
+    'repeatable read': 'repeatable_read',
+}
 
 
 class Transaction(connresource.ConnectionResource):
@@ -36,21 +41,10 @@ class Transaction(connresource.ConnectionResource):
     def __init__(self, connection, isolation, readonly, deferrable):
         super().__init__(connection)
 
-        if isolation not in ISOLATION_LEVELS:
+        if isolation and isolation not in ISOLATION_LEVELS:
             raise ValueError(
                 'isolation is expected to be either of {}, '
                 'got {!r}'.format(ISOLATION_LEVELS, isolation))
-
-        if isolation != 'serializable':
-            if readonly:
-                raise ValueError(
-                    '"readonly" is only supported for '
-                    'serializable transactions')
-
-            if deferrable and not readonly:
-                raise ValueError(
-                    '"deferrable" is only supported for '
-                    'serializable readonly transactions')
 
         self._isolation = isolation
         self._readonly = readonly
@@ -110,29 +104,35 @@ class Transaction(connresource.ConnectionResource):
             con._top_xact = self
         else:
             # Nested transaction block
-            top_xact = con._top_xact
-            if self._isolation != top_xact._isolation:
-                raise apg_errors.InterfaceError(
-                    'nested transaction has a different isolation level: '
-                    'current {!r} != outer {!r}'.format(
-                        self._isolation, top_xact._isolation))
+            if self._isolation:
+                top_xact_isolation = con._top_xact._isolation
+                if top_xact_isolation is None:
+                    top_xact_isolation = ISOLATION_LEVELS_BY_VALUE[
+                        await self._connection.fetchval(
+                            'SHOW transaction_isolation;')]
+                if self._isolation != top_xact_isolation:
+                    raise apg_errors.InterfaceError(
+                        'nested transaction has a different isolation level: '
+                        'current {!r} != outer {!r}'.format(
+                            self._isolation, top_xact_isolation))
             self._nested = True
 
         if self._nested:
             self._id = con._get_unique_id('savepoint')
             query = 'SAVEPOINT {};'.format(self._id)
         else:
+            query = 'BEGIN'
             if self._isolation == 'read_committed':
-                query = 'BEGIN;'
+                query += ' ISOLATION LEVEL READ COMMITTED'
             elif self._isolation == 'repeatable_read':
-                query = 'BEGIN ISOLATION LEVEL REPEATABLE READ;'
-            else:
-                query = 'BEGIN ISOLATION LEVEL SERIALIZABLE'
-                if self._readonly:
-                    query += ' READ ONLY'
-                if self._deferrable:
-                    query += ' DEFERRABLE'
-                query += ';'
+                query += ' ISOLATION LEVEL REPEATABLE READ'
+            elif self._isolation == 'serializable':
+                query += ' ISOLATION LEVEL SERIALIZABLE'
+            if self._readonly:
+                query += ' READ ONLY'
+            if self._deferrable:
+                query += ' DEFERRABLE'
+            query += ';'
 
         try:
             await self._connection.execute(query)
@@ -222,7 +222,8 @@ class Transaction(connresource.ConnectionResource):
         attrs = []
         attrs.append('state:{}'.format(self._state.name.lower()))
 
-        attrs.append(self._isolation)
+        if self._isolation is not None:
+            attrs.append(self._isolation)
         if self._readonly:
             attrs.append('readonly')
         if self._deferrable:

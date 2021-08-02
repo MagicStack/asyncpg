@@ -138,9 +138,9 @@ class TestConnectionCommandTimeout(tb.ConnectedTestCase):
 
 class SlowPrepareConnection(pg_connection.Connection):
     """Connection class to test timeouts."""
-    async def _get_statement(self, query, timeout):
+    async def _get_statement(self, query, timeout, **kwargs):
         await asyncio.sleep(0.3)
-        return await super()._get_statement(query, timeout)
+        return await super()._get_statement(query, timeout, **kwargs)
 
 
 class TestTimeoutCoversPrepare(tb.ConnectedTestCase):

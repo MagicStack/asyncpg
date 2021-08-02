@@ -7,7 +7,7 @@ import sys
 sys.path.insert(0, os.path.abspath('..'))
 
 version_file = os.path.join(os.path.dirname(os.path.dirname(__file__)),
-                            'asyncpg', '__init__.py')
+                            'asyncpg', '_version.py')
 
 with open(version_file, 'r') as f:
     for line in f:
@@ -17,7 +17,7 @@ with open(version_file, 'r') as f:
             break
     else:
         raise RuntimeError(
-            'unable to read the version from asyncpg/__init__.py')
+            'unable to read the version from asyncpg/_version.py')
 
 # -- General configuration ------------------------------------------------
 

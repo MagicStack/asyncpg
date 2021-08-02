@@ -7,8 +7,8 @@
 
 import sys
 
-if sys.version_info < (3, 5):
-    raise RuntimeError('asyncpg requires Python 3.5 or greater')
+if sys.version_info < (3, 6):
+    raise RuntimeError('asyncpg requires Python 3.6 or greater')
 
 import os
 import os.path
@@ -19,15 +19,13 @@ import subprocess
 
 # We use vanilla build_ext, to avoid importing Cython via
 # the setuptools version.
-from distutils import extension as distutils_extension
-from distutils.command import build_ext as distutils_build_ext
-
 import setuptools
 from setuptools.command import build_py as setuptools_build_py
 from setuptools.command import sdist as setuptools_sdist
+from setuptools.command import build_ext as setuptools_build_ext
 
 
-CYTHON_DEPENDENCY = 'Cython==0.29.14'
+CYTHON_DEPENDENCY = 'Cython(>=0.29.20,<0.30.0)'
 
 # Minimal dependencies required to test asyncpg.
 TEST_DEPENDENCIES = [
@@ -71,7 +69,7 @@ with open(str(_ROOT / 'README.rst')) as f:
     readme = f.read()
 
 
-with open(str(_ROOT / 'asyncpg' / '__init__.py')) as f:
+with open(str(_ROOT / 'asyncpg' / '_version.py')) as f:
     for line in f:
         if line.startswith('__version__ ='):
             _, _, version = line.partition('=')
@@ -79,7 +77,7 @@ with open(str(_ROOT / 'asyncpg' / '__init__.py')) as f:
             break
     else:
         raise RuntimeError(
-            'unable to read the version from asyncpg/__init__.py')
+            'unable to read the version from asyncpg/_version.py')
 
 
 if (_ROOT / '.git').is_dir() and 'dev' in VERSION:
@@ -124,7 +122,7 @@ class sdist(setuptools_sdist.sdist, VersionMixin):
 
     def make_release_tree(self, base_dir, files):
         super().make_release_tree(base_dir, files)
-        self._fix_version(pathlib.Path(base_dir) / 'asyncpg' / '__init__.py')
+        self._fix_version(pathlib.Path(base_dir) / 'asyncpg' / '_version.py')
 
 
 class build_py(setuptools_build_py.build_py, VersionMixin):
@@ -138,9 +136,9 @@ class build_py(setuptools_build_py.build_py, VersionMixin):
         return outfile, copied
 
 
-class build_ext(distutils_build_ext.build_ext):
+class build_ext(setuptools_build_ext.build_ext):
 
-    user_options = distutils_build_ext.build_ext.user_options + [
+    user_options = setuptools_build_ext.build_ext.user_options + [
         ('cython-always', None,
             'run cythonize() even if .c files are present'),
         ('cython-annotate', None,
@@ -261,14 +259,15 @@ setuptools.setup(
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: Implementation :: CPython',
         'Topic :: Database :: Front-Ends',
     ],
     platforms=['macOS', 'POSIX', 'Windows'],
-    python_requires='>=3.5.0',
+    python_requires='>=3.6.0',
     zip_safe=False,
     author='MagicStack Inc',
     author_email='hello@magic.io',
@@ -278,13 +277,13 @@ setuptools.setup(
     provides=['asyncpg'],
     include_package_data=True,
     ext_modules=[
-        distutils_extension.Extension(
+        setuptools.extension.Extension(
             "asyncpg.pgproto.pgproto",
             ["asyncpg/pgproto/pgproto.pyx"],
             extra_compile_args=CFLAGS,
             extra_link_args=LDFLAGS),
 
-        distutils_extension.Extension(
+        setuptools.extension.Extension(
             "asyncpg.protocol.protocol",
             ["asyncpg/protocol/record/recordobj.c",
              "asyncpg/protocol/protocol.pyx"],
@@ -292,6 +291,7 @@ setuptools.setup(
             extra_compile_args=CFLAGS,
             extra_link_args=LDFLAGS),
     ],
+    install_requires=['typing-extensions>=3.7.4.3;python_version<"3.8"'],
     cmdclass={'build_ext': build_ext, 'build_py': build_py, 'sdist': sdist},
     test_suite='tests.suite',
     extras_require=EXTRA_DEPENDENCIES,

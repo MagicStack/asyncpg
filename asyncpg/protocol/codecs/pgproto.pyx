@@ -180,6 +180,10 @@ cdef init_json_codecs():
                         <encode_func>pgproto.jsonb_encode,
                         <decode_func>pgproto.jsonb_decode,
                         PG_FORMAT_BINARY)
+    register_core_codec(JSONPATHOID,
+                        <encode_func>pgproto.jsonpath_encode,
+                        <decode_func>pgproto.jsonpath_decode,
+                        PG_FORMAT_BINARY)
 
 
 cdef init_int_codecs():
@@ -229,6 +233,17 @@ cdef init_pseudo_codecs():
                             <decode_func>pgproto.uint4_decode,
                             PG_FORMAT_BINARY)
 
+    # 64-bit OID types
+    oid8_types = [
+        XID8OID,
+    ]
+
+    for oid_type in oid8_types:
+        register_core_codec(oid_type,
+                            <encode_func>pgproto.uint8_encode,
+                            <decode_func>pgproto.uint8_decode,
+                            PG_FORMAT_BINARY)
+
     # reg* types -- these are really system catalog OIDs, but
     # allow the catalog object name as an input.  We could just
     # decode these as OIDs, but handling them as text seems more
@@ -237,7 +252,7 @@ cdef init_pseudo_codecs():
     reg_types = [
         REGPROCOID, REGPROCEDUREOID, REGOPEROID, REGOPERATOROID,
         REGCLASSOID, REGTYPEOID, REGCONFIGOID, REGDICTIONARYOID,
-        REGNAMESPACEOID, REGROLEOID, REFCURSOROID
+        REGNAMESPACEOID, REGROLEOID, REFCURSOROID, REGCOLLATIONOID,
     ]
 
     for reg_type in reg_types:
@@ -256,8 +271,10 @@ cdef init_pseudo_codecs():
     no_io_types = [
         ANYOID, TRIGGEROID, EVENT_TRIGGEROID, LANGUAGE_HANDLEROID,
         FDW_HANDLEROID, TSM_HANDLEROID, INTERNALOID, OPAQUEOID,
-        ANYELEMENTOID, ANYNONARRAYOID, PG_DDL_COMMANDOID,
-        INDEX_AM_HANDLEROID,
+        ANYELEMENTOID, ANYNONARRAYOID, ANYCOMPATIBLEOID,
+        ANYCOMPATIBLEARRAYOID, ANYCOMPATIBLENONARRAYOID,
+        ANYCOMPATIBLERANGEOID, PG_DDL_COMMANDOID, INDEX_AM_HANDLEROID,
+        TABLE_AM_HANDLEROID,
     ]
 
     register_core_codec(ANYENUMOID,
@@ -306,6 +323,13 @@ cdef init_pseudo_codecs():
                         <decode_func>pgproto.text_decode,
                         PG_FORMAT_TEXT)
 
+    # pg_mcv_list is a special type used in pg_statistic_ext_data
+    # system catalog
+    register_core_codec(PG_MCV_LISTOID,
+                        <encode_func>pgproto.bytea_encode,
+                        <decode_func>pgproto.bytea_decode,
+                        PG_FORMAT_BINARY)
+
 
 cdef init_text_codecs():
     textoids = [
@@ -337,8 +361,13 @@ cdef init_tid_codecs():
 
 cdef init_txid_codecs():
     register_core_codec(TXID_SNAPSHOTOID,
-                        <encode_func>pgproto.txid_snapshot_encode,
-                        <decode_func>pgproto.txid_snapshot_decode,
+                        <encode_func>pgproto.pg_snapshot_encode,
+                        <decode_func>pgproto.pg_snapshot_decode,
+                        PG_FORMAT_BINARY)
+
+    register_core_codec(PG_SNAPSHOTOID,
+                        <encode_func>pgproto.pg_snapshot_encode,
+                        <decode_func>pgproto.pg_snapshot_decode,
                         PG_FORMAT_BINARY)
 
 

@@ -30,6 +30,8 @@ class TestEnvironment(tb.ConnectedTestCase):
 
     @unittest.skipIf(not os.environ.get('ASYNCPG_VERSION'),
                      "environ[ASYNCPG_VERSION] is not set")
+    @unittest.skipIf("dev" in asyncpg.__version__,
+                     "development version with git commit data")
     async def test_environment_asyncpg_version(self):
         apgver = os.environ.get('ASYNCPG_VERSION')
         self.assertEqual(

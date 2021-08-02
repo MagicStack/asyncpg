@@ -10,7 +10,7 @@
 
 DEF INVALIDOID = 0
 DEF MAXBUILTINOID = 9999
-DEF MAXSUPPORTEDOID = 4096
+DEF MAXSUPPORTEDOID = 5080
 
 DEF BOOLOID = 16
 DEF BYTEAOID = 17
@@ -30,6 +30,7 @@ DEF JSONOID = 114
 DEF XMLOID = 142
 DEF PG_NODE_TREEOID = 194
 DEF SMGROID = 210
+DEF TABLE_AM_HANDLEROID = 269
 DEF INDEX_AM_HANDLEROID = 325
 DEF POINTOID = 600
 DEF LSEGOID = 601
@@ -96,8 +97,17 @@ DEF REGDICTIONARYOID = 3769
 DEF JSONBOID = 3802
 DEF ANYRANGEOID = 3831
 DEF EVENT_TRIGGEROID = 3838
+DEF JSONPATHOID = 4072
 DEF REGNAMESPACEOID = 4089
 DEF REGROLEOID = 4096
+DEF REGCOLLATIONOID = 4191
+DEF PG_MCV_LISTOID = 5017
+DEF PG_SNAPSHOTOID = 5038
+DEF XID8OID = 5069
+DEF ANYCOMPATIBLEOID = 5077
+DEF ANYCOMPATIBLEARRAYOID = 5078
+DEF ANYCOMPATIBLENONARRAYOID = 5079
+DEF ANYCOMPATIBLERANGEOID = 5080
 
 cdef ARRAY_TYPES = (_TEXTOID, _OIDOID,)
 
@@ -105,6 +115,10 @@ BUILTIN_TYPE_OID_MAP = {
     ABSTIMEOID: 'abstime',
     ACLITEMOID: 'aclitem',
     ANYARRAYOID: 'anyarray',
+    ANYCOMPATIBLEARRAYOID: 'anycompatiblearray',
+    ANYCOMPATIBLENONARRAYOID: 'anycompatiblenonarray',
+    ANYCOMPATIBLEOID: 'anycompatible',
+    ANYCOMPATIBLERANGEOID: 'anycompatiblerange',
     ANYELEMENTOID: 'anyelement',
     ANYENUMOID: 'anyenum',
     ANYNONARRAYOID: 'anynonarray',
@@ -135,6 +149,7 @@ BUILTIN_TYPE_OID_MAP = {
     INTERVALOID: 'interval',
     JSONBOID: 'jsonb',
     JSONOID: 'json',
+    JSONPATHOID: 'jsonpath',
     LANGUAGE_HANDLEROID: 'language_handler',
     LINEOID: 'line',
     LSEGOID: 'lseg',
@@ -149,13 +164,16 @@ BUILTIN_TYPE_OID_MAP = {
     PG_DDL_COMMANDOID: 'pg_ddl_command',
     PG_DEPENDENCIESOID: 'pg_dependencies',
     PG_LSNOID: 'pg_lsn',
+    PG_MCV_LISTOID: 'pg_mcv_list',
     PG_NDISTINCTOID: 'pg_ndistinct',
     PG_NODE_TREEOID: 'pg_node_tree',
+    PG_SNAPSHOTOID: 'pg_snapshot',
     POINTOID: 'point',
     POLYGONOID: 'polygon',
     RECORDOID: 'record',
     REFCURSOROID: 'refcursor',
     REGCLASSOID: 'regclass',
+    REGCOLLATIONOID: 'regcollation',
     REGCONFIGOID: 'regconfig',
     REGDICTIONARYOID: 'regdictionary',
     REGNAMESPACEOID: 'regnamespace',
@@ -167,6 +185,7 @@ BUILTIN_TYPE_OID_MAP = {
     REGTYPEOID: 'regtype',
     RELTIMEOID: 'reltime',
     SMGROID: 'smgr',
+    TABLE_AM_HANDLEROID: 'table_am_handler',
     TEXTOID: 'text',
     TIDOID: 'tid',
     TIMEOID: 'time',
@@ -184,6 +203,7 @@ BUILTIN_TYPE_OID_MAP = {
     VARBITOID: 'varbit',
     VARCHAROID: 'varchar',
     VOIDOID: 'void',
+    XID8OID: 'xid8',
     XIDOID: 'xid',
     XMLOID: 'xml',
     _OIDOID: 'oid[]',
@@ -216,5 +236,23 @@ BUILTIN_TYPE_NAME_MAP['double precision'] = \
 BUILTIN_TYPE_NAME_MAP['timestamp with timezone'] = \
     BUILTIN_TYPE_NAME_MAP['timestamptz']
 
+BUILTIN_TYPE_NAME_MAP['timestamp without timezone'] = \
+    BUILTIN_TYPE_NAME_MAP['timestamp']
+
 BUILTIN_TYPE_NAME_MAP['time with timezone'] = \
     BUILTIN_TYPE_NAME_MAP['timetz']
+
+BUILTIN_TYPE_NAME_MAP['time without timezone'] = \
+    BUILTIN_TYPE_NAME_MAP['time']
+
+BUILTIN_TYPE_NAME_MAP['char'] = \
+    BUILTIN_TYPE_NAME_MAP['bpchar']
+
+BUILTIN_TYPE_NAME_MAP['character'] = \
+    BUILTIN_TYPE_NAME_MAP['bpchar']
+
+BUILTIN_TYPE_NAME_MAP['character varying'] = \
+    BUILTIN_TYPE_NAME_MAP['varchar']
+
+BUILTIN_TYPE_NAME_MAP['bit varying'] = \
+    BUILTIN_TYPE_NAME_MAP['varbit']

@@ -42,6 +42,7 @@ cdef class BaseProtocol(CoreProtocol):
         object timeout_callback
         object completed_callback
         object conref
+        type record_class
         bint is_reading
 
         str last_query
@@ -50,6 +51,8 @@ cdef class BaseProtocol(CoreProtocol):
         bint closing
 
         readonly uint64_t queries_count
+
+        bint _is_ssl
 
         PreparedStatementState statement
 

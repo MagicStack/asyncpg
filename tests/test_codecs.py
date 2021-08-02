@@ -271,6 +271,9 @@ type_samples = [
         '[1, 2, 3, 4]',
         '{"a": [1, 2], "b": 0}'
     ], (9, 4)),
+    ('jsonpath', 'jsonpath', [
+        '$."track"."segments"[*]."HR"?(@ > 130)',
+    ], (12, 0)),
     ('oid[]', 'oid[]', [
         [1, 2, 3, 4],
         []
@@ -389,6 +392,19 @@ type_samples = [
     ('txid_snapshot', 'txid_snapshot', [
         (100, 1000, (100, 200, 300, 400))
     ]),
+    ('pg_snapshot', 'pg_snapshot', [
+        (100, 1000, (100, 200, 300, 400))
+    ], (13, 0)),
+    ('xid', 'xid', (
+        2 ** 32 - 1,
+        0,
+        1,
+    )),
+    ('xid8', 'xid8', (
+        2 ** 64 - 1,
+        0,
+        1,
+    ), (13, 0)),
     ('varbit', 'varbit', [
         asyncpg.BitString('0000 0001'),
         asyncpg.BitString('00010001'),
@@ -654,6 +670,11 @@ class TestCodecs(tb.ConnectedTestCase):
             ''')
 
     async def test_invalid_input(self):
+        # The latter message appears beginning in Python 3.10.
+        integer_required = (
+            r"(an integer is required|"
+            r"\('str' object cannot be interpreted as an integer\))")
+
         cases = [
             ('bytea', 'a bytes-like object is required', [
                 1,
@@ -662,7 +683,7 @@ class TestCodecs(tb.ConnectedTestCase):
             ('bool', 'a boolean is required', [
                 1,
             ]),
-            ('int2', 'an integer is required', [
+            ('int2', integer_required, [
                 '2',
                 'aa',
             ]),
@@ -678,7 +699,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 4.1 * 10 ** 40,
                 -4.1 * 10 ** 40,
             ]),
-            ('int4', 'an integer is required', [
+            ('int4', integer_required, [
                 '2',
                 'aa',
             ]),
@@ -689,7 +710,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 2**31,
                 -2**31 - 1,
             ]),
-            ('int8', 'an integer is required', [
+            ('int8', integer_required, [
                 '2',
                 'aa',
             ]),
@@ -875,6 +896,13 @@ class TestCodecs(tb.ConnectedTestCase):
         res = await st.fetchval()
 
         self.assertEqual(res, (None, 1234, '5678', (42, '42')))
+
+        with self.assertRaisesRegex(
+            asyncpg.UnsupportedClientFeatureError,
+            'query argument \\$1: input of anonymous '
+            'composite types is not supported',
+        ):
+            await self.con.fetchval("SELECT (1, 'foo') = $1", (1, 'foo'))
 
         try:
             st = await self.con.prepare('''
@@ -1075,7 +1103,7 @@ class TestCodecs(tb.ConnectedTestCase):
             # This should fail, as there is no binary codec for
             # my_dec_t and text decoding of composites is not
             # implemented.
-            with self.assertRaises(NotImplementedError):
+            with self.assertRaises(asyncpg.UnsupportedClientFeatureError):
                 res = await self.con.fetchval('''
                     SELECT ($1::my_dec_t, 'a=>1'::hstore)::rec_t AS result
                 ''', 44)
@@ -1132,7 +1160,7 @@ class TestCodecs(tb.ConnectedTestCase):
             self.assertEqual(at[0].type, pt[0])
 
             err = 'cannot use custom codec on non-scalar type public._hstore'
-            with self.assertRaisesRegex(ValueError, err):
+            with self.assertRaisesRegex(asyncpg.InterfaceError, err):
                 await self.con.set_type_codec('_hstore',
                                               encoder=hstore_encoder,
                                               decoder=hstore_decoder)
@@ -1144,7 +1172,7 @@ class TestCodecs(tb.ConnectedTestCase):
             try:
                 err = 'cannot use custom codec on non-scalar type ' + \
                       'public.mytype'
-                with self.assertRaisesRegex(ValueError, err):
+                with self.assertRaisesRegex(asyncpg.InterfaceError, err):
                     await self.con.set_type_codec(
                         'mytype', encoder=hstore_encoder,
                         decoder=hstore_decoder)
@@ -1245,15 +1273,49 @@ class TestCodecs(tb.ConnectedTestCase):
         ''')
 
         try:
-            await self.con.set_type_codec(
-                'custom_codec_t',
-                encoder=lambda v: str(v),
-                decoder=lambda v: int(v))
-
-            v = await self.con.fetchval('SELECT $1::custom_codec_t', 10)
-            self.assertEqual(v, 10)
+            with self.assertRaisesRegex(
+                asyncpg.UnsupportedClientFeatureError,
+                'custom codecs on domain types are not supported'
+            ):
+                await self.con.set_type_codec(
+                    'custom_codec_t',
+                    encoder=lambda v: str(v),
+                    decoder=lambda v: int(v))
         finally:
             await self.con.execute('DROP DOMAIN custom_codec_t')
+
+    async def test_custom_codec_on_stdsql_types(self):
+        types = [
+            'smallint',
+            'int',
+            'integer',
+            'bigint',
+            'decimal',
+            'real',
+            'double precision',
+            'timestamp with timezone',
+            'time with timezone',
+            'timestamp without timezone',
+            'time without timezone',
+            'char',
+            'character',
+            'character varying',
+            'bit varying',
+            'CHARACTER VARYING'
+        ]
+
+        for t in types:
+            with self.subTest(type=t):
+                try:
+                    await self.con.set_type_codec(
+                        t,
+                        schema='pg_catalog',
+                        encoder=str,
+                        decoder=str,
+                        format='text'
+                    )
+                finally:
+                    await self.con.reset_type_codec(t, schema='pg_catalog')
 
     async def test_custom_codec_on_enum(self):
         """Test encoding/decoding using a custom codec on an enum."""
@@ -1268,6 +1330,34 @@ class TestCodecs(tb.ConnectedTestCase):
                 decoder=lambda v: 'enum: ' + str(v))
 
             v = await self.con.fetchval('SELECT $1::custom_codec_t', 'foo')
+            self.assertEqual(v, 'enum: foo')
+        finally:
+            await self.con.execute('DROP TYPE custom_codec_t')
+
+    async def test_custom_codec_on_enum_array(self):
+        """Test encoding/decoding using a custom codec on an enum array.
+
+        Bug: https://github.com/MagicStack/asyncpg/issues/590
+        """
+        await self.con.execute('''
+            CREATE TYPE custom_codec_t AS ENUM ('foo', 'bar', 'baz')
+        ''')
+
+        try:
+            await self.con.set_type_codec(
+                'custom_codec_t',
+                encoder=lambda v: str(v).lstrip('enum :'),
+                decoder=lambda v: 'enum: ' + str(v))
+
+            v = await self.con.fetchval(
+                "SELECT ARRAY['foo', 'bar']::custom_codec_t[]")
+            self.assertEqual(v, ['enum: foo', 'enum: bar'])
+
+            v = await self.con.fetchval(
+                'SELECT ARRAY[$1]::custom_codec_t[]', 'foo')
+            self.assertEqual(v, ['enum: foo'])
+
+            v = await self.con.fetchval("SELECT 'foo'::custom_codec_t")
             self.assertEqual(v, 'enum: foo')
         finally:
             await self.con.execute('DROP TYPE custom_codec_t')
@@ -1317,6 +1407,14 @@ class TestCodecs(tb.ConnectedTestCase):
             res = await conn.fetchval('SELECT $1::json', data)
             self.assertEqual(data, res)
 
+            res = await conn.fetchval('SELECT $1::json[]', [data])
+            self.assertEqual([data], res)
+
+            await conn.execute('CREATE DOMAIN my_json AS json')
+
+            res = await conn.fetchval('SELECT $1::my_json', data)
+            self.assertEqual(data, res)
+
             def _encoder(value):
                 return value
 
@@ -1332,6 +1430,7 @@ class TestCodecs(tb.ConnectedTestCase):
             res = await conn.fetchval('SELECT $1::uuid', data)
             self.assertEqual(res, data)
         finally:
+            await conn.execute('DROP DOMAIN IF EXISTS my_json')
             await conn.close()
 
     async def test_custom_codec_override_tuple(self):
@@ -1617,7 +1716,7 @@ class TestCodecs(tb.ConnectedTestCase):
             # Text encoding of ranges and composite types
             # is not supported yet.
             with self.assertRaisesRegex(
-                    RuntimeError,
+                    asyncpg.UnsupportedClientFeatureError,
                     'text encoding of range types is not supported'):
 
                 await self.con.fetchval('''
@@ -1626,7 +1725,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 ''', ['a', 'z'])
 
             with self.assertRaisesRegex(
-                    RuntimeError,
+                    asyncpg.UnsupportedClientFeatureError,
                     'text encoding of composite types is not supported'):
 
                 await self.con.fetchval('''
@@ -1741,6 +1840,43 @@ class TestCodecs(tb.ConnectedTestCase):
         st = await self.con.prepare('rollback')
         self.assertTupleEqual(st.get_attributes(), ())
 
+    async def test_array_with_custom_json_text_codec(self):
+        import json
+
+        await self.con.execute('CREATE TABLE tab (id serial, val json[]);')
+        insert_sql = 'INSERT INTO tab (val) VALUES (cast($1 AS json[]));'
+        query_sql = 'SELECT val FROM tab ORDER BY id DESC;'
+        try:
+            for custom_codec in [False, True]:
+                if custom_codec:
+                    await self.con.set_type_codec(
+                        'json',
+                        encoder=lambda v: v,
+                        decoder=json.loads,
+                        schema="pg_catalog",
+                    )
+
+                for val in ['"null"', '22', 'null', '[2]', '{"a": null}']:
+                    await self.con.execute(insert_sql, [val])
+                    result = await self.con.fetchval(query_sql)
+                    if custom_codec:
+                        self.assertEqual(result, [json.loads(val)])
+                    else:
+                        self.assertEqual(result, [val])
+
+                await self.con.execute(insert_sql, [None])
+                result = await self.con.fetchval(query_sql)
+                self.assertEqual(result, [None])
+
+                await self.con.execute(insert_sql, None)
+                result = await self.con.fetchval(query_sql)
+                self.assertEqual(result, None)
+
+        finally:
+            await self.con.execute('''
+                DROP TABLE tab;
+            ''')
+
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
 class TestCodecsLargeOIDs(tb.ConnectedTestCase):
@@ -1761,7 +1897,7 @@ class TestCodecsLargeOIDs(tb.ConnectedTestCase):
 
             expected_oid = self.LARGE_OID
             if self.server_version >= (11, 0):
-                # PostgreSQL 11 automatically create a domain array type
+                # PostgreSQL 11 automatically creates a domain array type
                 # _before_ the domain type, so the expected OID is
                 # off by one.
                 expected_oid += 1
@@ -1769,15 +1905,6 @@ class TestCodecsLargeOIDs(tb.ConnectedTestCase):
             self.assertEqual(oid, expected_oid)
 
             # Test that introspection handles large OIDs
-            v = await self.con.fetchval('SELECT $1::test_domain_t', 10)
-            self.assertEqual(v, 10)
-
-            # Test that custom codec logic handles large OIDs
-            await self.con.set_type_codec(
-                'test_domain_t',
-                encoder=lambda v: str(v),
-                decoder=lambda v: int(v))
-
             v = await self.con.fetchval('SELECT $1::test_domain_t', 10)
             self.assertEqual(v, 10)
 

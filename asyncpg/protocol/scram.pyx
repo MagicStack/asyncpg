@@ -291,8 +291,9 @@ cdef class SCRAMAuthentication:
         # Table C.1.2 -- non-ASCII spaces
         # Table B.1 -- "Commonly mapped to nothing"
         normalized_password = u"".join(
-            [' ' if stringprep.in_table_c12(c) else c
-            for c in normalized_password if not stringprep.in_table_b1(c)])
+            ' ' if stringprep.in_table_c12(c) else c
+            for c in tuple(normalized_password) if not stringprep.in_table_b1(c)
+        )
 
         # If at this point the password is empty, PostgreSQL uses the original
         # password
@@ -307,16 +308,19 @@ cdef class SCRAMAuthentication:
         if not normalized_password:
             return original_password
 
+        normalized_password_tuple = tuple(normalized_password)
+
         # Step 3 of SASLPrep: Prohobited characters. If PostgreSQL detects any
         # of the prohibited characters in SASLPrep, it will use the original
         # password
         # We also include "unassigned code points" in the prohibited character
         # category as PostgreSQL does the same
-        for c in normalized_password:
-            if any([in_prohibited_table(c) for in_prohibited_table in
-                    self.SASLPREP_PROHIBITED]):
+        for c in normalized_password_tuple:
+            if any(
+                in_prohibited_table(c)
+                for in_prohibited_table in self.SASLPREP_PROHIBITED
+            ):
                 return original_password
-
 
         # Step 4 of SASLPrep: Bi-directional characters. PostgreSQL follows the
         # rules for bi-directional characters laid on in RFC3454 Sec. 6 which
@@ -327,15 +331,17 @@ cdef class SCRAMAuthentication:
         # 3. If the string contains any RandALCat character, an RandALCat
         #    character must be the first and last character of the string
         # RandALCat characters are found in table D.1, whereas LCat are in D.2
-        if any([stringprep.in_table_d1(c) for c in normalized_password]):
+        if any(stringprep.in_table_d1(c) for c in normalized_password_tuple):
             # if the first character or the last character are not in D.1,
             # return the original password
-            if not (stringprep.in_table_d1(normalized_password[0]) and
-                    stringprep.in_table_d1(normalized_password[-1])):
+            if not (stringprep.in_table_d1(normalized_password_tuple[0]) and
+                    stringprep.in_table_d1(normalized_password_tuple[-1])):
                 return original_password
 
             # if any characters are in D.2, use the original password
-            if any([stringprep.in_table_d2(c) for c in normalized_password]):
+            if any(
+                stringprep.in_table_d2(c) for c in normalized_password_tuple
+            ):
                 return original_password
 
         # return the normalized password
