@@ -11,6 +11,7 @@ import collections
 import collections.abc
 import functools
 import itertools
+import os
 import sys
 import time
 import traceback
@@ -957,7 +958,7 @@ class Connection(metaclass=ConnectionMeta):
 
     async def _copy_out(self, copy_stmt, output, timeout):
         try:
-            path = compat.fspath(output)
+            path = os.fspath(output)
         except TypeError:
             # output is not a path-like object
             path = None
@@ -996,7 +997,7 @@ class Connection(metaclass=ConnectionMeta):
 
     async def _copy_in(self, copy_stmt, source, timeout):
         try:
-            path = compat.fspath(source)
+            path = os.fspath(source)
         except TypeError:
             # source is not a path-like object
             path = None
@@ -1027,7 +1028,6 @@ class Connection(metaclass=ConnectionMeta):
         if f is not None:
             # Copying from a file-like object.
             class _Reader:
-                @compat.aiter_compat
                 def __aiter__(self):
                     return self
 
