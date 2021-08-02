@@ -9,12 +9,14 @@ import asyncio
 import asyncpg
 import collections
 import collections.abc
+import functools
 import itertools
 import os
 import sys
 import time
 import traceback
 import warnings
+import weakref
 
 from . import compat
 from . import connect_utils
@@ -71,7 +73,8 @@ class Connection(metaclass=ConnectionMeta):
         self._stmt_cache = _StatementCache(
             loop=loop,
             max_size=config.statement_cache_size,
-            on_remove=self._maybe_gc_stmt,
+            on_remove=functools.partial(
+                _weak_maybe_gc_stmt, weakref.ref(self)),
             max_lifetime=config.max_cached_statement_lifetime)
 
         self._stmts_to_close = set()
@@ -2258,6 +2261,12 @@ def _check_record_class(record_class):
             'record_class is expected to be a subclass of '
             'asyncpg.Record, got {!r}'.format(record_class)
         )
+
+
+def _weak_maybe_gc_stmt(weak_ref, stmt):
+    self = weak_ref()
+    if self is not None:
+        self._maybe_gc_stmt(stmt)
 
 
 _uid = 0
