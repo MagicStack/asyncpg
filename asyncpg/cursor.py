@@ -7,7 +7,6 @@
 
 import collections
 
-from . import compat
 from . import connresource
 from . import exceptions
 
@@ -48,7 +47,6 @@ class CursorFactory(connresource.ConnectionResource):
         if state is not None:
             state.attach()
 
-    @compat.aiter_compat
     @connresource.guarded
     def __aiter__(self):
         prefetch = 50 if self._prefetch is None else self._prefetch
@@ -206,7 +204,6 @@ class CursorIterator(BaseCursor):
         self._prefetch = prefetch
         self._timeout = timeout
 
-    @compat.aiter_compat
     @connresource.guarded
     def __aiter__(self):
         return self

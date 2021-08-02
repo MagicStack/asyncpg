@@ -7,8 +7,8 @@
 
 import sys
 
-if sys.version_info < (3, 5):
-    raise RuntimeError('asyncpg requires Python 3.5 or greater')
+if sys.version_info < (3, 6):
+    raise RuntimeError('asyncpg requires Python 3.6 or greater')
 
 import os
 import os.path
@@ -259,7 +259,6 @@ setuptools.setup(
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
@@ -268,7 +267,7 @@ setuptools.setup(
         'Topic :: Database :: Front-Ends',
     ],
     platforms=['macOS', 'POSIX', 'Windows'],
-    python_requires='>=3.5.0',
+    python_requires='>=3.6.0',
     zip_safe=False,
     author='MagicStack Inc',
     author_email='hello@magic.io',

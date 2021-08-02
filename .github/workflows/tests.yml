@@ -17,14 +17,8 @@ jobs:
     # job.
     strategy:
       matrix:
-        python-version: [3.5, 3.6, 3.7, 3.8, 3.9]
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        exclude:
-          # Python 3.5 is unable to properly
-          # find the recent VS tooling
-          # https://bugs.python.org/issue30389
-          - os: windows-latest
-            python-version: 3.5
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        os: [ubuntu-latest, macos-latest, windows-latest]        
 
     runs-on: ${{ matrix.os }}
 
