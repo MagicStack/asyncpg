@@ -64,6 +64,9 @@ class TestSettings(tb.ConnectedTestCase):
             ("10.1", (10, 0, 1, 'final', 0),),
             ("11.1.2", (11, 0, 1, 'final', 0),),
             ("PostgreSQL 10.1 (Debian 10.1-3)", (10, 0, 1, 'final', 0),),
+            ("PostgreSQL 11.2-YB-2.7.1.1-b0 on x86_64-pc-linux-gnu, "
+             "compiled by gcc (Homebrew gcc 5.5.0_4) 5.5.0, 64-bit",
+             (11, 0, 2, "final", 0),),
         ]
         for version, expected in versions:
             result = split_server_version_string(version)
