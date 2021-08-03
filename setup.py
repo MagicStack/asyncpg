@@ -34,7 +34,7 @@ TEST_DEPENDENCIES = [
     # (example breakage: https://gitlab.com/pycqa/flake8/issues/427)
     'pycodestyle~=2.5.0',
     'flake8~=3.7.9',
-    'uvloop~=0.14.0;platform_system!="Windows"',
+    'uvloop>=0.15.3; platform_system != "Windows" and python_version >= "3.7"',
 ]
 
 # Dependencies required to build documentation.
@@ -263,6 +263,7 @@ setuptools.setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: Implementation :: CPython',
         'Topic :: Database :: Front-Ends',
     ],
