@@ -25,7 +25,7 @@ from setuptools.command import sdist as setuptools_sdist
 from setuptools.command import build_ext as setuptools_build_ext
 
 
-CYTHON_DEPENDENCY = 'Cython(>=0.29.20,<0.30.0)'
+CYTHON_DEPENDENCY = 'Cython(>=0.29.24,<0.30.0)'
 
 # Minimal dependencies required to test asyncpg.
 TEST_DEPENDENCIES = [
