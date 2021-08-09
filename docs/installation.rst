@@ -30,6 +30,11 @@ If you want to build **asyncpg** from a Git checkout you will need:
   * CPython header files.  These can usually be obtained by installing
     the relevant Python development package: **python3-dev** on Debian/Ubuntu,
     **python3-devel** on RHEL/Fedora.
+  * **pg_ctl** and **pg_config** executables. Install using your package manager:
+
+    **pg_ctl** is provided by package **libpq-dev** (Debian/Ubuntu), **libpq-devel** (Centos/Fedora)
+
+    **pg_config** is provided by package **postgresql** (Debian/Ubuntu)
 
 Once the above requirements are satisfied, run the following command
 in the root of the source checkout:
