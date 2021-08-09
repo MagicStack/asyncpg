@@ -51,9 +51,20 @@ cdef anonymous_record_decode(ConnectionSettings settings, FRBuffer *buf):
     return result
 
 
+cdef anonymous_record_encode(ConnectionSettings settings, WriteBuffer buf, obj):
+    raise exceptions.UnsupportedClientFeatureError(
+        'input of anonymous composite types is not supported',
+        hint=(
+            'Consider declaring an explicit composite type and '
+            'using it to cast the argument.'
+        ),
+        detail='PostgreSQL does not implement anonymous composite type input.'
+    )
+
+
 cdef init_record_codecs():
     register_core_codec(RECORDOID,
-                        <encode_func>NULL,
+                        <encode_func>anonymous_record_encode,
                         <decode_func>anonymous_record_decode,
                         PG_FORMAT_BINARY)
 

@@ -9,11 +9,14 @@ import asyncio
 import asyncpg
 import collections
 import collections.abc
+import functools
 import itertools
+import os
 import sys
 import time
 import traceback
 import warnings
+import weakref
 
 from . import compat
 from . import connect_utils
@@ -70,7 +73,8 @@ class Connection(metaclass=ConnectionMeta):
         self._stmt_cache = _StatementCache(
             loop=loop,
             max_size=config.statement_cache_size,
-            on_remove=self._maybe_gc_stmt,
+            on_remove=functools.partial(
+                _weak_maybe_gc_stmt, weakref.ref(self)),
             max_lifetime=config.max_cached_statement_lifetime)
 
         self._stmts_to_close = set()
@@ -321,23 +325,17 @@ class Connection(metaclass=ConnectionMeta):
         :param float timeout: Optional timeout value in seconds.
         :return None: This method discards the results of the operations.
 
-        .. note::
-
-           When inserting a large number of rows,
-           use :meth:`Connection.copy_records_to_table()` instead,
-           it is much more efficient for this purpose.
-
         .. versionadded:: 0.7.0
 
         .. versionchanged:: 0.11.0
            `timeout` became a keyword-only parameter.
 
         .. versionchanged:: 0.22.0
-           The execution was changed to be in an implicit transaction if there
-           was no explicit transaction, so that it will no longer end up with
-           partial success. If you still need the previous behavior to
-           progressively execute many args, please use a loop with prepared
-           statement instead.
+           ``executemany()`` is now an atomic operation, which means that
+           either all executions succeed, or none at all.  This is in contrast
+           to prior versions, where the effect of already-processed iterations
+           would remain in place when an error has occurred, unless
+           ``executemany()`` was called in a transaction.
         """
         self._check_open()
         return await self._executemany(command, args, timeout)
@@ -354,6 +352,8 @@ class Connection(metaclass=ConnectionMeta):
     ):
         if record_class is None:
             record_class = self._protocol.get_record_class()
+        else:
+            _check_record_class(record_class)
 
         if use_cache:
             statement = self._stmt_cache.get(
@@ -958,7 +958,7 @@ class Connection(metaclass=ConnectionMeta):
 
     async def _copy_out(self, copy_stmt, output, timeout):
         try:
-            path = compat.fspath(output)
+            path = os.fspath(output)
         except TypeError:
             # output is not a path-like object
             path = None
@@ -997,7 +997,7 @@ class Connection(metaclass=ConnectionMeta):
 
     async def _copy_in(self, copy_stmt, source, timeout):
         try:
-            path = compat.fspath(source)
+            path = os.fspath(source)
         except TypeError:
             # source is not a path-like object
             path = None
@@ -1028,7 +1028,6 @@ class Connection(metaclass=ConnectionMeta):
         if f is not None:
             # Copying from a file-like object.
             class _Reader:
-                @compat.aiter_compat
                 def __aiter__(self):
                     return self
 
@@ -1156,13 +1155,31 @@ class Connection(metaclass=ConnectionMeta):
         .. versionchanged:: 0.13.0
             The ``binary`` keyword argument was removed in favor of
             ``format``.
+
+        .. note::
+
+           It is recommended to use the ``'binary'`` or ``'tuple'`` *format*
+           whenever possible and if the underlying type supports it. Asyncpg
+           currently does not support text I/O for composite and range types,
+           and some other functionality, such as
+           :meth:`Connection.copy_to_table`, does not support types with text
+           codecs.
         """
         self._check_open()
         typeinfo = await self._introspect_type(typename, schema)
         if not introspection.is_scalar_type(typeinfo):
-            raise ValueError(
+            raise exceptions.InterfaceError(
                 'cannot use custom codec on non-scalar type {}.{}'.format(
                     schema, typename))
+        if introspection.is_domain_type(typeinfo):
+            raise exceptions.UnsupportedClientFeatureError(
+                'custom codecs on domain types are not supported',
+                hint='Set the codec on the base type.',
+                detail=(
+                    'PostgreSQL does not distinguish domains from '
+                    'their base types in query results at the protocol level.'
+                )
+            )
 
         oid = typeinfo['oid']
         self._protocol.get_settings().add_python_codec(
@@ -1487,16 +1504,7 @@ class Connection(metaclass=ConnectionMeta):
         if caps.sql_close_all:
             _reset_query.append('CLOSE ALL;')
         if caps.notifications and caps.plpgsql:
-            _reset_query.append('''
-                DO $$
-                BEGIN
-                    PERFORM * FROM pg_listening_channels() LIMIT 1;
-                    IF FOUND THEN
-                        UNLISTEN *;
-                    END IF;
-                END;
-                $$;
-            ''')
+            _reset_query.append('UNLISTEN *;')
         if caps.sql_reset:
             _reset_query.append('RESET ALL;')
 
@@ -1869,7 +1877,29 @@ async def connect(dsn=None, *,
         Pass ``True`` or an `ssl.SSLContext <SSLContext_>`_ instance to
         require an SSL connection.  If ``True``, a default SSL context
         returned by `ssl.create_default_context() <create_default_context_>`_
-        will be used.
+        will be used.  The value can also be one of the following strings:
+
+        - ``'disable'`` - SSL is disabled (equivalent to ``False``)
+        - ``'prefer'`` - try SSL first, fallback to non-SSL connection
+          if SSL connection fails
+        - ``'allow'`` - try without SSL first, then retry with SSL if the first
+          attempt fails.
+        - ``'require'`` - only try an SSL connection.  Certificate
+          verification errors are ignored
+        - ``'verify-ca'`` - only try an SSL connection, and verify
+          that the server certificate is issued by a trusted certificate
+          authority (CA)
+        - ``'verify-full'`` - only try an SSL connection, verify
+          that the server certificate is issued by a trusted CA and
+          that the requested server host name matches that in the
+          certificate.
+
+        The default is ``'prefer'``: try an SSL connection and fallback to
+        non-SSL connection if that fails.
+
+        .. note::
+
+           *ssl* is ignored for Unix domain socket communication.
 
     :param dict server_settings:
         An optional dict of server runtime parameters.  Refer to
@@ -1926,6 +1956,9 @@ async def connect(dsn=None, *,
     .. versionchanged:: 0.22.0
        Added the *record_class* parameter.
 
+    .. versionchanged:: 0.22.0
+       The *ssl* argument now defaults to ``'prefer'``.
+
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
         https://docs.python.org/3/library/ssl.html#ssl.create_default_context
@@ -1938,14 +1971,12 @@ async def connect(dsn=None, *,
         libpq-connect.html#LIBPQ-CONNSTRING
     """
     if not issubclass(connection_class, Connection):
-        raise TypeError(
+        raise exceptions.InterfaceError(
             'connection_class is expected to be a subclass of '
             'asyncpg.Connection, got {!r}'.format(connection_class))
 
-    if not issubclass(record_class, protocol.Record):
-        raise TypeError(
-            'record_class is expected to be a subclass of '
-            'asyncpg.Record, got {!r}'.format(record_class))
+    if record_class is not protocol.Record:
+        _check_record_class(record_class)
 
     if loop is None:
         loop = asyncio.get_event_loop()
@@ -2209,6 +2240,33 @@ def _extract_stack(limit=10):
 
     stack.reverse()
     return ''.join(traceback.format_list(stack))
+
+
+def _check_record_class(record_class):
+    if record_class is protocol.Record:
+        pass
+    elif (
+        isinstance(record_class, type)
+        and issubclass(record_class, protocol.Record)
+    ):
+        if (
+            record_class.__new__ is not object.__new__
+            or record_class.__init__ is not object.__init__
+        ):
+            raise exceptions.InterfaceError(
+                'record_class must not redefine __new__ or __init__'
+            )
+    else:
+        raise exceptions.InterfaceError(
+            'record_class is expected to be a subclass of '
+            'asyncpg.Record, got {!r}'.format(record_class)
+        )
+
+
+def _weak_maybe_gc_stmt(weak_ref, stmt):
+    self = weak_ref()
+    if self is not None:
+        self._maybe_gc_stmt(stmt)
 
 
 _uid = 0

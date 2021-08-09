@@ -31,6 +31,7 @@ ApgRecord_New(PyTypeObject *type, PyObject *desc, Py_ssize_t size)
 {
     ApgRecordObject *o;
     Py_ssize_t i;
+    int need_gc_track = 0;
 
     if (size < 0 || desc == NULL || !ApgRecordDesc_CheckExact(desc)) {
         PyErr_BadInternalCall();
@@ -54,7 +55,7 @@ ApgRecord_New(PyTypeObject *type, PyObject *desc, Py_ssize_t size)
             }
         }
 
-        PyObject_GC_Track(o);
+        need_gc_track = 1;
     } else {
         assert(PyType_IsSubtype(type, &ApgRecord_Type));
 
@@ -78,6 +79,9 @@ ApgRecord_New(PyTypeObject *type, PyObject *desc, Py_ssize_t size)
     Py_INCREF(desc);
     o->desc = (ApgRecordDescObject*)desc;
     o->self_hash = -1;
+    if (need_gc_track) {
+        PyObject_GC_Track(o);
+    }
     return (PyObject *) o;
 }
 
@@ -227,26 +231,39 @@ record_richcompare(PyObject *v, PyObject *w, int op)
     Py_ssize_t vlen, wlen;
     int v_is_tuple = 0;
     int w_is_tuple = 0;
+    int v_is_record = 0;
+    int w_is_record = 0;
     int comp;
 
-    if (!ApgRecord_CheckExact(v)) {
-        if (!PyTuple_Check(v)) {
-            Py_RETURN_NOTIMPLEMENTED;
-        }
+    if (PyTuple_Check(v)) {
         v_is_tuple = 1;
     }
-
-    if (!ApgRecord_CheckExact(w)) {
-        if (!PyTuple_Check(w)) {
-            Py_RETURN_NOTIMPLEMENTED;
-        }
-        w_is_tuple = 1;
+    else if (ApgRecord_CheckExact(v)) {
+        v_is_record = 1;
+    }
+    else if (!ApgRecord_Check(v)) {
+        Py_RETURN_NOTIMPLEMENTED;
     }
 
+    if (PyTuple_Check(w)) {
+        w_is_tuple = 1;
+    }
+    else if (ApgRecord_CheckExact(w)) {
+        w_is_record = 1;
+    }
+    else if (!ApgRecord_Check(w)) {
+        Py_RETURN_NOTIMPLEMENTED;
+    }
+
+
 #define V_ITEM(i) \
-    (v_is_tuple ? (PyTuple_GET_ITEM(v, i)) : (ApgRecord_GET_ITEM(v, i)))
+    (v_is_tuple ? \
+        PyTuple_GET_ITEM(v, i) \
+        : (v_is_record ? ApgRecord_GET_ITEM(v, i) : PySequence_GetItem(v, i)))
 #define W_ITEM(i) \
-    (w_is_tuple ? (PyTuple_GET_ITEM(w, i)) : (ApgRecord_GET_ITEM(w, i)))
+    (w_is_tuple ? \
+        PyTuple_GET_ITEM(w, i) \
+        : (w_is_record ? ApgRecord_GET_ITEM(w, i) : PySequence_GetItem(w, i)))
 
     vlen = Py_SIZE(v);
     wlen = Py_SIZE(w);
@@ -546,7 +563,7 @@ record_values(PyObject *o, PyObject *args)
 static PyObject *
 record_keys(PyObject *o, PyObject *args)
 {
-    if (!ApgRecord_CheckExact(o)) {
+    if (!ApgRecord_Check(o)) {
         PyErr_BadInternalCall();
         return NULL;
     }
@@ -558,7 +575,7 @@ record_keys(PyObject *o, PyObject *args)
 static PyObject *
 record_items(PyObject *o, PyObject *args)
 {
-    if (!ApgRecord_CheckExact(o)) {
+    if (!ApgRecord_Check(o)) {
         PyErr_BadInternalCall();
         return NULL;
     }
@@ -570,7 +587,7 @@ record_items(PyObject *o, PyObject *args)
 static int
 record_contains(ApgRecordObject *o, PyObject *arg)
 {
-    if (!ApgRecord_CheckExact(o)) {
+    if (!ApgRecord_Check(o)) {
         PyErr_BadInternalCall();
         return -1;
     }
@@ -686,7 +703,7 @@ record_iter_next(ApgRecordIterObject *it)
     seq = it->it_seq;
     if (seq == NULL)
         return NULL;
-    assert(ApgRecord_CheckExact(seq));
+    assert(ApgRecord_Check(seq));
 
     if (it->it_index < Py_SIZE(seq)) {
         item = ApgRecord_GET_ITEM(seq, it->it_index);
@@ -742,7 +759,7 @@ record_iter(PyObject *seq)
 {
     ApgRecordIterObject *it;
 
-    if (!ApgRecord_CheckExact(seq)) {
+    if (!ApgRecord_Check(seq)) {
         PyErr_BadInternalCall();
         return NULL;
     }
@@ -800,7 +817,7 @@ record_items_next(ApgRecordItemsObject *it)
     if (seq == NULL) {
         return NULL;
     }
-    assert(ApgRecord_CheckExact(seq));
+    assert(ApgRecord_Check(seq));
     assert(it->it_key_iter != NULL);
 
     key = PyIter_Next(it->it_key_iter);
@@ -880,7 +897,7 @@ record_new_items_iter(PyObject *seq)
     ApgRecordItemsObject *it;
     PyObject *key_iter;
 
-    if (!ApgRecord_CheckExact(seq)) {
+    if (!ApgRecord_Check(seq)) {
         PyErr_BadInternalCall();
         return NULL;
     }

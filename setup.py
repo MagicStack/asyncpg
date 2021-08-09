@@ -7,8 +7,8 @@
 
 import sys
 
-if sys.version_info < (3, 5):
-    raise RuntimeError('asyncpg requires Python 3.5 or greater')
+if sys.version_info < (3, 6):
+    raise RuntimeError('asyncpg requires Python 3.6 or greater')
 
 import os
 import os.path
@@ -25,7 +25,7 @@ from setuptools.command import sdist as setuptools_sdist
 from setuptools.command import build_ext as setuptools_build_ext
 
 
-CYTHON_DEPENDENCY = 'Cython==0.29.20'
+CYTHON_DEPENDENCY = 'Cython(>=0.29.24,<0.30.0)'
 
 # Minimal dependencies required to test asyncpg.
 TEST_DEPENDENCIES = [
@@ -34,7 +34,7 @@ TEST_DEPENDENCIES = [
     # (example breakage: https://gitlab.com/pycqa/flake8/issues/427)
     'pycodestyle~=2.5.0',
     'flake8~=3.7.9',
-    'uvloop~=0.14.0;platform_system!="Windows"',
+    'uvloop>=0.15.3; platform_system != "Windows" and python_version >= "3.7"',
 ]
 
 # Dependencies required to build documentation.
@@ -259,15 +259,16 @@ setuptools.setup(
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: Implementation :: CPython',
         'Topic :: Database :: Front-Ends',
     ],
     platforms=['macOS', 'POSIX', 'Windows'],
-    python_requires='>=3.5.0',
+    python_requires='>=3.6.0',
     zip_safe=False,
     author='MagicStack Inc',
     author_email='hello@magic.io',

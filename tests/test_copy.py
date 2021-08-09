@@ -13,7 +13,6 @@ import tempfile
 
 import asyncpg
 from asyncpg import _testbase as tb
-from asyncpg import compat
 
 
 class TestCopyFrom(tb.ConnectedTestCase):
@@ -467,7 +466,6 @@ class TestCopyTo(tb.ConnectedTestCase):
                 def __init__(self):
                     self.rowcount = 0
 
-                @compat.aiter_compat
                 def __aiter__(self):
                     return self
 
@@ -507,7 +505,6 @@ class TestCopyTo(tb.ConnectedTestCase):
                 def __init__(self):
                     self.rowcount = 0
 
-                @compat.aiter_compat
                 def __aiter__(self):
                     return self
 
@@ -533,7 +530,6 @@ class TestCopyTo(tb.ConnectedTestCase):
                 def __init__(self):
                     self.rowcount = 0
 
-                @compat.aiter_compat
                 def __aiter__(self):
                     return self
 
@@ -564,7 +560,6 @@ class TestCopyTo(tb.ConnectedTestCase):
                     self.rowcount = 0
                     self.loop = loop
 
-                @compat.aiter_compat
                 def __aiter__(self):
                     return self
 

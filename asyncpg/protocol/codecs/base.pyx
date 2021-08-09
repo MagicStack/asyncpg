@@ -66,14 +66,14 @@ cdef class Codec:
                 self.decoder = <codec_decode_func>&self.decode_array_text
         elif type == CODEC_RANGE:
             if format != PG_FORMAT_BINARY:
-                raise NotImplementedError(
+                raise exceptions.UnsupportedClientFeatureError(
                     'cannot decode type "{}"."{}": text encoding of '
                     'range types is not supported'.format(schema, name))
             self.encoder = <codec_encode_func>&self.encode_range
             self.decoder = <codec_decode_func>&self.decode_range
         elif type == CODEC_COMPOSITE:
             if format != PG_FORMAT_BINARY:
-                raise NotImplementedError(
+                raise exceptions.UnsupportedClientFeatureError(
                     'cannot decode type "{}"."{}": text encoding of '
                     'composite types is not supported'.format(schema, name))
             self.encoder = <codec_encode_func>&self.encode_composite
@@ -440,14 +440,7 @@ cdef class DataCodecConfig:
         for ti in types:
             oid = ti['oid']
 
-            if not ti['has_bin_io']:
-                format = PG_FORMAT_TEXT
-            else:
-                format = PG_FORMAT_BINARY
-
-            has_text_elements = False
-
-            if self.get_codec(oid, format) is not None:
+            if self.get_codec(oid, PG_FORMAT_ANY) is not None:
                 continue
 
             name = ti['name']
@@ -468,54 +461,50 @@ cdef class DataCodecConfig:
                     name = name[1:]
                 name = '{}[]'.format(name)
 
-                if ti['elem_has_bin_io']:
-                    elem_format = PG_FORMAT_BINARY
-                else:
-                    elem_format = PG_FORMAT_TEXT
-
-                elem_codec = self.get_codec(array_element_oid, elem_format)
+                elem_codec = self.get_codec(array_element_oid, PG_FORMAT_ANY)
                 if elem_codec is None:
-                    elem_format = PG_FORMAT_TEXT
                     elem_codec = self.declare_fallback_codec(
-                        array_element_oid, name, schema)
+                        array_element_oid, ti['elemtype_name'], schema)
 
                 elem_delim = <Py_UCS4>ti['elemdelim'][0]
 
-                self._derived_type_codecs[oid, elem_format] = \
+                self._derived_type_codecs[oid, elem_codec.format] = \
                     Codec.new_array_codec(
                         oid, name, schema, elem_codec, elem_delim)
 
             elif ti['kind'] == b'c':
-                if not comp_type_attrs:
-                    raise exceptions.InternalClientError(
-                        'type record missing field types for '
-                        'composite {}'.format(oid))
-
                 # Composite type
 
+                if not comp_type_attrs:
+                    raise exceptions.InternalClientError(
+                        f'type record missing field types for composite {oid}')
+
                 comp_elem_codecs = []
+                has_text_elements = False
 
                 for typoid in comp_type_attrs:
-                    elem_codec = self.get_codec(typoid, PG_FORMAT_BINARY)
-                    if elem_codec is None:
-                        elem_codec = self.get_codec(typoid, PG_FORMAT_TEXT)
-                        has_text_elements = True
+                    elem_codec = self.get_codec(typoid, PG_FORMAT_ANY)
                     if elem_codec is None:
                         raise exceptions.InternalClientError(
-                            'no codec for composite attribute type {}'.format(
-                                typoid))
+                            f'no codec for composite attribute type {typoid}')
+                    if elem_codec.format is PG_FORMAT_TEXT:
+                        has_text_elements = True
                     comp_elem_codecs.append(elem_codec)
 
                 element_names = collections.OrderedDict()
                 for i, attrname in enumerate(ti['attrnames']):
                     element_names[attrname] = i
 
+                # If at least one element is text-encoded, we must
+                # encode the whole composite as text.
                 if has_text_elements:
-                    format = PG_FORMAT_TEXT
+                    elem_format = PG_FORMAT_TEXT
+                else:
+                    elem_format = PG_FORMAT_BINARY
 
-                self._derived_type_codecs[oid, format] = \
+                self._derived_type_codecs[oid, elem_format] = \
                     Codec.new_composite_codec(
-                        oid, name, schema, format, comp_elem_codecs,
+                        oid, name, schema, elem_format, comp_elem_codecs,
                         comp_type_attrs, element_names)
 
             elif ti['kind'] == b'd':
@@ -523,37 +512,28 @@ cdef class DataCodecConfig:
 
                 if not base_type:
                     raise exceptions.InternalClientError(
-                        'type record missing base type for domain {}'.format(
-                            oid))
+                        f'type record missing base type for domain {oid}')
 
-                elem_codec = self.get_codec(base_type, format)
+                elem_codec = self.get_codec(base_type, PG_FORMAT_ANY)
                 if elem_codec is None:
-                    format = PG_FORMAT_TEXT
                     elem_codec = self.declare_fallback_codec(
-                        base_type, name, schema)
+                        base_type, ti['basetype_name'], schema)
 
-                self._derived_type_codecs[oid, format] = elem_codec
+                self._derived_type_codecs[oid, elem_codec.format] = elem_codec
 
             elif ti['kind'] == b'r':
                 # Range type
 
                 if not range_subtype_oid:
                     raise exceptions.InternalClientError(
-                        'type record missing base type for range {}'.format(
-                            oid))
+                        f'type record missing base type for range {oid}')
 
-                if ti['elem_has_bin_io']:
-                    elem_format = PG_FORMAT_BINARY
-                else:
-                    elem_format = PG_FORMAT_TEXT
-
-                elem_codec = self.get_codec(range_subtype_oid, elem_format)
+                elem_codec = self.get_codec(range_subtype_oid, PG_FORMAT_ANY)
                 if elem_codec is None:
-                    elem_format = PG_FORMAT_TEXT
                     elem_codec = self.declare_fallback_codec(
-                        range_subtype_oid, name, schema)
+                        range_subtype_oid, ti['range_subtype_name'], schema)
 
-                self._derived_type_codecs[oid, elem_format] = \
+                self._derived_type_codecs[oid, elem_codec.format] = \
                     Codec.new_range_codec(oid, name, schema, elem_codec)
 
             elif ti['kind'] == b'e':
@@ -665,19 +645,14 @@ cdef class DataCodecConfig:
     def declare_fallback_codec(self, uint32_t oid, str name, str schema):
         cdef Codec codec
 
-        codec = self.get_codec(oid, PG_FORMAT_TEXT)
-        if codec is not None:
-            return codec
-
         if oid <= MAXBUILTINOID:
             # This is a BKI type, for which asyncpg has no
             # defined codec.  This should only happen for newly
             # added builtin types, for which this version of
             # asyncpg is lacking support.
             #
-            raise NotImplementedError(
-                'unhandled standard data type {!r} (OID {})'.format(
-                    name, oid))
+            raise exceptions.UnsupportedClientFeatureError(
+                f'unhandled standard data type {name!r} (OID {oid})')
         else:
             # This is a non-BKI type, and as such, has no
             # stable OID, so no possibility of a builtin codec.
@@ -696,34 +671,49 @@ cdef class DataCodecConfig:
                                 bint ignore_custom_codec=False):
         cdef Codec codec
 
-        if not ignore_custom_codec:
-            codec = self.get_any_local_codec(oid)
-            if codec is not None:
-                if codec.format != format:
-                    # The codec for this OID has been overridden by
-                    # set_{builtin}_type_codec with a different format.
-                    # We must respect that and not return a core codec.
-                    return None
-                else:
-                    return codec
-
-        codec = get_core_codec(oid, format)
-        if codec is not None:
+        if format == PG_FORMAT_ANY:
+            codec = self.get_codec(
+                oid, PG_FORMAT_BINARY, ignore_custom_codec)
+            if codec is None:
+                codec = self.get_codec(
+                    oid, PG_FORMAT_TEXT, ignore_custom_codec)
             return codec
         else:
-            try:
-                return self._derived_type_codecs[oid, format]
-            except KeyError:
-                return None
+            if not ignore_custom_codec:
+                codec = self.get_custom_codec(oid, PG_FORMAT_ANY)
+                if codec is not None:
+                    if codec.format != format:
+                        # The codec for this OID has been overridden by
+                        # set_{builtin}_type_codec with a different format.
+                        # We must respect that and not return a core codec.
+                        return None
+                    else:
+                        return codec
 
-    cdef inline Codec get_any_local_codec(self, uint32_t oid):
+            codec = get_core_codec(oid, format)
+            if codec is not None:
+                return codec
+            else:
+                try:
+                    return self._derived_type_codecs[oid, format]
+                except KeyError:
+                    return None
+
+    cdef inline Codec get_custom_codec(
+        self,
+        uint32_t oid,
+        ServerDataFormat format
+    ):
         cdef Codec codec
 
-        codec = self._custom_type_codecs.get((oid, PG_FORMAT_BINARY))
-        if codec is None:
-            return self._custom_type_codecs.get((oid, PG_FORMAT_TEXT))
+        if format == PG_FORMAT_ANY:
+            codec = self.get_custom_codec(oid, PG_FORMAT_BINARY)
+            if codec is None:
+                codec = self.get_custom_codec(oid, PG_FORMAT_TEXT)
         else:
-            return codec
+            codec = self._custom_type_codecs.get((oid, format))
+
+        return codec
 
 
 cdef inline Codec get_core_codec(

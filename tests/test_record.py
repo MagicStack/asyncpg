@@ -513,3 +513,64 @@ class TestRecord(tb.ConnectedTestCase):
 
         r = await ps.fetch()
         self.assertIs(type(r[0]), asyncpg.Record)
+
+    async def test_record_subclass_05(self):
+        class MyRecord(asyncpg.Record):
+            pass
+
+        r = await self.con.fetchrow(
+            "SELECT 1 as a, '2' as b",
+            record_class=MyRecord,
+        )
+        self.assertIsInstance(r, MyRecord)
+
+        self.assertEqual(list(r.items()), [('a', 1), ('b', '2')])
+        self.assertEqual(list(r.keys()), ['a', 'b'])
+        self.assertEqual(list(r.values()), [1, '2'])
+        self.assertIn('b', r)
+        self.assertEqual(next(iter(r)), 1)
+
+    async def test_record_subclass_06(self):
+        class MyRecord(asyncpg.Record):
+            def __init__(self):
+                raise AssertionError('this is not supposed to be called')
+
+        class MyRecord2(asyncpg.Record):
+            def __new__(cls):
+                raise AssertionError('this is not supposed to be called')
+
+        class MyRecordBad:
+            pass
+
+        with self.assertRaisesRegex(
+            asyncpg.InterfaceError,
+            'record_class must not redefine __new__ or __init__',
+        ):
+            await self.con.fetchrow(
+                "SELECT 1 as a, '2' as b",
+                record_class=MyRecord,
+            )
+
+        with self.assertRaisesRegex(
+            asyncpg.InterfaceError,
+            'record_class must not redefine __new__ or __init__',
+        ):
+            await self.con.fetchrow(
+                "SELECT 1 as a, '2' as b",
+                record_class=MyRecord2,
+            )
+
+        with self.assertRaisesRegex(
+            asyncpg.InterfaceError,
+            'record_class is expected to be a subclass of asyncpg.Record',
+        ):
+            await self.con.fetchrow(
+                "SELECT 1 as a, '2' as b",
+                record_class=MyRecordBad,
+            )
+
+        with self.assertRaisesRegex(
+            asyncpg.InterfaceError,
+            'record_class is expected to be a subclass of asyncpg.Record',
+        ):
+            await self.connect(record_class=MyRecordBad)

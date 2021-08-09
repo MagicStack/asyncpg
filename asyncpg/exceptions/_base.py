@@ -12,7 +12,8 @@ import textwrap
 
 __all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError',
            'InterfaceError', 'InterfaceWarning', 'PostgresLogMessage',
-           'InternalClientError', 'OutdatedSchemaCacheError', 'ProtocolError')
+           'InternalClientError', 'OutdatedSchemaCacheError', 'ProtocolError',
+           'UnsupportedClientFeatureError')
 
 
 def _is_asyncpg_class(cls):
@@ -209,9 +210,22 @@ class InterfaceError(InterfaceMessage, Exception):
         InterfaceMessage.__init__(self, detail=detail, hint=hint)
         Exception.__init__(self, msg)
 
+    def with_msg(self, msg):
+        return type(self)(
+            msg,
+            detail=self.detail,
+            hint=self.hint,
+        ).with_traceback(
+            self.__traceback__
+        )
+
 
 class DataError(InterfaceError, ValueError):
     """An error caused by invalid query input."""
+
+
+class UnsupportedClientFeatureError(InterfaceError):
+    """Requested feature is unsupported by asyncpg."""
 
 
 class InterfaceWarning(InterfaceMessage, UserWarning):

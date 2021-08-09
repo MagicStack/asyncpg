@@ -37,23 +37,9 @@ _TYPEINFO = '''\
 
                ELSE NULL
             END)                            AS basetype,
-            t.typreceive::oid != 0 AND t.typsend::oid != 0
-                                            AS has_bin_io,
             t.typelem                       AS elemtype,
             elem_t.typdelim                 AS elemdelim,
             range_t.rngsubtype              AS range_subtype,
-            (CASE WHEN t.typtype = 'r' THEN
-                (SELECT
-                    range_elem_t.typreceive::oid != 0 AND
-                        range_elem_t.typsend::oid != 0
-                FROM
-                    pg_catalog.pg_type AS range_elem_t
-                WHERE
-                    range_elem_t.oid = range_t.rngsubtype)
-            ELSE
-                elem_t.typreceive::oid != 0 AND
-                    elem_t.typsend::oid != 0
-            END)                            AS elem_has_bin_io,
             (CASE WHEN t.typtype = 'c' THEN
                 (SELECT
                     array_agg(ia.atttypid ORDER BY ia.attnum)
@@ -98,12 +84,12 @@ _TYPEINFO = '''\
 
 INTRO_LOOKUP_TYPES = '''\
 WITH RECURSIVE typeinfo_tree(
-    oid, ns, name, kind, basetype, has_bin_io, elemtype, elemdelim,
-    range_subtype, elem_has_bin_io, attrtypoids, attrnames, depth)
+    oid, ns, name, kind, basetype, elemtype, elemdelim,
+    range_subtype, attrtypoids, attrnames, depth)
 AS (
     SELECT
-        ti.oid, ti.ns, ti.name, ti.kind, ti.basetype, ti.has_bin_io,
-        ti.elemtype, ti.elemdelim, ti.range_subtype, ti.elem_has_bin_io,
+        ti.oid, ti.ns, ti.name, ti.kind, ti.basetype,
+        ti.elemtype, ti.elemdelim, ti.range_subtype,
         ti.attrtypoids, ti.attrnames, 0
     FROM
         {typeinfo} AS ti
@@ -113,8 +99,8 @@ AS (
     UNION ALL
 
     SELECT
-        ti.oid, ti.ns, ti.name, ti.kind, ti.basetype, ti.has_bin_io,
-        ti.elemtype, ti.elemdelim, ti.range_subtype, ti.elem_has_bin_io,
+        ti.oid, ti.ns, ti.name, ti.kind, ti.basetype,
+        ti.elemtype, ti.elemdelim, ti.range_subtype,
         ti.attrtypoids, ti.attrnames, tt.depth + 1
     FROM
         {typeinfo} ti,
@@ -126,7 +112,10 @@ AS (
 )
 
 SELECT DISTINCT
-    *
+    *,
+    basetype::regtype::text AS basetype_name,
+    elemtype::regtype::text AS elemtype_name,
+    range_subtype::regtype::text AS range_subtype_name
 FROM
     typeinfo_tree
 ORDER BY
@@ -168,3 +157,7 @@ def is_scalar_type(typeinfo) -> bool:
         typeinfo['kind'] in SCALAR_TYPE_KINDS and
         not typeinfo['elemtype']
     )
+
+
+def is_domain_type(typeinfo) -> bool:
+    return typeinfo['kind'] == b'd'

@@ -24,11 +24,7 @@ from asyncpg import pool as pg_pool
 _system = platform.uname().system
 
 
-if os.environ.get('TRAVIS_OS_NAME') == 'osx':
-    # Travis' macOS is _slow_.
-    POOL_NOMINAL_TIMEOUT = 0.5
-else:
-    POOL_NOMINAL_TIMEOUT = 0.1
+POOL_NOMINAL_TIMEOUT = 0.1
 
 
 class SlowResetConnection(pg_connection.Connection):
