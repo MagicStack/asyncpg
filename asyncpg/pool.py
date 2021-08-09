@@ -734,7 +734,7 @@ class Pool:
         :meth:`Connection.copy_records_to_table()
         <asyncpg.connection.Connection.copy_records_to_table>`.
 
-        .. versionadded:: 0.22.0
+        .. versionadded:: 0.24.0
         """
         async with self.acquire() as con:
             return await con.copy_records_to_table(
