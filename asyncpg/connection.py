@@ -1758,10 +1758,6 @@ async def connect(dsn=None, *,
                   max_cacheable_statement_size=1024 * 15,
                   command_timeout=None,
                   ssl=None,
-                  sslcert=None,
-                  sslkey=None,
-                  sslrootcert=None,
-                  sslcrl=None,
                   connection_class=Connection,
                   record_class=protocol.Record,
                   server_settings=None):
@@ -1780,10 +1776,11 @@ async def connect(dsn=None, *,
         Connection arguments specified using as a single string in the
         `libpq connection URI format`_:
         ``postgres://user:password@host:port/database?option=value``.
-        The following options are recognized by asyncpg: host, port,
-        user, database (or dbname), password, passfile, sslmode.
-        Unlike libpq, asyncpg will treat unrecognized options
-        as `server settings`_ to be used for the connection.
+        The following options are recognized by asyncpg: ``host``,
+        ``port``, ``user``, ``database`` (or ``dbname``), ``password``,
+        ``passfile``, ``sslmode``, ``sslcert``, ``sslkey``, ``sslrootcert``,
+        and ``sslcrl``.  Unlike libpq, asyncpg will treat unrecognized
+        options as `server settings`_ to be used for the connection.
 
         .. note::
 
@@ -1904,21 +1901,51 @@ async def connect(dsn=None, *,
         .. note::
 
            *ssl* is ignored for Unix domain socket communication.
-    
-    :param sslcert:
-        This parameter specifies the file name of the client SSL certificate.
 
-    :param sslkey:
-        This parameter specifies the location for the secret key used for
-        the client certificate.
+        Example of programmatic SSL context configuration that is equivalent
+        to ``sslmode=verify-full&sslcert=..&sslkey=..&sslrootcert=..``:
 
-    :param sslrootcert:
-        This parameter specifies the name of a file containing SSL certificate
-        authority (CA) certificate(s).
+        .. code-block:: pycon
 
-    :param sslcrl
-        This parameter specifies the file name of the SSL certificate
-        revocation list (CRL).
+            >>> import asyncpg
+            >>> import asyncio
+            >>> import ssl
+            >>> async def main():
+            ...     # Load CA bundle for server certificate verification,
+            ...     # equivalent to sslrootcert= in DSN.
+            ...     sslctx = ssl.create_default_context(
+            ...         ssl.Purpose.SERVER_AUTH,
+            ...         cafile="path/to/ca_bundle.pem")
+            ...     # If True, equivalent to sslmode=verify-full, if False:
+            ...     # sslmode=verify-ca.
+            ...     sslctx.check_hostname = True
+            ...     # Load client certificate and private key for client
+            ...     # authentication, equivalent to sslcert= and sslkey= in
+            ...     # DSN.
+            ...     sslctx.load_cert_chain(
+            ...         "path/to/client.cert",
+            ...         keyfile="path/to/client.key",
+            ...     )
+            ...     con = await asyncpg.connect(user='postgres', ssl=sslctx)
+            ...     await con.close()
+            >>> asyncio.run(run())
+
+        Example of programmatic SSL context configuration that is equivalent
+        to ``sslmode=require`` (no server certificate or host verification):
+
+        .. code-block:: pycon
+
+            >>> import asyncpg
+            >>> import asyncio
+            >>> import ssl
+            >>> async def main():
+            ...     sslctx = ssl.create_default_context(
+            ...         ssl.Purpose.SERVER_AUTH)
+            ...     sslctx.check_hostname = False
+            ...     sslctx.verify_mode = ssl.CERT_NONE
+            ...     con = await asyncpg.connect(user='postgres', ssl=sslctx)
+            ...     await con.close()
+            >>> asyncio.run(run())
 
     :param dict server_settings:
         An optional dict of server runtime parameters.  Refer to
@@ -1978,6 +2005,10 @@ async def connect(dsn=None, *,
     .. versionchanged:: 0.22.0
        The *ssl* argument now defaults to ``'prefer'``.
 
+    .. versionchanged:: 0.24.0
+       The ``sslcert``, ``sslkey``, ``sslrootcert``, and ``sslcrl`` options
+       are supported in the *dsn* argument.
+
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
         https://docs.python.org/3/library/ssl.html#ssl.create_default_context
@@ -2012,10 +2043,6 @@ async def connect(dsn=None, *,
         password=password,
         passfile=passfile,
         ssl=ssl,
-        sslcert=sslcert,
-        sslkey=sslkey,
-        sslrootcert=sslrootcert,
-        sslcrl=sslcrl,
         database=database,
         server_settings=server_settings,
         command_timeout=command_timeout,

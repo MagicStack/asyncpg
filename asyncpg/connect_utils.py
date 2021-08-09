@@ -222,11 +222,11 @@ def _parse_hostlist(hostlist, port, *, unquote=False):
 
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                                 password, passfile, database, ssl,
-                                sslcert, sslkey, sslrootcert, sslcrl,
                                 connect_timeout, server_settings):
     # `auth_hosts` is the version of host information for the purposes
     # of reading the pgpass file.
     auth_hosts = None
+    sslcert = sslkey = sslrootcert = sslcrl = None
 
     if dsn:
         parsed = urllib.parse.urlparse(dsn)
@@ -451,12 +451,13 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         if sslmode < SSLMode.allow:
             ssl = False
         else:
-            ssl = ssl_module.create_default_context()
+            ssl = ssl_module.create_default_context(
+                ssl_module.Purpose.SERVER_AUTH)
             ssl.check_hostname = sslmode >= SSLMode.verify_full
             ssl.verify_mode = ssl_module.CERT_REQUIRED
             if sslmode <= SSLMode.require:
                 ssl.verify_mode = ssl_module.CERT_NONE
-        
+
             if sslcert is None:
                 sslcert = os.getenv('PGSSLCERT')
 
@@ -477,6 +478,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
             if sslcrl:
                 ssl.load_verify_locations(cafile=sslcrl)
+                ssl.verify_flags |= ssl_module.VERIFY_CRL_CHECK_CHAIN
 
     elif ssl is True:
         ssl = ssl_module.create_default_context()
@@ -505,8 +507,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
                              statement_cache_size,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
-                             ssl, sslcert, sslkey, sslrootcert, sslcrl,
-                             server_settings):
+                             ssl, server_settings):
 
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
@@ -534,8 +535,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
     addrs, params = _parse_connect_dsn_and_args(
         dsn=dsn, host=host, port=port, user=user,
         password=password, passfile=passfile, ssl=ssl,
-        sslcert=sslcert, sslkey=sslkey, sslrootcert=sslrootcert,
-        sslcrl=sslcrl, database=database, connect_timeout=timeout,
+        database=database, connect_timeout=timeout,
         server_settings=server_settings)
 
     config = _ClientConfiguration(
