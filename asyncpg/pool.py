@@ -737,7 +737,7 @@ class Pool:
         .. versionadded:: 0.22.0
         """
         async with self.acquire() as con:
-            return await con.copy_to_table(
+            return await con.copy_records_to_table(
                 table_name,
                 records=records,
                 columns=columns,
