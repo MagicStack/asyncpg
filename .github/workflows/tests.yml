@@ -59,11 +59,6 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Configure PostgreSQL Environment
-      if: matrix.os == 'windows-latest'
-      run: |
-        echo PGINSTALLATION="${PGBIN}" >> "${GITHUB_ENV}"
-
     - name: Install Python Deps
       if: steps.release.outputs.version == 0
       run: |
