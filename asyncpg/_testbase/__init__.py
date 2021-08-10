@@ -330,8 +330,10 @@ class ClusterTestCase(TestCase):
     @classmethod
     def get_connection_spec(cls, kwargs={}):
         conn_spec = cls.cluster.get_connection_spec()
+        if kwargs.get('dsn'):
+            conn_spec.pop('host')
         conn_spec.update(kwargs)
-        if not os.environ.get('PGHOST'):
+        if not os.environ.get('PGHOST') and not kwargs.get('dsn'):
             if 'database' not in conn_spec:
                 conn_spec['database'] = 'postgres'
             if 'user' not in conn_spec:

@@ -1787,10 +1787,11 @@ async def connect(dsn=None, *,
         Connection arguments specified using as a single string in the
         `libpq connection URI format`_:
         ``postgres://user:password@host:port/database?option=value``.
-        The following options are recognized by asyncpg: host, port,
-        user, database (or dbname), password, passfile, sslmode.
-        Unlike libpq, asyncpg will treat unrecognized options
-        as `server settings`_ to be used for the connection.
+        The following options are recognized by asyncpg: ``host``,
+        ``port``, ``user``, ``database`` (or ``dbname``), ``password``,
+        ``passfile``, ``sslmode``, ``sslcert``, ``sslkey``, ``sslrootcert``,
+        and ``sslcrl``.  Unlike libpq, asyncpg will treat unrecognized
+        options as `server settings`_ to be used for the connection.
 
         .. note::
 
@@ -1912,6 +1913,51 @@ async def connect(dsn=None, *,
 
            *ssl* is ignored for Unix domain socket communication.
 
+        Example of programmatic SSL context configuration that is equivalent
+        to ``sslmode=verify-full&sslcert=..&sslkey=..&sslrootcert=..``:
+
+        .. code-block:: pycon
+
+            >>> import asyncpg
+            >>> import asyncio
+            >>> import ssl
+            >>> async def main():
+            ...     # Load CA bundle for server certificate verification,
+            ...     # equivalent to sslrootcert= in DSN.
+            ...     sslctx = ssl.create_default_context(
+            ...         ssl.Purpose.SERVER_AUTH,
+            ...         cafile="path/to/ca_bundle.pem")
+            ...     # If True, equivalent to sslmode=verify-full, if False:
+            ...     # sslmode=verify-ca.
+            ...     sslctx.check_hostname = True
+            ...     # Load client certificate and private key for client
+            ...     # authentication, equivalent to sslcert= and sslkey= in
+            ...     # DSN.
+            ...     sslctx.load_cert_chain(
+            ...         "path/to/client.cert",
+            ...         keyfile="path/to/client.key",
+            ...     )
+            ...     con = await asyncpg.connect(user='postgres', ssl=sslctx)
+            ...     await con.close()
+            >>> asyncio.run(run())
+
+        Example of programmatic SSL context configuration that is equivalent
+        to ``sslmode=require`` (no server certificate or host verification):
+
+        .. code-block:: pycon
+
+            >>> import asyncpg
+            >>> import asyncio
+            >>> import ssl
+            >>> async def main():
+            ...     sslctx = ssl.create_default_context(
+            ...         ssl.Purpose.SERVER_AUTH)
+            ...     sslctx.check_hostname = False
+            ...     sslctx.verify_mode = ssl.CERT_NONE
+            ...     con = await asyncpg.connect(user='postgres', ssl=sslctx)
+            ...     await con.close()
+            >>> asyncio.run(run())
+
     :param dict server_settings:
         An optional dict of server runtime parameters.  Refer to
         PostgreSQL documentation for
@@ -1969,6 +2015,10 @@ async def connect(dsn=None, *,
 
     .. versionchanged:: 0.22.0
        The *ssl* argument now defaults to ``'prefer'``.
+
+    .. versionchanged:: 0.24.0
+       The ``sslcert``, ``sslkey``, ``sslrootcert``, and ``sslcrl`` options
+       are supported in the *dsn* argument.
 
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
