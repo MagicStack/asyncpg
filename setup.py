@@ -32,16 +32,16 @@ TEST_DEPENDENCIES = [
     # pycodestyle is a dependency of flake8, but it must be frozen because
     # their combination breaks too often
     # (example breakage: https://gitlab.com/pycqa/flake8/issues/427)
-    'pycodestyle~=2.5.0',
-    'flake8~=3.7.9',
+    'pycodestyle~=2.7.0',
+    'flake8~=3.9.2',
     'uvloop>=0.15.3; platform_system != "Windows" and python_version >= "3.7"',
 ]
 
 # Dependencies required to build documentation.
 DOC_DEPENDENCIES = [
-    'Sphinx~=1.7.3',
-    'sphinxcontrib-asyncio~=0.2.0',
-    'sphinx_rtd_theme~=0.2.4',
+    'Sphinx~=4.1.2',
+    'sphinxcontrib-asyncio~=0.3.0',
+    'sphinx_rtd_theme~=0.5.2',
 ]
 
 EXTRA_DEPENDENCIES = {
@@ -50,7 +50,7 @@ EXTRA_DEPENDENCIES = {
     # Dependencies required to develop asyncpg.
     'dev': [
         CYTHON_DEPENDENCY,
-        'pytest>=3.6.0',
+        'pytest>=6.0',
     ] + DOC_DEPENDENCIES + TEST_DEPENDENCIES
 }
 
