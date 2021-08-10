@@ -37,7 +37,7 @@ jobs:
         mkdir -p dist/
         echo "${VERSION}" > dist/VERSION
 
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v2
       with:
         name: dist
         path: dist/
@@ -46,23 +46,24 @@ jobs:
     needs: validate-release-request
     runs-on: ubuntu-latest
 
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: 1
+
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
         fetch-depth: 50
         submodules: true
 
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.7
+    - name: Set up Python
+      uses: actions/setup-python@v2
 
     - name: Build source distribution
       run: |
         pip install -U setuptools wheel pip
         python setup.py sdist
 
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v2
       with:
         name: dist
         path: dist/
@@ -72,8 +73,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9]
-        os: [ubuntu-20.04, macos-latest, windows-latest]
+        python-version: [3.6, 3.7, 3.8, 3.9, 3.10.0.rc.1]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         arch: [x86_64]
         exclude:
           - os: windows-latest
@@ -85,8 +86,11 @@ jobs:
       run:
         shell: bash
 
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: 1
+
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
         fetch-depth: 50
         submodules: true
@@ -96,7 +100,7 @@ jobs:
       uses: docker/setup-qemu-action@v1
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -202,7 +206,7 @@ jobs:
             && su -l test /github/workspace/.github/workflows/test-wheels.sh \
           '
 
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v2
       with:
         name: dist
         path: dist/
@@ -210,6 +214,9 @@ jobs:
   publish-docs:
     needs: validate-release-request
     runs-on: ubuntu-latest
+
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
     - name: Checkout source
@@ -255,12 +262,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
         fetch-depth: 5
         submodules: false
 
-    - uses: actions/download-artifact@v1
+    - uses: actions/download-artifact@v2
       with:
         name: dist
         path: dist/
