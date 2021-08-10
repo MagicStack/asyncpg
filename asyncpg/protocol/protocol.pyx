@@ -13,7 +13,7 @@ cimport cpython
 import asyncio
 import builtins
 import codecs
-import collections
+import collections.abc
 import socket
 import time
 import weakref
@@ -438,23 +438,44 @@ cdef class BaseProtocol(CoreProtocol):
                             'no binary format encoder for '
                             'type {} (OID {})'.format(codec.name, codec.oid))
 
-                for row in records:
-                    # Tuple header
-                    wbuf.write_int16(<int16_t>num_cols)
-                    # Tuple data
-                    for i in range(num_cols):
-                        item = row[i]
-                        if item is None:
-                            wbuf.write_int32(-1)
-                        else:
-                            codec = <Codec>cpython.PyTuple_GET_ITEM(codecs, i)
-                            codec.encode(settings, wbuf, item)
+                if isinstance(records, collections.abc.AsyncIterable):
+                    async for row in records:
+                        # Tuple header
+                        wbuf.write_int16(<int16_t>num_cols)
+                        # Tuple data
+                        for i in range(num_cols):
+                            item = row[i]
+                            if item is None:
+                                wbuf.write_int32(-1)
+                            else:
+                                codec = <Codec>cpython.PyTuple_GET_ITEM(
+                                    codecs, i)
+                                codec.encode(settings, wbuf, item)
 
-                    if wbuf.len() >= _COPY_BUFFER_SIZE:
-                        with timer:
-                            await self.writing_allowed.wait()
-                        self._write_copy_data_msg(wbuf)
-                        wbuf = WriteBuffer.new()
+                        if wbuf.len() >= _COPY_BUFFER_SIZE:
+                            with timer:
+                                await self.writing_allowed.wait()
+                            self._write_copy_data_msg(wbuf)
+                            wbuf = WriteBuffer.new()
+                else:
+                    for row in records:
+                        # Tuple header
+                        wbuf.write_int16(<int16_t>num_cols)
+                        # Tuple data
+                        for i in range(num_cols):
+                            item = row[i]
+                            if item is None:
+                                wbuf.write_int32(-1)
+                            else:
+                                codec = <Codec>cpython.PyTuple_GET_ITEM(
+                                    codecs, i)
+                                codec.encode(settings, wbuf, item)
+
+                        if wbuf.len() >= _COPY_BUFFER_SIZE:
+                            with timer:
+                                await self.writing_allowed.wait()
+                            self._write_copy_data_msg(wbuf)
+                            wbuf = WriteBuffer.new()
 
                 # End of binary copy.
                 wbuf.write_int16(-1)
