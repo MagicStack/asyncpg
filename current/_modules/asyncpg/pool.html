@@ -1,59 +1,55 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>asyncpg.pool &mdash; asyncpg Documentation</title>
   
 
   
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/theme_overrides.css" type="text/css" />
+
   
+  
+
   
   
 
   
 
   
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
 
-  
-
-  
-  
-    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-  
-
-  
-    <link rel="stylesheet" href="../../_static/theme_overrides.css" type="text/css" />
-  
-
-  
-        <link rel="index" title="Index"
-              href="../../genindex.html"/>
-        <link rel="search" title="Search" href="../../search.html"/>
-    <link rel="top" title="asyncpg Documentation" href="../../index.html"/>
-        <link rel="up" title="asyncpg" href="../asyncpg.html"/> 
-
-  
-  <script src="../../_static/js/modernizr.min.js"></script>
-
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -67,7 +63,7 @@
             
             
               <div class="version">
-                0.23.0
+                0.24.0
               </div>
             
           
@@ -84,6 +80,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -101,13 +98,14 @@
             
           
         </div>
+        
       </div>
     </nav>
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../index.html">asyncpg</a>
@@ -115,10 +113,13 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
+
+
 
 
 
@@ -138,18 +139,14 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../../index.html">Docs</a> &raquo;</li>
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
         
           <li><a href="../index.html">Module code</a> &raquo;</li>
-        
-          <li><a href="../asyncpg.html">asyncpg</a> &raquo;</li>
         
       <li>asyncpg.pool</li>
     
     
       <li class="wy-breadcrumbs-aside">
-        
-            
         
       </li>
     
@@ -686,7 +683,7 @@
 
 <span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
 <span class="sd">        that, it behaves identically to</span>
-<span class="sd">        :meth:`Connection.execute() &lt;connection.Connection.execute&gt;`.</span>
+<span class="sd">        :meth:`Connection.execute() &lt;asyncpg.connection.Connection.execute&gt;`.</span>
 
 <span class="sd">        .. versionadded:: 0.10.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -698,7 +695,8 @@
 
 <span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
 <span class="sd">        that, it behaves identically to</span>
-<span class="sd">        :meth:`Connection.executemany() &lt;connection.Connection.executemany&gt;`.</span>
+<span class="sd">        :meth:`Connection.executemany()</span>
+<span class="sd">        &lt;asyncpg.connection.Connection.executemany&gt;`.</span>
 
 <span class="sd">        .. versionadded:: 0.10.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -710,7 +708,7 @@
 
 <span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
 <span class="sd">        that, it behaves identically to</span>
-<span class="sd">        :meth:`Connection.fetch() &lt;connection.Connection.fetch&gt;`.</span>
+<span class="sd">        :meth:`Connection.fetch() &lt;asyncpg.connection.Connection.fetch&gt;`.</span>
 
 <span class="sd">        .. versionadded:: 0.10.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -722,7 +720,8 @@
 
 <span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
 <span class="sd">        that, it behaves identically to</span>
-<span class="sd">        :meth:`Connection.fetchval() &lt;connection.Connection.fetchval&gt;`.</span>
+<span class="sd">        :meth:`Connection.fetchval()</span>
+<span class="sd">        &lt;asyncpg.connection.Connection.fetchval&gt;`.</span>
 
 <span class="sd">        .. versionadded:: 0.10.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -735,12 +734,177 @@
 
 <span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
 <span class="sd">        that, it behaves identically to</span>
-<span class="sd">        :meth:`Connection.fetchrow() &lt;connection.Connection.fetchrow&gt;`.</span>
+<span class="sd">        :meth:`Connection.fetchrow() &lt;asyncpg.connection.Connection.fetchrow&gt;`.</span>
 
 <span class="sd">        .. versionadded:: 0.10.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
             <span class="k">return</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">fetchrow</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Pool.copy_from_table"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.copy_from_table">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">copy_from_table</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">table_name</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">output</span><span class="p">,</span>
+        <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">schema_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="nb">format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">oids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">delimiter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">escape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">force_quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Copy table contents to a file or file-like object.</span>
+
+<span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
+<span class="sd">        that, it behaves identically to</span>
+<span class="sd">        :meth:`Connection.copy_from_table()</span>
+<span class="sd">        &lt;asyncpg.connection.Connection.copy_from_table&gt;`.</span>
+
+<span class="sd">        .. versionadded:: 0.24.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">copy_from_table</span><span class="p">(</span>
+                <span class="n">table_name</span><span class="p">,</span>
+                <span class="n">output</span><span class="o">=</span><span class="n">output</span><span class="p">,</span>
+                <span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">,</span>
+                <span class="n">schema_name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
+                <span class="nb">format</span><span class="o">=</span><span class="nb">format</span><span class="p">,</span>
+                <span class="n">oids</span><span class="o">=</span><span class="n">oids</span><span class="p">,</span>
+                <span class="n">delimiter</span><span class="o">=</span><span class="n">delimiter</span><span class="p">,</span>
+                <span class="n">null</span><span class="o">=</span><span class="n">null</span><span class="p">,</span>
+                <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span>
+                <span class="n">quote</span><span class="o">=</span><span class="n">quote</span><span class="p">,</span>
+                <span class="n">escape</span><span class="o">=</span><span class="n">escape</span><span class="p">,</span>
+                <span class="n">force_quote</span><span class="o">=</span><span class="n">force_quote</span><span class="p">,</span>
+                <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span>
+            <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Pool.copy_from_query"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.copy_from_query">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">copy_from_query</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">query</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+        <span class="n">output</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="nb">format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">oids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">delimiter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">escape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">force_quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Copy the results of a query to a file or file-like object.</span>
+
+<span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
+<span class="sd">        that, it behaves identically to</span>
+<span class="sd">        :meth:`Connection.copy_from_query()</span>
+<span class="sd">        &lt;asyncpg.connection.Connection.copy_from_query&gt;`.</span>
+
+<span class="sd">        .. versionadded:: 0.24.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">copy_from_query</span><span class="p">(</span>
+                <span class="n">query</span><span class="p">,</span>
+                <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+                <span class="n">output</span><span class="o">=</span><span class="n">output</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
+                <span class="nb">format</span><span class="o">=</span><span class="nb">format</span><span class="p">,</span>
+                <span class="n">oids</span><span class="o">=</span><span class="n">oids</span><span class="p">,</span>
+                <span class="n">delimiter</span><span class="o">=</span><span class="n">delimiter</span><span class="p">,</span>
+                <span class="n">null</span><span class="o">=</span><span class="n">null</span><span class="p">,</span>
+                <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span>
+                <span class="n">quote</span><span class="o">=</span><span class="n">quote</span><span class="p">,</span>
+                <span class="n">escape</span><span class="o">=</span><span class="n">escape</span><span class="p">,</span>
+                <span class="n">force_quote</span><span class="o">=</span><span class="n">force_quote</span><span class="p">,</span>
+                <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span>
+            <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Pool.copy_to_table"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.copy_to_table">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">copy_to_table</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">table_name</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">source</span><span class="p">,</span>
+        <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">schema_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="nb">format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">oids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">freeze</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">delimiter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">escape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">force_quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">force_not_null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">force_null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Copy data to the specified table.</span>
+
+<span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
+<span class="sd">        that, it behaves identically to</span>
+<span class="sd">        :meth:`Connection.copy_to_table()</span>
+<span class="sd">        &lt;asyncpg.connection.Connection.copy_to_table&gt;`.</span>
+
+<span class="sd">        .. versionadded:: 0.24.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">copy_to_table</span><span class="p">(</span>
+                <span class="n">table_name</span><span class="p">,</span>
+                <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">,</span>
+                <span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">,</span>
+                <span class="n">schema_name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
+                <span class="nb">format</span><span class="o">=</span><span class="nb">format</span><span class="p">,</span>
+                <span class="n">oids</span><span class="o">=</span><span class="n">oids</span><span class="p">,</span>
+                <span class="n">freeze</span><span class="o">=</span><span class="n">freeze</span><span class="p">,</span>
+                <span class="n">delimiter</span><span class="o">=</span><span class="n">delimiter</span><span class="p">,</span>
+                <span class="n">null</span><span class="o">=</span><span class="n">null</span><span class="p">,</span>
+                <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span>
+                <span class="n">quote</span><span class="o">=</span><span class="n">quote</span><span class="p">,</span>
+                <span class="n">escape</span><span class="o">=</span><span class="n">escape</span><span class="p">,</span>
+                <span class="n">force_quote</span><span class="o">=</span><span class="n">force_quote</span><span class="p">,</span>
+                <span class="n">force_not_null</span><span class="o">=</span><span class="n">force_not_null</span><span class="p">,</span>
+                <span class="n">force_null</span><span class="o">=</span><span class="n">force_null</span><span class="p">,</span>
+                <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span>
+            <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Pool.copy_records_to_table"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.copy_records_to_table">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">copy_records_to_table</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">table_name</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">records</span><span class="p">,</span>
+        <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">schema_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Copy a list of records to the specified table using binary COPY.</span>
+
+<span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
+<span class="sd">        that, it behaves identically to</span>
+<span class="sd">        :meth:`Connection.copy_records_to_table()</span>
+<span class="sd">        &lt;asyncpg.connection.Connection.copy_records_to_table&gt;`.</span>
+
+<span class="sd">        .. versionadded:: 0.24.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">copy_records_to_table</span><span class="p">(</span>
+                <span class="n">table_name</span><span class="p">,</span>
+                <span class="n">records</span><span class="o">=</span><span class="n">records</span><span class="p">,</span>
+                <span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">,</span>
+                <span class="n">schema_name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span>
+            <span class="p">)</span></div>
 
 <div class="viewcode-block" id="Pool.acquire"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.acquire">[docs]</a>    <span class="k">def</span> <span class="nf">acquire</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Acquire a database connection from the pool.</span>
@@ -1008,12 +1172,12 @@
 
 <span class="sd">    .. warning::</span>
 <span class="sd">        Prepared statements and cursors returned by</span>
-<span class="sd">        :meth:`Connection.prepare() &lt;connection.Connection.prepare&gt;` and</span>
-<span class="sd">        :meth:`Connection.cursor() &lt;connection.Connection.cursor&gt;` become</span>
-<span class="sd">        invalid once the connection is released.  Likewise, all notification</span>
-<span class="sd">        and log listeners are removed, and ``asyncpg`` will issue a warning</span>
-<span class="sd">        if there are any listener callbacks registered on a connection that</span>
-<span class="sd">        is being released to the pool.</span>
+<span class="sd">        :meth:`Connection.prepare() &lt;asyncpg.connection.Connection.prepare&gt;`</span>
+<span class="sd">        and :meth:`Connection.cursor() &lt;asyncpg.connection.Connection.cursor&gt;`</span>
+<span class="sd">        become invalid once the connection is released.  Likewise, all</span>
+<span class="sd">        notification and log listeners are removed, and ``asyncpg`` will</span>
+<span class="sd">        issue a warning if there are any listener callbacks registered on a</span>
+<span class="sd">        connection that is being released to the pool.</span>
 
 <span class="sd">    :param str dsn:</span>
 <span class="sd">        Connection arguments specified using as a single string in</span>
@@ -1079,10 +1243,11 @@
 <span class="sd">    .. versionchanged:: 0.13.0</span>
 <span class="sd">       An :exc:`~asyncpg.exceptions.InterfaceWarning` will be produced</span>
 <span class="sd">       if there are any active listeners (added via</span>
-<span class="sd">       :meth:`Connection.add_listener() &lt;connection.Connection.add_listener&gt;`</span>
+<span class="sd">       :meth:`Connection.add_listener()</span>
+<span class="sd">       &lt;asyncpg.connection.Connection.add_listener&gt;`</span>
 <span class="sd">       or :meth:`Connection.add_log_listener()</span>
-<span class="sd">       &lt;connection.Connection.add_log_listener&gt;`) present on the connection</span>
-<span class="sd">       at the moment of its release to the pool.</span>
+<span class="sd">       &lt;asyncpg.connection.Connection.add_log_listener&gt;`) present on the</span>
+<span class="sd">       connection at the moment of its release to the pool.</span>
 
 <span class="sd">    .. versionchanged:: 0.22.0</span>
 <span class="sd">       Added the *record_class* parameter.</span>
@@ -1098,24 +1263,20 @@
 </pre></div>
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2016-present, the asyncpg authors and contributors.
+        &#169; Copyright 2016-present, the asyncpg authors and contributors.
 
     </p>
   </div> 
 
 </footer>
-
         </div>
       </div>
 
@@ -1124,37 +1285,15 @@
   </div>
   
 
-
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'../../',
-            VERSION:'0.23.0',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="../../_static/jquery.js"></script>
-      <script type="text/javascript" src="../../_static/underscore.js"></script>
-      <script type="text/javascript" src="../../_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

@@ -1,59 +1,55 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>asyncpg.connection &mdash; asyncpg Documentation</title>
   
 
   
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/theme_overrides.css" type="text/css" />
+
   
+  
+
   
   
 
   
 
   
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
 
-  
-
-  
-  
-    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-  
-
-  
-    <link rel="stylesheet" href="../../_static/theme_overrides.css" type="text/css" />
-  
-
-  
-        <link rel="index" title="Index"
-              href="../../genindex.html"/>
-        <link rel="search" title="Search" href="../../search.html"/>
-    <link rel="top" title="asyncpg Documentation" href="../../index.html"/>
-        <link rel="up" title="asyncpg" href="../asyncpg.html"/> 
-
-  
-  <script src="../../_static/js/modernizr.min.js"></script>
-
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -67,7 +63,7 @@
             
             
               <div class="version">
-                0.23.0
+                0.24.0
               </div>
             
           
@@ -84,6 +80,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -101,13 +98,14 @@
             
           
         </div>
+        
       </div>
     </nav>
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../index.html">asyncpg</a>
@@ -115,10 +113,13 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
+
+
 
 
 
@@ -138,18 +139,14 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../../index.html">Docs</a> &raquo;</li>
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
         
           <li><a href="../index.html">Module code</a> &raquo;</li>
-        
-          <li><a href="../asyncpg.html">asyncpg</a> &raquo;</li>
         
       <li>asyncpg.connection</li>
     
     
       <li class="wy-breadcrumbs-aside">
-        
-            
         
       </li>
     
@@ -173,11 +170,16 @@
 <span class="kn">import</span> <span class="nn">asyncpg</span>
 <span class="kn">import</span> <span class="nn">collections</span>
 <span class="kn">import</span> <span class="nn">collections.abc</span>
+<span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">traceback</span>
+<span class="kn">import</span> <span class="nn">typing</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">weakref</span>
 
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">compat</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">connect_utils</span>
@@ -234,7 +236,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span> <span class="o">=</span> <span class="n">_StatementCache</span><span class="p">(</span>
             <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">,</span>
             <span class="n">max_size</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">statement_cache_size</span><span class="p">,</span>
-            <span class="n">on_remove</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_maybe_gc_stmt</span><span class="p">,</span>
+            <span class="n">on_remove</span><span class="o">=</span><span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+                <span class="n">_weak_maybe_gc_stmt</span><span class="p">,</span> <span class="n">weakref</span><span class="o">.</span><span class="n">ref</span><span class="p">(</span><span class="bp">self</span><span class="p">)),</span>
             <span class="n">max_lifetime</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">max_cached_statement_lifetime</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_stmts_to_close</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
@@ -293,17 +296,21 @@
 <span class="sd">        :param str channel: Channel to listen on.</span>
 
 <span class="sd">        :param callable callback:</span>
-<span class="sd">            A callable receiving the following arguments:</span>
+<span class="sd">            A callable or a coroutine function receiving the following</span>
+<span class="sd">            arguments:</span>
 <span class="sd">            **connection**: a Connection the callback is registered with;</span>
 <span class="sd">            **pid**: PID of the Postgres server that sent the notification;</span>
 <span class="sd">            **channel**: name of the channel the notification was sent to;</span>
 <span class="sd">            **payload**: the payload.</span>
+
+<span class="sd">        .. versionchanged:: 0.24.0</span>
+<span class="sd">            The ``callback`` argument may be a coroutine function.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_open</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">channel</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">:</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;LISTEN </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">utils</span><span class="o">.</span><span class="n">_quote_ident</span><span class="p">(</span><span class="n">channel</span><span class="p">)))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">_Callback</span><span class="o">.</span><span class="n">from_callable</span><span class="p">(</span><span class="n">callback</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="Connection.remove_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.remove_listener">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">remove_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Remove a listening callback on the specified channel.&quot;&quot;&quot;</span>
@@ -311,9 +318,10 @@
             <span class="k">return</span>
         <span class="k">if</span> <span class="n">channel</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">:</span>
             <span class="k">return</span>
-        <span class="k">if</span> <span class="n">callback</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]:</span>
+        <span class="n">cb</span> <span class="o">=</span> <span class="n">_Callback</span><span class="o">.</span><span class="n">from_callable</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cb</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]:</span>
             <span class="k">return</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]:</span>
             <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;UNLISTEN </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">utils</span><span class="o">.</span><span class="n">_quote_ident</span><span class="p">(</span><span class="n">channel</span><span class="p">)))</span></div>
@@ -326,44 +334,51 @@
 <span class="sd">        DEBUG, INFO, or LOG.</span>
 
 <span class="sd">        :param callable callback:</span>
-<span class="sd">            A callable receiving the following arguments:</span>
+<span class="sd">            A callable or a coroutine function receiving the following</span>
+<span class="sd">            arguments:</span>
 <span class="sd">            **connection**: a Connection the callback is registered with;</span>
 <span class="sd">            **message**: the `exceptions.PostgresLogMessage` message.</span>
 
 <span class="sd">        .. versionadded:: 0.12.0</span>
+
+<span class="sd">        .. versionchanged:: 0.24.0</span>
+<span class="sd">            The ``callback`` argument may be a coroutine function.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span><span class="s1">&#39;connection is closed&#39;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_log_listeners</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_listeners</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">_Callback</span><span class="o">.</span><span class="n">from_callable</span><span class="p">(</span><span class="n">callback</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="Connection.remove_log_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.remove_log_listener">[docs]</a>    <span class="k">def</span> <span class="nf">remove_log_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Remove a listening callback for log messages.</span>
 
 <span class="sd">        .. versionadded:: 0.12.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_log_listeners</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_listeners</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">_Callback</span><span class="o">.</span><span class="n">from_callable</span><span class="p">(</span><span class="n">callback</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="Connection.add_termination_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.add_termination_listener">[docs]</a>    <span class="k">def</span> <span class="nf">add_termination_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Add a listener that will be called when the connection is closed.</span>
 
 <span class="sd">        :param callable callback:</span>
-<span class="sd">            A callable receiving one argument:</span>
+<span class="sd">            A callable or a coroutine function receiving one argument:</span>
 <span class="sd">            **connection**: a Connection the callback is registered with.</span>
 
 <span class="sd">        .. versionadded:: 0.21.0</span>
+
+<span class="sd">        .. versionchanged:: 0.24.0</span>
+<span class="sd">            The ``callback`` argument may be a coroutine function.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_termination_listeners</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_termination_listeners</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">_Callback</span><span class="o">.</span><span class="n">from_callable</span><span class="p">(</span><span class="n">callback</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="Connection.remove_termination_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.remove_termination_listener">[docs]</a>    <span class="k">def</span> <span class="nf">remove_termination_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Remove a listening callback for connection termination.</span>
 
 <span class="sd">        :param callable callback:</span>
-<span class="sd">            The callable that was passed to</span>
+<span class="sd">            The callable or coroutine function that was passed to</span>
 <span class="sd">            :meth:`Connection.add_termination_listener`.</span>
 
 <span class="sd">        .. versionadded:: 0.21.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_termination_listeners</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_termination_listeners</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">_Callback</span><span class="o">.</span><span class="n">from_callable</span><span class="p">(</span><span class="n">callback</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="Connection.get_server_pid"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.get_server_pid">[docs]</a>    <span class="k">def</span> <span class="nf">get_server_pid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return the PID of the Postgres server the connection is bound to.&quot;&quot;&quot;</span>
@@ -1032,6 +1047,8 @@
 
 <span class="sd">        :param records:</span>
 <span class="sd">            An iterable returning row tuples to copy into the table.</span>
+<span class="sd">            :term:`Asynchronous iterables &lt;python:asynchronous iterable&gt;`</span>
+<span class="sd">            are also supported.</span>
 
 <span class="sd">        :param list columns:</span>
 <span class="sd">            An optional list of column names to copy.</span>
@@ -1061,7 +1078,28 @@
 <span class="sd">            &gt;&gt;&gt; asyncio.get_event_loop().run_until_complete(run())</span>
 <span class="sd">            &#39;COPY 2&#39;</span>
 
+<span class="sd">        Asynchronous record iterables are also supported:</span>
+
+<span class="sd">        .. code-block:: pycon</span>
+
+<span class="sd">            &gt;&gt;&gt; import asyncpg</span>
+<span class="sd">            &gt;&gt;&gt; import asyncio</span>
+<span class="sd">            &gt;&gt;&gt; async def run():</span>
+<span class="sd">            ...     con = await asyncpg.connect(user=&#39;postgres&#39;)</span>
+<span class="sd">            ...     async def record_gen(size):</span>
+<span class="sd">            ...         for i in range(size):</span>
+<span class="sd">            ...             yield (i,)</span>
+<span class="sd">            ...     result = await con.copy_records_to_table(</span>
+<span class="sd">            ...         &#39;mytable&#39;, records=record_gen(100))</span>
+<span class="sd">            ...     print(result)</span>
+<span class="sd">            ...</span>
+<span class="sd">            &gt;&gt;&gt; asyncio.get_event_loop().run_until_complete(run())</span>
+<span class="sd">            &#39;COPY 100&#39;</span>
+
 <span class="sd">        .. versionadded:: 0.11.0</span>
+
+<span class="sd">        .. versionchanged:: 0.24.0</span>
+<span class="sd">            The ``records`` argument may be an asynchronous iterable.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">tabname</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">_quote_ident</span><span class="p">(</span><span class="n">table_name</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">schema_name</span><span class="p">:</span>
@@ -1084,8 +1122,8 @@
         <span class="n">copy_stmt</span> <span class="o">=</span> <span class="s1">&#39;COPY </span><span class="si">{tab}{cols}</span><span class="s1"> FROM STDIN </span><span class="si">{opts}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
             <span class="n">tab</span><span class="o">=</span><span class="n">tabname</span><span class="p">,</span> <span class="n">cols</span><span class="o">=</span><span class="n">cols</span><span class="p">,</span> <span class="n">opts</span><span class="o">=</span><span class="n">opts</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copy_in_records</span><span class="p">(</span>
-            <span class="n">copy_stmt</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">intro_ps</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">copy_in</span><span class="p">(</span>
+            <span class="n">copy_stmt</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">intro_ps</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">_format_copy_opts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">oids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">freeze</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                           <span class="n">delimiter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -1118,7 +1156,7 @@
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_copy_out</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">copy_stmt</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">path</span> <span class="o">=</span> <span class="n">compat</span><span class="o">.</span><span class="n">fspath</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">fspath</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
             <span class="c1"># output is not a path-like object</span>
             <span class="n">path</span> <span class="o">=</span> <span class="kc">None</span>
@@ -1157,7 +1195,7 @@
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_copy_in</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">copy_stmt</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">path</span> <span class="o">=</span> <span class="n">compat</span><span class="o">.</span><span class="n">fspath</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">fspath</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
             <span class="c1"># source is not a path-like object</span>
             <span class="n">path</span> <span class="o">=</span> <span class="kc">None</span>
@@ -1188,7 +1226,6 @@
         <span class="k">if</span> <span class="n">f</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Copying from a file-like object.</span>
             <span class="k">class</span> <span class="nc">_Reader</span><span class="p">:</span>
-                <span class="nd">@compat</span><span class="o">.</span><span class="n">aiter_compat</span>
                 <span class="k">def</span> <span class="fm">__aiter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
                     <span class="k">return</span> <span class="bp">self</span>
 
@@ -1207,10 +1244,6 @@
         <span class="k">finally</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">opened_by_us</span><span class="p">:</span>
                 <span class="k">await</span> <span class="n">run_in_executor</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">_copy_in_records</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">copy_stmt</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">intro_stmt</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">copy_in</span><span class="p">(</span>
-            <span class="n">copy_stmt</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">intro_stmt</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Connection.set_type_codec"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.set_type_codec">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">set_type_codec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                              <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;public&#39;</span><span class="p">,</span> <span class="n">encoder</span><span class="p">,</span> <span class="n">decoder</span><span class="p">,</span>
@@ -1591,18 +1624,10 @@
 
         <span class="n">con_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unwrap</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log_listeners</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_soon</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_call_log_listener</span><span class="p">,</span> <span class="n">cb</span><span class="p">,</span> <span class="n">con_ref</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_call_log_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">,</span> <span class="n">con_ref</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">cb</span><span class="p">(</span><span class="n">con_ref</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_exception_handler</span><span class="p">({</span>
-                <span class="s1">&#39;message&#39;</span><span class="p">:</span> <span class="s1">&#39;Unhandled exception in asyncpg log message &#39;</span>
-                           <span class="s1">&#39;listener callback </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cb</span><span class="p">),</span>
-                <span class="s1">&#39;exception&#39;</span><span class="p">:</span> <span class="n">ex</span>
-            <span class="p">})</span>
+            <span class="k">if</span> <span class="n">cb</span><span class="o">.</span><span class="n">is_async</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">cb</span><span class="o">.</span><span class="n">cb</span><span class="p">(</span><span class="n">con_ref</span><span class="p">,</span> <span class="n">message</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_soon</span><span class="p">(</span><span class="n">cb</span><span class="o">.</span><span class="n">cb</span><span class="p">,</span> <span class="n">con_ref</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_call_termination_listeners</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_termination_listeners</span><span class="p">:</span>
@@ -1610,16 +1635,10 @@
 
         <span class="n">con_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unwrap</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_termination_listeners</span><span class="p">:</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">cb</span><span class="p">(</span><span class="n">con_ref</span><span class="p">)</span>
-            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_exception_handler</span><span class="p">({</span>
-                    <span class="s1">&#39;message&#39;</span><span class="p">:</span> <span class="p">(</span>
-                        <span class="s1">&#39;Unhandled exception in asyncpg connection &#39;</span>
-                        <span class="s1">&#39;termination listener callback </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
-                    <span class="p">),</span>
-                    <span class="s1">&#39;exception&#39;</span><span class="p">:</span> <span class="n">ex</span>
-                <span class="p">})</span>
+            <span class="k">if</span> <span class="n">cb</span><span class="o">.</span><span class="n">is_async</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">cb</span><span class="o">.</span><span class="n">cb</span><span class="p">(</span><span class="n">con_ref</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_soon</span><span class="p">(</span><span class="n">cb</span><span class="o">.</span><span class="n">cb</span><span class="p">,</span> <span class="n">con_ref</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_termination_listeners</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
@@ -1629,18 +1648,10 @@
 
         <span class="n">con_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unwrap</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_soon</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_call_listener</span><span class="p">,</span> <span class="n">cb</span><span class="p">,</span> <span class="n">con_ref</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_call_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">,</span> <span class="n">con_ref</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">payload</span><span class="p">):</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">cb</span><span class="p">(</span><span class="n">con_ref</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_exception_handler</span><span class="p">({</span>
-                <span class="s1">&#39;message&#39;</span><span class="p">:</span> <span class="s1">&#39;Unhandled exception in asyncpg notification &#39;</span>
-                           <span class="s1">&#39;listener callback </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cb</span><span class="p">),</span>
-                <span class="s1">&#39;exception&#39;</span><span class="p">:</span> <span class="n">ex</span>
-            <span class="p">})</span>
+            <span class="k">if</span> <span class="n">cb</span><span class="o">.</span><span class="n">is_async</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">cb</span><span class="o">.</span><span class="n">cb</span><span class="p">(</span><span class="n">con_ref</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">payload</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_soon</span><span class="p">(</span><span class="n">cb</span><span class="o">.</span><span class="n">cb</span><span class="p">,</span> <span class="n">con_ref</span><span class="p">,</span> <span class="n">pid</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_unwrap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -1937,10 +1948,11 @@
 <span class="sd">        Connection arguments specified using as a single string in the</span>
 <span class="sd">        `libpq connection URI format`_:</span>
 <span class="sd">        ``postgres://user:password@host:port/database?option=value``.</span>
-<span class="sd">        The following options are recognized by asyncpg: host, port,</span>
-<span class="sd">        user, database (or dbname), password, passfile, sslmode.</span>
-<span class="sd">        Unlike libpq, asyncpg will treat unrecognized options</span>
-<span class="sd">        as `server settings`_ to be used for the connection.</span>
+<span class="sd">        The following options are recognized by asyncpg: ``host``,</span>
+<span class="sd">        ``port``, ``user``, ``database`` (or ``dbname``), ``password``,</span>
+<span class="sd">        ``passfile``, ``sslmode``, ``sslcert``, ``sslkey``, ``sslrootcert``,</span>
+<span class="sd">        and ``sslcrl``.  Unlike libpq, asyncpg will treat unrecognized</span>
+<span class="sd">        options as `server settings`_ to be used for the connection.</span>
 
 <span class="sd">        .. note::</span>
 
@@ -2062,6 +2074,51 @@
 
 <span class="sd">           *ssl* is ignored for Unix domain socket communication.</span>
 
+<span class="sd">        Example of programmatic SSL context configuration that is equivalent</span>
+<span class="sd">        to ``sslmode=verify-full&amp;sslcert=..&amp;sslkey=..&amp;sslrootcert=..``:</span>
+
+<span class="sd">        .. code-block:: pycon</span>
+
+<span class="sd">            &gt;&gt;&gt; import asyncpg</span>
+<span class="sd">            &gt;&gt;&gt; import asyncio</span>
+<span class="sd">            &gt;&gt;&gt; import ssl</span>
+<span class="sd">            &gt;&gt;&gt; async def main():</span>
+<span class="sd">            ...     # Load CA bundle for server certificate verification,</span>
+<span class="sd">            ...     # equivalent to sslrootcert= in DSN.</span>
+<span class="sd">            ...     sslctx = ssl.create_default_context(</span>
+<span class="sd">            ...         ssl.Purpose.SERVER_AUTH,</span>
+<span class="sd">            ...         cafile=&quot;path/to/ca_bundle.pem&quot;)</span>
+<span class="sd">            ...     # If True, equivalent to sslmode=verify-full, if False:</span>
+<span class="sd">            ...     # sslmode=verify-ca.</span>
+<span class="sd">            ...     sslctx.check_hostname = True</span>
+<span class="sd">            ...     # Load client certificate and private key for client</span>
+<span class="sd">            ...     # authentication, equivalent to sslcert= and sslkey= in</span>
+<span class="sd">            ...     # DSN.</span>
+<span class="sd">            ...     sslctx.load_cert_chain(</span>
+<span class="sd">            ...         &quot;path/to/client.cert&quot;,</span>
+<span class="sd">            ...         keyfile=&quot;path/to/client.key&quot;,</span>
+<span class="sd">            ...     )</span>
+<span class="sd">            ...     con = await asyncpg.connect(user=&#39;postgres&#39;, ssl=sslctx)</span>
+<span class="sd">            ...     await con.close()</span>
+<span class="sd">            &gt;&gt;&gt; asyncio.run(run())</span>
+
+<span class="sd">        Example of programmatic SSL context configuration that is equivalent</span>
+<span class="sd">        to ``sslmode=require`` (no server certificate or host verification):</span>
+
+<span class="sd">        .. code-block:: pycon</span>
+
+<span class="sd">            &gt;&gt;&gt; import asyncpg</span>
+<span class="sd">            &gt;&gt;&gt; import asyncio</span>
+<span class="sd">            &gt;&gt;&gt; import ssl</span>
+<span class="sd">            &gt;&gt;&gt; async def main():</span>
+<span class="sd">            ...     sslctx = ssl.create_default_context(</span>
+<span class="sd">            ...         ssl.Purpose.SERVER_AUTH)</span>
+<span class="sd">            ...     sslctx.check_hostname = False</span>
+<span class="sd">            ...     sslctx.verify_mode = ssl.CERT_NONE</span>
+<span class="sd">            ...     con = await asyncpg.connect(user=&#39;postgres&#39;, ssl=sslctx)</span>
+<span class="sd">            ...     await con.close()</span>
+<span class="sd">            &gt;&gt;&gt; asyncio.run(run())</span>
+
 <span class="sd">    :param dict server_settings:</span>
 <span class="sd">        An optional dict of server runtime parameters.  Refer to</span>
 <span class="sd">        PostgreSQL documentation for</span>
@@ -2119,6 +2176,10 @@
 
 <span class="sd">    .. versionchanged:: 0.22.0</span>
 <span class="sd">       The *ssl* argument now defaults to ``&#39;prefer&#39;``.</span>
+
+<span class="sd">    .. versionchanged:: 0.24.0</span>
+<span class="sd">       The ``sslcert``, ``sslkey``, ``sslrootcert``, and ``sslcrl`` options</span>
+<span class="sd">       are supported in the *dsn* argument.</span>
 
 <span class="sd">    .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext</span>
 <span class="sd">    .. _create_default_context:</span>
@@ -2315,6 +2376,26 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_on_remove</span><span class="p">(</span><span class="n">old_entry</span><span class="o">.</span><span class="n">_statement</span><span class="p">)</span>
 
 
+<span class="k">class</span> <span class="nc">_Callback</span><span class="p">(</span><span class="n">typing</span><span class="o">.</span><span class="n">NamedTuple</span><span class="p">):</span>
+
+    <span class="n">cb</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">is_async</span><span class="p">:</span> <span class="nb">bool</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_callable</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">cb</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s1">&#39;_Callback&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">cb</span><span class="p">):</span>
+            <span class="n">is_async</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">elif</span> <span class="n">callable</span><span class="p">(</span><span class="n">cb</span><span class="p">):</span>
+            <span class="n">is_async</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
+                <span class="s1">&#39;expected a callable or an `async def` function,&#39;</span>
+                <span class="s1">&#39;got </span><span class="si">{!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">is_async</span><span class="p">)</span>
+
+
 <span class="k">class</span> <span class="nc">_Atomic</span><span class="p">:</span>
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_acquired&#39;</span><span class="p">,)</span>
 
@@ -2424,28 +2505,30 @@
         <span class="p">)</span>
 
 
+<span class="k">def</span> <span class="nf">_weak_maybe_gc_stmt</span><span class="p">(</span><span class="n">weak_ref</span><span class="p">,</span> <span class="n">stmt</span><span class="p">):</span>
+    <span class="bp">self</span> <span class="o">=</span> <span class="n">weak_ref</span><span class="p">()</span>
+    <span class="k">if</span> <span class="bp">self</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_gc_stmt</span><span class="p">(</span><span class="n">stmt</span><span class="p">)</span>
+
+
 <span class="n">_uid</span> <span class="o">=</span> <span class="mi">0</span>
 </pre></div>
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2016-present, the asyncpg authors and contributors.
+        &#169; Copyright 2016-present, the asyncpg authors and contributors.
 
     </p>
   </div> 
 
 </footer>
-
         </div>
       </div>
 
@@ -2454,37 +2537,15 @@
   </div>
   
 
-
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'../../',
-            VERSION:'0.23.0',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="../../_static/jquery.js"></script>
-      <script type="text/javascript" src="../../_static/underscore.js"></script>
-      <script type="text/javascript" src="../../_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>
