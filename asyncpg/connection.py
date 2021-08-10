@@ -11,10 +11,12 @@ import collections
 import collections.abc
 import functools
 import itertools
+import inspect
 import os
 import sys
 import time
 import traceback
+import typing
 import warnings
 import weakref
 
@@ -133,17 +135,21 @@ class Connection(metaclass=ConnectionMeta):
         :param str channel: Channel to listen on.
 
         :param callable callback:
-            A callable receiving the following arguments:
+            A callable or a coroutine function receiving the following
+            arguments:
             **connection**: a Connection the callback is registered with;
             **pid**: PID of the Postgres server that sent the notification;
             **channel**: name of the channel the notification was sent to;
             **payload**: the payload.
+
+        .. versionchanged:: 0.24.0
+            The ``callback`` argument may be a coroutine function.
         """
         self._check_open()
         if channel not in self._listeners:
             await self.fetch('LISTEN {}'.format(utils._quote_ident(channel)))
             self._listeners[channel] = set()
-        self._listeners[channel].add(callback)
+        self._listeners[channel].add(_Callback.from_callable(callback))
 
     async def remove_listener(self, channel, callback):
         """Remove a listening callback on the specified channel."""
@@ -151,9 +157,10 @@ class Connection(metaclass=ConnectionMeta):
             return
         if channel not in self._listeners:
             return
-        if callback not in self._listeners[channel]:
+        cb = _Callback.from_callable(callback)
+        if cb not in self._listeners[channel]:
             return
-        self._listeners[channel].remove(callback)
+        self._listeners[channel].remove(cb)
         if not self._listeners[channel]:
             del self._listeners[channel]
             await self.fetch('UNLISTEN {}'.format(utils._quote_ident(channel)))
@@ -166,44 +173,51 @@ class Connection(metaclass=ConnectionMeta):
         DEBUG, INFO, or LOG.
 
         :param callable callback:
-            A callable receiving the following arguments:
+            A callable or a coroutine function receiving the following
+            arguments:
             **connection**: a Connection the callback is registered with;
             **message**: the `exceptions.PostgresLogMessage` message.
 
         .. versionadded:: 0.12.0
+
+        .. versionchanged:: 0.24.0
+            The ``callback`` argument may be a coroutine function.
         """
         if self.is_closed():
             raise exceptions.InterfaceError('connection is closed')
-        self._log_listeners.add(callback)
+        self._log_listeners.add(_Callback.from_callable(callback))
 
     def remove_log_listener(self, callback):
         """Remove a listening callback for log messages.
 
         .. versionadded:: 0.12.0
         """
-        self._log_listeners.discard(callback)
+        self._log_listeners.discard(_Callback.from_callable(callback))
 
     def add_termination_listener(self, callback):
         """Add a listener that will be called when the connection is closed.
 
         :param callable callback:
-            A callable receiving one argument:
+            A callable or a coroutine function receiving one argument:
             **connection**: a Connection the callback is registered with.
 
         .. versionadded:: 0.21.0
+
+        .. versionchanged:: 0.24.0
+            The ``callback`` argument may be a coroutine function.
         """
-        self._termination_listeners.add(callback)
+        self._termination_listeners.add(_Callback.from_callable(callback))
 
     def remove_termination_listener(self, callback):
         """Remove a listening callback for connection termination.
 
         :param callable callback:
-            The callable that was passed to
+            The callable or coroutine function that was passed to
             :meth:`Connection.add_termination_listener`.
 
         .. versionadded:: 0.21.0
         """
-        self._termination_listeners.discard(callback)
+        self._termination_listeners.discard(_Callback.from_callable(callback))
 
     def get_server_pid(self):
         """Return the PID of the Postgres server the connection is bound to."""
@@ -1449,18 +1463,10 @@ class Connection(metaclass=ConnectionMeta):
 
         con_ref = self._unwrap()
         for cb in self._log_listeners:
-            self._loop.call_soon(
-                self._call_log_listener, cb, con_ref, message)
-
-    def _call_log_listener(self, cb, con_ref, message):
-        try:
-            cb(con_ref, message)
-        except Exception as ex:
-            self._loop.call_exception_handler({
-                'message': 'Unhandled exception in asyncpg log message '
-                           'listener callback {!r}'.format(cb),
-                'exception': ex
-            })
+            if cb.is_async:
+                self._loop.create_task(cb.cb(con_ref, message))
+            else:
+                self._loop.call_soon(cb.cb, con_ref, message)
 
     def _call_termination_listeners(self):
         if not self._termination_listeners:
@@ -1468,16 +1474,10 @@ class Connection(metaclass=ConnectionMeta):
 
         con_ref = self._unwrap()
         for cb in self._termination_listeners:
-            try:
-                cb(con_ref)
-            except Exception as ex:
-                self._loop.call_exception_handler({
-                    'message': (
-                        'Unhandled exception in asyncpg connection '
-                        'termination listener callback {!r}'.format(cb)
-                    ),
-                    'exception': ex
-                })
+            if cb.is_async:
+                self._loop.create_task(cb.cb(con_ref))
+            else:
+                self._loop.call_soon(cb.cb, con_ref)
 
         self._termination_listeners.clear()
 
@@ -1487,18 +1487,10 @@ class Connection(metaclass=ConnectionMeta):
 
         con_ref = self._unwrap()
         for cb in self._listeners[channel]:
-            self._loop.call_soon(
-                self._call_listener, cb, con_ref, pid, channel, payload)
-
-    def _call_listener(self, cb, con_ref, pid, channel, payload):
-        try:
-            cb(con_ref, pid, channel, payload)
-        except Exception as ex:
-            self._loop.call_exception_handler({
-                'message': 'Unhandled exception in asyncpg notification '
-                           'listener callback {!r}'.format(cb),
-                'exception': ex
-            })
+            if cb.is_async:
+                self._loop.create_task(cb.cb(con_ref, pid, channel, payload))
+            else:
+                self._loop.call_soon(cb.cb, con_ref, pid, channel, payload)
 
     def _unwrap(self):
         if self._proxy is None:
@@ -2171,6 +2163,26 @@ class _StatementCache:
             # Let the connection know that the statement was removed
             # from the cache.
             self._on_remove(old_entry._statement)
+
+
+class _Callback(typing.NamedTuple):
+
+    cb: typing.Callable[..., None]
+    is_async: bool
+
+    @classmethod
+    def from_callable(cls, cb: typing.Callable[..., None]) -> '_Callback':
+        if inspect.iscoroutinefunction(cb):
+            is_async = True
+        elif callable(cb):
+            is_async = False
+        else:
+            raise exceptions.InterfaceError(
+                'expected a callable or an `async def` function,'
+                'got {!r}'.format(cb)
+            )
+
+        return cls(cb, is_async)
 
 
 class _Atomic:
