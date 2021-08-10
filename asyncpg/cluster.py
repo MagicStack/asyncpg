@@ -53,7 +53,10 @@ class Cluster:
     def __init__(self, data_dir, *, pg_config_path=None):
         self._data_dir = data_dir
         self._pg_config_path = pg_config_path
-        self._pg_bin_dir = os.environ.get('PGINSTALLATION')
+        self._pg_bin_dir = (
+            os.environ.get('PGINSTALLATION')
+            or os.environ.get('PGBIN')
+        )
         self._pg_ctl = None
         self._daemon_pid = None
         self._daemon_process = None
@@ -518,7 +521,10 @@ class Cluster:
 
     def _find_pg_config(self, pg_config_path):
         if pg_config_path is None:
-            pg_install = os.environ.get('PGINSTALLATION')
+            pg_install = (
+                os.environ.get('PGINSTALLATION')
+                or os.environ.get('PGBIN')
+            )
             if pg_install:
                 pg_config_path = platform_exe(
                     os.path.join(pg_install, 'pg_config'))
