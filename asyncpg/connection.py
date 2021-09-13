@@ -2020,6 +2020,20 @@ async def connect(dsn=None, *,
        The ``sslcert``, ``sslkey``, ``sslrootcert``, and ``sslcrl`` options
        are supported in the *dsn* argument.
 
+    .. versionchanged:: 0.25.0
+       The ``sslpassword``, ``sslcompression``, ``ssl_min_protocol_version``,
+       and ``ssl_max_protocol_version`` options are supported in the *dsn*
+       argument.
+
+    .. versionchanged:: 0.25.0
+       Default system root CA certificates won't be loaded when specifying a
+       particular sslmode, following the same behavior in libpq.
+
+    .. versionchanged:: 0.25.0
+       The ``sslcert``, ``sslkey``, ``sslrootcert``, and ``sslcrl`` options
+       in the *dsn* argument now have consistent default values of files under
+       ``~/.postgresql/`` as libpq.
+
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
         https://docs.python.org/3/library/ssl.html#ssl.create_default_context
