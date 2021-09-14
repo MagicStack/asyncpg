@@ -34,6 +34,7 @@ _system = platform.uname().system
 
 CERTS = os.path.join(os.path.dirname(__file__), 'certs')
 SSL_CA_CERT_FILE = os.path.join(CERTS, 'ca.cert.pem')
+SSL_CA_CRL_FILE = os.path.join(CERTS, 'ca.crl.pem')
 SSL_CERT_FILE = os.path.join(CERTS, 'server.cert.pem')
 SSL_KEY_FILE = os.path.join(CERTS, 'server.key.pem')
 CLIENT_CA_CERT_FILE = os.path.join(CERTS, 'client_ca.cert.pem')
@@ -43,13 +44,17 @@ CLIENT_SSL_PROTECTED_KEY_FILE = os.path.join(CERTS, 'client.key.protected.pem')
 
 
 @contextlib.contextmanager
-def mock_dot_postgresql(*, ca=True, client=False, protected=False):
+def mock_dot_postgresql(*, ca=True, crl=False, client=False, protected=False):
     with tempfile.TemporaryDirectory() as temp_dir:
         pg_home = os.path.join(temp_dir, '.postgresql')
         os.mkdir(pg_home)
         if ca:
             shutil.copyfile(
                 SSL_CA_CERT_FILE, os.path.join(pg_home, 'root.crt')
+            )
+        if crl:
+            shutil.copyfile(
+                SSL_CA_CRL_FILE, os.path.join(pg_home, 'root.crl')
             )
         if client:
             shutil.copyfile(
@@ -1326,6 +1331,19 @@ class TestSSLConnection(BaseTestSSLConnection):
             await verify_works('verify-ca', host='127.0.0.1')
             await verify_works('verify-full')
             await verify_fails('verify-full', host='127.0.0.1',
+                               exn_type=ssl.CertificateError)
+
+        with mock_dot_postgresql(crl=True):
+            await verify_fails('disable', exn_type=invalid_auth_err)
+            await verify_works('allow')
+            await verify_works('prefer')
+            await verify_fails('require',
+                               exn_type=ssl.CertificateError)
+            await verify_fails('verify-ca',
+                               exn_type=ssl.CertificateError)
+            await verify_fails('verify-ca', host='127.0.0.1',
+                               exn_type=ssl.CertificateError)
+            await verify_fails('verify-full',
                                exn_type=ssl.CertificateError)
 
     async def test_ssl_connection_default_context(self):
