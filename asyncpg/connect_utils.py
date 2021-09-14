@@ -222,6 +222,10 @@ def _parse_hostlist(hostlist, port, *, unquote=False):
 
 
 def _parse_tls_version(tls_version):
+    if not hasattr(ssl_module, 'TLSVersion'):
+        raise ValueError(
+            "TLSVersion is not supported in this version of Python"
+        )
     if tls_version.startswith('SSL'):
         raise ValueError(
             f"Unsupported TLS version: {tls_version}"
@@ -232,6 +236,10 @@ def _parse_tls_version(tls_version):
         raise ValueError(
             f"No such TLS version: {tls_version}"
         )
+
+
+def _dot_postgresql_path(filename) -> pathlib.Path:
+    return (pathlib.Path.home() / '.postgresql' / filename).resolve()
 
 
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
@@ -485,7 +493,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     ssl.load_verify_locations(cafile=sslrootcert)
                     ssl.verify_mode = ssl_module.CERT_REQUIRED
                 else:
-                    sslrootcert = os.path.expanduser('~/.postgresql/root.crt')
+                    sslrootcert = _dot_postgresql_path('root.crt')
                     try:
                         ssl.load_verify_locations(cafile=sslrootcert)
                     except FileNotFoundError:
@@ -509,7 +517,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     ssl.load_verify_locations(cafile=sslcrl)
                     ssl.verify_flags |= ssl_module.VERIFY_CRL_CHECK_CHAIN
                 else:
-                    sslcrl = os.path.expanduser('~/.postgresql/root.crl')
+                    sslcrl = _dot_postgresql_path('root.crl')
                     try:
                         ssl.load_verify_locations(cafile=sslcrl)
                     except FileNotFoundError:
@@ -520,8 +528,8 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             if sslkey is None:
                 sslkey = os.getenv('PGSSLKEY')
             if not sslkey:
-                sslkey = os.path.expanduser('~/.postgresql/postgresql.key')
-                if not os.path.exists(sslkey):
+                sslkey = _dot_postgresql_path('postgresql.key')
+                if not sslkey.exists():
                     sslkey = None
             if not sslpassword:
                 sslpassword = ''
@@ -532,7 +540,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     sslcert, keyfile=sslkey, password=lambda: sslpassword
                 )
             else:
-                sslcert = os.path.expanduser('~/.postgresql/postgresql.crt')
+                sslcert = _dot_postgresql_path('postgresql.crt')
                 try:
                     ssl.load_cert_chain(
                         sslcert, keyfile=sslkey, password=lambda: sslpassword
@@ -552,13 +560,17 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 ssl.options &= ~ssl_module.OP_NO_COMPRESSION
 
             if ssl_min_protocol_version is None:
-                ssl_min_protocol_version = os.getenv(
-                    'PGSSLMINPROTOCOLVERSION', 'TLSv1.2'
-                )
+                ssl_min_protocol_version = os.getenv('PGSSLMINPROTOCOLVERSION')
             if ssl_min_protocol_version:
                 ssl.minimum_version = _parse_tls_version(
                     ssl_min_protocol_version
                 )
+            else:
+                try:
+                    ssl.minimum_version = _parse_tls_version('TLSv1.2')
+                except ValueError:
+                    # Python 3.6 does not have ssl.TLSVersion
+                    pass
 
             if ssl_max_protocol_version is None:
                 ssl_max_protocol_version = os.getenv('PGSSLMAXPROTOCOLVERSION')

@@ -9,10 +9,12 @@ import asyncio
 import contextlib
 import ipaddress
 import os
+import pathlib
 import platform
 import shutil
 import ssl
 import stat
+import sys
 import tempfile
 import textwrap
 import unittest
@@ -46,31 +48,26 @@ CLIENT_SSL_PROTECTED_KEY_FILE = os.path.join(CERTS, 'client.key.protected.pem')
 @contextlib.contextmanager
 def mock_dot_postgresql(*, ca=True, crl=False, client=False, protected=False):
     with tempfile.TemporaryDirectory() as temp_dir:
-        pg_home = os.path.join(temp_dir, '.postgresql')
-        os.mkdir(pg_home)
+        home = pathlib.Path(temp_dir)
+        pg_home = home / '.postgresql'
+        pg_home.mkdir()
         if ca:
-            shutil.copyfile(
-                SSL_CA_CERT_FILE, os.path.join(pg_home, 'root.crt')
-            )
+            shutil.copyfile(SSL_CA_CERT_FILE, pg_home / 'root.crt')
         if crl:
-            shutil.copyfile(
-                SSL_CA_CRL_FILE, os.path.join(pg_home, 'root.crl')
-            )
+            shutil.copyfile(SSL_CA_CRL_FILE, pg_home / 'root.crl')
         if client:
-            shutil.copyfile(
-                CLIENT_SSL_CERT_FILE, os.path.join(pg_home, 'postgresql.crt')
-            )
+            shutil.copyfile(CLIENT_SSL_CERT_FILE, pg_home / 'postgresql.crt')
             if protected:
                 shutil.copyfile(
-                    CLIENT_SSL_PROTECTED_KEY_FILE,
-                    os.path.join(pg_home, 'postgresql.key'),
+                    CLIENT_SSL_PROTECTED_KEY_FILE, pg_home / 'postgresql.key'
                 )
             else:
                 shutil.copyfile(
-                    CLIENT_SSL_KEY_FILE,
-                    os.path.join(pg_home, 'postgresql.key'),
+                    CLIENT_SSL_KEY_FILE, pg_home / 'postgresql.key'
                 )
-        with unittest.mock.patch.dict('os.environ', {'HOME': temp_dir}):
+        with unittest.mock.patch(
+            'pathlib.Path.home', unittest.mock.Mock(return_value=home)
+        ):
             yield
 
 
@@ -1213,9 +1210,10 @@ class BaseTestSSLConnection(tb.ConnectedTestCase):
             'ssl_cert_file': SSL_CERT_FILE,
             'ssl_key_file': SSL_KEY_FILE,
             'ssl_ca_file': CLIENT_CA_CERT_FILE,
-            'ssl_min_protocol_version': 'TLSv1.2',
-            'ssl_max_protocol_version': 'TLSv1.2',
         })
+        if cls.cluster.get_pg_version() >= (12, 0):
+            conf['ssl_min_protocol_version'] = 'TLSv1.2'
+            conf['ssl_max_protocol_version'] = 'TLSv1.2'
 
         return conf
 
@@ -1340,13 +1338,13 @@ class TestSSLConnection(BaseTestSSLConnection):
             await verify_works('allow')
             await verify_works('prefer')
             await verify_fails('require',
-                               exn_type=ssl.CertificateError)
+                               exn_type=ssl.SSLError)
             await verify_fails('verify-ca',
-                               exn_type=ssl.CertificateError)
+                               exn_type=ssl.SSLError)
             await verify_fails('verify-ca', host='127.0.0.1',
-                               exn_type=ssl.CertificateError)
+                               exn_type=ssl.SSLError)
             await verify_fails('verify-full',
-                               exn_type=ssl.CertificateError)
+                               exn_type=ssl.SSLError)
 
     async def test_ssl_connection_default_context(self):
         # XXX: uvloop artifact
@@ -1410,7 +1408,13 @@ class TestSSLConnection(BaseTestSSLConnection):
             finally:
                 await con.close()
 
+    @unittest.skipIf(
+        sys.version_info < (3, 7), "Python < 3.7 doesn't have ssl.TLSVersion"
+    )
     async def test_tls_version(self):
+        if self.cluster.get_pg_version() < (12, 0):
+            self.skipTest("PostgreSQL < 12 cannot set ssl protocol version")
+
         # XXX: uvloop artifact
         old_handler = self.loop.get_exception_handler()
         try:
@@ -1420,7 +1424,7 @@ class TestSSLConnection(BaseTestSSLConnection):
                     dsn='postgresql://ssl_user@localhost/postgres'
                         '?sslmode=require&ssl_min_protocol_version=TLSv1.3'
                 )
-            with self.assertRaisesRegex(ssl.SSLError, 'protocol version'):
+            with self.assertRaises(ssl.SSLError):
                 await self.connect(
                     dsn='postgresql://ssl_user@localhost/postgres'
                         '?sslmode=require'
