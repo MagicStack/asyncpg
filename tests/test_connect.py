@@ -1213,6 +1213,8 @@ class BaseTestSSLConnection(tb.ConnectedTestCase):
             'ssl_cert_file': SSL_CERT_FILE,
             'ssl_key_file': SSL_KEY_FILE,
             'ssl_ca_file': CLIENT_CA_CERT_FILE,
+            'ssl_min_protocol_version': 'TLSv1.2',
+            'ssl_max_protocol_version': 'TLSv1.2',
         })
 
         return conf
@@ -1407,6 +1409,42 @@ class TestSSLConnection(BaseTestSSLConnection):
                 await con.execute('DROP TABLE test_many')
             finally:
                 await con.close()
+
+    async def test_tls_version(self):
+        # XXX: uvloop artifact
+        old_handler = self.loop.get_exception_handler()
+        try:
+            self.loop.set_exception_handler(lambda *args: None)
+            with self.assertRaisesRegex(ssl.SSLError, 'protocol version'):
+                await self.connect(
+                    dsn='postgresql://ssl_user@localhost/postgres'
+                        '?sslmode=require&ssl_min_protocol_version=TLSv1.3'
+                )
+            with self.assertRaisesRegex(ssl.SSLError, 'protocol version'):
+                await self.connect(
+                    dsn='postgresql://ssl_user@localhost/postgres'
+                        '?sslmode=require'
+                        '&ssl_min_protocol_version=TLSv1.1'
+                        '&ssl_max_protocol_version=TLSv1.1'
+                )
+            with self.assertRaisesRegex(ssl.SSLError, 'no protocols'):
+                await self.connect(
+                    dsn='postgresql://ssl_user@localhost/postgres'
+                        '?sslmode=require'
+                        '&ssl_min_protocol_version=TLSv1.2'
+                        '&ssl_max_protocol_version=TLSv1.1'
+                )
+            con = await self.connect(
+                dsn='postgresql://ssl_user@localhost/postgres?sslmode=require'
+                    '&ssl_min_protocol_version=TLSv1.2'
+                    '&ssl_max_protocol_version=TLSv1.2'
+            )
+            try:
+                self.assertEqual(await con.fetchval('SELECT 42'), 42)
+            finally:
+                await con.close()
+        finally:
+            self.loop.set_exception_handler(old_handler)
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
