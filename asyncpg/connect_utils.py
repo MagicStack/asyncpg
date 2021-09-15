@@ -18,6 +18,7 @@ import socket
 import ssl as ssl_module
 import stat
 import struct
+import sys
 import time
 import typing
 import urllib.parse
@@ -220,13 +221,35 @@ def _parse_hostlist(hostlist, port, *, unquote=False):
     return hosts, port
 
 
+def _parse_tls_version(tls_version):
+    if not hasattr(ssl_module, 'TLSVersion'):
+        raise ValueError(
+            "TLSVersion is not supported in this version of Python"
+        )
+    if tls_version.startswith('SSL'):
+        raise ValueError(
+            f"Unsupported TLS version: {tls_version}"
+        )
+    try:
+        return ssl_module.TLSVersion[tls_version.replace('.', '_')]
+    except KeyError:
+        raise ValueError(
+            f"No such TLS version: {tls_version}"
+        )
+
+
+def _dot_postgresql_path(filename) -> pathlib.Path:
+    return (pathlib.Path.home() / '.postgresql' / filename).resolve()
+
+
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                                 password, passfile, database, ssl,
                                 connect_timeout, server_settings):
     # `auth_hosts` is the version of host information for the purposes
     # of reading the pgpass file.
     auth_hosts = None
-    sslcert = sslkey = sslrootcert = sslcrl = None
+    sslcert = sslkey = sslrootcert = sslcrl = sslpassword = None
+    ssl_min_protocol_version = ssl_max_protocol_version = None
 
     if dsn:
         parsed = urllib.parse.urlparse(dsn)
@@ -312,24 +335,29 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     ssl = val
 
             if 'sslcert' in query:
-                val = query.pop('sslcert')
-                if sslcert is None:
-                    sslcert = val
+                sslcert = query.pop('sslcert')
 
             if 'sslkey' in query:
-                val = query.pop('sslkey')
-                if sslkey is None:
-                    sslkey = val
+                sslkey = query.pop('sslkey')
 
             if 'sslrootcert' in query:
-                val = query.pop('sslrootcert')
-                if sslrootcert is None:
-                    sslrootcert = val
+                sslrootcert = query.pop('sslrootcert')
 
             if 'sslcrl' in query:
-                val = query.pop('sslcrl')
-                if sslcrl is None:
-                    sslcrl = val
+                sslcrl = query.pop('sslcrl')
+
+            if 'sslpassword' in query:
+                sslpassword = query.pop('sslpassword')
+
+            if 'ssl_min_protocol_version' in query:
+                ssl_min_protocol_version = query.pop(
+                    'ssl_min_protocol_version'
+                )
+
+            if 'ssl_max_protocol_version' in query:
+                ssl_max_protocol_version = query.pop(
+                    'ssl_max_protocol_version'
+                )
 
             if query:
                 if server_settings is None:
@@ -451,34 +479,97 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         if sslmode < SSLMode.allow:
             ssl = False
         else:
-            ssl = ssl_module.create_default_context(
-                ssl_module.Purpose.SERVER_AUTH)
+            ssl = ssl_module.SSLContext(ssl_module.PROTOCOL_TLS_CLIENT)
             ssl.check_hostname = sslmode >= SSLMode.verify_full
-            ssl.verify_mode = ssl_module.CERT_REQUIRED
-            if sslmode <= SSLMode.require:
+            if sslmode < SSLMode.require:
                 ssl.verify_mode = ssl_module.CERT_NONE
+            else:
+                if sslrootcert is None:
+                    sslrootcert = os.getenv('PGSSLROOTCERT')
+                if sslrootcert:
+                    ssl.load_verify_locations(cafile=sslrootcert)
+                    ssl.verify_mode = ssl_module.CERT_REQUIRED
+                else:
+                    sslrootcert = _dot_postgresql_path('root.crt')
+                    try:
+                        ssl.load_verify_locations(cafile=sslrootcert)
+                    except FileNotFoundError:
+                        if sslmode > SSLMode.require:
+                            raise ValueError(
+                                f'root certificate file "{sslrootcert}" does '
+                                f'not exist\nEither provide the file or '
+                                f'change sslmode to disable server '
+                                f'certificate verification.'
+                            )
+                        elif sslmode == SSLMode.require:
+                            ssl.verify_mode = ssl_module.CERT_NONE
+                        else:
+                            assert False, 'unreachable'
+                    else:
+                        ssl.verify_mode = ssl_module.CERT_REQUIRED
 
-            if sslcert is None:
-                sslcert = os.getenv('PGSSLCERT')
+                if sslcrl is None:
+                    sslcrl = os.getenv('PGSSLCRL')
+                if sslcrl:
+                    ssl.load_verify_locations(cafile=sslcrl)
+                    ssl.verify_flags |= ssl_module.VERIFY_CRL_CHECK_CHAIN
+                else:
+                    sslcrl = _dot_postgresql_path('root.crl')
+                    try:
+                        ssl.load_verify_locations(cafile=sslcrl)
+                    except FileNotFoundError:
+                        pass
+                    else:
+                        ssl.verify_flags |= ssl_module.VERIFY_CRL_CHECK_CHAIN
 
             if sslkey is None:
                 sslkey = os.getenv('PGSSLKEY')
-
-            if sslrootcert is None:
-                sslrootcert = os.getenv('PGSSLROOTCERT')
-
-            if sslcrl is None:
-                sslcrl = os.getenv('PGSSLCRL')
-
+            if not sslkey:
+                sslkey = _dot_postgresql_path('postgresql.key')
+                if not sslkey.exists():
+                    sslkey = None
+            if not sslpassword:
+                sslpassword = ''
+            if sslcert is None:
+                sslcert = os.getenv('PGSSLCERT')
             if sslcert:
-                ssl.load_cert_chain(sslcert, keyfile=sslkey)
+                ssl.load_cert_chain(
+                    sslcert, keyfile=sslkey, password=lambda: sslpassword
+                )
+            else:
+                sslcert = _dot_postgresql_path('postgresql.crt')
+                try:
+                    ssl.load_cert_chain(
+                        sslcert, keyfile=sslkey, password=lambda: sslpassword
+                    )
+                except FileNotFoundError:
+                    pass
 
-            if sslrootcert:
-                ssl.load_verify_locations(cafile=sslrootcert)
+            # OpenSSL 1.1.1 keylog file, copied from create_default_context()
+            if hasattr(ssl, 'keylog_filename'):
+                keylogfile = os.environ.get('SSLKEYLOGFILE')
+                if keylogfile and not sys.flags.ignore_environment:
+                    ssl.keylog_filename = keylogfile
 
-            if sslcrl:
-                ssl.load_verify_locations(cafile=sslcrl)
-                ssl.verify_flags |= ssl_module.VERIFY_CRL_CHECK_CHAIN
+            if ssl_min_protocol_version is None:
+                ssl_min_protocol_version = os.getenv('PGSSLMINPROTOCOLVERSION')
+            if ssl_min_protocol_version:
+                ssl.minimum_version = _parse_tls_version(
+                    ssl_min_protocol_version
+                )
+            else:
+                try:
+                    ssl.minimum_version = _parse_tls_version('TLSv1.2')
+                except ValueError:
+                    # Python 3.6 does not have ssl.TLSVersion
+                    pass
+
+            if ssl_max_protocol_version is None:
+                ssl_max_protocol_version = os.getenv('PGSSLMAXPROTOCOLVERSION')
+            if ssl_max_protocol_version:
+                ssl.maximum_version = _parse_tls_version(
+                    ssl_max_protocol_version
+                )
 
     elif ssl is True:
         ssl = ssl_module.create_default_context()
