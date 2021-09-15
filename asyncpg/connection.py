@@ -2021,7 +2021,7 @@ async def connect(dsn=None, *,
        are supported in the *dsn* argument.
 
     .. versionchanged:: 0.25.0
-       The ``sslpassword``, ``sslcompression``, ``ssl_min_protocol_version``,
+       The ``sslpassword``, ``ssl_min_protocol_version``,
        and ``ssl_max_protocol_version`` options are supported in the *dsn*
        argument.
 
