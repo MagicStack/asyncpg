@@ -249,7 +249,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     # of reading the pgpass file.
     auth_hosts = None
     sslcert = sslkey = sslrootcert = sslcrl = sslpassword = None
-    sslcompression = ssl_min_protocol_version = ssl_max_protocol_version = None
+    ssl_min_protocol_version = ssl_max_protocol_version = None
 
     if dsn:
         parsed = urllib.parse.urlparse(dsn)
@@ -348,9 +348,6 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
             if 'sslpassword' in query:
                 sslpassword = query.pop('sslpassword')
-
-            if 'sslcompression' in query:
-                sslcompression = query.pop('sslcompression')
 
             if 'ssl_min_protocol_version' in query:
                 ssl_min_protocol_version = query.pop(
@@ -553,11 +550,6 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 keylogfile = os.environ.get('SSLKEYLOGFILE')
                 if keylogfile and not sys.flags.ignore_environment:
                     ssl.keylog_filename = keylogfile
-
-            if sslcompression is None:
-                sslcompression = os.getenv('PGSSLCOMPRESSION')
-            if sslcompression == '1':
-                ssl.options &= ~ssl_module.OP_NO_COMPRESSION
 
             if ssl_min_protocol_version is None:
                 ssl_min_protocol_version = os.getenv('PGSSLMINPROTOCOLVERSION')
