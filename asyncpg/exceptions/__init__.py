@@ -1040,7 +1040,7 @@ class IndexCorruptedError(InternalServerError):
     sqlstate = 'XX002'
 
 
-__all__ = _base.__all__ + (
+__all__ = (
     'ActiveSQLTransactionError', 'AdminShutdownError',
     'AmbiguousAliasError', 'AmbiguousColumnError',
     'AmbiguousFunctionError', 'AmbiguousParameterError',
@@ -1180,3 +1180,5 @@ __all__ = _base.__all__ + (
     'WindowingError', 'WithCheckOptionViolationError',
     'WrongObjectTypeError', 'ZeroLengthCharacterStringError'
 )
+
+__all__ += _base.__all__
