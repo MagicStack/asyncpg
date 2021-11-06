@@ -647,12 +647,12 @@ cdef class BaseProtocol(CoreProtocol):
         self.waiter.set_exception(asyncio.TimeoutError())
 
     def _on_waiter_completed(self, fut):
+        if self.timeout_handle:
+            self.timeout_handle.cancel()
+            self.timeout_handle = None
         if fut is not self.waiter or self.cancel_waiter is not None:
             return
         if fut.cancelled():
-            if self.timeout_handle:
-                self.timeout_handle.cancel()
-                self.timeout_handle = None
             self._request_cancel()
 
     def _create_future_fallback(self):
