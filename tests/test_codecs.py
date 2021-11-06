@@ -1499,7 +1499,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 await self.con.execute("SET TIME ZONE 'America/Toronto'")
                 # Check decoding:
                 row = await self.con.fetchrow(
-                    'SELECT extract(epoch from now()) AS epoch, '
+                    'SELECT extract(epoch from now())::float8 AS epoch, '
                     'now()::date as date, now()::timetz as time')
                 result = datetime.datetime.combine(row['date'], row['time'])
                 expected = datetime.datetime.fromtimestamp(row['epoch'],
