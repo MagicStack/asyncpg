@@ -118,6 +118,12 @@ class PoolConnectionHolder:
         self._timeout = None
         self._generation = None
 
+    def is_connected(self):
+        return self._con is not None and not self._con.is_closed()
+
+    def is_idle(self):
+        return not self._in_use
+
     async def connect(self):
         if self._con is not None:
             raise exceptions.InternalClientError(
@@ -443,6 +449,34 @@ class Pool:
                     connect_tasks.append(ch.connect())
 
                 await asyncio.gather(*connect_tasks)
+
+    def get_size(self):
+        """Return the current number of connections in this pool.
+
+        .. versionadded:: 0.25.0
+        """
+        return sum(h.is_connected() for h in self._holders)
+
+    def get_min_size(self):
+        """Return the minimum number of connections in this pool.
+
+        .. versionadded:: 0.25.0
+        """
+        return self._minsize
+
+    def get_max_size(self):
+        """Return the maximum allowed number of connections in this pool.
+
+        .. versionadded:: 0.25.0
+        """
+        return self._maxsize
+
+    def get_idle_size(self):
+        """Return the current number of idle connections in this pool.
+
+        .. versionadded:: 0.25.0
+        """
+        return sum(h.is_connected() and h.is_idle() for h in self._holders)
 
     def set_connect_args(self, dsn=None, **connect_kwargs):
         r"""Set the new connection arguments for this pool.
