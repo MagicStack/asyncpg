@@ -842,6 +842,7 @@ class TestPool(tb.ConnectedTestCase):
             await pool.release(con)
 
         self.assertIsNone(pool._holders[0]._con)
+        await pool.close()
 
     async def test_pool_set_connection_args(self):
         pool = await self.create_pool(database='postgres',
@@ -883,6 +884,8 @@ class TestPool(tb.ConnectedTestCase):
         con = await pool.acquire()
         self.assertEqual(con.get_settings().application_name,
                          'set_conn_args_test_2')
+        await pool.release(con)
+        await pool.close()
 
     async def test_pool_init_race(self):
         pool = self.create_pool(database='postgres', min_size=1, max_size=1)
