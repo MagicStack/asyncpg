@@ -20,6 +20,7 @@ import textwrap
 import unittest
 import unittest.mock
 import urllib.parse
+import warnings
 import weakref
 
 import asyncpg
@@ -1144,7 +1145,7 @@ class TestConnection(tb.ConnectedTestCase):
 
     @unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
     async def test_connection_ssl_to_no_ssl_server(self):
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ssl_context.load_verify_locations(SSL_CA_CERT_FILE)
 
         with self.assertRaisesRegex(ConnectionError, 'rejected SSL'):
@@ -1268,7 +1269,7 @@ class TestSSLConnection(BaseTestSSLConnection):
             auth_method='trust')
 
     async def test_ssl_connection_custom_context(self):
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ssl_context.load_verify_locations(SSL_CA_CERT_FILE)
 
         con = await self.connect(
@@ -1360,7 +1361,7 @@ class TestSSLConnection(BaseTestSSLConnection):
             self.loop.set_exception_handler(old_handler)
 
     async def test_ssl_connection_pool(self):
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ssl_context.load_verify_locations(SSL_CA_CERT_FILE)
 
         pool = await self.create_pool(
@@ -1385,7 +1386,7 @@ class TestSSLConnection(BaseTestSSLConnection):
         await pool.close()
 
     async def test_executemany_uvloop_ssl_issue_700(self):
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ssl_context.load_verify_locations(SSL_CA_CERT_FILE)
 
         con = await self.connect(
@@ -1417,38 +1418,46 @@ class TestSSLConnection(BaseTestSSLConnection):
 
         # XXX: uvloop artifact
         old_handler = self.loop.get_exception_handler()
-        try:
-            self.loop.set_exception_handler(lambda *args: None)
-            with self.assertRaisesRegex(ssl.SSLError, 'protocol version'):
-                await self.connect(
-                    dsn='postgresql://ssl_user@localhost/postgres'
-                        '?sslmode=require&ssl_min_protocol_version=TLSv1.3'
-                )
-            with self.assertRaises(ssl.SSLError):
-                await self.connect(
-                    dsn='postgresql://ssl_user@localhost/postgres'
-                        '?sslmode=require'
-                        '&ssl_min_protocol_version=TLSv1.1'
-                        '&ssl_max_protocol_version=TLSv1.1'
-                )
-            with self.assertRaisesRegex(ssl.SSLError, 'no protocols'):
-                await self.connect(
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="ssl.TLSVersion.TLSv1_1 is deprecated",
+                category=DeprecationWarning
+            )
+            try:
+                self.loop.set_exception_handler(lambda *args: None)
+                with self.assertRaisesRegex(ssl.SSLError, 'protocol version'):
+                    await self.connect(
+                        dsn='postgresql://ssl_user@localhost/postgres'
+                            '?sslmode=require&ssl_min_protocol_version=TLSv1.3'
+                    )
+                with self.assertRaises(ssl.SSLError):
+                    await self.connect(
+                        dsn='postgresql://ssl_user@localhost/postgres'
+                            '?sslmode=require'
+                            '&ssl_min_protocol_version=TLSv1.1'
+                            '&ssl_max_protocol_version=TLSv1.1'
+                    )
+                with self.assertRaisesRegex(ssl.SSLError, 'no protocols'):
+                    await self.connect(
+                        dsn='postgresql://ssl_user@localhost/postgres'
+                            '?sslmode=require'
+                            '&ssl_min_protocol_version=TLSv1.2'
+                            '&ssl_max_protocol_version=TLSv1.1'
+                    )
+                con = await self.connect(
                     dsn='postgresql://ssl_user@localhost/postgres'
                         '?sslmode=require'
                         '&ssl_min_protocol_version=TLSv1.2'
-                        '&ssl_max_protocol_version=TLSv1.1'
+                        '&ssl_max_protocol_version=TLSv1.2'
                 )
-            con = await self.connect(
-                dsn='postgresql://ssl_user@localhost/postgres?sslmode=require'
-                    '&ssl_min_protocol_version=TLSv1.2'
-                    '&ssl_max_protocol_version=TLSv1.2'
-            )
-            try:
-                self.assertEqual(await con.fetchval('SELECT 42'), 42)
+                try:
+                    self.assertEqual(await con.fetchval('SELECT 42'), 42)
+                finally:
+                    await con.close()
             finally:
-                await con.close()
-        finally:
-            self.loop.set_exception_handler(old_handler)
+                self.loop.set_exception_handler(old_handler)
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
