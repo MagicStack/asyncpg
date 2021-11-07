@@ -1841,7 +1841,7 @@ async def connect(dsn=None, *,
 
         If not specified, the value parsed from the *dsn* argument is used,
         or the value of the ``PGDATABASE`` environment variable, or the
-        operating system name of the user running the application.
+        computed value of the *user* argument.
 
     :param password:
         Password to be used for authentication, if the server requires
