@@ -1796,7 +1796,13 @@ async def connect(dsn=None, *,
         .. note::
 
            The URI must be *valid*, which means that all components must
-           be properly quoted with :py:func:`urllib.parse.quote`.
+           be properly quoted with :py:func:`urllib.parse.quote`, and
+           any literal IPv6 addresses must be enclosed in square brackets.
+           For example:
+
+           .. code-block:: text
+
+              postgres://dbuser@[fe80::1ff:fe23:4567:890a%25eth0]/dbname
 
     :param host:
         Database host address as one of the following:
