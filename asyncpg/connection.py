@@ -359,8 +359,8 @@ class Connection(metaclass=ConnectionMeta):
         query,
         timeout,
         *,
-        named: bool=False,
-        use_cache: bool=True,
+        named=False,
+        use_cache=True,
         ignore_custom_codec=False,
         record_class=None
     ):
@@ -385,7 +385,9 @@ class Connection(metaclass=ConnectionMeta):
                     len(query) > self._config.max_cacheable_statement_size):
                 use_cache = False
 
-        if use_cache or named:
+        if isinstance(named, str):
+            stmt_name = named
+        elif use_cache or named:
             stmt_name = self._get_unique_id('stmt')
         else:
             stmt_name = ''
@@ -526,11 +528,21 @@ class Connection(metaclass=ConnectionMeta):
             record_class,
         )
 
-    async def prepare(self, query, *, timeout=None, record_class=None):
+    async def prepare(
+        self,
+        query,
+        *,
+        name=None,
+        timeout=None,
+        record_class=None,
+    ):
         """Create a *prepared statement* for the specified query.
 
         :param str query:
             Text of the query to create a prepared statement for.
+        :param str name:
+            Optional name of the returned prepared statement.  If not
+            specified, the name is auto-generated.
         :param float timeout:
             Optional timeout value in seconds.
         :param type record_class:
@@ -544,9 +556,13 @@ class Connection(metaclass=ConnectionMeta):
 
         .. versionchanged:: 0.22.0
             Added the *record_class* parameter.
+
+        .. versionchanged:: 0.25.0
+            Added the *name* parameter.
         """
         return await self._prepare(
             query,
+            name=name,
             timeout=timeout,
             use_cache=False,
             record_class=record_class,
@@ -556,6 +572,7 @@ class Connection(metaclass=ConnectionMeta):
         self,
         query,
         *,
+        name=None,
         timeout=None,
         use_cache: bool=False,
         record_class=None
@@ -564,7 +581,7 @@ class Connection(metaclass=ConnectionMeta):
         stmt = await self._get_statement(
             query,
             timeout,
-            named=True,
+            named=True if name is None else name,
             use_cache=use_cache,
             record_class=record_class,
         )
