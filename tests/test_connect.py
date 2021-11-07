@@ -1604,11 +1604,14 @@ class TestNoSSLConnection(BaseTestSSLConnection):
             dsn='postgresql://foo/postgres?sslmode=prefer',
             host='localhost',
             user='ssl_user')
-        self.assertFalse(con._protocol.is_ssl)
-        with self.assertRaises(asyncio.TimeoutError):
-            await con.execute('SELECT pg_sleep(5)', timeout=0.5)
-        val = await con.fetchval('SELECT 123')
-        self.assertEqual(val, 123)
+        try:
+            self.assertFalse(con._protocol.is_ssl)
+            with self.assertRaises(asyncio.TimeoutError):
+                await con.execute('SELECT pg_sleep(5)', timeout=0.5)
+            val = await con.fetchval('SELECT 123')
+            self.assertEqual(val, 123)
+        finally:
+            await con.close()
 
     async def test_nossl_connection_pool(self):
         pool = await self.create_pool(

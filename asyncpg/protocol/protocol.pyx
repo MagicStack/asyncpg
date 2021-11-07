@@ -609,7 +609,7 @@ cdef class BaseProtocol(CoreProtocol):
             pass
         finally:
             self.waiter = None
-        self.transport.abort()
+            self.transport.abort()
 
     def _request_cancel(self):
         self.cancel_waiter = self.create_future()
