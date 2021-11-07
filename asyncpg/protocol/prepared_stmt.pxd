@@ -29,7 +29,7 @@ cdef class PreparedStatementState:
         bint         have_text_cols
         tuple        rows_codecs
 
-    cdef _encode_bind_msg(self, args)
+    cdef _encode_bind_msg(self, args, int seqno = ?)
     cpdef _init_codecs(self)
     cdef _ensure_rows_decoder(self)
     cdef _ensure_args_encoder(self)
