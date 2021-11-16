@@ -38,7 +38,11 @@ elif [ "${ID}" = "centos" ]; then
         "postgresql${PGVERSION}-server" \
         "postgresql${PGVERSION}-contrib"
     ln -s "/usr/pgsql-${PGVERSION}/bin/pg_config" "/usr/local/bin/pg_config"
+elif [ "${ID}" = "alpine" ]; then
+    apk add shadow postgresql postgresql-dev postgresql-contrib
 else
     echo "install-postgres.sh: Unsupported distro: ${distro}" >&2
     exit 1
 fi
+
+useradd -m -s /bin/bash apgtest

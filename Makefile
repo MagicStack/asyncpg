@@ -12,6 +12,7 @@ clean:
 	rm -fr dist/ doc/_build/
 	rm -fr asyncpg/pgproto/*.c asyncpg/pgproto/*.html
 	rm -fr asyncpg/pgproto/codecs/*.html
+	rm -fr asyncpg/pgproto/*.so
 	rm -fr asyncpg/protocol/*.c asyncpg/protocol/*.html
 	rm -fr asyncpg/protocol/*.so build *.egg-info
 	rm -fr asyncpg/protocol/codecs/*.html

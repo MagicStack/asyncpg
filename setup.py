@@ -274,9 +274,13 @@ setuptools.setup(
     author_email='hello@magic.io',
     url='https://github.com/MagicStack/asyncpg',
     license='Apache License, Version 2.0',
-    packages=['asyncpg'],
-    provides=['asyncpg'],
-    include_package_data=True,
+    packages=setuptools.find_packages(
+        exclude=['tests', 'tools'],
+    ),
+    package_data={
+        # Cython sources needed for tracebacks
+        "": ["*.pyx", "*.pxd", "*.pxi"],
+    },
     ext_modules=[
         setuptools.extension.Extension(
             "asyncpg.pgproto.pgproto",
