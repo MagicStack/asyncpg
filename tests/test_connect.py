@@ -1438,7 +1438,8 @@ class TestSSLConnection(BaseTestSSLConnection):
                 await con.close()
 
     @unittest.skipIf(
-        sys.version_info < (3, 7), "Python < 3.7 doesn't have ssl.TLSVersion"
+        sys.version_info < (3, 7),
+        "Python < 3.7 doesn't have ssl.TLSVersion"
     )
     async def test_tls_version(self):
         if self.cluster.get_pg_version() < (12, 0):
@@ -1455,12 +1456,15 @@ class TestSSLConnection(BaseTestSSLConnection):
             )
             try:
                 self.loop.set_exception_handler(lambda *args: None)
-                with self.assertRaisesRegex(ssl.SSLError, 'protocol version'):
+                with self.assertRaisesRegex(
+                    ssl.SSLError,
+                    '(protocol version)|(handshake failure)',
+                ):
                     await self.connect(
                         dsn='postgresql://ssl_user@localhost/postgres'
                             '?sslmode=require&ssl_min_protocol_version=TLSv1.3'
                     )
-                with self.assertRaises(ssl.SSLError):
+                with self.assertRaises((ssl.SSLError, ConnectionResetError)):
                     await self.connect(
                         dsn='postgresql://ssl_user@localhost/postgres'
                             '?sslmode=require'
