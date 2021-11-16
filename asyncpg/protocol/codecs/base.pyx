@@ -71,6 +71,13 @@ cdef class Codec:
                     'range types is not supported'.format(schema, name))
             self.encoder = <codec_encode_func>&self.encode_range
             self.decoder = <codec_decode_func>&self.decode_range
+        elif type == CODEC_MULTIRANGE:
+            if format != PG_FORMAT_BINARY:
+                raise exceptions.UnsupportedClientFeatureError(
+                    'cannot decode type "{}"."{}": text encoding of '
+                    'range types is not supported'.format(schema, name))
+            self.encoder = <codec_encode_func>&self.encode_multirange
+            self.decoder = <codec_decode_func>&self.decode_multirange
         elif type == CODEC_COMPOSITE:
             if format != PG_FORMAT_BINARY:
                 raise exceptions.UnsupportedClientFeatureError(
@@ -121,6 +128,12 @@ cdef class Codec:
         range_encode(settings, buf, obj, self.element_codec.oid,
                      codec_encode_func_ex,
                      <void*>(<cpython.PyObject>self.element_codec))
+
+    cdef encode_multirange(self, ConnectionSettings settings, WriteBuffer buf,
+                           object obj):
+        multirange_encode(settings, buf, obj, self.element_codec.oid,
+                          codec_encode_func_ex,
+                          <void*>(<cpython.PyObject>self.element_codec))
 
     cdef encode_composite(self, ConnectionSettings settings, WriteBuffer buf,
                           object obj):
@@ -209,6 +222,10 @@ cdef class Codec:
         return range_decode(settings, buf, codec_decode_func_ex,
                             <void*>(<cpython.PyObject>self.element_codec))
 
+    cdef decode_multirange(self, ConnectionSettings settings, FRBuffer *buf):
+        return multirange_decode(settings, buf, codec_decode_func_ex,
+                                 <void*>(<cpython.PyObject>self.element_codec))
+
     cdef decode_composite(self, ConnectionSettings settings,
                           FRBuffer *buf):
         cdef:
@@ -294,7 +311,11 @@ cdef class Codec:
         if self.c_encoder is not NULL or self.py_encoder is not None:
             return True
 
-        elif self.type == CODEC_ARRAY or self.type == CODEC_RANGE:
+        elif (
+            self.type == CODEC_ARRAY
+            or self.type == CODEC_RANGE
+            or self.type == CODEC_MULTIRANGE
+        ):
             return self.element_codec.has_encoder()
 
         elif self.type == CODEC_COMPOSITE:
@@ -312,7 +333,11 @@ cdef class Codec:
         if self.c_decoder is not NULL or self.py_decoder is not None:
             return True
 
-        elif self.type == CODEC_ARRAY or self.type == CODEC_RANGE:
+        elif (
+            self.type == CODEC_ARRAY
+            or self.type == CODEC_RANGE
+            or self.type == CODEC_MULTIRANGE
+        ):
             return self.element_codec.has_decoder()
 
         elif self.type == CODEC_COMPOSITE:
@@ -356,6 +381,18 @@ cdef class Codec:
         codec.init(name, schema, 'range', CODEC_RANGE, element_codec.format,
                    PG_XFORMAT_OBJECT, NULL, NULL, None, None, element_codec,
                    None, None, None, 0)
+        return codec
+
+    @staticmethod
+    cdef Codec new_multirange_codec(uint32_t oid,
+                                    str name,
+                                    str schema,
+                                    Codec element_codec):
+        cdef Codec codec
+        codec = Codec(oid)
+        codec.init(name, schema, 'multirange', CODEC_MULTIRANGE,
+                   element_codec.format, PG_XFORMAT_OBJECT, NULL, NULL,
+                   None, None, element_codec, None, None, None, 0)
         return codec
 
     @staticmethod
@@ -535,6 +572,21 @@ cdef class DataCodecConfig:
 
                 self._derived_type_codecs[oid, elem_codec.format] = \
                     Codec.new_range_codec(oid, name, schema, elem_codec)
+
+            elif ti['kind'] == b'm':
+                # Multirange type
+
+                if not range_subtype_oid:
+                    raise exceptions.InternalClientError(
+                        f'type record missing base type for multirange {oid}')
+
+                elem_codec = self.get_codec(range_subtype_oid, PG_FORMAT_ANY)
+                if elem_codec is None:
+                    elem_codec = self.declare_fallback_codec(
+                        range_subtype_oid, ti['range_subtype_name'], schema)
+
+                self._derived_type_codecs[oid, elem_codec.format] = \
+                    Codec.new_multirange_codec(oid, name, schema, elem_codec)
 
             elif ti['kind'] == b'e':
                 # Enum types are essentially text
