@@ -273,8 +273,9 @@ cdef init_pseudo_codecs():
         FDW_HANDLEROID, TSM_HANDLEROID, INTERNALOID, OPAQUEOID,
         ANYELEMENTOID, ANYNONARRAYOID, ANYCOMPATIBLEOID,
         ANYCOMPATIBLEARRAYOID, ANYCOMPATIBLENONARRAYOID,
-        ANYCOMPATIBLERANGEOID, PG_DDL_COMMANDOID, INDEX_AM_HANDLEROID,
-        TABLE_AM_HANDLEROID,
+        ANYCOMPATIBLERANGEOID, ANYCOMPATIBLEMULTIRANGEOID,
+        ANYRANGEOID, ANYMULTIRANGEOID, ANYARRAYOID,
+        PG_DDL_COMMANDOID, INDEX_AM_HANDLEROID, TABLE_AM_HANDLEROID,
     ]
 
     register_core_codec(ANYENUMOID,
@@ -327,6 +328,19 @@ cdef init_pseudo_codecs():
     # system catalog
     register_core_codec(PG_MCV_LISTOID,
                         <encode_func>pgproto.bytea_encode,
+                        <decode_func>pgproto.bytea_decode,
+                        PG_FORMAT_BINARY)
+
+    # These two are internal to BRIN index support and are unlikely
+    # to be sent, but since I/O functions for these exist, add decoders
+    # nonetheless.
+    register_core_codec(PG_BRIN_BLOOM_SUMMARYOID,
+                        NULL,
+                        <decode_func>pgproto.bytea_decode,
+                        PG_FORMAT_BINARY)
+
+    register_core_codec(PG_BRIN_MINMAX_MULTI_SUMMARYOID,
+                        NULL,
                         <decode_func>pgproto.bytea_decode,
                         PG_FORMAT_BINARY)
 

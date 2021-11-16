@@ -7,6 +7,8 @@
 
 from asyncpg import types as apg_types
 
+from collections.abc import Sequence as SequenceABC
+
 # defined in postgresql/src/include/utils/rangetypes.h
 DEF RANGE_EMPTY  = 0x01  # range is empty
 DEF RANGE_LB_INC = 0x02  # lower bound is inclusive
@@ -139,11 +141,55 @@ cdef range_decode(ConnectionSettings settings, FRBuffer *buf,
                            empty=(flags & RANGE_EMPTY) != 0)
 
 
-cdef init_range_codecs():
-    register_core_codec(ANYRANGEOID,
-                        NULL,
-                        <decode_func>pgproto.text_decode,
-                        PG_FORMAT_TEXT)
+cdef multirange_encode(ConnectionSettings settings, WriteBuffer buf,
+                       object obj, uint32_t elem_oid,
+                       encode_func_ex encoder, const void *encoder_arg):
+    cdef:
+        WriteBuffer elem_data
+
+    if not isinstance(obj, SequenceABC):
+        raise TypeError(
+            'expected a sequence (got type {!r})'.format(type(obj).__name__)
+        )
+
+    elem_data = WriteBuffer.new()
+
+    for elem in obj:
+        range_encode(settings, elem_data, elem, elem_oid, encoder, encoder_arg)
+
+    # Datum length
+    buf.write_int32(4 + elem_data.len())
+    # Number of elements in multirange
+    buf.write_int32(len(obj))
+    buf.write_buffer(elem_data)
 
 
-init_range_codecs()
+cdef multirange_decode(ConnectionSettings settings, FRBuffer *buf,
+                       decode_func_ex decoder, const void *decoder_arg):
+    cdef:
+        int32_t nelems = hton.unpack_int32(frb_read(buf, 4))
+        FRBuffer elem_buf
+        int32_t elem_len
+        int i
+        list result
+
+    if nelems == 0:
+        return []
+
+    if nelems < 0:
+        raise exceptions.ProtocolError(
+            'unexpected multirange size value: {}'.format(nelems))
+
+    result = cpython.PyList_New(nelems)
+    for i in range(nelems):
+        elem_len = hton.unpack_int32(frb_read(buf, 4))
+        if elem_len == -1:
+            raise exceptions.ProtocolError(
+                'unexpected NULL element in multirange value')
+        else:
+            frb_slice_from(&elem_buf, buf, elem_len)
+        elem = range_decode(settings, &elem_buf, decoder, decoder_arg)
+        cpython.Py_INCREF(elem)
+        cpython.PyList_SET_ITEM(result, i, elem)
+
+    return result

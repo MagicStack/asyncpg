@@ -858,19 +858,7 @@ cdef arraytext_decode(ConnectionSettings settings, FRBuffer *buf):
     return array_decode(settings, buf, <decode_func_ex>&text_decode_ex, NULL)
 
 
-cdef anyarray_decode(ConnectionSettings settings, FRBuffer *buf):
-    # Instances of anyarray (or any other polymorphic pseudotype) are
-    # never supposed to be returned from actual queries.
-    raise exceptions.ProtocolError(
-        'unexpected instance of \'anyarray\' type')
-
-
 cdef init_array_codecs():
-    register_core_codec(ANYARRAYOID,
-                        NULL,
-                        <decode_func>&anyarray_decode,
-                        PG_FORMAT_BINARY)
-
     # oid[] and text[] are registered as core codecs
     # to make type introspection query work
     #

@@ -1042,6 +1042,59 @@ class TestCodecs(tb.ConnectedTestCase):
             dic = {obj_a: 1, obj_b: 2}
             self.assertEqual(len(dic), count)
 
+    async def test_multirange_types(self):
+        """Test encoding/decoding of multirange types."""
+
+        if self.server_version < (14, 0):
+            self.skipTest("this server does not support multirange types")
+
+        cases = [
+            ('int4multirange', [
+                [
+                    [],
+                    []
+                ],
+                [
+                    [()],
+                    []
+                ],
+                [
+                    [asyncpg.Range(empty=True)],
+                    []
+                ],
+                [
+                    [asyncpg.Range(0, 9, lower_inc=False, upper_inc=True)],
+                    [asyncpg.Range(1, 10)]
+                ],
+                [
+                    [(1, 9), (9, 11)],
+                    [asyncpg.Range(1, 12)]
+                ],
+                [
+                    [(1, 9), (20, 30)],
+                    [asyncpg.Range(1, 10), asyncpg.Range(20, 31)]
+                ],
+                [
+                    [(None, 2)],
+                    [asyncpg.Range(None, 3)],
+                ]
+            ])
+        ]
+
+        for (typname, sample_data) in cases:
+            st = await self.con.prepare(
+                "SELECT $1::" + typname
+            )
+
+            for sample, expected in sample_data:
+                with self.subTest(sample=sample, typname=typname):
+                    result = await st.fetchval(sample)
+                    self.assertEqual(result, expected)
+
+        with self.assertRaisesRegex(
+                asyncpg.DataError, 'expected a sequence'):
+            await self.con.fetch("SELECT $1::int4multirange", 1)
+
     async def test_extra_codec_alias(self):
         """Test encoding/decoding of a builtin non-pg_catalog codec."""
         await self.con.execute('''
