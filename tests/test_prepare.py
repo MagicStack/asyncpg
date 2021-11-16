@@ -600,3 +600,14 @@ class TestPrepare(tb.ConnectedTestCase):
         # prepare with disabled cache
         await self.con.prepare('select 1')
         self.assertEqual(len(cache), 0)
+
+    async def test_prepare_explicitly_named(self):
+        ps = await self.con.prepare('select 1', name='foobar')
+        self.assertEqual(ps.get_name(), 'foobar')
+        self.assertEqual(await self.con.fetchval('EXECUTE foobar'), 1)
+
+        with self.assertRaisesRegex(
+            exceptions.DuplicatePreparedStatementError,
+            'prepared statement "foobar" already exists',
+        ):
+            await self.con.prepare('select 1', name='foobar')
