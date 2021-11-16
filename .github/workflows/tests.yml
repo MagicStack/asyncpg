@@ -71,9 +71,9 @@ jobs:
         LOOP_IMPL: ${{ matrix.loop }}
       run: |
         if [ "${LOOP_IMPL}" = "uvloop" ]; then
-          env USE_UVLOOP=1 python setup.py test
+          env USE_UVLOOP=1 python -m unittest -v tests.suite
         else
-          python setup.py test
+          python -m unittest -v tests.suite
         fi
 
   test-postgres:
@@ -116,21 +116,19 @@ jobs:
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       if: steps.release.outputs.version == 0
-      with:
-        python-version: ${{ matrix.python-version }}
 
     - name: Install Python Deps
       if: steps.release.outputs.version == 0
       run: |
-        python -m pip install -U pip setuptools
-        pip install -e .[test]
+        python -m pip install -U pip setuptools wheel
+        python -m pip install -e .[test]
 
     - name: Test
       if: steps.release.outputs.version == 0
       env:
         PGVERSION: ${{ matrix.postgres-version }}
       run: |
-        python setup.py test
+        python -m unittest -v tests.suite
 
   # This job exists solely to act as the test job aggregate to be
   # targeted by branch policies.
