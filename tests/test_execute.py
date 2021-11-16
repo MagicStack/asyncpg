@@ -9,7 +9,7 @@ import asyncio
 import asyncpg
 
 from asyncpg import _testbase as tb
-from asyncpg.exceptions import UniqueViolationError
+from asyncpg import exceptions
 
 
 class TestExecuteScript(tb.ConnectedTestCase):
@@ -140,6 +140,25 @@ class TestExecuteMany(tb.ConnectedTestCase):
         ])
 
     async def test_executemany_bad_input(self):
+        with self.assertRaisesRegex(
+            exceptions.DataError,
+            r"invalid input in executemany\(\) argument sequence element #1: "
+            r"expected a sequence",
+        ):
+            await self.con.executemany('''
+                INSERT INTO exmany (b) VALUES($1)
+            ''', [(0,), {1: 0}])
+
+        with self.assertRaisesRegex(
+            exceptions.DataError,
+            r"invalid input for query argument \$1 in element #1 of "
+            r"executemany\(\) sequence: 'bad'",
+        ):
+            await self.con.executemany('''
+                INSERT INTO exmany (b) VALUES($1)
+            ''', [(0,), ("bad",)])
+
+    async def test_executemany_error_in_input_gen(self):
         bad_data = ([1 / 0] for v in range(10))
 
         with self.assertRaises(ZeroDivisionError):
@@ -155,7 +174,7 @@ class TestExecuteMany(tb.ConnectedTestCase):
             ''', good_data)
 
     async def test_executemany_server_failure(self):
-        with self.assertRaises(UniqueViolationError):
+        with self.assertRaises(exceptions.UniqueViolationError):
             await self.con.executemany('''
                 INSERT INTO exmany VALUES($1, $2)
             ''', [
@@ -165,7 +184,7 @@ class TestExecuteMany(tb.ConnectedTestCase):
         self.assertEqual(result, [])
 
     async def test_executemany_server_failure_after_writes(self):
-        with self.assertRaises(UniqueViolationError):
+        with self.assertRaises(exceptions.UniqueViolationError):
             await self.con.executemany('''
                 INSERT INTO exmany VALUES($1, $2)
             ''', [('a' * 32768, x) for x in range(10)] + [
@@ -187,7 +206,7 @@ class TestExecuteMany(tb.ConnectedTestCase):
                 else:
                     yield 'a' * 32768, pos
 
-        with self.assertRaises(UniqueViolationError):
+        with self.assertRaises(exceptions.UniqueViolationError):
             await self.con.executemany('''
                 INSERT INTO exmany VALUES($1, $2)
             ''', gen())
@@ -260,7 +279,7 @@ class TestExecuteMany(tb.ConnectedTestCase):
 
     async def test_executemany_client_server_failure_conflict(self):
         self.con._transport.set_write_buffer_limits(65536 * 64, 16384 * 64)
-        with self.assertRaises(UniqueViolationError):
+        with self.assertRaises(exceptions.UniqueViolationError):
             await self.con.executemany('''
                 INSERT INTO exmany VALUES($1, 0)
             ''', (('a' * 32768,) for y in range(4, -1, -1) if y / y))

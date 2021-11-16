@@ -217,7 +217,7 @@ cdef class BaseProtocol(CoreProtocol):
         # Make sure the argument sequence is encoded lazily with
         # this generator expression to keep the memory pressure under
         # control.
-        data_gen = (state._encode_bind_msg(b) for b in args)
+        data_gen = (state._encode_bind_msg(b, i) for i, b in enumerate(args))
         arg_bufs = iter(data_gen)
 
         waiter = self._new_waiter(timeout)
