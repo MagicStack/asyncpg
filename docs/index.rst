@@ -15,7 +15,8 @@ of PostgreSQL server binary protocol for use with Python's ``asyncio``
 framework.
 
 **asyncpg** requires Python 3.6 or later and is supported for PostgreSQL
-versions 9.5 to 13.
+versions 9.5 to 14.  Older PostgreSQL versions or other databases implementing
+the PostgreSQL protocol *may* work, but are not being actively tested.
 
 Contents
 --------

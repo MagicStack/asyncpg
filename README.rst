@@ -14,7 +14,7 @@ framework.  You can read more about asyncpg in an introductory
 `blog post <http://magic.io/blog/asyncpg-1m-rows-from-postgres-to-python/>`_.
 
 asyncpg requires Python 3.6 or later and is supported for PostgreSQL
-versions 9.5 to 13.  Older PostgreSQL versions or other databases implementing
+versions 9.5 to 14.  Older PostgreSQL versions or other databases implementing
 the PostgreSQL protocol *may* work, but are not being actively tested.
 
 

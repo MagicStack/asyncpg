@@ -176,8 +176,10 @@ class {clsname}({base}):
     buf += '\n\n\n'.join(classes)
 
     _all = textwrap.wrap(', '.join('{!r}'.format(c) for c in sorted(clsnames)))
-    buf += '\n\n\n__all__ = _base.__all__ + (\n    {}\n)'.format(
+    buf += '\n\n\n__all__ = (\n    {}\n)'.format(
         '\n    '.join(_all))
+
+    buf += '\n\n__all__ += _base.__all__'
 
     print(buf)
 
