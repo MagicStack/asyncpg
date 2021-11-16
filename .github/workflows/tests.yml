@@ -17,13 +17,13 @@ jobs:
     # job.
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9, 3.10.0-rc.1]
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
         os: [ubuntu-latest, macos-latest, windows-latest]
         loop: [asyncio, uvloop]
         exclude:
           # uvloop does not support Python 3.6
           - loop: uvloop
-            python-version: 3.6
+            python-version: "3.6"
           # uvloop does not support windows
           - loop: uvloop
             os: windows-latest
@@ -79,7 +79,7 @@ jobs:
   test-postgres:
     strategy:
       matrix:
-        postgres-version: [9.5, 9.6, 10, 11, 12, 13]
+        postgres-version: ["9.5", "9.6", "10", "11", "12", "13", "14"]
 
     runs-on: ubuntu-latest
 

@@ -337,6 +337,10 @@ class DuplicateJsonObjectKeyValueError(DataError):
     sqlstate = '22030'
 
 
+class InvalidArgumentForSQLJsonDatetimeFunctionError(DataError):
+    sqlstate = '22031'
+
+
 class InvalidJsonTextError(DataError):
     sqlstate = '22032'
 
@@ -872,6 +876,10 @@ class DatabaseDroppedError(OperatorInterventionError):
     sqlstate = '57P04'
 
 
+class IdleSessionTimeoutError(OperatorInterventionError):
+    sqlstate = '57P05'
+
+
 class PostgresSystemError(_base.PostgresError):
     sqlstate = '58000'
 
@@ -1086,8 +1094,8 @@ __all__ = (
     'ForeignKeyViolationError', 'FunctionExecutedNoReturnStatementError',
     'GeneratedAlwaysError', 'GroupingError',
     'HeldCursorRequiresSameIsolationLevelError',
-    'IdleInTransactionSessionTimeoutError', 'ImplicitZeroBitPadding',
-    'InFailedSQLTransactionError',
+    'IdleInTransactionSessionTimeoutError', 'IdleSessionTimeoutError',
+    'ImplicitZeroBitPadding', 'InFailedSQLTransactionError',
     'InappropriateAccessModeForBranchTransactionError',
     'InappropriateIsolationLevelForBranchTransactionError',
     'IndeterminateCollationError', 'IndeterminateDatatypeError',
@@ -1098,6 +1106,7 @@ __all__ = (
     'InvalidArgumentForNthValueFunctionError',
     'InvalidArgumentForNtileFunctionError',
     'InvalidArgumentForPowerFunctionError',
+    'InvalidArgumentForSQLJsonDatetimeFunctionError',
     'InvalidArgumentForWidthBucketFunctionError',
     'InvalidAuthorizationSpecificationError',
     'InvalidBinaryRepresentationError', 'InvalidCachedStatementError',
