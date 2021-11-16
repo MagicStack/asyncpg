@@ -151,7 +151,7 @@ cdef class PreparedStatementState:
             writer.write_int16(self.args_num)
             for idx in range(self.args_num):
                 codec = <Codec>(self.args_codecs[idx])
-                writer.write_int16(codec.format)
+                writer.write_int16(<int16_t>codec.format)
         else:
             # All arguments are in binary format
             writer.write_int32(0x00010001)
@@ -203,7 +203,7 @@ cdef class PreparedStatementState:
             writer.write_int16(self.cols_num)
             for idx in range(self.cols_num):
                 codec = <Codec>(self.rows_codecs[idx])
-                writer.write_int16(codec.format)
+                writer.write_int16(<int16_t>codec.format)
         else:
             # All columns are in binary format
             writer.write_int32(0x00010001)

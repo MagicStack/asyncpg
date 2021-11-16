@@ -63,7 +63,7 @@ ApgRecord_New(PyTypeObject *type, PyObject *desc, Py_ssize_t size)
             return PyErr_NoMemory();
         }
         o = (ApgRecordObject *)type->tp_alloc(type, size);
-        if (!_ApgObject_GC_IS_TRACKED(o)) {
+        if (!_ApgObject_GC_IS_TRACKED((PyObject *)o)) {
             PyErr_SetString(
                 PyExc_TypeError,
                 "record subclass is not tracked by GC"

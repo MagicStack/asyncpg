@@ -146,6 +146,8 @@ cdef multirange_encode(ConnectionSettings settings, WriteBuffer buf,
                        encode_func_ex encoder, const void *encoder_arg):
     cdef:
         WriteBuffer elem_data
+        ssize_t elem_data_len
+        ssize_t elem_count
 
     if not isinstance(obj, SequenceABC):
         raise TypeError(
@@ -157,10 +159,20 @@ cdef multirange_encode(ConnectionSettings settings, WriteBuffer buf,
     for elem in obj:
         range_encode(settings, elem_data, elem, elem_oid, encoder, encoder_arg)
 
+    elem_count = len(obj)
+    if elem_count > INT32_MAX:
+        raise OverflowError(f'too many elements in multirange value')
+
+    elem_data_len = elem_data.len()
+    if elem_data_len > INT32_MAX - 4:
+        raise OverflowError(
+            f'size of encoded multirange datum exceeds the maximum allowed'
+            f' {INT32_MAX - 4} bytes')
+
     # Datum length
-    buf.write_int32(4 + elem_data.len())
+    buf.write_int32(4 + <int32_t>elem_data_len)
     # Number of elements in multirange
-    buf.write_int32(len(obj))
+    buf.write_int32(<int32_t>elem_count)
     buf.write_buffer(elem_data)
 
 
