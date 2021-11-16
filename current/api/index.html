@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                0.24.0
+                0.25.0
               </div>
             
           
@@ -198,7 +198,12 @@ options as <a class="reference external" href="https://www.postgresql.org/docs/c
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The URI must be <em>valid</em>, which means that all components must
-be properly quoted with <a class="reference external" href="https://docs.python.org/3/library/urllib.parse.html#urllib.parse.quote" title="(in Python v3.9)"><code class="xref py py-func docutils literal notranslate"><span class="pre">urllib.parse.quote()</span></code></a>.</p>
+be properly quoted with <a class="reference external" href="https://docs.python.org/3/library/urllib.parse.html#urllib.parse.quote" title="(in Python v3.10)"><code class="xref py py-func docutils literal notranslate"><span class="pre">urllib.parse.quote()</span></code></a>, and
+any literal IPv6 addresses must be enclosed in square brackets.
+For example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>postgres://dbuser@[fe80::1ff:fe23:4567:890a%25eth0]/dbname
+</pre></div>
+</div>
 </div>
 </p></li>
 <li><p><strong>host</strong> – <p>Database host address as one of the following:</p>
@@ -238,7 +243,7 @@ operating system name of the user running the application.</p>
 <li><p><strong>database</strong> – <p>The name of the database to connect to.</p>
 <p>If not specified, the value parsed from the <em>dsn</em> argument is used,
 or the value of the <code class="docutils literal notranslate"><span class="pre">PGDATABASE</span></code> environment variable, or the
-operating system name of the user running the application.</p>
+computed value of the <em>user</em> argument.</p>
 </p></li>
 <li><p><strong>password</strong> – <p>Password to be used for authentication, if the server requires
 one.  If not specified, the value parsed from the <em>dsn</em> argument
@@ -255,16 +260,16 @@ is established.</p>
 on Windows).</p></li>
 <li><p><strong>loop</strong> – An asyncio event loop instance.  If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the default
 event loop will be used.</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Connection timeout in seconds.</p></li>
-<li><p><strong>statement_cache_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – The size of prepared statement LRU cache.  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Connection timeout in seconds.</p></li>
+<li><p><strong>statement_cache_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – The size of prepared statement LRU cache.  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to
 disable the cache.</p></li>
-<li><p><strong>max_cached_statement_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – The maximum time in seconds a prepared statement will stay
+<li><p><strong>max_cached_statement_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – The maximum time in seconds a prepared statement will stay
 in the cache.  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to allow statements be cached
 indefinitely.</p></li>
-<li><p><strong>max_cacheable_statement_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – The maximum size of a statement that can be cached (15KiB by
+<li><p><strong>max_cacheable_statement_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – The maximum size of a statement that can be cached (15KiB by
 default).  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to allow all statements to be cached
 regardless of their size.</p></li>
-<li><p><strong>command_timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – The default timeout for operations on this connection
+<li><p><strong>command_timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – The default timeout for operations on this connection
 (the default is <code class="docutils literal notranslate"><span class="pre">None</span></code>: no timeout).</p></li>
 <li><p><strong>ssl</strong> – <p>Pass <code class="docutils literal notranslate"><span class="pre">True</span></code> or an <a class="reference external" href="https://docs.python.org/3/library/ssl.html#ssl.SSLContext">ssl.SSLContext</a> instance to
 require an SSL connection.  If <code class="docutils literal notranslate"><span class="pre">True</span></code>, a default SSL context
@@ -334,12 +339,12 @@ to <code class="docutils literal notranslate"><span class="pre">sslmode=require<
 </pre></div>
 </div>
 </p></li>
-<li><p><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.9)"><em>dict</em></a>) – An optional dict of server runtime parameters.  Refer to
+<li><p><strong>server_settings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><em>dict</em></a>) – An optional dict of server runtime parameters.  Refer to
 PostgreSQL documentation for
 a <a class="reference external" href="https://www.postgresql.org/docs/current/static/runtime-config.html">list of supported options</a>.</p></li>
-<li><p><strong>connection_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.9)"><em>type</em></a>) – Class of the returned connection object.  Must be a subclass of
+<li><p><strong>connection_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.10)"><em>type</em></a>) – Class of the returned connection object.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</p></li>
-<li><p><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.9)"><em>type</em></a>) – If specified, the class to use for records returned by queries on
+<li><p><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.10)"><em>type</em></a>) – If specified, the class to use for records returned by queries on
 this connection object.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code></a>.</p></li>
 </ul>
@@ -392,6 +397,20 @@ and <em>host</em> arguments.</p>
 <p><span class="versionmodified changed">Changed in version 0.24.0: </span>The <code class="docutils literal notranslate"><span class="pre">sslcert</span></code>, <code class="docutils literal notranslate"><span class="pre">sslkey</span></code>, <code class="docutils literal notranslate"><span class="pre">sslrootcert</span></code>, and <code class="docutils literal notranslate"><span class="pre">sslcrl</span></code> options
 are supported in the <em>dsn</em> argument.</p>
 </div>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version 0.25.0: </span>The <code class="docutils literal notranslate"><span class="pre">sslpassword</span></code>, <code class="docutils literal notranslate"><span class="pre">ssl_min_protocol_version</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">ssl_max_protocol_version</span></code> options are supported in the <em>dsn</em>
+argument.</p>
+</div>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version 0.25.0: </span>Default system root CA certificates won’t be loaded when specifying a
+particular sslmode, following the same behavior in libpq.</p>
+</div>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version 0.25.0: </span>The <code class="docutils literal notranslate"><span class="pre">sslcert</span></code>, <code class="docutils literal notranslate"><span class="pre">sslkey</span></code>, <code class="docutils literal notranslate"><span class="pre">sslrootcert</span></code>, and <code class="docutils literal notranslate"><span class="pre">sslcrl</span></code> options
+in the <em>dsn</em> argument now have consistent default values of files under
+<code class="docutils literal notranslate"><span class="pre">~/.postgresql/</span></code> as libpq.</p>
+</div>
 </dd></dl>
 
 <dl class="py class">
@@ -406,7 +425,7 @@ are supported in the <em>dsn</em> argument.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>channel</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Channel to listen on.</p></li>
+<li><p><strong>channel</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Channel to listen on.</p></li>
 <li><p><strong>callback</strong> (<em>callable</em>) – A callable or a coroutine function receiving the following
 arguments:
 <strong>connection</strong>: a Connection the callback is registered with;
@@ -468,7 +487,7 @@ arguments:
 <dd><p>Close the connection gracefully.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p>
+<dd class="field-odd"><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p>
 </dd>
 </dl>
 <div class="versionchanged">
@@ -483,13 +502,13 @@ arguments:
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The query to copy the results of.</p></li>
+<li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – The query to copy the results of.</p></li>
 <li><p><strong>args</strong> – Query arguments.</p></li>
-<li><p><strong>output</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.9)"><span class="xref std std-term">path-like object</span></a>,
-or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.9)"><span class="xref std std-term">file-like object</span></a>, or
-a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-coroutine-function" title="(in Python v3.9)"><span class="xref std std-term">coroutine function</span></a>
+<li><p><strong>output</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.10)"><span class="xref std std-term">path-like object</span></a>,
+or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.10)"><span class="xref std std-term">file-like object</span></a>, or
+a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-coroutine-function" title="(in Python v3.10)"><span class="xref std std-term">coroutine function</span></a>
 that takes a <code class="docutils literal notranslate"><span class="pre">bytes</span></code> instance as a sole argument.</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
 </ul>
 </dd>
 </dl>
@@ -526,14 +545,14 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The name of the table to copy data from.</p></li>
-<li><p><strong>output</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.9)"><span class="xref std std-term">path-like object</span></a>,
-or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.9)"><span class="xref std std-term">file-like object</span></a>, or
-a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-coroutine-function" title="(in Python v3.9)"><span class="xref std std-term">coroutine function</span></a>
+<li><p><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – The name of the table to copy data from.</p></li>
+<li><p><strong>output</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.10)"><span class="xref std std-term">path-like object</span></a>,
+or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.10)"><span class="xref std std-term">file-like object</span></a>, or
+a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-coroutine-function" title="(in Python v3.10)"><span class="xref std std-term">coroutine function</span></a>
 that takes a <code class="docutils literal notranslate"><span class="pre">bytes</span></code> instance as a sole argument.</p></li>
-<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.9)"><em>list</em></a>) – An optional list of column names to copy.</p></li>
-<li><p><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – An optional schema name to qualify the table.</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
+<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a>) – An optional list of column names to copy.</p></li>
+<li><p><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – An optional schema name to qualify the table.</p></li>
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
 </ul>
 </dd>
 </dl>
@@ -570,13 +589,13 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The name of the table to copy data to.</p></li>
+<li><p><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – The name of the table to copy data to.</p></li>
 <li><p><strong>records</strong> – An iterable returning row tuples to copy into the table.
-<a class="reference external" href="https://docs.python.org/3/glossary.html#term-asynchronous-iterable" title="(in Python v3.9)"><span class="xref std std-term">Asynchronous iterables</span></a>
+<a class="reference external" href="https://docs.python.org/3/glossary.html#term-asynchronous-iterable" title="(in Python v3.10)"><span class="xref std std-term">Asynchronous iterables</span></a>
 are also supported.</p></li>
-<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.9)"><em>list</em></a>) – An optional list of column names to copy.</p></li>
-<li><p><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – An optional schema name to qualify the table.</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
+<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a>) – An optional list of column names to copy.</p></li>
+<li><p><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – An optional schema name to qualify the table.</p></li>
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -629,15 +648,15 @@ are also supported.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The name of the table to copy data to.</p></li>
-<li><p><strong>source</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.9)"><span class="xref std std-term">path-like object</span></a>,
-or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.9)"><span class="xref std std-term">file-like object</span></a>, or
-an <a class="reference external" href="https://docs.python.org/3/glossary.html#term-asynchronous-iterable" title="(in Python v3.9)"><span class="xref std std-term">asynchronous iterable</span></a>
+<li><p><strong>table_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – The name of the table to copy data to.</p></li>
+<li><p><strong>source</strong> – A <a class="reference external" href="https://docs.python.org/3/glossary.html#term-path-like-object" title="(in Python v3.10)"><span class="xref std std-term">path-like object</span></a>,
+or a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-file-like-object" title="(in Python v3.10)"><span class="xref std std-term">file-like object</span></a>, or
+an <a class="reference external" href="https://docs.python.org/3/glossary.html#term-asynchronous-iterable" title="(in Python v3.10)"><span class="xref std std-term">asynchronous iterable</span></a>
 that returns <code class="docutils literal notranslate"><span class="pre">bytes</span></code>, or an object supporting the
-<a class="reference external" href="https://docs.python.org/3/c-api/buffer.html#bufferobjects" title="(in Python v3.9)"><span class="xref std std-ref">buffer protocol</span></a>.</p></li>
-<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.9)"><em>list</em></a>) – An optional list of column names to copy.</p></li>
-<li><p><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – An optional schema name to qualify the table.</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
+<a class="reference external" href="https://docs.python.org/3/c-api/buffer.html#bufferobjects" title="(in Python v3.10)"><span class="xref std std-ref">buffer protocol</span></a>.</p></li>
+<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a>) – An optional list of column names to copy.</p></li>
+<li><p><strong>schema_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – An optional schema name to qualify the table.</p></li>
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
 </ul>
 </dd>
 </dl>
@@ -674,10 +693,10 @@ see <a class="reference external" href="https://www.postgresql.org/docs/current/
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>args</strong> – Query arguments.</p></li>
-<li><p><strong>prefetch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – The number of rows the <em>cursor iterator</em>
+<li><p><strong>prefetch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – The number of rows the <em>cursor iterator</em>
 will prefetch (defaults to <code class="docutils literal notranslate"><span class="pre">50</span></code>.)</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout in seconds.</p></li>
-<li><p><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.9)"><em>type</em></a>) – If specified, the class to use for records returned by this cursor.
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout in seconds.</p></li>
+<li><p><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.10)"><em>type</em></a>) – If specified, the class to use for records returned by this cursor.
 Must be a subclass of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code></a>.  If not specified,
 a per-connection <em>record_class</em> is used.</p></li>
 </ul>
@@ -693,7 +712,7 @@ a per-connection <em>record_class</em> is used.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="asyncpg.connection.Connection.execute">
-<em class="property"><span class="pre">coroutine</span> </em><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.connection.Connection.execute" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">coroutine</span> </em><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.connection.Connection.execute" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute an SQL command (or commands).</p>
 <p>This method can execute many SQL commands at once, when no arguments
 are provided.</p>
@@ -714,7 +733,7 @@ are provided.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>args</strong> – Query arguments.</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return str</dt>
@@ -728,7 +747,7 @@ are provided.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="asyncpg.connection.Connection.executemany">
-<em class="property"><span class="pre">coroutine</span> </em><span class="sig-name descname"><span class="pre">executemany</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.executemany"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.connection.Connection.executemany" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">coroutine</span> </em><span class="sig-name descname"><span class="pre">executemany</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.executemany"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.connection.Connection.executemany" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute an SQL <em>command</em> for each sequence of arguments in <em>args</em>.</p>
 <p>Example:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">executemany</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
@@ -741,7 +760,7 @@ are provided.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>command</strong> – Command to execute.</p></li>
 <li><p><strong>args</strong> – An iterable containing sequences of arguments.</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return None</dt>
@@ -765,15 +784,15 @@ would remain in place when an error has occurred, unless
 
 <dl class="py method">
 <dt class="sig sig-object py" id="asyncpg.connection.Connection.fetch">
-<em class="property"><span class="pre">coroutine</span> </em><span class="sig-name descname"><span class="pre">fetch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">record_class</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.9)"><span class="pre">list</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.fetch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.connection.Connection.fetch" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">coroutine</span> </em><span class="sig-name descname"><span class="pre">fetch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">record_class</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><span class="pre">list</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.fetch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.connection.Connection.fetch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run a query and return the results as a list of <code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Query text.</p></li>
+<li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Query text.</p></li>
 <li><p><strong>args</strong> – Query arguments.</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
-<li><p><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.9)"><em>type</em></a>) – If specified, the class to use for records returned by this method.
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
+<li><p><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.10)"><em>type</em></a>) – If specified, the class to use for records returned by this method.
 Must be a subclass of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code></a>.  If not specified,
 a per-connection <em>record_class</em> is used.</p></li>
 </ul>
@@ -795,10 +814,10 @@ actual type of list elements would be <em>record_class</em>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Query text</p></li>
+<li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Query text</p></li>
 <li><p><strong>args</strong> – Query arguments</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
-<li><p><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.9)"><em>type</em></a>) – If specified, the class to use for the value returned by this
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
+<li><p><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.10)"><em>type</em></a>) – If specified, the class to use for the value returned by this
 method.  Must be a subclass of <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code></a>.
 If not specified, a per-connection <em>record_class</em> is used.</p></li>
 </ul>
@@ -821,11 +840,11 @@ no records were returned by the query.  If specified,
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Query text.</p></li>
+<li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Query text.</p></li>
 <li><p><strong>args</strong> – Query arguments.</p></li>
-<li><p><strong>column</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – Numeric index within the record of the value to
+<li><p><strong>column</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Numeric index within the record of the value to
 return (defaults to 0).</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.
 If not specified, defaults to the value of
 <code class="docutils literal notranslate"><span class="pre">command_timeout</span></code> argument to the <code class="docutils literal notranslate"><span class="pre">Connection</span></code>
 instance constructor.</p></li>
@@ -899,14 +918,16 @@ otherwise.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="asyncpg.connection.Connection.prepare">
-<em class="property"><span class="pre">coroutine</span> </em><span class="sig-name descname"><span class="pre">prepare</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">record_class</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.prepare"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.connection.Connection.prepare" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">coroutine</span> </em><span class="sig-name descname"><span class="pre">prepare</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">record_class</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/connection.html#Connection.prepare"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.connection.Connection.prepare" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a <em>prepared statement</em> for the specified query.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Text of the query to create a prepared statement for.</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
-<li><p><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.9)"><em>type</em></a>) – If specified, the class to use for records returned by the
+<li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Text of the query to create a prepared statement for.</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Optional name of the returned prepared statement.  If not
+specified, the name is auto-generated.</p></li>
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
+<li><p><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.10)"><em>type</em></a>) – If specified, the class to use for records returned by the
 prepared statement.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code></a>.  If not specified, a per-connection
 <em>record_class</em> is used.</p></li>
@@ -918,6 +939,9 @@ prepared statement.  Must be a subclass of
 </dl>
 <div class="versionchanged">
 <p><span class="versionmodified changed">Changed in version 0.22.0: </span>Added the <em>record_class</em> parameter.</p>
+</div>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version 0.25.0: </span>Added the <em>name</em> parameter.</p>
 </div>
 </dd></dl>
 
@@ -1245,9 +1269,9 @@ or <code class="xref py py-meth docutils literal notranslate"><span class="pre">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>args</strong> – Query arguments.</p></li>
-<li><p><strong>prefetch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – The number of rows the <em>cursor iterator</em>
+<li><p><strong>prefetch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – The number of rows the <em>cursor iterator</em>
 will prefetch (defaults to <code class="docutils literal notranslate"><span class="pre">50</span></code>.)</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout in seconds.</p></li>
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout in seconds.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -1258,13 +1282,13 @@ will prefetch (defaults to <code class="docutils literal notranslate"><span clas
 
 <dl class="py method">
 <dt class="sig sig-object py" id="asyncpg.prepared_stmt.PreparedStatement.executemany">
-<span class="sig-name descname"><span class="pre">executemany</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><span class="pre">float</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.executemany"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.executemany" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">executemany</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.executemany"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.executemany" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute the statement for each sequence of arguments in <em>args</em>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>args</strong> – An iterable containing sequences of arguments.</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return None</dt>
@@ -1303,9 +1327,9 @@ is actually a deserialized JSON output of the SQL
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Query text</p></li>
+<li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Query text</p></li>
 <li><p><strong>args</strong> – Query arguments</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -1321,9 +1345,9 @@ is actually a deserialized JSON output of the SQL
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Query text</p></li>
+<li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Query text</p></li>
 <li><p><strong>args</strong> – Query arguments</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -1340,9 +1364,9 @@ is actually a deserialized JSON output of the SQL
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>args</strong> – Query arguments.</p></li>
-<li><p><strong>column</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – Numeric index within the record of the value to
+<li><p><strong>column</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Numeric index within the record of the value to
 return (defaults to 0).</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.
 If not specified, defaults to the value of
 <code class="docutils literal notranslate"><span class="pre">command_timeout</span></code> argument to the <code class="docutils literal notranslate"><span class="pre">Connection</span></code>
 instance constructor.</p></li>
@@ -1383,6 +1407,15 @@ instance constructor.</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="asyncpg.prepared_stmt.PreparedStatement.get_name">
+<span class="sig-name descname"><span class="pre">get_name</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.get_name"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.get_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the name of this prepared statement.</p>
+<div class="versionadded">
+<p><span class="versionmodified added">New in version 0.25.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="asyncpg.prepared_stmt.PreparedStatement.get_parameters">
 <span class="sig-name descname"><span class="pre">get_parameters</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.get_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.get_parameters" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a description of statement parameters types.</p>
@@ -1404,7 +1437,7 @@ instance constructor.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="asyncpg.prepared_stmt.PreparedStatement.get_query">
-<span class="sig-name descname"><span class="pre">get_query</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.get_query"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.get_query" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">get_query</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.get_query"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.get_query" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the text of the query for this prepared statement.</p>
 <p>Example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="s1">&#39;SELECT $1::int&#39;</span><span class="p">)</span>
@@ -1415,7 +1448,7 @@ instance constructor.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="asyncpg.prepared_stmt.PreparedStatement.get_statusmsg">
-<span class="sig-name descname"><span class="pre">get_statusmsg</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.get_statusmsg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.get_statusmsg" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">get_statusmsg</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/prepared_stmt.html#PreparedStatement.get_statusmsg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.prepared_stmt.PreparedStatement.get_statusmsg" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the status of the executed command.</p>
 <p>Example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="s1">&#39;CREATE TABLE mytab (a int)&#39;</span><span class="p">)</span>
@@ -1612,7 +1645,7 @@ fetch subsets of the query results.</p>
 <dd><p>Return the next <em>n</em> rows as a list of <code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code> objects.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p>
+<dd class="field-odd"><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p>A list of <code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code> instances.</p>
@@ -1626,7 +1659,7 @@ fetch subsets of the query results.</p>
 <dd><p>Return the next row.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p>
+<dd class="field-odd"><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code> instance.</p>
@@ -1636,11 +1669,11 @@ fetch subsets of the query results.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="asyncpg.cursor.Cursor.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/cursor.html#Cursor.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.cursor.Cursor.forward" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/cursor.html#Cursor.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.cursor.Cursor.forward" title="Permalink to this definition">¶</a></dt>
 <dd><p>Skip over the next <em>n</em> rows.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Optional timeout value in seconds.</p>
+<dd class="field-odd"><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Optional timeout value in seconds.</p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p>A number of rows actually skipped over (&lt;= <em>n</em>).</p>
@@ -1697,21 +1730,21 @@ connection that is being released to the pool.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dsn</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Connection arguments specified using as a single string in
+<li><p><strong>dsn</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Connection arguments specified using as a single string in
 the following format:
 <code class="docutils literal notranslate"><span class="pre">postgres://user:pass&#64;host:port/database?option=value</span></code>.</p></li>
 <li><p><strong>**connect_kwargs</strong> – Keyword arguments for the <a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">connect()</span></code></a>
 function.</p></li>
 <li><p><strong>connection_class</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – The class to use for connections.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</p></li>
-<li><p><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.9)"><em>type</em></a>) – If specified, the class to use for records returned by queries on
+<li><p><strong>record_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.10)"><em>type</em></a>) – If specified, the class to use for records returned by queries on
 the connections in this pool.  Must be a subclass of
 <a class="reference internal" href="#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code></a>.</p></li>
-<li><p><strong>min_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – Number of connection the pool will be initialized with.</p></li>
-<li><p><strong>max_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – Max number of connections in the pool.</p></li>
-<li><p><strong>max_queries</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – Number of queries after a connection is closed and replaced
+<li><p><strong>min_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Number of connection the pool will be initialized with.</p></li>
+<li><p><strong>max_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Max number of connections in the pool.</p></li>
+<li><p><strong>max_queries</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Number of queries after a connection is closed and replaced
 with a new connection.</p></li>
-<li><p><strong>max_inactive_connection_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Number of seconds after which inactive connections in the
+<li><p><strong>max_inactive_connection_lifetime</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Number of seconds after which inactive connections in the
 pool will be closed.  Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to disable this mechanism.</p></li>
 <li><p><strong>setup</strong> (<em>coroutine</em>) – A coroutine to prepare a connection right before it is returned
 from <code class="xref py py-meth docutils literal notranslate"><span class="pre">Pool.acquire()</span></code>.  An example use
@@ -1765,7 +1798,7 @@ open cursors and other resources <em>except</em> prepared statements.</p>
 <dd><p>Acquire a database connection from the pool.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – A timeout for acquiring a Connection.</p>
+<dd class="field-odd"><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – A timeout for acquiring a Connection.</p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p>An instance of <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a>.</p>
@@ -1794,7 +1827,7 @@ open cursors and other resources <em>except</em> prepared statements.</p>
 shut down the pool.  If any error (including cancellation) occurs
 in <code class="docutils literal notranslate"><span class="pre">close()</span></code> the pool will terminate by calling
 <code class="xref py py-meth docutils literal notranslate"><span class="pre">Pool.terminate()</span></code>.</p>
-<p>It is advisable to use <a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.wait_for" title="(in Python v3.9)"><code class="docutils literal notranslate"><span class="pre">asyncio.wait_for()</span></code></a> to set
+<p>It is advisable to use <a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.wait_for" title="(in Python v3.10)"><code class="docutils literal notranslate"><span class="pre">asyncio.wait_for()</span></code></a> to set
 a timeout.</p>
 <div class="versionchanged">
 <p><span class="versionmodified changed">Changed in version 0.16.0: </span><code class="docutils literal notranslate"><span class="pre">close()</span></code> now waits until all pool connections are released
@@ -1853,7 +1886,7 @@ that, it behaves identically to
 
 <dl class="py method">
 <dt class="sig sig-object py" id="asyncpg.pool.Pool.execute">
-<em class="property"><span class="pre">coroutine</span> </em><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.pool.Pool.execute" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">coroutine</span> </em><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.pool.Pool.execute" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute an SQL command (or commands).</p>
 <p>Pool performs this operation using one of its connections.  Other than
 that, it behaves identically to
@@ -1865,7 +1898,7 @@ that, it behaves identically to
 
 <dl class="py method">
 <dt class="sig sig-object py" id="asyncpg.pool.Pool.executemany">
-<em class="property"><span class="pre">coroutine</span> </em><span class="sig-name descname"><span class="pre">executemany</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.executemany"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.pool.Pool.executemany" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">coroutine</span> </em><span class="sig-name descname"><span class="pre">executemany</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.executemany"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.pool.Pool.executemany" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute an SQL <em>command</em> for each sequence of arguments in <em>args</em>.</p>
 <p>Pool performs this operation using one of its connections.  Other than
 that, it behaves identically to
@@ -1888,7 +1921,7 @@ next <a class="reference internal" href="#asyncpg.pool.Pool.acquire" title="asyn
 
 <dl class="py method">
 <dt class="sig sig-object py" id="asyncpg.pool.Pool.fetch">
-<em class="property"><span class="pre">coroutine</span> </em><span class="sig-name descname"><span class="pre">fetch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.9)"><span class="pre">list</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.fetch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.pool.Pool.fetch" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">coroutine</span> </em><span class="sig-name descname"><span class="pre">fetch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><span class="pre">list</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.fetch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.pool.Pool.fetch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run a query and return the results as a list of <code class="xref py py-class docutils literal notranslate"><span class="pre">Record</span></code>.</p>
 <p>Pool performs this operation using one of its connections.  Other than
 that, it behaves identically to
@@ -1923,6 +1956,42 @@ that, it behaves identically to
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="asyncpg.pool.Pool.get_idle_size">
+<span class="sig-name descname"><span class="pre">get_idle_size</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.get_idle_size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.pool.Pool.get_idle_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the current number of idle connections in this pool.</p>
+<div class="versionadded">
+<p><span class="versionmodified added">New in version 0.25.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="asyncpg.pool.Pool.get_max_size">
+<span class="sig-name descname"><span class="pre">get_max_size</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.get_max_size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.pool.Pool.get_max_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the maximum allowed number of connections in this pool.</p>
+<div class="versionadded">
+<p><span class="versionmodified added">New in version 0.25.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="asyncpg.pool.Pool.get_min_size">
+<span class="sig-name descname"><span class="pre">get_min_size</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.get_min_size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.pool.Pool.get_min_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the minimum number of connections in this pool.</p>
+<div class="versionadded">
+<p><span class="versionmodified added">New in version 0.25.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="asyncpg.pool.Pool.get_size">
+<span class="sig-name descname"><span class="pre">get_size</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.get_size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.pool.Pool.get_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the current number of connections in this pool.</p>
+<div class="versionadded">
+<p><span class="versionmodified added">New in version 0.25.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="asyncpg.pool.Pool.release">
 <em class="property"><span class="pre">coroutine</span> </em><span class="sig-name descname"><span class="pre">release</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">connection</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pool.html#Pool.release"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.pool.Pool.release" title="Permalink to this definition">¶</a></dt>
 <dd><p>Release a database connection back to the pool.</p>
@@ -1930,7 +1999,7 @@ that, it behaves identically to
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>connection</strong> (<a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><em>Connection</em></a>) – A <a class="reference internal" href="#asyncpg.connection.Connection" title="asyncpg.connection.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a> object to release.</p></li>
-<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – A timeout for releasing the connection.  If not specified, defaults
+<li><p><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – A timeout for releasing the connection.  If not specified, defaults
 to the timeout provided in the corresponding call to the
 <a class="reference internal" href="#asyncpg.pool.Pool.acquire" title="asyncpg.pool.Pool.acquire"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Pool.acquire()</span></code></a> method.</p></li>
 </ul>
@@ -1952,7 +2021,7 @@ expiry.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dsn</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Connection arguments specified using as a single string in
+<li><p><strong>dsn</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Connection arguments specified using as a single string in
 the following format:
 <code class="docutils literal notranslate"><span class="pre">postgres://user:pass&#64;host:port/database?option=value</span></code>.</p></li>
 <li><p><strong>**connect_kwargs</strong> – Keyword arguments for the <a class="reference internal" href="#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">connect()</span></code></a>
@@ -2101,27 +2170,27 @@ else return <em>default</em>. If <em>default</em> is not given, return <code cla
 
 <dl class="py class">
 <dt class="sig sig-object py" id="asyncpg.types.BitString">
-<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">BitString</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bitstring</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.9)"><span class="pre">bytes</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.BitString" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">BitString</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bitstring</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.10)"><span class="pre">bytes</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.BitString" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>bit</cite> and <cite>varbit</cite> types.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="asyncpg.types.BitString.from_int">
-<em class="property"><span class="pre">classmethod</span> </em><span class="sig-name descname"><span class="pre">from_int</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">length</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bitorder</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="pre">big</span><span class="p"><span class="pre">,</span> </span><span class="pre">little</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'big'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">signed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">asyncpg.pgproto.types._BitString</span></span></span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString.from_int"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.BitString.from_int" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-name descname"><span class="pre">from_int</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">length</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bitorder</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="pre">big</span><span class="p"><span class="pre">,</span> </span><span class="pre">little</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'big'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">signed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">asyncpg.pgproto.types._BitString</span></span></span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString.from_int"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.BitString.from_int" title="Permalink to this definition">¶</a></dt>
 <dd><p>Represent the Python int x as a BitString.
 Acts similarly to int.to_bytes.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – An integer to represent. Negative integers are represented in two’s
+<li><p><strong>x</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – An integer to represent. Negative integers are represented in two’s
 complement form, unless the argument signed is False, in which case
 negative integers raise an OverflowError.</p></li>
-<li><p><strong>length</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – The length of the resulting BitString. An OverflowError is raised
+<li><p><strong>length</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – The length of the resulting BitString. An OverflowError is raised
 if the integer is not representable in this many bits.</p></li>
 <li><p><strong>bitorder</strong> – Determines the bit order used in the BitString representation. By
 default, this function uses Postgres conventions for casting ints
 to bits. If bitorder is ‘big’, the most significant bit is at the
 start of the string (this is the same as the default). If bitorder
 is ‘little’, the most significant bit is at the end of the string.</p></li>
-<li><p><strong>signed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – Determines whether two’s complement is used in the BitString
+<li><p><strong>signed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – Determines whether two’s complement is used in the BitString
 representation. If signed is False and a negative integer is given,
 an OverflowError is raised.</p></li>
 </ul>
@@ -2138,7 +2207,7 @@ form specified by the other input args.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="asyncpg.types.BitString.to_int">
-<span class="sig-name descname"><span class="pre">to_int</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bitorder</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="pre">big</span><span class="p"><span class="pre">,</span> </span><span class="pre">little</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'big'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">signed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString.to_int"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.BitString.to_int" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">to_int</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bitorder</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="pre">big</span><span class="p"><span class="pre">,</span> </span><span class="pre">little</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'big'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">signed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#BitString.to_int"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.BitString.to_int" title="Permalink to this definition">¶</a></dt>
 <dd><p>Interpret the BitString as a Python int.
 Acts similarly to int.from_bytes.</p>
 <dl class="field-list simple">
@@ -2149,7 +2218,7 @@ default, this function uses Postgres conventions for casting bits
 to ints. If bitorder is ‘big’, the most significant bit is at the
 start of the string (this is the same as the default). If bitorder
 is ‘little’, the most significant bit is at the end of the string.</p></li>
-<li><p><strong>signed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – Determines whether two’s complement is used to interpret the
+<li><p><strong>signed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – Determines whether two’s complement is used to interpret the
 BitString. If signed is False, the returned value is always
 non-negative.</p></li>
 </ul>
@@ -2168,43 +2237,43 @@ the BitString’s exact length is lost.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="asyncpg.types.Box">
-<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">high</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">low</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Box"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.Box" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">high</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">low</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Box"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.Box" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>box</cite> type.</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="asyncpg.types.Circle">
-<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Circle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">center</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#asyncpg.types.Point" title="asyncpg.pgproto.types.Point"><span class="pre">asyncpg.pgproto.types.Point</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Circle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.Circle" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Circle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">center</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#asyncpg.types.Point" title="asyncpg.pgproto.types.Point"><span class="pre">asyncpg.pgproto.types.Point</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Circle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.Circle" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>circle</cite> type.</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="asyncpg.types.Line">
-<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Line</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">B</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">C</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Line"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.Line" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Line</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">B</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">C</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Line"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.Line" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>line</cite> type.</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="asyncpg.types.LineSegment">
-<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">LineSegment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p1</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#LineSegment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.LineSegment" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">LineSegment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p1</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#LineSegment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.LineSegment" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>lseg</cite> type.</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="asyncpg.types.Path">
-<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_closed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.Path" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_closed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.Path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>path</cite> type.</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="asyncpg.types.Point">
-<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">SupportsFloat</span><span class="p"><span class="pre">,</span> </span><span class="pre">SupportsIndex</span><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.9)"><span class="pre">bytes</span></a><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytearray" title="(in Python v3.9)"><span class="pre">bytearray</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">SupportsFloat</span><span class="p"><span class="pre">,</span> </span><span class="pre">SupportsIndex</span><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.9)"><span class="pre">bytes</span></a><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytearray" title="(in Python v3.9)"><span class="pre">bytearray</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Point"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.Point" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">SupportsFloat</span><span class="p"><span class="pre">,</span> </span><span class="pre">SupportsIndex</span><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.10)"><span class="pre">bytes</span></a><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytearray" title="(in Python v3.10)"><span class="pre">bytearray</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">SupportsFloat</span><span class="p"><span class="pre">,</span> </span><span class="pre">SupportsIndex</span><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.10)"><span class="pre">bytes</span></a><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytearray" title="(in Python v3.10)"><span class="pre">bytearray</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Point"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.Point" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>point</cite> type.</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="asyncpg.types.Polygon">
-<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Polygon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Polygon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.Polygon" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Polygon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/asyncpg/pgproto/types.html#Polygon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asyncpg.types.Polygon" title="Permalink to this definition">¶</a></dt>
 <dd><p>Immutable representation of PostgreSQL <cite>polygon</cite> type.</p>
 </dd></dl>
 

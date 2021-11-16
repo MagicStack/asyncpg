@@ -63,7 +63,7 @@
             
             
               <div class="version">
-                0.24.0
+                0.25.0
               </div>
             
           
@@ -278,6 +278,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># type: asyncio.Future</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_generation</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">is_connected</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span><span class="o">.</span><span class="n">is_closed</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">is_idle</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -604,6 +610,34 @@
                     <span class="n">connect_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">connect</span><span class="p">())</span>
 
                 <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">connect_tasks</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Pool.get_size"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.get_size">[docs]</a>    <span class="k">def</span> <span class="nf">get_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the current number of connections in this pool.</span>
+
+<span class="sd">        .. versionadded:: 0.25.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">is_connected</span><span class="p">()</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_holders</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Pool.get_min_size"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.get_min_size">[docs]</a>    <span class="k">def</span> <span class="nf">get_min_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the minimum number of connections in this pool.</span>
+
+<span class="sd">        .. versionadded:: 0.25.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_minsize</span></div>
+
+<div class="viewcode-block" id="Pool.get_max_size"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.get_max_size">[docs]</a>    <span class="k">def</span> <span class="nf">get_max_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the maximum allowed number of connections in this pool.</span>
+
+<span class="sd">        .. versionadded:: 0.25.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxsize</span></div>
+
+<div class="viewcode-block" id="Pool.get_idle_size"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.get_idle_size">[docs]</a>    <span class="k">def</span> <span class="nf">get_idle_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the current number of idle connections in this pool.</span>
+
+<span class="sd">        .. versionadded:: 0.25.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">is_connected</span><span class="p">()</span> <span class="ow">and</span> <span class="n">h</span><span class="o">.</span><span class="n">is_idle</span><span class="p">()</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_holders</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Pool.set_connect_args"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.set_connect_args">[docs]</a>    <span class="k">def</span> <span class="nf">set_connect_args</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dsn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">connect_kwargs</span><span class="p">):</span>
         <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Set the new connection arguments for this pool.</span>

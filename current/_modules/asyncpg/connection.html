@@ -63,7 +63,7 @@
             
             
               <div class="version">
-                0.24.0
+                0.25.0
               </div>
             
           
@@ -255,7 +255,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_server_caps</span> <span class="o">=</span> <span class="n">_detect_server_capabilities</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_server_version</span><span class="p">,</span> <span class="n">settings</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span> <span class="o">=</span> <span class="n">introspection</span><span class="o">.</span><span class="n">INTRO_LOOKUP_TYPES</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_version</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span> <span class="o">=</span> <span class="n">introspection</span><span class="o">.</span><span class="n">INTRO_LOOKUP_TYPES_13</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_intro_query</span> <span class="o">=</span> <span class="n">introspection</span><span class="o">.</span><span class="n">INTRO_LOOKUP_TYPES</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_reset_query</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_proxy</span> <span class="o">=</span> <span class="kc">None</span>
@@ -520,8 +523,8 @@
         <span class="n">query</span><span class="p">,</span>
         <span class="n">timeout</span><span class="p">,</span>
         <span class="o">*</span><span class="p">,</span>
-        <span class="n">named</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">use_cache</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">named</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">use_cache</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">ignore_custom_codec</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
@@ -546,7 +549,9 @@
                     <span class="nb">len</span><span class="p">(</span><span class="n">query</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">max_cacheable_statement_size</span><span class="p">):</span>
                 <span class="n">use_cache</span> <span class="o">=</span> <span class="kc">False</span>
 
-        <span class="k">if</span> <span class="n">use_cache</span> <span class="ow">or</span> <span class="n">named</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">named</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">stmt_name</span> <span class="o">=</span> <span class="n">named</span>
+        <span class="k">elif</span> <span class="n">use_cache</span> <span class="ow">or</span> <span class="n">named</span><span class="p">:</span>
             <span class="n">stmt_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">(</span><span class="s1">&#39;stmt&#39;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">stmt_name</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
@@ -687,11 +692,21 @@
             <span class="n">record_class</span><span class="p">,</span>
         <span class="p">)</span></div>
 
-<div class="viewcode-block" id="Connection.prepare"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.prepare">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="Connection.prepare"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.prepare">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">query</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create a *prepared statement* for the specified query.</span>
 
 <span class="sd">        :param str query:</span>
 <span class="sd">            Text of the query to create a prepared statement for.</span>
+<span class="sd">        :param str name:</span>
+<span class="sd">            Optional name of the returned prepared statement.  If not</span>
+<span class="sd">            specified, the name is auto-generated.</span>
 <span class="sd">        :param float timeout:</span>
 <span class="sd">            Optional timeout value in seconds.</span>
 <span class="sd">        :param type record_class:</span>
@@ -705,9 +720,13 @@
 
 <span class="sd">        .. versionchanged:: 0.22.0</span>
 <span class="sd">            Added the *record_class* parameter.</span>
+
+<span class="sd">        .. versionchanged:: 0.25.0</span>
+<span class="sd">            Added the *name* parameter.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare</span><span class="p">(</span>
             <span class="n">query</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
             <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
             <span class="n">use_cache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
@@ -717,6 +736,7 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">query</span><span class="p">,</span>
         <span class="o">*</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">use_cache</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
@@ -725,7 +745,7 @@
         <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_statement</span><span class="p">(</span>
             <span class="n">query</span><span class="p">,</span>
             <span class="n">timeout</span><span class="p">,</span>
-            <span class="n">named</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">named</span><span class="o">=</span><span class="kc">True</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">name</span><span class="p">,</span>
             <span class="n">use_cache</span><span class="o">=</span><span class="n">use_cache</span><span class="p">,</span>
             <span class="n">record_class</span><span class="o">=</span><span class="n">record_class</span><span class="p">,</span>
         <span class="p">)</span>
@@ -1957,7 +1977,13 @@
 <span class="sd">        .. note::</span>
 
 <span class="sd">           The URI must be *valid*, which means that all components must</span>
-<span class="sd">           be properly quoted with :py:func:`urllib.parse.quote`.</span>
+<span class="sd">           be properly quoted with :py:func:`urllib.parse.quote`, and</span>
+<span class="sd">           any literal IPv6 addresses must be enclosed in square brackets.</span>
+<span class="sd">           For example:</span>
+
+<span class="sd">           .. code-block:: text</span>
+
+<span class="sd">              postgres://dbuser@[fe80::1ff:fe23:4567:890a%25eth0]/dbname</span>
 
 <span class="sd">    :param host:</span>
 <span class="sd">        Database host address as one of the following:</span>
@@ -2002,7 +2028,7 @@
 
 <span class="sd">        If not specified, the value parsed from the *dsn* argument is used,</span>
 <span class="sd">        or the value of the ``PGDATABASE`` environment variable, or the</span>
-<span class="sd">        operating system name of the user running the application.</span>
+<span class="sd">        computed value of the *user* argument.</span>
 
 <span class="sd">    :param password:</span>
 <span class="sd">        Password to be used for authentication, if the server requires</span>
@@ -2180,6 +2206,20 @@
 <span class="sd">    .. versionchanged:: 0.24.0</span>
 <span class="sd">       The ``sslcert``, ``sslkey``, ``sslrootcert``, and ``sslcrl`` options</span>
 <span class="sd">       are supported in the *dsn* argument.</span>
+
+<span class="sd">    .. versionchanged:: 0.25.0</span>
+<span class="sd">       The ``sslpassword``, ``ssl_min_protocol_version``,</span>
+<span class="sd">       and ``ssl_max_protocol_version`` options are supported in the *dsn*</span>
+<span class="sd">       argument.</span>
+
+<span class="sd">    .. versionchanged:: 0.25.0</span>
+<span class="sd">       Default system root CA certificates won&#39;t be loaded when specifying a</span>
+<span class="sd">       particular sslmode, following the same behavior in libpq.</span>
+
+<span class="sd">    .. versionchanged:: 0.25.0</span>
+<span class="sd">       The ``sslcert``, ``sslkey``, ``sslrootcert``, and ``sslcrl`` options</span>
+<span class="sd">       in the *dsn* argument now have consistent default values of files under</span>
+<span class="sd">       ``~/.postgresql/`` as libpq.</span>
 
 <span class="sd">    .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext</span>
 <span class="sd">    .. _create_default_context:</span>

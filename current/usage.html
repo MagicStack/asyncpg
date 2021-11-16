@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                0.24.0
+                0.25.0
               </div>
             
           
@@ -238,121 +238,129 @@ more information.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">anyarray</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">anyenum</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">anyrange</span></code></p></td>
-<td><p><a class="reference internal" href="api/index.html#asyncpg.types.Range" title="asyncpg.types.Range"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Range</span></code></a></p></td>
+<td><p><a class="reference internal" href="api/index.html#asyncpg.types.Range" title="asyncpg.types.Range"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Range</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">record</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">anymultirange</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">list[</span></code><a class="reference internal" href="api/index.html#asyncpg.types.Range" title="asyncpg.types.Range"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Range</span></code></a> <code class="docutils literal notranslate"><span class="pre">]</span></code>,
+<code class="docutils literal notranslate"><span class="pre">list[</span></code><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a> <code class="docutils literal notranslate"><span class="pre">]</span></code> <a class="footnote-reference brackets" href="#f1" id="id1">1</a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">record</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Record</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Mapping</span></code></a></p></td>
+<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Mapping</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">bit</span></code>, <code class="docutils literal notranslate"><span class="pre">varbit</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">bit</span></code>, <code class="docutils literal notranslate"><span class="pre">varbit</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.BitString" title="asyncpg.types.BitString"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.BitString</span></code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">box</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">box</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.Box" title="asyncpg.types.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Box</span></code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">bytea</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">bytea</span></code></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">char</span></code>, <code class="docutils literal notranslate"><span class="pre">name</span></code>,
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">char</span></code>, <code class="docutils literal notranslate"><span class="pre">name</span></code>,
 <code class="docutils literal notranslate"><span class="pre">varchar</span></code>,
 <code class="docutils literal notranslate"><span class="pre">text</span></code>,
 <code class="docutils literal notranslate"><span class="pre">xml</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cidr</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Network" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv4Network</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Network" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Network</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">cidr</span></code></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Network" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv4Network</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Network" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Network</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">inet</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Interface" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv4Interface</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Interface" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Interface</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Address" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv4Address</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Address" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Address</span></code></a> <a class="footnote-reference brackets" href="#f1" id="id1">1</a></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">inet</span></code></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Interface" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv4Interface</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Interface" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Interface</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Address" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv4Address</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Address" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Address</span></code></a> <a class="footnote-reference brackets" href="#f2" id="id2">2</a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">macaddr</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">macaddr</span></code></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">circle</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">circle</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.Circle" title="asyncpg.types.Circle"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Circle</span></code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">date</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.date" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.date</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">date</span></code></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.date" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.date</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">time</span></code></p></td>
-<td><p>offset-naïve <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.time" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.time</span> </code></a></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">time</span></code></p></td>
+<td><p>offset-naïve <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.time" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.time</span> </code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">time</span> <span class="pre">with</span>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">time</span> <span class="pre">with</span>
 <span class="pre">time</span> <span class="pre">zone</span></code></p></td>
-<td><p>offset-aware <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.time" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.time</span> </code></a></p></td>
+<td><p>offset-aware <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.time" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.time</span> </code></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">timestamp</span></code></p></td>
-<td><p>offset-naïve <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.datetime</span> </code></a></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">timestamp</span></code></p></td>
+<td><p>offset-naïve <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.datetime</span> </code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">timestamp</span> <span class="pre">with</span>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">timestamp</span> <span class="pre">with</span>
 <span class="pre">time</span> <span class="pre">zone</span></code></p></td>
-<td><p>offset-aware <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.datetime</span> </code></a></p></td>
+<td><p>offset-aware <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.datetime</span> </code></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">interval</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.timedelta" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.timedelta</span> </code></a></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">interval</span></code></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.timedelta" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.timedelta</span> </code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">float</span></code>,
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">float</span></code>,
 <code class="docutils literal notranslate"><span class="pre">double</span> <span class="pre">precision</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> <a class="footnote-reference brackets" href="#f2" id="id2">2</a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> <a class="footnote-reference brackets" href="#f3" id="id3">3</a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">smallint</span></code>,
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">smallint</span></code>,
 <code class="docutils literal notranslate"><span class="pre">integer</span></code>,
 <code class="docutils literal notranslate"><span class="pre">bigint</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">numeric</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/decimal.html#decimal.Decimal" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Decimal</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">numeric</span></code></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/decimal.html#decimal.Decimal" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Decimal</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">json</span></code>, <code class="docutils literal notranslate"><span class="pre">jsonb</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">json</span></code>, <code class="docutils literal notranslate"><span class="pre">jsonb</span></code></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">line</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">line</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.Line" title="asyncpg.types.Line"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Line</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">lseg</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">lseg</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.LineSegment" title="asyncpg.types.LineSegment"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.LineSegment</span> </code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">money</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">money</span></code></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">path</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">path</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.Path" title="asyncpg.types.Path"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Path</span></code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">point</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">point</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.Point" title="asyncpg.types.Point"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Point</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">polygon</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">polygon</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.Polygon" title="asyncpg.types.Polygon"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Polygon</span></code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">uuid</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/uuid.html#uuid.UUID" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">uuid.UUID</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">uuid</span></code></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/uuid.html#uuid.UUID" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">uuid.UUID</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">tid</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tid</span></code></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p></td>
 </tr>
 </tbody>
 </table>
 <p>All other types are encoded and decoded as text by default.</p>
 <dl class="footnote brackets">
 <dt class="label" id="f1"><span class="brackets"><a class="fn-backref" href="#id1">1</a></span></dt>
+<dd><p>Since version 0.25.0</p>
+</dd>
+<dt class="label" id="f2"><span class="brackets"><a class="fn-backref" href="#id2">2</a></span></dt>
 <dd><p>Prior to version 0.20.0, asyncpg erroneously treated <code class="docutils literal notranslate"><span class="pre">inet</span></code> values
 with prefix as <code class="docutils literal notranslate"><span class="pre">IPvXNetwork</span></code> instead of <code class="docutils literal notranslate"><span class="pre">IPvXInterface</span></code>.</p>
 </dd>
-<dt class="label" id="f2"><span class="brackets"><a class="fn-backref" href="#id2">2</a></span></dt>
+<dt class="label" id="f3"><span class="brackets"><a class="fn-backref" href="#id3">3</a></span></dt>
 <dd><p>Inexact single-precision <code class="docutils literal notranslate"><span class="pre">float</span></code> values may have a different
 representation when decoded into a Python float.  This is inherent
 to the implementation of limited-precision floating point types.
@@ -369,7 +377,7 @@ and user-defined types using the <a class="reference internal" href="api/index.h
 <div class="section" id="example-automatic-json-conversion">
 <h3>Example: automatic JSON conversion<a class="headerlink" href="#example-automatic-json-conversion" title="Permalink to this headline">¶</a></h3>
 <p>The example below shows how to configure asyncpg to encode and decode
-JSON values using the <a class="reference external" href="https://docs.python.org/3/library/json.html#module-json" title="(in Python v3.9)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">json</span></code></a> module.</p>
+JSON values using the <a class="reference external" href="https://docs.python.org/3/library/json.html#module-json" title="(in Python v3.10)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">json</span></code></a> module.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">asyncio</span>
 <span class="kn">import</span> <span class="nn">asyncpg</span>
 <span class="kn">import</span> <span class="nn">json</span>
@@ -451,7 +459,7 @@ will work.</p>
 <div class="section" id="example-decoding-numeric-columns-as-floats">
 <h3>Example: decoding numeric columns as floats<a class="headerlink" href="#example-decoding-numeric-columns-as-floats" title="Permalink to this headline">¶</a></h3>
 <p>By default asyncpg decodes numeric columns as Python
-<a class="reference external" href="https://docs.python.org/3/library/decimal.html#decimal.Decimal" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Decimal</span></code></a> instances.  The example below
+<a class="reference external" href="https://docs.python.org/3/library/decimal.html#decimal.Decimal" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Decimal</span></code></a> instances.  The example below
 shows how to instruct asyncpg to use floats instead.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">asyncio</span>
 <span class="kn">import</span> <span class="nn">asyncpg</span>
