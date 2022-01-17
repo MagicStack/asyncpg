@@ -399,20 +399,26 @@ Web service that computes the requested power of two.
                     text="2 ^ {} is {}".format(power, result))
 
 
-    async def init_app():
+    async def init_db(app):
+        """Initialize a connection pool."""
+         app['pool'] = await asyncpg.create_pool(database='postgres',
+                                                 user='postgres')
+         yield
+         app['pool'].close()
+
+ 
+    def init_app():
         """Initialize the application server."""
         app = web.Application()
-        # Create a database connection pool
-        app['pool'] = await asyncpg.create_pool(database='postgres',
-                                                user='postgres')
+        # Create a database context
+        app.cleanup_ctx.append(init_db)
         # Configure service routes
         app.router.add_route('GET', '/{power:\d+}', handle)
         app.router.add_route('GET', '/', handle)
         return app
 
 
-    loop = asyncio.get_event_loop()
-    app = loop.run_until_complete(init_app())
+    app = init_app()
     web.run_app(app)
 
 See :ref:`asyncpg-api-pool` API documentation for more information.
