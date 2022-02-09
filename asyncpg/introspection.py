@@ -109,6 +109,7 @@ AS (
         (tt.elemtype IS NOT NULL AND ti.oid = tt.elemtype)
         OR (tt.attrtypoids IS NOT NULL AND ti.oid = any(tt.attrtypoids))
         OR (tt.range_subtype IS NOT NULL AND ti.oid = tt.range_subtype)
+        OR (tt.basetype IS NOT NULL AND ti.oid = tt.basetype)
 )
 
 SELECT DISTINCT
@@ -232,6 +233,7 @@ AS (
         (tt.elemtype IS NOT NULL AND ti.oid = tt.elemtype)
         OR (tt.attrtypoids IS NOT NULL AND ti.oid = any(tt.attrtypoids))
         OR (tt.range_subtype IS NOT NULL AND ti.oid = tt.range_subtype)
+        OR (tt.basetype IS NOT NULL AND ti.oid = tt.basetype)
 )
 
 SELECT DISTINCT
