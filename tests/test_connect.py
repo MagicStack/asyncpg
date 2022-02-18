@@ -301,7 +301,6 @@ class TestAuthentication(tb.ConnectedTestCase):
                 user='password_user',
                 password=lambda: get_wrongpassword())
 
-
     async def test_auth_password_md5(self):
         conn = await self.connect(
             user='md5_user', password='correctpassword')
