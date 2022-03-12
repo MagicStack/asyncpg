@@ -576,7 +576,13 @@ class Pool:
         async with self.acquire() as con:
             return await con.executemany(command, args, timeout=timeout)
 
-    async def fetch(self, query, *args, timeout=None) -> list:
+    async def fetch(
+        self,
+        query,
+        *args,
+        timeout=None,
+        record_class=None
+    ) -> list:
         """Run a query and return the results as a list of :class:`Record`.
 
         Pool performs this operation using one of its connections.  Other than
@@ -586,7 +592,12 @@ class Pool:
         .. versionadded:: 0.10.0
         """
         async with self.acquire() as con:
-            return await con.fetch(query, *args, timeout=timeout)
+            return await con.fetch(
+                query,
+                *args,
+                timeout=timeout,
+                record_class=record_class
+            )
 
     async def fetchval(self, query, *args, column=0, timeout=None):
         """Run a query and return a value in the first row.
@@ -602,7 +613,7 @@ class Pool:
             return await con.fetchval(
                 query, *args, column=column, timeout=timeout)
 
-    async def fetchrow(self, query, *args, timeout=None):
+    async def fetchrow(self, query, *args, timeout=None, record_class=None):
         """Run a query and return the first row.
 
         Pool performs this operation using one of its connections.  Other than
@@ -612,7 +623,12 @@ class Pool:
         .. versionadded:: 0.10.0
         """
         async with self.acquire() as con:
-            return await con.fetchrow(query, *args, timeout=timeout)
+            return await con.fetchrow(
+                query,
+                *args,
+                timeout=timeout,
+                record_class=record_class
+            )
 
     async def copy_from_table(
         self,
