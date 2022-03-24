@@ -1,4 +1,5 @@
 [project]
+name = "asyncpg"
 requires-python = ">=3.6"
 
 [build-system]
