@@ -757,10 +757,9 @@ async def _connect_addr(
 
     params_input = params
     if callable(params.password):
-        if inspect.iscoroutinefunction(params.password):
-            password = await params.password()
-        else:
-            password = params.password()
+        password = params.password()
+        if inspect.isawaitable(password):
+            password = await password
 
         params = params._replace(password=password)
     args = (addr, loop, config, connection_class, record_class, params_input)
