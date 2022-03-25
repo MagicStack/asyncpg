@@ -190,3 +190,26 @@ class TestIntrospection(tb.ConnectedTestCase):
                 DROP DOMAIN intro_2_t;
             ''')
             await slow_intro_conn.close()
+
+    @tb.with_connection_options(database='asyncpg_intro_test')
+    async def test_introspection_loads_basetypes_of_domains(self):
+        # Test that basetypes of domains are loaded to the
+        # client encode/decode cache
+        await self.con.execute('''
+            DROP TABLE IF EXISTS test;
+            DROP DOMAIN IF EXISTS num_array;
+            CREATE DOMAIN num_array numeric[];
+            CREATE TABLE test (
+                num num_array
+            );
+        ''')
+
+        try:
+            # if domain basetypes are not loaded, this insert will fail
+            await self.con.execute(
+                'INSERT INTO test (num) VALUES ($1)', ([1, 2],))
+        finally:
+            await self.con.execute('''
+                DROP TABLE IF EXISTS test;
+                DROP DOMAIN IF EXISTS num_array;
+            ''')
