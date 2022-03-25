@@ -206,7 +206,8 @@ class TestIntrospection(tb.ConnectedTestCase):
 
         try:
             # if domain basetypes are not loaded, this insert will fail
-            await self.con.execute('INSERT INTO test (num) VALUES ($1)', ([1, 2],))
+            await self.con.execute(
+                'INSERT INTO test (num) VALUES ($1)', ([1, 2],))
         finally:
             await self.con.execute('''
                 DROP TABLE IF EXISTS test;
