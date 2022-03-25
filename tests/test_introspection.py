@@ -193,8 +193,8 @@ class TestIntrospection(tb.ConnectedTestCase):
 
     @tb.with_connection_options(database='asyncpg_intro_test')
     async def test_introspection_loads_basetypes_of_domains(self):
-        # Test that basetypes of domains are loaded to the client encode/decode
-        # cache
+        # Test that basetypes of domains are loaded to the 
+        # client encode/decode cache
         await self.con.execute('''
             DROP TABLE IF EXISTS test;
             DROP DOMAIN IF EXISTS num_array;
