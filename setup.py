@@ -17,9 +17,10 @@ import platform
 import re
 import subprocess
 
+import setuptools
+
 # We use vanilla build_ext, to avoid importing Cython via
 # the setuptools version.
-import setuptools
 from setuptools.command import build_py as setuptools_build_py
 from setuptools.command import sdist as setuptools_sdist
 from setuptools.command import build_ext as setuptools_build_ext
@@ -35,10 +36,6 @@ if platform.uname().system != 'Windows':
 
 
 _ROOT = pathlib.Path(__file__).parent
-
-
-with open(str(_ROOT / 'README.rst')) as f:
-    readme = f.read()
 
 
 with open(str(_ROOT / 'asyncpg' / '_version.py')) as f:

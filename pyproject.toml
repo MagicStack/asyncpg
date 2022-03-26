@@ -28,7 +28,10 @@ classifiers = [
 ]
 
 [project.urls]
-github = "https://github.com/MagicStack/asyncpg"
+homepage = "https://github.com/MagicStack/asyncpg"
+documentation = "https://magicstack.github.io/asyncpg/current/"
+repository = "https://github.com/MagicStack/asyncpg"
+changelog = "https://github.com/MagicStack/asyncpg/releases"
 
 [project.optional-dependencies]
 test = [
@@ -43,7 +46,7 @@ docs = [
 
 [build-system]
 requires = [
-    "setuptools>=60",
+    "setuptools>=61",
     "wheel",
 
     "Cython(>=0.29.24,<0.30.0)"
@@ -51,6 +54,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
+platforms = ["macOS", "POSIX", "Windows"]
 zip-safe = false
 
 [tool.setuptools.packages.find]
