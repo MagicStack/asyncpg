@@ -359,8 +359,13 @@ class TestAuthentication(tb.ConnectedTestCase):
         await self.con.execute(alter_password)
         await self.con.execute("SET password_encryption = 'md5';")
 
-    async def test_auth_unsupported(self):
-        pass
+    @unittest.mock.patch('hashlib.md5', side_effect=ValueError("no md5"))
+    async def test_auth_md5_unsupported(self, _):
+        with self.assertRaisesRegex(
+            exceptions.InternalClientError,
+            ".*no md5.*",
+        ):
+            await self.connect(user='md5_user', password='correctpassword')
 
 
 class TestConnectParams(tb.TestCase):
