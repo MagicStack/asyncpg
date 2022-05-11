@@ -670,6 +670,11 @@ class TestCodecs(tb.ConnectedTestCase):
             ''')
 
     async def test_invalid_input(self):
+        # The latter message appears beginning in Python 3.10.
+        integer_required = (
+            r"(an integer is required|"
+            r"\('str' object cannot be interpreted as an integer\))")
+
         cases = [
             ('bytea', 'a bytes-like object is required', [
                 1,
@@ -678,7 +683,7 @@ class TestCodecs(tb.ConnectedTestCase):
             ('bool', 'a boolean is required', [
                 1,
             ]),
-            ('int2', 'an integer is required', [
+            ('int2', integer_required, [
                 '2',
                 'aa',
             ]),
@@ -694,7 +699,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 4.1 * 10 ** 40,
                 -4.1 * 10 ** 40,
             ]),
-            ('int4', 'an integer is required', [
+            ('int4', integer_required, [
                 '2',
                 'aa',
             ]),
@@ -705,7 +710,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 2**31,
                 -2**31 - 1,
             ]),
-            ('int8', 'an integer is required', [
+            ('int8', integer_required, [
                 '2',
                 'aa',
             ]),
@@ -1036,6 +1041,59 @@ class TestCodecs(tb.ConnectedTestCase):
         for obj_a, obj_b, count in cases:
             dic = {obj_a: 1, obj_b: 2}
             self.assertEqual(len(dic), count)
+
+    async def test_multirange_types(self):
+        """Test encoding/decoding of multirange types."""
+
+        if self.server_version < (14, 0):
+            self.skipTest("this server does not support multirange types")
+
+        cases = [
+            ('int4multirange', [
+                [
+                    [],
+                    []
+                ],
+                [
+                    [()],
+                    []
+                ],
+                [
+                    [asyncpg.Range(empty=True)],
+                    []
+                ],
+                [
+                    [asyncpg.Range(0, 9, lower_inc=False, upper_inc=True)],
+                    [asyncpg.Range(1, 10)]
+                ],
+                [
+                    [(1, 9), (9, 11)],
+                    [asyncpg.Range(1, 12)]
+                ],
+                [
+                    [(1, 9), (20, 30)],
+                    [asyncpg.Range(1, 10), asyncpg.Range(20, 31)]
+                ],
+                [
+                    [(None, 2)],
+                    [asyncpg.Range(None, 3)],
+                ]
+            ])
+        ]
+
+        for (typname, sample_data) in cases:
+            st = await self.con.prepare(
+                "SELECT $1::" + typname
+            )
+
+            for sample, expected in sample_data:
+                with self.subTest(sample=sample, typname=typname):
+                    result = await st.fetchval(sample)
+                    self.assertEqual(result, expected)
+
+        with self.assertRaisesRegex(
+                asyncpg.DataError, 'expected a sequence'):
+            await self.con.fetch("SELECT $1::int4multirange", 1)
 
     async def test_extra_codec_alias(self):
         """Test encoding/decoding of a builtin non-pg_catalog codec."""
@@ -1494,7 +1552,7 @@ class TestCodecs(tb.ConnectedTestCase):
                 await self.con.execute("SET TIME ZONE 'America/Toronto'")
                 # Check decoding:
                 row = await self.con.fetchrow(
-                    'SELECT extract(epoch from now()) AS epoch, '
+                    'SELECT extract(epoch from now())::float8 AS epoch, '
                     'now()::date as date, now()::timetz as time')
                 result = datetime.datetime.combine(row['date'], row['time'])
                 expected = datetime.datetime.fromtimestamp(row['epoch'],

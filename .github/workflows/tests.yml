@@ -17,14 +17,16 @@ jobs:
     # job.
     strategy:
       matrix:
-        python-version: [3.5, 3.6, 3.7, 3.8, 3.9]
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
         os: [ubuntu-latest, macos-latest, windows-latest]
+        loop: [asyncio, uvloop]
         exclude:
-          # Python 3.5 is unable to properly
-          # find the recent VS tooling
-          # https://bugs.python.org/issue30389
-          - os: windows-latest
-            python-version: 3.5
+          # uvloop does not support Python 3.6
+          - loop: uvloop
+            python-version: "3.6"
+          # uvloop does not support windows
+          - loop: uvloop
+            os: windows-latest
 
     runs-on: ${{ matrix.os }}
 
@@ -32,67 +34,70 @@ jobs:
       run:
         shell: bash
 
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: 1
+
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
         fetch-depth: 50
         submodules: true
 
     - name: Check if release PR.
       uses: edgedb/action-release/validate-pr@master
-      continue-on-error: true
       id: release
       with:
         github_token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
+        missing_version_ok: yes
         version_file: asyncpg/_version.py
         version_line_pattern: |
           __version__\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v2
       if: steps.release.outputs.version == 0
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Configure PostgreSQL Environment
-      if: matrix.os == 'windows-latest'
-      run: |
-        echo PGINSTALLATION="${PGBIN}" >> "${GITHUB_ENV}"
-
     - name: Install Python Deps
       if: steps.release.outputs.version == 0
       run: |
-        pip install -e .[test]
+        python -m pip install -U pip setuptools wheel
+        python -m pip install -e .[test]
 
     - name: Test
       if: steps.release.outputs.version == 0
+      env:
+        LOOP_IMPL: ${{ matrix.loop }}
       run: |
-        python setup.py test
-
-    - name: Test under uvloop
-      if: steps.release.outputs.version == 0 && matrix.os != 'windows-latest' && matrix.python-version != '3.9'
-      run: |
-        env USE_UVLOOP=1 python setup.py test
+        if [ "${LOOP_IMPL}" = "uvloop" ]; then
+          env USE_UVLOOP=1 python -m unittest -v tests.suite
+        else
+          python -m unittest -v tests.suite
+        fi
 
   test-postgres:
     strategy:
       matrix:
-        postgres-version: [9.5, 9.6, 10, 11, 12, 13]
+        postgres-version: ["9.5", "9.6", "10", "11", "12", "13", "14"]
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
         fetch-depth: 50
         submodules: true
 
     - name: Check if release PR.
       uses: edgedb/action-release/validate-pr@master
-      continue-on-error: true
       id: release
       with:
         github_token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
+        missing_version_ok: yes
         version_file: asyncpg/_version.py
         version_line_pattern: |
           __version__\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
@@ -109,29 +114,28 @@ jobs:
           >> "${GITHUB_ENV}"
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v2
       if: steps.release.outputs.version == 0
-      with:
-        python-version: ${{ matrix.python-version }}
 
     - name: Install Python Deps
       if: steps.release.outputs.version == 0
       run: |
-        pip install -e .[test]
+        python -m pip install -U pip setuptools wheel
+        python -m pip install -e .[test]
 
     - name: Test
       if: steps.release.outputs.version == 0
       env:
         PGVERSION: ${{ matrix.postgres-version }}
       run: |
-        python setup.py test
+        python -m unittest -v tests.suite
 
   # This job exists solely to act as the test job aggregate to be
   # targeted by branch policies.
   regression-tests:
     name: "Regression Tests"
     needs: [test-platforms, test-postgres]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - run: echo OK

@@ -101,6 +101,10 @@ DEF JSONPATHOID = 4072
 DEF REGNAMESPACEOID = 4089
 DEF REGROLEOID = 4096
 DEF REGCOLLATIONOID = 4191
+DEF ANYMULTIRANGEOID = 4537
+DEF ANYCOMPATIBLEMULTIRANGEOID = 4538
+DEF PG_BRIN_BLOOM_SUMMARYOID = 4600
+DEF PG_BRIN_MINMAX_MULTI_SUMMARYOID = 4601
 DEF PG_MCV_LISTOID = 5017
 DEF PG_SNAPSHOTOID = 5038
 DEF XID8OID = 5069
@@ -116,11 +120,13 @@ BUILTIN_TYPE_OID_MAP = {
     ACLITEMOID: 'aclitem',
     ANYARRAYOID: 'anyarray',
     ANYCOMPATIBLEARRAYOID: 'anycompatiblearray',
+    ANYCOMPATIBLEMULTIRANGEOID: 'anycompatiblemultirange',
     ANYCOMPATIBLENONARRAYOID: 'anycompatiblenonarray',
     ANYCOMPATIBLEOID: 'anycompatible',
     ANYCOMPATIBLERANGEOID: 'anycompatiblerange',
     ANYELEMENTOID: 'anyelement',
     ANYENUMOID: 'anyenum',
+    ANYMULTIRANGEOID: 'anymultirange',
     ANYNONARRAYOID: 'anynonarray',
     ANYOID: 'any',
     ANYRANGEOID: 'anyrange',
@@ -161,6 +167,8 @@ BUILTIN_TYPE_OID_MAP = {
     OIDOID: 'oid',
     OPAQUEOID: 'opaque',
     PATHOID: 'path',
+    PG_BRIN_BLOOM_SUMMARYOID: 'pg_brin_bloom_summary',
+    PG_BRIN_MINMAX_MULTI_SUMMARYOID: 'pg_brin_minmax_multi_summary',
     PG_DDL_COMMANDOID: 'pg_ddl_command',
     PG_DEPENDENCIESOID: 'pg_dependencies',
     PG_LSNOID: 'pg_lsn',

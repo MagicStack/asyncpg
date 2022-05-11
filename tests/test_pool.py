@@ -720,6 +720,27 @@ class TestPool(tb.ConnectedTestCase):
 
         await pool.close()
 
+    async def test_pool_size_and_capacity(self):
+        async with self.create_pool(
+            database='postgres',
+            min_size=2,
+            max_size=3,
+        ) as pool:
+            self.assertEqual(pool.get_min_size(), 2)
+            self.assertEqual(pool.get_max_size(), 3)
+            self.assertEqual(pool.get_size(), 2)
+            self.assertEqual(pool.get_idle_size(), 2)
+
+            async with pool.acquire():
+                self.assertEqual(pool.get_idle_size(), 1)
+
+                async with pool.acquire():
+                    self.assertEqual(pool.get_idle_size(), 0)
+
+                    async with pool.acquire():
+                        self.assertEqual(pool.get_size(), 3)
+                        self.assertEqual(pool.get_idle_size(), 0)
+
     @unittest.skipIf(sys.version_info[:2] < (3, 6), 'no asyncgen support')
     async def test_pool_handles_transaction_exit_in_asyncgen_1(self):
         pool = await self.create_pool(database='postgres',
@@ -842,6 +863,7 @@ class TestPool(tb.ConnectedTestCase):
             await pool.release(con)
 
         self.assertIsNone(pool._holders[0]._con)
+        await pool.close()
 
     async def test_pool_set_connection_args(self):
         pool = await self.create_pool(database='postgres',
@@ -883,6 +905,8 @@ class TestPool(tb.ConnectedTestCase):
         con = await pool.acquire()
         self.assertEqual(con.get_settings().application_name,
                          'set_conn_args_test_2')
+        await pool.release(con)
+        await pool.close()
 
     async def test_pool_init_race(self):
         pool = self.create_pool(database='postgres', min_size=1, max_size=1)

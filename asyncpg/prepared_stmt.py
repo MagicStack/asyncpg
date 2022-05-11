@@ -25,6 +25,14 @@ class PreparedStatement(connresource.ConnectionResource):
         self._last_status = None
 
     @connresource.guarded
+    def get_name(self) -> str:
+        """Return the name of this prepared statement.
+
+        .. versionadded:: 0.25.0
+        """
+        return self._state.name
+
+    @connresource.guarded
     def get_query(self) -> str:
         """Return the text of the query for this prepared statement.
 

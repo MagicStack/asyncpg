@@ -73,7 +73,12 @@ The table below shows the correspondence between PostgreSQL and Python types.
 +----------------------+-----------------------------------------------------+
 | ``anyenum``          | :class:`str <python:str>`                           |
 +----------------------+-----------------------------------------------------+
-| ``anyrange``         | :class:`asyncpg.Range <asyncpg.types.Range>`        |
+| ``anyrange``         | :class:`asyncpg.Range <asyncpg.types.Range>`,       |
+|                      | :class:`tuple <python:tuple>`                       |
++----------------------+-----------------------------------------------------+
+| ``anymultirange``    | ``list[``:class:`asyncpg.Range\                     |
+|                      | <asyncpg.types.Range>` ``]``,                       |
+|                      | ``list[``:class:`tuple <python:tuple>` ``]`` [#f1]_ |
 +----------------------+-----------------------------------------------------+
 | ``record``           | :class:`asyncpg.Record`,                            |
 |                      | :class:`tuple <python:tuple>`,                      |
@@ -104,7 +109,7 @@ The table below shows the correspondence between PostgreSQL and Python types.
 |                      | :class:`ipaddress.IPv4Address\                      |
 |                      | <python:ipaddress.IPv4Address>`,                    |
 |                      | :class:`ipaddress.IPv6Address\                      |
-|                      | <python:ipaddress.IPv6Address>` [#f1]_              |
+|                      | <python:ipaddress.IPv6Address>` [#f2]_              |
 +----------------------+-----------------------------------------------------+
 | ``macaddr``          | :class:`str <python:str>`                           |
 +----------------------+-----------------------------------------------------+
@@ -127,7 +132,7 @@ The table below shows the correspondence between PostgreSQL and Python types.
 | ``interval``         | :class:`datetime.timedelta \                        |
 |                      | <python:datetime.timedelta>`                        |
 +----------------------+-----------------------------------------------------+
-| ``float``,           | :class:`float <python:float>` [#f2]_                |
+| ``float``,           | :class:`float <python:float>` [#f3]_                |
 | ``double precision`` |                                                     |
 +----------------------+-----------------------------------------------------+
 | ``smallint``,        | :class:`int <python:int>`                           |
@@ -158,10 +163,12 @@ The table below shows the correspondence between PostgreSQL and Python types.
 
 All other types are encoded and decoded as text by default.
 
-.. [#f1] Prior to version 0.20.0, asyncpg erroneously treated ``inet`` values
+.. [#f1] Since version 0.25.0
+
+.. [#f2] Prior to version 0.20.0, asyncpg erroneously treated ``inet`` values
          with prefix as ``IPvXNetwork`` instead of ``IPvXInterface``.
 
-.. [#f2] Inexact single-precision ``float`` values may have a different
+.. [#f3] Inexact single-precision ``float`` values may have a different
          representation when decoded into a Python float.  This is inherent
          to the implementation of limited-precision floating point types.
          If you need the decimal representation to match, cast the expression

@@ -1,0 +1,25 @@
+[project]
+name = "asyncpg"
+requires-python = ">=3.6"
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.cibuildwheel]
+build-frontend = "build"
+test-extras = "test"
+
+[tool.cibuildwheel.macos]
+test-command = "python {project}/tests/__init__.py"
+
+[tool.cibuildwheel.windows]
+test-command = "python {project}\\tests\\__init__.py"
+
+[tool.cibuildwheel.linux]
+before-all = ".github/workflows/install-postgres.sh"
+test-command = """\
+    PY=`which python` \
+    && chmod -R go+rX "$(dirname $(dirname $(dirname $PY)))" \
+    && su -l apgtest -c "$PY {project}/tests/__init__.py" \
+    """

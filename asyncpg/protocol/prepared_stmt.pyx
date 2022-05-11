@@ -101,11 +101,24 @@ cdef class PreparedStatementState:
     def mark_closed(self):
         self.closed = True
 
-    cdef _encode_bind_msg(self, args):
+    cdef _encode_bind_msg(self, args, int seqno = -1):
         cdef:
             int idx
             WriteBuffer writer
             Codec codec
+
+        if not cpython.PySequence_Check(args):
+            if seqno >= 0:
+                raise exceptions.DataError(
+                    f'invalid input in executemany() argument sequence '
+                    f'element #{seqno}: expected a sequence, got '
+                    f'{type(args).__name__}'
+                )
+            else:
+                # Non executemany() callers do not pass user input directly,
+                # so bad input is a bug.
+                raise exceptions.InternalClientError(
+                    f'Bind: expected a sequence, got {type(args).__name__}')
 
         if len(args) > 32767:
             raise exceptions.InterfaceError(
@@ -138,7 +151,7 @@ cdef class PreparedStatementState:
             writer.write_int16(self.args_num)
             for idx in range(self.args_num):
                 codec = <Codec>(self.args_codecs[idx])
-                writer.write_int16(codec.format)
+                writer.write_int16(<int16_t>codec.format)
         else:
             # All arguments are in binary format
             writer.write_int32(0x00010001)
@@ -159,25 +172,38 @@ cdef class PreparedStatementState:
                 except exceptions.InterfaceError as e:
                     # This is already a descriptive error, but annotate
                     # with argument name for clarity.
+                    pos = f'${idx + 1}'
+                    if seqno >= 0:
+                        pos = (
+                            f'{pos} in element #{seqno} of'
+                            f' executemany() sequence'
+                        )
                     raise e.with_msg(
-                        f'query argument ${idx + 1}: {e.args[0]}') from None
+                        f'query argument {pos}: {e.args[0]}'
+                    ) from None
                 except Exception as e:
                     # Everything else is assumed to be an encoding error
                     # due to invalid input.
+                    pos = f'${idx + 1}'
+                    if seqno >= 0:
+                        pos = (
+                            f'{pos} in element #{seqno} of'
+                            f' executemany() sequence'
+                        )
                     value_repr = repr(arg)
                     if len(value_repr) > 40:
                         value_repr = value_repr[:40] + '...'
 
                     raise exceptions.DataError(
-                        'invalid input for query argument'
-                        ' ${n}: {v} ({msg})'.format(
-                            n=idx + 1, v=value_repr, msg=e)) from e
+                        f'invalid input for query argument'
+                        f' {pos}: {value_repr} ({e})'
+                    ) from e
 
         if self.have_text_cols:
             writer.write_int16(self.cols_num)
             for idx in range(self.cols_num):
                 codec = <Codec>(self.rows_codecs[idx])
-                writer.write_int16(codec.format)
+                writer.write_int16(<int16_t>codec.format)
         else:
             # All columns are in binary format
             writer.write_int32(0x00010001)

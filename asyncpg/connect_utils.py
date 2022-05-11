@@ -7,6 +7,7 @@
 
 import asyncio
 import collections
+import enum
 import functools
 import getpass
 import os
@@ -17,6 +18,7 @@ import socket
 import ssl as ssl_module
 import stat
 import struct
+import sys
 import time
 import typing
 import urllib.parse
@@ -28,6 +30,21 @@ from . import exceptions
 from . import protocol
 
 
+class SSLMode(enum.IntEnum):
+    disable = 0
+    allow = 1
+    prefer = 2
+    require = 3
+    verify_ca = 4
+    verify_full = 5
+
+    @classmethod
+    def parse(cls, sslmode):
+        if isinstance(sslmode, cls):
+            return sslmode
+        return getattr(cls, sslmode.replace('-', '_'))
+
+
 _ConnectionParameters = collections.namedtuple(
     'ConnectionParameters',
     [
@@ -35,7 +52,7 @@ _ConnectionParameters = collections.namedtuple(
         'password',
         'database',
         'ssl',
-        'ssl_is_advisory',
+        'sslmode',
         'connect_timeout',
         'server_settings',
     ])
@@ -180,11 +197,25 @@ def _parse_hostlist(hostlist, port, *, unquote=False):
         port = _validate_port_spec(hostspecs, port)
 
     for i, hostspec in enumerate(hostspecs):
-        if not hostspec.startswith('/'):
-            addr, _, hostspec_port = hostspec.partition(':')
-        else:
+        if hostspec[0] == '/':
+            # Unix socket
             addr = hostspec
             hostspec_port = ''
+        elif hostspec[0] == '[':
+            # IPv6 address
+            m = re.match(r'(?:\[([^\]]+)\])(?::([0-9]+))?', hostspec)
+            if m:
+                addr = m.group(1)
+                hostspec_port = m.group(2)
+            else:
+                raise ValueError(
+                    'invalid IPv6 address in the connection URI: {!r}'.format(
+                        hostspec
+                    )
+                )
+        else:
+            # IPv4 address
+            addr, _, hostspec_port = hostspec.partition(':')
 
         if unquote:
             addr = urllib.parse.unquote(addr)
@@ -204,12 +235,35 @@ def _parse_hostlist(hostlist, port, *, unquote=False):
     return hosts, port
 
 
+def _parse_tls_version(tls_version):
+    if not hasattr(ssl_module, 'TLSVersion'):
+        raise ValueError(
+            "TLSVersion is not supported in this version of Python"
+        )
+    if tls_version.startswith('SSL'):
+        raise ValueError(
+            f"Unsupported TLS version: {tls_version}"
+        )
+    try:
+        return ssl_module.TLSVersion[tls_version.replace('.', '_')]
+    except KeyError:
+        raise ValueError(
+            f"No such TLS version: {tls_version}"
+        )
+
+
+def _dot_postgresql_path(filename) -> pathlib.Path:
+    return (pathlib.Path.home() / '.postgresql' / filename).resolve()
+
+
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                                 password, passfile, database, ssl,
                                 connect_timeout, server_settings):
     # `auth_hosts` is the version of host information for the purposes
     # of reading the pgpass file.
     auth_hosts = None
+    sslcert = sslkey = sslrootcert = sslcrl = sslpassword = None
+    ssl_min_protocol_version = ssl_max_protocol_version = None
 
     if dsn:
         parsed = urllib.parse.urlparse(dsn)
@@ -293,6 +347,31 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 val = query.pop('sslmode')
                 if ssl is None:
                     ssl = val
+
+            if 'sslcert' in query:
+                sslcert = query.pop('sslcert')
+
+            if 'sslkey' in query:
+                sslkey = query.pop('sslkey')
+
+            if 'sslrootcert' in query:
+                sslrootcert = query.pop('sslrootcert')
+
+            if 'sslcrl' in query:
+                sslcrl = query.pop('sslcrl')
+
+            if 'sslpassword' in query:
+                sslpassword = query.pop('sslpassword')
+
+            if 'ssl_min_protocol_version' in query:
+                ssl_min_protocol_version = query.pop(
+                    'ssl_min_protocol_version'
+                )
+
+            if 'ssl_max_protocol_version' in query:
+                ssl_max_protocol_version = query.pop(
+                    'ssl_max_protocol_version'
+                )
 
             if query:
                 if server_settings is None:
@@ -402,46 +481,115 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     if ssl is None and have_tcp_addrs:
         ssl = 'prefer'
 
-    # ssl_is_advisory is only allowed to come from the sslmode parameter.
-    ssl_is_advisory = None
-    if isinstance(ssl, str):
-        SSLMODES = {
-            'disable': 0,
-            'allow': 1,
-            'prefer': 2,
-            'require': 3,
-            'verify-ca': 4,
-            'verify-full': 5,
-        }
+    if isinstance(ssl, (str, SSLMode)):
         try:
-            sslmode = SSLMODES[ssl]
-        except KeyError:
-            modes = ', '.join(SSLMODES.keys())
+            sslmode = SSLMode.parse(ssl)
+        except AttributeError:
+            modes = ', '.join(m.name.replace('_', '-') for m in SSLMode)
             raise exceptions.InterfaceError(
                 '`sslmode` parameter must be one of: {}'.format(modes))
 
-        # sslmode 'allow' is currently handled as 'prefer' because we're
-        # missing the "retry with SSL" behavior for 'allow', but do have the
-        # "retry without SSL" behavior for 'prefer'.
-        # Not changing 'allow' to 'prefer' here would be effectively the same
-        # as changing 'allow' to 'disable'.
-        if sslmode == SSLMODES['allow']:
-            sslmode = SSLMODES['prefer']
-
         # docs at https://www.postgresql.org/docs/10/static/libpq-connect.html
-        # Not implemented: sslcert & sslkey & sslrootcert & sslcrl params.
-        if sslmode <= SSLMODES['allow']:
+        if sslmode < SSLMode.allow:
             ssl = False
-            ssl_is_advisory = sslmode >= SSLMODES['allow']
         else:
-            ssl = ssl_module.create_default_context()
-            ssl.check_hostname = sslmode >= SSLMODES['verify-full']
-            ssl.verify_mode = ssl_module.CERT_REQUIRED
-            if sslmode <= SSLMODES['require']:
+            ssl = ssl_module.SSLContext(ssl_module.PROTOCOL_TLS_CLIENT)
+            ssl.check_hostname = sslmode >= SSLMode.verify_full
+            if sslmode < SSLMode.require:
                 ssl.verify_mode = ssl_module.CERT_NONE
-            ssl_is_advisory = sslmode <= SSLMODES['prefer']
+            else:
+                if sslrootcert is None:
+                    sslrootcert = os.getenv('PGSSLROOTCERT')
+                if sslrootcert:
+                    ssl.load_verify_locations(cafile=sslrootcert)
+                    ssl.verify_mode = ssl_module.CERT_REQUIRED
+                else:
+                    sslrootcert = _dot_postgresql_path('root.crt')
+                    try:
+                        ssl.load_verify_locations(cafile=sslrootcert)
+                    except FileNotFoundError:
+                        if sslmode > SSLMode.require:
+                            raise ValueError(
+                                f'root certificate file "{sslrootcert}" does '
+                                f'not exist\nEither provide the file or '
+                                f'change sslmode to disable server '
+                                f'certificate verification.'
+                            )
+                        elif sslmode == SSLMode.require:
+                            ssl.verify_mode = ssl_module.CERT_NONE
+                        else:
+                            assert False, 'unreachable'
+                    else:
+                        ssl.verify_mode = ssl_module.CERT_REQUIRED
+
+                if sslcrl is None:
+                    sslcrl = os.getenv('PGSSLCRL')
+                if sslcrl:
+                    ssl.load_verify_locations(cafile=sslcrl)
+                    ssl.verify_flags |= ssl_module.VERIFY_CRL_CHECK_CHAIN
+                else:
+                    sslcrl = _dot_postgresql_path('root.crl')
+                    try:
+                        ssl.load_verify_locations(cafile=sslcrl)
+                    except FileNotFoundError:
+                        pass
+                    else:
+                        ssl.verify_flags |= ssl_module.VERIFY_CRL_CHECK_CHAIN
+
+            if sslkey is None:
+                sslkey = os.getenv('PGSSLKEY')
+            if not sslkey:
+                sslkey = _dot_postgresql_path('postgresql.key')
+                if not sslkey.exists():
+                    sslkey = None
+            if not sslpassword:
+                sslpassword = ''
+            if sslcert is None:
+                sslcert = os.getenv('PGSSLCERT')
+            if sslcert:
+                ssl.load_cert_chain(
+                    sslcert, keyfile=sslkey, password=lambda: sslpassword
+                )
+            else:
+                sslcert = _dot_postgresql_path('postgresql.crt')
+                try:
+                    ssl.load_cert_chain(
+                        sslcert, keyfile=sslkey, password=lambda: sslpassword
+                    )
+                except FileNotFoundError:
+                    pass
+
+            # OpenSSL 1.1.1 keylog file, copied from create_default_context()
+            if hasattr(ssl, 'keylog_filename'):
+                keylogfile = os.environ.get('SSLKEYLOGFILE')
+                if keylogfile and not sys.flags.ignore_environment:
+                    ssl.keylog_filename = keylogfile
+
+            if ssl_min_protocol_version is None:
+                ssl_min_protocol_version = os.getenv('PGSSLMINPROTOCOLVERSION')
+            if ssl_min_protocol_version:
+                ssl.minimum_version = _parse_tls_version(
+                    ssl_min_protocol_version
+                )
+            else:
+                try:
+                    ssl.minimum_version = _parse_tls_version('TLSv1.2')
+                except ValueError:
+                    # Python 3.6 does not have ssl.TLSVersion
+                    pass
+
+            if ssl_max_protocol_version is None:
+                ssl_max_protocol_version = os.getenv('PGSSLMAXPROTOCOLVERSION')
+            if ssl_max_protocol_version:
+                ssl.maximum_version = _parse_tls_version(
+                    ssl_max_protocol_version
+                )
+
     elif ssl is True:
         ssl = ssl_module.create_default_context()
+        sslmode = SSLMode.verify_full
+    else:
+        sslmode = SSLMode.disable
 
     if server_settings is not None and (
             not isinstance(server_settings, dict) or
@@ -453,7 +601,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
     params = _ConnectionParameters(
         user=user, password=password, database=database, ssl=ssl,
-        ssl_is_advisory=ssl_is_advisory, connect_timeout=connect_timeout,
+        sslmode=sslmode, connect_timeout=connect_timeout,
         server_settings=server_settings)
 
     return addrs, params
@@ -520,9 +668,8 @@ class TLSUpgradeProto(asyncio.Protocol):
                 data == b'N'):
             # ssl_is_advisory will imply that ssl.verify_mode == CERT_NONE,
             # since the only way to get ssl_is_advisory is from
-            # sslmode=prefer (or sslmode=allow). But be extra sure to
-            # disallow insecure connections when the ssl context asks for
-            # real security.
+            # sslmode=prefer. But be extra sure to disallow insecure
+            # connections when the ssl context asks for real security.
             self.on_data.set_result(False)
         else:
             self.on_data.set_exception(
@@ -566,6 +713,7 @@ async def _create_ssl_connection(protocol_factory, host, port, *,
             new_tr = tr
 
         pg_proto = protocol_factory()
+        pg_proto.is_ssl = do_ssl_upgrade
         pg_proto.connection_made(new_tr)
         new_tr.set_protocol(pg_proto)
 
@@ -584,7 +732,9 @@ async def _create_ssl_connection(protocol_factory, host, port, *,
         tr.close()
 
         try:
-            return await conn_factory(sock=sock)
+            new_tr, pg_proto = await conn_factory(sock=sock)
+            pg_proto.is_ssl = do_ssl_upgrade
+            return new_tr, pg_proto
         except (Exception, asyncio.CancelledError):
             sock.close()
             raise
@@ -606,16 +756,56 @@ async def _connect_addr(
     if timeout <= 0:
         raise asyncio.TimeoutError
 
-    connected = _create_future(loop)
-
     params_input = params
     if callable(params.password):
-        if inspect.iscoroutinefunction(params.password):
-            password = await params.password()
-        else:
-            password = params.password()
+        password = params.password()
+        if inspect.isawaitable(password):
+            password = await password
 
         params = params._replace(password=password)
+    args = (addr, loop, config, connection_class, record_class, params_input)
+
+    # prepare the params (which attempt has ssl) for the 2 attempts
+    if params.sslmode == SSLMode.allow:
+        params_retry = params
+        params = params._replace(ssl=None)
+    elif params.sslmode == SSLMode.prefer:
+        params_retry = params._replace(ssl=None)
+    else:
+        # skip retry if we don't have to
+        return await __connect_addr(params, timeout, False, *args)
+
+    # first attempt
+    before = time.monotonic()
+    try:
+        return await __connect_addr(params, timeout, True, *args)
+    except _RetryConnectSignal:
+        pass
+
+    # second attempt
+    timeout -= time.monotonic() - before
+    if timeout <= 0:
+        raise asyncio.TimeoutError
+    else:
+        return await __connect_addr(params_retry, timeout, False, *args)
+
+
+class _RetryConnectSignal(Exception):
+    pass
+
+
+async def __connect_addr(
+    params,
+    timeout,
+    retry,
+    addr,
+    loop,
+    config,
+    connection_class,
+    record_class,
+    params_input,
+):
+    connected = _create_future(loop)
 
     proto_factory = lambda: protocol.Protocol(
         addr, connected, params, record_class, loop)
@@ -626,7 +816,7 @@ async def _connect_addr(
     elif params.ssl:
         connector = _create_ssl_connection(
             proto_factory, *addr, loop=loop, ssl_context=params.ssl,
-            ssl_is_advisory=params.ssl_is_advisory)
+            ssl_is_advisory=params.sslmode == SSLMode.prefer)
     else:
         connector = loop.create_connection(proto_factory, *addr)
 
@@ -639,6 +829,35 @@ async def _connect_addr(
         if timeout <= 0:
             raise asyncio.TimeoutError
         await compat.wait_for(connected, timeout=timeout)
+    except (
+        exceptions.InvalidAuthorizationSpecificationError,
+        exceptions.ConnectionDoesNotExistError,  # seen on Windows
+    ):
+        tr.close()
+
+        # retry=True here is a redundant check because we don't want to
+        # accidentally raise the internal _RetryConnectSignal to the user
+        if retry and (
+            params.sslmode == SSLMode.allow and not pr.is_ssl or
+            params.sslmode == SSLMode.prefer and pr.is_ssl
+        ):
+            # Trigger retry when:
+            #   1. First attempt with sslmode=allow, ssl=None failed
+            #   2. First attempt with sslmode=prefer, ssl=ctx failed while the
+            #      server claimed to support SSL (returning "S" for SSLRequest)
+            #      (likely because pg_hba.conf rejected the connection)
+            raise _RetryConnectSignal()
+
+        else:
+            # but will NOT retry if:
+            #   1. First attempt with sslmode=prefer failed but the server
+            #      doesn't support SSL (returning 'N' for SSLRequest), because
+            #      we already tried to connect without SSL thru ssl_is_advisory
+            #   2. Second attempt with sslmode=prefer, ssl=None failed
+            #   3. Second attempt with sslmode=allow, ssl=ctx failed
+            #   4. Any other sslmode
+            raise
+
     except (Exception, asyncio.CancelledError):
         tr.close()
         raise
@@ -661,7 +880,7 @@ async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
     for addr in addrs:
         before = time.monotonic()
         try:
-            con = await _connect_addr(
+            return await _connect_addr(
                 addr=addr,
                 loop=loop,
                 timeout=timeout,
@@ -673,8 +892,6 @@ async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
             )
         except (OSError, asyncio.TimeoutError, ConnectionError) as ex:
             last_error = ex
-        else:
-            return con
         finally:
             timeout -= time.monotonic() - before
 
@@ -688,6 +905,7 @@ async def _cancel(*, loop, addr, params: _ConnectionParameters,
 
         def __init__(self):
             self.on_disconnect = _create_future(loop)
+            self.is_ssl = False
 
         def connection_lost(self, exc):
             if not self.on_disconnect.done():
@@ -696,13 +914,13 @@ async def _cancel(*, loop, addr, params: _ConnectionParameters,
     if isinstance(addr, str):
         tr, pr = await loop.create_unix_connection(CancelProto, addr)
     else:
-        if params.ssl:
+        if params.ssl and params.sslmode != SSLMode.allow:
             tr, pr = await _create_ssl_connection(
                 CancelProto,
                 *addr,
                 loop=loop,
                 ssl_context=params.ssl,
-                ssl_is_advisory=params.ssl_is_advisory)
+                ssl_is_advisory=params.sslmode == SSLMode.prefer)
         else:
             tr, pr = await loop.create_connection(
                 CancelProto, *addr)

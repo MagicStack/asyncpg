@@ -37,7 +37,7 @@ jobs:
         mkdir -p dist/
         echo "${VERSION}" > dist/VERSION
 
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v2
       with:
         name: dist
         path: dist/
@@ -46,175 +46,72 @@ jobs:
     needs: validate-release-request
     runs-on: ubuntu-latest
 
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: 1
+
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
         fetch-depth: 50
         submodules: true
 
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.7
+    - name: Set up Python
+      uses: actions/setup-python@v2
 
     - name: Build source distribution
       run: |
         pip install -U setuptools wheel pip
         python setup.py sdist
 
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v2
       with:
         name: dist
-        path: dist/
+        path: dist/*.tar.*
 
   build-wheels:
     needs: validate-release-request
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [3.5, 3.6, 3.7, 3.8, 3.9]
-        os: [ubuntu-20.04, macos-latest, windows-latest]
-        arch: [x86_64]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        cibw_python: ["cp36-*", "cp37-*", "cp38-*", "cp39-*", "cp310-*"]
+        cibw_arch: ["auto64", "auto32"]
         exclude:
-          # Python 3.5 is unable to properly
-          # find the recent VS tooling
-          # https://bugs.python.org/issue30389
-          - os: windows-latest
-            python-version: 3.5
-          - os: windows-latest
-            arch: aarch64
           - os: macos-latest
-            arch: aarch64
+            cibw_arch: "auto32"
+          - os: ubuntu-latest
+            cibw_arch: "auto32"
 
     defaults:
       run:
         shell: bash
 
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: 1
+
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
         fetch-depth: 50
         submodules: true
 
-    - name: Set up QEMU
-      if: matrix.arch == 'aarch64'
-      uses: docker/setup-qemu-action@v1
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Install Python Deps
-      run: |
-        python -m pip install --upgrade setuptools pip wheel
-
-    - name: Build Wheels (linux)
-      if: startsWith(matrix.os, 'ubuntu')
+    - uses: pypa/cibuildwheel@v2.2.2
       env:
-        PYTHON_VERSION: ${{ matrix.python-version }}
-        ARCH: ${{ matrix.arch }}
-      run: |
-        case "${ARCH}" in
-          x86_64)
-            mlimg=manylinux1_x86_64
-            ;;
-          aarch64)
-            mlimg=manylinux2014_aarch64
-            ;;
-          *)
-            echo "Unsupported wheel arch: ${ARCH}" >&2
-            exit 1
-            ;;
-        esac
+        CIBW_BUILD_VERBOSITY: 1
+        CIBW_BUILD: ${{ matrix.cibw_python }}
+        CIBW_ARCHS: ${{ matrix.cibw_arch }}
 
-        docker run --rm \
-          -v "${GITHUB_WORKSPACE}":/github/workspace:rw \
-          --workdir=/github/workspace \
-          -e GITHUB_WORKSPACE=/github/workspace \
-          -e PYTHON_VERSION="${PYTHON_VERSION}" \
-          --entrypoint=/github/workspace/.github/workflows/build-manylinux-wheels.sh \
-          quay.io/pypa/${mlimg}
-
-    - name: Build Wheels (non-linux)
-      if: "!startsWith(matrix.os, 'ubuntu')"
-      run: |
-        make clean
-        python setup.py bdist_wheel
-
-    - name: Test Wheels (native)
-      if: |
-        !contains(github.event.pull_request.labels.*.name, 'skip wheel tests')
-        && matrix.arch == 'x86_64'
-      env:
-        OS: ${{ matrix.os }}
-      run: |
-        if [ "${OS}" = "windows-latest" ]; then
-          export PGINSTALLATION="${PGBIN}"
-        fi
-        "${GITHUB_WORKSPACE}/.github/workflows/test-wheels.sh"
-
-    - name: Test Wheels (emulated)
-      if: |
-        !contains(github.event.pull_request.labels.*.name, 'skip wheel tests')
-        && matrix.arch != 'x86_64'
-      env:
-        PYTHON_VERSION: ${{ matrix.python-version }}
-        PGVERSION: 13
-        DISTRO_NAME: focal
-        ARCH: ${{ matrix.arch }}
-      run: |
-        sudo env DISTRO_NAME="${DISTRO_NAME}" PGVERSION="${PGVERSION}" \
-          .github/workflows/install-postgres.sh
-        # Allow docker guest to connect to the database
-        echo "port = 5433" | \
-            sudo tee --append /etc/postgresql/${PGVERSION}/main/postgresql.conf
-        echo "listen_addresses = '*'" | \
-          sudo tee --append /etc/postgresql/${PGVERSION}/main/postgresql.conf
-        echo "host all all 172.17.0.0/16 trust" | \
-          sudo tee --append /etc/postgresql/${PGVERSION}/main/pg_hba.conf
-        if [ "${PGVERSION}" -ge "11" ]; then
-          # Disable JIT to avoid unpredictable timings in tests.
-          echo "jit = off" | \
-            sudo tee --append /etc/postgresql/${PGVERSION}/main/postgresql.conf
-        fi
-        sudo pg_ctlcluster ${PGVERSION} main restart
-
-        case "${ARCH}" in
-          aarch64)
-            img="docker.io/arm64v8/python:${PYTHON_VERSION}-buster"
-            ;;
-          *)
-            echo "Unsupported wheel arch: ${ARCH}" >&2
-            exit 1
-            ;;
-        esac
-
-        docker run --rm \
-          -v "${GITHUB_WORKSPACE}":/github/workspace:rw \
-          -e GITHUB_WORKSPACE=/github/workspace \
-          -e PYTHON_VERSION="${PYTHON_VERSION}" \
-          --workdir=/github/workspace/ \
-          ${img} \
-          /bin/bash -ex -c ' \
-            echo GITHUB_WORKSPACE=${GITHUB_WORKSPACE} >> /etc/environment \
-            && echo PGHOST=$(ip route | grep default | cut -f3 -d" " | uniq) \
-              >> /etc/environment \
-            && echo PGPORT=5433 >> /etc/environment \
-            && echo PGUSER=postgres >> /etc/environment \
-            && echo ENVIRON_FILE /etc/environment >> /etc/login.defs \
-            && useradd -m -s /bin/bash test \
-            && su -l test /github/workspace/.github/workflows/test-wheels.sh \
-          '
-
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v2
       with:
         name: dist
-        path: dist/
+        path: wheelhouse/*.whl
 
   publish-docs:
     needs: validate-release-request
     runs-on: ubuntu-latest
+
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
     - name: Checkout source
@@ -260,12 +157,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
         fetch-depth: 5
         submodules: false
 
-    - uses: actions/download-artifact@v1
+    - uses: actions/download-artifact@v2
       with:
         name: dist
         path: dist/

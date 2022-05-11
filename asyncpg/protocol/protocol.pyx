@@ -13,7 +13,7 @@ cimport cpython
 import asyncio
 import builtins
 import codecs
-import collections
+import collections.abc
 import socket
 import time
 import weakref
@@ -38,7 +38,7 @@ from asyncpg.protocol cimport record
 
 from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, \
                          int32_t, uint32_t, int64_t, uint64_t, \
-                         UINT32_MAX
+                         INT32_MAX, UINT32_MAX
 
 from asyncpg.exceptions import _base as apg_exc_base
 from asyncpg import compat
@@ -102,6 +102,8 @@ cdef class BaseProtocol(CoreProtocol):
         self.completed_callback = self._on_waiter_completed
 
         self.queries_count = 0
+
+        self._is_ssl = False
 
         try:
             self.create_future = loop.create_future
@@ -215,7 +217,7 @@ cdef class BaseProtocol(CoreProtocol):
         # Make sure the argument sequence is encoded lazily with
         # this generator expression to keep the memory pressure under
         # control.
-        data_gen = (state._encode_bind_msg(b) for b in args)
+        data_gen = (state._encode_bind_msg(b, i) for i, b in enumerate(args))
         arg_bufs = iter(data_gen)
 
         waiter = self._new_waiter(timeout)
@@ -436,23 +438,44 @@ cdef class BaseProtocol(CoreProtocol):
                             'no binary format encoder for '
                             'type {} (OID {})'.format(codec.name, codec.oid))
 
-                for row in records:
-                    # Tuple header
-                    wbuf.write_int16(<int16_t>num_cols)
-                    # Tuple data
-                    for i in range(num_cols):
-                        item = row[i]
-                        if item is None:
-                            wbuf.write_int32(-1)
-                        else:
-                            codec = <Codec>cpython.PyTuple_GET_ITEM(codecs, i)
-                            codec.encode(settings, wbuf, item)
+                if isinstance(records, collections.abc.AsyncIterable):
+                    async for row in records:
+                        # Tuple header
+                        wbuf.write_int16(<int16_t>num_cols)
+                        # Tuple data
+                        for i in range(num_cols):
+                            item = row[i]
+                            if item is None:
+                                wbuf.write_int32(-1)
+                            else:
+                                codec = <Codec>cpython.PyTuple_GET_ITEM(
+                                    codecs, i)
+                                codec.encode(settings, wbuf, item)
 
-                    if wbuf.len() >= _COPY_BUFFER_SIZE:
-                        with timer:
-                            await self.writing_allowed.wait()
-                        self._write_copy_data_msg(wbuf)
-                        wbuf = WriteBuffer.new()
+                        if wbuf.len() >= _COPY_BUFFER_SIZE:
+                            with timer:
+                                await self.writing_allowed.wait()
+                            self._write_copy_data_msg(wbuf)
+                            wbuf = WriteBuffer.new()
+                else:
+                    for row in records:
+                        # Tuple header
+                        wbuf.write_int16(<int16_t>num_cols)
+                        # Tuple data
+                        for i in range(num_cols):
+                            item = row[i]
+                            if item is None:
+                                wbuf.write_int32(-1)
+                            else:
+                                codec = <Codec>cpython.PyTuple_GET_ITEM(
+                                    codecs, i)
+                                codec.encode(settings, wbuf, item)
+
+                        if wbuf.len() >= _COPY_BUFFER_SIZE:
+                            with timer:
+                                await self.writing_allowed.wait()
+                            self._write_copy_data_msg(wbuf)
+                            wbuf = WriteBuffer.new()
 
                 # End of binary copy.
                 wbuf.write_int16(-1)
@@ -586,7 +609,7 @@ cdef class BaseProtocol(CoreProtocol):
             pass
         finally:
             self.waiter = None
-        self.transport.abort()
+            self.transport.abort()
 
     def _request_cancel(self):
         self.cancel_waiter = self.create_future()
@@ -624,12 +647,12 @@ cdef class BaseProtocol(CoreProtocol):
         self.waiter.set_exception(asyncio.TimeoutError())
 
     def _on_waiter_completed(self, fut):
+        if self.timeout_handle:
+            self.timeout_handle.cancel()
+            self.timeout_handle = None
         if fut is not self.waiter or self.cancel_waiter is not None:
             return
         if fut.cancelled():
-            if self.timeout_handle:
-                self.timeout_handle.cancel()
-                self.timeout_handle = None
             self._request_cancel()
 
     def _create_future_fallback(self):
@@ -942,6 +965,14 @@ cdef class BaseProtocol(CoreProtocol):
 
     def resume_writing(self):
         self.writing_allowed.set()
+
+    @property
+    def is_ssl(self):
+        return self._is_ssl
+
+    @is_ssl.setter
+    def is_ssl(self, value):
+        self._is_ssl = value
 
 
 class Timer:
