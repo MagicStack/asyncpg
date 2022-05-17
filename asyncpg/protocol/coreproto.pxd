@@ -75,7 +75,7 @@ cdef enum TransactionStatus:
 
 
 ctypedef object (*decode_row_method)(object, const char*, ssize_t)
-ctypedef void (*decode_row_numpy_method)(object, const char*, ssize_t, ArrayWriter)
+ctypedef int (*decode_row_numpy_method)(object, const char*, ssize_t, ArrayWriter) except -1
 
 
 cdef class CoreProtocol:
