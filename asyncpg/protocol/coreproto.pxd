@@ -75,6 +75,7 @@ cdef enum TransactionStatus:
 
 
 ctypedef object (*decode_row_method)(object, const char*, ssize_t)
+ctypedef void (*decode_row_numpy_method)(object, const char*, ssize_t, ArrayWriter)
 
 
 cdef class CoreProtocol:
@@ -133,6 +134,8 @@ cdef class CoreProtocol:
     cdef _parse_msg_backend_key_data(self)
     cdef _parse_msg_ready_for_query(self)
     cdef _parse_data_msgs(self)
+    cdef _parse_data_msgs_record(self)
+    cdef _parse_data_msgs_numpy(self)
     cdef _parse_copy_data_msgs(self)
     cdef _parse_msg_error_response(self, is_error)
     cdef _parse_msg_command_complete(self)
@@ -171,14 +174,15 @@ cdef class CoreProtocol:
     cdef _send_bind_message(self, str portal_name, str stmt_name,
                             WriteBuffer bind_data, int32_t limit)
     cdef _bind_execute(self, str portal_name, str stmt_name,
-                       WriteBuffer bind_data, int32_t limit)
+                       WriteBuffer bind_data, int32_t limit,
+                       object dtype)
     cdef bint _bind_execute_many(self, str portal_name, str stmt_name,
                                  object bind_data)
     cdef bint _bind_execute_many_more(self, bint first=*)
     cdef _bind_execute_many_fail(self, object error, bint first=*)
     cdef _bind(self, str portal_name, str stmt_name,
                WriteBuffer bind_data)
-    cdef _execute(self, str portal_name, int32_t limit)
+    cdef _execute(self, str portal_name, int32_t limit, object dtype)
     cdef _close(self, str name, bint is_portal)
     cdef _simple_query(self, str query)
     cdef _copy_out(self, str copy_stmt)
@@ -186,6 +190,7 @@ cdef class CoreProtocol:
     cdef _terminate(self)
 
     cdef _decode_row(self, const char* buf, ssize_t buf_len)
+    cdef void _decode_row_numpy(self, const char * buf, ssize_t buf_len, ArrayWriter aw)
 
     cdef _on_result(self)
     cdef _on_notification(self, pid, channel, payload)

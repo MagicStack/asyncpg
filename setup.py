@@ -24,6 +24,7 @@ from setuptools.command import build_py as setuptools_build_py
 from setuptools.command import sdist as setuptools_sdist
 from setuptools.command import build_ext as setuptools_build_ext
 
+import numpy as np
 
 CYTHON_DEPENDENCY = 'Cython(>=0.29.24,<0.30.0)'
 
@@ -237,7 +238,7 @@ class build_ext(setuptools_build_ext.build_ext):
         super(build_ext, self).finalize_options()
 
 
-setup_requires = []
+setup_requires = ['numpy>=1.0.0']
 
 if (not (_ROOT / 'asyncpg' / 'protocol' / 'protocol.c').exists() or
         '--cython-always' in sys.argv):
@@ -246,12 +247,12 @@ if (not (_ROOT / 'asyncpg' / 'protocol' / 'protocol.c').exists() or
 
 
 setuptools.setup(
-    name='asyncpg',
+    name='asyncpg-rkt',
     version=VERSION,
-    description='An asyncio PostgreSQL driver',
+    description='An asyncio PostgreSQL driver that returns numpy arrays',
     long_description=readme,
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
+        'Development Status :: 3 - Alpha',
         'Framework :: AsyncIO',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
@@ -285,6 +286,7 @@ setuptools.setup(
         setuptools.extension.Extension(
             "asyncpg.pgproto.pgproto",
             ["asyncpg/pgproto/pgproto.pyx"],
+            include_dirs=[np.get_include()],
             extra_compile_args=CFLAGS,
             extra_link_args=LDFLAGS),
 
@@ -292,11 +294,12 @@ setuptools.setup(
             "asyncpg.protocol.protocol",
             ["asyncpg/protocol/record/recordobj.c",
              "asyncpg/protocol/protocol.pyx"],
-            include_dirs=['asyncpg/pgproto/'],
+            include_dirs=['asyncpg/pgproto/', np.get_include()],
             extra_compile_args=CFLAGS,
             extra_link_args=LDFLAGS),
     ],
-    install_requires=['typing-extensions>=3.7.4.3;python_version<"3.8"'],
+    install_requires=['typing-extensions>=3.7.4.3;python_version<"3.8"',
+                      'numpy>=1.0.0'],
     cmdclass={'build_ext': build_ext, 'build_py': build_py, 'sdist': sdist},
     test_suite='tests.suite',
     extras_require=EXTRA_DEPENDENCIES,

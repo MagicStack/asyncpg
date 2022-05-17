@@ -13,6 +13,7 @@ cdef class PreparedStatementState:
         readonly int refs
         readonly type record_class
         readonly bint ignore_custom_codec
+        readonly object dtype
 
 
         list         row_desc
@@ -35,4 +36,6 @@ cdef class PreparedStatementState:
     cdef _ensure_args_encoder(self)
     cdef _set_row_desc(self, object desc)
     cdef _set_args_desc(self, object desc)
-    cdef _decode_row(self, const char* cbuf, ssize_t buf_len)
+    cdef _decode_row(self, const char *cbuf, ssize_t buf_len)
+    cdef void _decode_row_numpy(self, const char *cbuf, ssize_t buf_len, ArrayWriter aw)
+    cdef void _parse_dtype(self)

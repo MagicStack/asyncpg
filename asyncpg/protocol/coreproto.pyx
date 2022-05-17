@@ -6,6 +6,7 @@
 
 
 import hashlib
+import numpy as np
 
 
 include "scram.pyx"
@@ -405,6 +406,7 @@ cdef class CoreProtocol:
         cdef:
             const char* cbuf
             ssize_t cbuf_len
+            ArrayWriter array_writer
 
         cbuf = self.buffer.try_consume_message(&cbuf_len)
         if cbuf != NULL and cbuf_len > 0:
@@ -412,6 +414,9 @@ cdef class CoreProtocol:
         else:
             msg = self.buffer.read_null_str()
         self.result_status_msg = msg
+        if isinstance(self.result, np.dtype):
+            array_writer = self._array_writer
+            self.result = array_writer.consolidate(), array_writer.null_indexes
 
     cdef _parse_copy_data_msgs(self):
         cdef:
@@ -474,18 +479,9 @@ cdef class CoreProtocol:
     cdef _parse_data_msgs(self):
         cdef:
             ReadBuffer buf = self.buffer
-            list rows
 
-            decode_row_method decoder = <decode_row_method>self._decode_row
-            pgproto.try_consume_message_method try_consume_message = \
-                <pgproto.try_consume_message_method>buf.try_consume_message
             pgproto.take_message_type_method take_message_type = \
-                <pgproto.take_message_type_method>buf.take_message_type
-
-            const char* cbuf
-            ssize_t cbuf_len
-            object row
-            bytes mem
+                <pgproto.take_message_type_method> buf.take_message_type
 
         if PG_DEBUG:
             if buf.get_message_type() != b'D':
@@ -498,10 +494,30 @@ cdef class CoreProtocol:
             return
 
         if PG_DEBUG:
-            if type(self.result) is not list:
+            if not isinstance(self.result, (list, np.dtype)):
                 raise apg_exc.InternalClientError(
-                    '_parse_data_msgs: result is not a list, but {!r}'.
-                    format(self.result))
+                    f'_parse_data_msgs: result is neither a list nor a numpy array, but {self.result}')
+
+        if isinstance(self.result, list):
+            self._parse_data_msgs_record()
+        else:
+            self._parse_data_msgs_numpy()
+
+    cdef _parse_data_msgs_record(self):
+        cdef:
+            ReadBuffer buf = self.buffer
+            list rows
+
+            decode_row_method decoder = <decode_row_method>self._decode_row
+            pgproto.try_consume_message_method try_consume_message = \
+                <pgproto.try_consume_message_method>buf.try_consume_message
+            pgproto.take_message_type_method take_message_type = \
+                <pgproto.take_message_type_method>buf.take_message_type
+
+            const char *cbuf
+            ssize_t cbuf_len
+            object row
+            bytes mem
 
         rows = self.result
         while take_message_type(buf, b'D'):
@@ -516,6 +532,37 @@ cdef class CoreProtocol:
                     cpython.PyBytes_GET_SIZE(mem))
 
             cpython.PyList_Append(rows, row)
+
+    cdef _parse_data_msgs_numpy(self):
+        cdef:
+            ReadBuffer buf = self.buffer
+
+            decode_row_numpy_method decoder = <decode_row_numpy_method>self._decode_row_numpy
+            pgproto.try_consume_message_method try_consume_message = \
+                <pgproto.try_consume_message_method> buf.try_consume_message
+            pgproto.take_message_type_method take_message_type = \
+                <pgproto.take_message_type_method> buf.take_message_type
+
+            const char *cbuf
+            ssize_t cbuf_len
+            bytes mem
+            ArrayWriter array_writer
+
+        if self._array_writer is None:
+            self._array_writer = array_writer = ArrayWriter(self.result)
+        else:
+            array_writer = self._array_writer
+        while take_message_type(buf, b'D'):
+            cbuf = try_consume_message(buf, &cbuf_len)
+            if cbuf != NULL:
+                decoder(self, cbuf, cbuf_len, array_writer)
+            else:
+                mem = buf.consume_message()
+                decoder(
+                    self,
+                    cpython.PyBytes_AS_STRING(mem),
+                    cpython.PyBytes_GET_SIZE(mem),
+                    array_writer)
 
     cdef _parse_msg_backend_key_data(self):
         self.backend_pid = self.buffer.read_int32()
@@ -730,6 +777,7 @@ cdef class CoreProtocol:
         self.result_row_desc = None
         self.result_status_msg = None
         self.result_execute_completed = False
+        self._array_writer = None
         self._discard_data = False
 
         # executemany support data
@@ -912,14 +960,15 @@ cdef class CoreProtocol:
         self._write(packet)
 
     cdef _bind_execute(self, str portal_name, str stmt_name,
-                       WriteBuffer bind_data, int32_t limit):
+                       WriteBuffer bind_data, int32_t limit,
+                       object dtype):
 
         cdef WriteBuffer buf
 
         self._ensure_connected()
         self._set_state(PROTOCOL_BIND_EXECUTE)
 
-        self.result = []
+        self.result = dtype if dtype is not None else []
 
         self._send_bind_message(portal_name, stmt_name, bind_data, limit)
 
@@ -1020,13 +1069,13 @@ cdef class CoreProtocol:
             buf.write_bytes(SYNC_MESSAGE)
             self._write(buf)
 
-    cdef _execute(self, str portal_name, int32_t limit):
+    cdef _execute(self, str portal_name, int32_t limit, object dtype):
         cdef WriteBuffer buf
 
         self._ensure_connected()
         self._set_state(PROTOCOL_EXECUTE)
 
-        self.result = []
+        self.result = dtype if dtype is not None else []
 
         buf = self._build_execute_message(portal_name, limit)
 
@@ -1115,6 +1164,9 @@ cdef class CoreProtocol:
         raise NotImplementedError
 
     cdef _decode_row(self, const char* buf, ssize_t buf_len):
+        pass
+
+    cdef void _decode_row_numpy(self, const char * buf, ssize_t buf_len, ArrayWriter aw):
         pass
 
     cdef _set_server_parameter(self, name, val):

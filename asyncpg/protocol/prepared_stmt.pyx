@@ -4,6 +4,9 @@
 # This module is part of asyncpg and is released under
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
+from cpython cimport PyObject
+from libc.stdint cimport intptr_t
+from asyncpg.pgproto cimport cpythonunsafe
 
 from asyncpg import exceptions
 
@@ -30,6 +33,7 @@ cdef class PreparedStatementState:
         self.refs = 0
         self.record_class = record_class
         self.ignore_custom_codec = ignore_custom_codec
+        self._parse_dtype()
 
     def _get_parameters(self):
         cdef Codec codec
@@ -314,25 +318,80 @@ cdef class PreparedStatementState:
                 # to make sure that codecs can rely on read_all() working
                 # properly.
                 bl = frb_get_len(&rbuf)
-                if flen > bl:
-                    frb_check(&rbuf, flen)
+                frb_check(&rbuf, flen)
                 frb_set_len(&rbuf, flen)
                 codec = <Codec>cpython.PyTuple_GET_ITEM(rows_codecs, i)
                 val = codec.decode(settings, &rbuf)
                 if frb_get_len(&rbuf) != 0:
                     raise BufferError(
-                        'unexpected trailing {} bytes in buffer'.format(
-                            frb_get_len(&rbuf)))
+                        f'unexpected trailing {frb_get_len(&rbuf)} bytes in buffer')
                 frb_set_len(&rbuf, bl - flen)
 
             cpython.Py_INCREF(val)
             record.ApgRecord_SET_ITEM(dec_row, i, val)
 
         if frb_get_len(&rbuf) != 0:
-            raise BufferError('unexpected trailing {} bytes in buffer'.format(
-                frb_get_len(&rbuf)))
+            raise BufferError(f'unexpected trailing {frb_get_len(&rbuf)} bytes in buffer')
 
         return dec_row
+
+    cdef void _decode_row_numpy(self,
+                                const char* cbuf,
+                                ssize_t buf_len,
+                                ArrayWriter aw,
+                                ):
+        cdef:
+            int16_t fnum
+            int32_t flen
+            object dec_row
+            tuple rows_codecs = self.rows_codecs
+            ConnectionSettings settings = self.settings
+            int32_t i
+            FRBuffer rbuf
+            ssize_t bl
+
+        frb_init(&rbuf, cbuf, buf_len)
+
+        fnum = hton.unpack_int16(frb_read(&rbuf, 2))
+
+        if fnum != self.cols_num:
+            raise exceptions.ProtocolError(
+                'the number of columns in the result row ({}) is '
+                'different from what was described ({})'.format(
+                    fnum, self.cols_num))
+
+        for i in range(fnum):
+            flen = hton.unpack_int32(frb_read(&rbuf, 4))
+
+            if flen == -1:
+                aw.write_null()
+            else:
+                # Clamp buffer size to that of the reported field length
+                # to make sure that codecs can rely on read_all() working
+                # properly.
+                bl = frb_get_len(&rbuf)
+                frb_check(&rbuf, flen)
+                frb_set_len(&rbuf, flen)
+                (<Codec>cpythonunsafe.PyTuple_GET_ITEM(<PyObject*>rows_codecs, i)).decode_numpy(
+                    settings, &rbuf, aw)
+                if frb_get_len(&rbuf) != 0:
+                    raise BufferError(
+                        f'unexpected trailing {frb_get_len(&rbuf)} bytes in buffer')
+                frb_set_len(&rbuf, bl - flen)
+
+        if frb_get_len(&rbuf) != 0:
+            raise BufferError(f'unexpected trailing {frb_get_len(&rbuf)} bytes in buffer')
+
+    cdef void _parse_dtype(self):
+        if not self.query.startswith("🚀"):
+            self.dtype = None
+            return
+        addr = self.query[1:1 + sizeof(void*) * 2]
+        if len(addr) != sizeof(void*) * 2:
+            self.dtype = None
+            return
+        self.query = self.query[1 + len(addr) + 1:]
+        self.dtype = <object><PyObject *><intptr_t>int.from_bytes(bytes.fromhex(addr), "little")
 
 
 cdef _decode_parameters_desc(object desc):

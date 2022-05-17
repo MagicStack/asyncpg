@@ -66,6 +66,7 @@ cdef init_record_codecs():
     register_core_codec(RECORDOID,
                         <encode_func>anonymous_record_encode,
                         <decode_func>anonymous_record_decode,
+                        NULL,
                         PG_FORMAT_BINARY)
 
 init_record_codecs()
