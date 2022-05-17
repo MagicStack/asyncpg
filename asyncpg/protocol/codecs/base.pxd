@@ -12,9 +12,9 @@ ctypedef object (*encode_func)(ConnectionSettings settings,
 ctypedef object (*decode_func)(ConnectionSettings settings,
                                FRBuffer *buf)
 
-ctypedef void (*decode_numpy_func)(ConnectionSettings settings,
-                                   FRBuffer *buf,
-                                   ArrayWriter writer)
+ctypedef int (*decode_numpy_func)(ConnectionSettings settings,
+                                  FRBuffer *buf,
+                                  ArrayWriter writer) except -1
 
 ctypedef object (*codec_encode_func)(Codec codec,
                                      ConnectionSettings settings,
