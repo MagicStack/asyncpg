@@ -33,8 +33,7 @@ from asyncpg.pgproto.pgproto cimport (
 )
 
 from asyncpg.pgproto cimport pgproto
-from asyncpg.protocol cimport cpythonx
-from asyncpg.protocol cimport record
+from asyncpg.protocol cimport cpythonx, record
 
 from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, \
                          int32_t, uint32_t, int64_t, uint64_t, \
@@ -155,11 +154,12 @@ cdef class BaseProtocol(CoreProtocol):
 
         waiter = self._new_waiter(timeout)
         try:
-            self._prepare(stmt_name, query)  # network op
-            self.last_query = query
             if state is None:
                 state = PreparedStatementState(
                     stmt_name, query, self, record_class, ignore_custom_codec)
+            query = state.query
+            self._prepare(stmt_name, query)  # network op
+            self.last_query = query
             self.statement = state
         except Exception as ex:
             waiter.set_exception(ex)
@@ -188,7 +188,8 @@ cdef class BaseProtocol(CoreProtocol):
                 portal_name,
                 state.name,
                 args_buf,
-                limit)  # network op
+                limit,
+                state.dtype)  # network op
 
             self.last_query = state.query
             self.statement = state
@@ -300,7 +301,8 @@ cdef class BaseProtocol(CoreProtocol):
         try:
             self._execute(
                 portal_name,
-                limit)  # network op
+                limit,
+                state.dtype)  # network op
 
             self.last_query = state.query
             self.statement = state
@@ -793,13 +795,21 @@ cdef class BaseProtocol(CoreProtocol):
         status_msg = self.result_status_msg.decode(self.encoding)
         waiter.set_result(status_msg)
 
-    cdef _decode_row(self, const char* buf, ssize_t buf_len):
+    cdef _decode_row(self, const char *buf, ssize_t buf_len):
         if PG_DEBUG:
             if self.statement is None:
                 raise apg_exc.InternalClientError(
                     '_decode_row: statement is None')
 
         return self.statement._decode_row(buf, buf_len)
+
+    cdef void _decode_row_numpy(self, const char *buf, ssize_t buf_len, ArrayWriter aw):
+        if PG_DEBUG:
+            if self.statement is None:
+                raise apg_exc.InternalClientError(
+                    '_decode_row: statement is None')
+
+        self.statement._decode_row_numpy(buf, buf_len, aw)
 
     cdef _dispatch_result(self):
         waiter = self.waiter

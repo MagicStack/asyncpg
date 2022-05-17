@@ -9,11 +9,13 @@ cdef init_bits_codecs():
     register_core_codec(BITOID,
                         <encode_func>pgproto.bits_encode,
                         <decode_func>pgproto.bits_decode,
+                        <decode_numpy_func>pgproto.bits_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(VARBITOID,
                         <encode_func>pgproto.bits_encode,
                         <decode_func>pgproto.bits_decode,
+                        <decode_numpy_func>pgproto.bits_decode_numpy,
                         PG_FORMAT_BINARY)
 
 
@@ -21,11 +23,13 @@ cdef init_bytea_codecs():
     register_core_codec(BYTEAOID,
                         <encode_func>pgproto.bytea_encode,
                         <decode_func>pgproto.bytea_decode,
+                        <decode_numpy_func>pgproto.bytea_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(CHAROID,
                         <encode_func>pgproto.bytea_encode,
                         <decode_func>pgproto.bytea_decode,
+                        <decode_numpy_func>pgproto.bytea_decode_numpy,
                         PG_FORMAT_BINARY)
 
 
@@ -33,66 +37,78 @@ cdef init_datetime_codecs():
     register_core_codec(DATEOID,
                         <encode_func>pgproto.date_encode,
                         <decode_func>pgproto.date_decode,
+                        <decode_numpy_func>pgproto.date_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(DATEOID,
                         <encode_func>pgproto.date_encode_tuple,
                         <decode_func>pgproto.date_decode_tuple,
+                        NULL,
                         PG_FORMAT_BINARY,
                         PG_XFORMAT_TUPLE)
 
     register_core_codec(TIMEOID,
                         <encode_func>pgproto.time_encode,
                         <decode_func>pgproto.time_decode,
+                        <decode_numpy_func>pgproto.time_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(TIMEOID,
                         <encode_func>pgproto.time_encode_tuple,
                         <decode_func>pgproto.time_decode_tuple,
+                        NULL,
                         PG_FORMAT_BINARY,
                         PG_XFORMAT_TUPLE)
 
     register_core_codec(TIMETZOID,
                         <encode_func>pgproto.timetz_encode,
                         <decode_func>pgproto.timetz_decode,
+                        <decode_numpy_func>pgproto.timetz_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(TIMETZOID,
                         <encode_func>pgproto.timetz_encode_tuple,
                         <decode_func>pgproto.timetz_decode_tuple,
+                        NULL,
                         PG_FORMAT_BINARY,
                         PG_XFORMAT_TUPLE)
 
     register_core_codec(TIMESTAMPOID,
                         <encode_func>pgproto.timestamp_encode,
                         <decode_func>pgproto.timestamp_decode,
+                        <decode_numpy_func>pgproto.timestamp_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(TIMESTAMPOID,
                         <encode_func>pgproto.timestamp_encode_tuple,
                         <decode_func>pgproto.timestamp_decode_tuple,
+                        NULL,
                         PG_FORMAT_BINARY,
                         PG_XFORMAT_TUPLE)
 
     register_core_codec(TIMESTAMPTZOID,
                         <encode_func>pgproto.timestamptz_encode,
                         <decode_func>pgproto.timestamptz_decode,
+                        <decode_numpy_func>pgproto.timestamptz_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(TIMESTAMPTZOID,
                         <encode_func>pgproto.timestamp_encode_tuple,
                         <decode_func>pgproto.timestamp_decode_tuple,
+                        NULL,
                         PG_FORMAT_BINARY,
                         PG_XFORMAT_TUPLE)
 
     register_core_codec(INTERVALOID,
                         <encode_func>pgproto.interval_encode,
                         <decode_func>pgproto.interval_decode,
+                        <decode_numpy_func>pgproto.interval_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(INTERVALOID,
                         <encode_func>pgproto.interval_encode_tuple,
                         <decode_func>pgproto.interval_decode_tuple,
+                        NULL,
                         PG_FORMAT_BINARY,
                         PG_XFORMAT_TUPLE)
 
@@ -102,16 +118,19 @@ cdef init_datetime_codecs():
     register_core_codec(ABSTIMEOID,
                         <encode_func>pgproto.text_encode,
                         <decode_func>pgproto.text_decode,
+                        <decode_numpy_func>pgproto.text_decode_numpy,
                         PG_FORMAT_TEXT)
 
     register_core_codec(RELTIMEOID,
                         <encode_func>pgproto.text_encode,
                         <decode_func>pgproto.text_decode,
+                        <decode_numpy_func>pgproto.text_decode_numpy,
                         PG_FORMAT_TEXT)
 
     register_core_codec(TINTERVALOID,
                         <encode_func>pgproto.text_encode,
                         <decode_func>pgproto.text_decode,
+                        <decode_numpy_func>pgproto.text_decode_numpy,
                         PG_FORMAT_TEXT)
 
 
@@ -119,11 +138,13 @@ cdef init_float_codecs():
     register_core_codec(FLOAT4OID,
                         <encode_func>pgproto.float4_encode,
                         <decode_func>pgproto.float4_decode,
+                        <decode_numpy_func>pgproto.float4_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(FLOAT8OID,
                         <encode_func>pgproto.float8_encode,
                         <decode_func>pgproto.float8_decode,
+                        <decode_numpy_func>pgproto.float8_decode_numpy,
                         PG_FORMAT_BINARY)
 
 
@@ -131,36 +152,43 @@ cdef init_geometry_codecs():
     register_core_codec(BOXOID,
                         <encode_func>pgproto.box_encode,
                         <decode_func>pgproto.box_decode,
+                        <decode_numpy_func>pgproto.box_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(LINEOID,
                         <encode_func>pgproto.line_encode,
                         <decode_func>pgproto.line_decode,
+                        <decode_numpy_func>pgproto.line_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(LSEGOID,
                         <encode_func>pgproto.lseg_encode,
                         <decode_func>pgproto.lseg_decode,
+                        <decode_numpy_func>pgproto.lseg_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(POINTOID,
                         <encode_func>pgproto.point_encode,
                         <decode_func>pgproto.point_decode,
+                        <decode_numpy_func>pgproto.point_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(PATHOID,
                         <encode_func>pgproto.path_encode,
                         <decode_func>pgproto.path_decode,
+                        NULL,
                         PG_FORMAT_BINARY)
 
     register_core_codec(POLYGONOID,
                         <encode_func>pgproto.poly_encode,
                         <decode_func>pgproto.poly_decode,
+                        NULL,
                         PG_FORMAT_BINARY)
 
     register_core_codec(CIRCLEOID,
                         <encode_func>pgproto.circle_encode,
                         <decode_func>pgproto.circle_decode,
+                        <decode_numpy_func>pgproto.circle_decode_numpy,
                         PG_FORMAT_BINARY)
 
 
@@ -168,6 +196,7 @@ cdef init_hstore_codecs():
     register_extra_codec('pg_contrib.hstore',
                          <encode_func>pgproto.hstore_encode,
                          <decode_func>pgproto.hstore_decode,
+                         NULL,
                          PG_FORMAT_BINARY)
 
 
@@ -175,14 +204,17 @@ cdef init_json_codecs():
     register_core_codec(JSONOID,
                         <encode_func>pgproto.text_encode,
                         <decode_func>pgproto.text_decode,
+                        NULL,
                         PG_FORMAT_BINARY)
     register_core_codec(JSONBOID,
                         <encode_func>pgproto.jsonb_encode,
                         <decode_func>pgproto.jsonb_decode,
+                        NULL,
                         PG_FORMAT_BINARY)
     register_core_codec(JSONPATHOID,
                         <encode_func>pgproto.jsonpath_encode,
                         <decode_func>pgproto.jsonpath_decode,
+                        NULL,
                         PG_FORMAT_BINARY)
 
 
@@ -191,21 +223,25 @@ cdef init_int_codecs():
     register_core_codec(BOOLOID,
                         <encode_func>pgproto.bool_encode,
                         <decode_func>pgproto.bool_decode,
+                        <decode_numpy_func>pgproto.bool_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(INT2OID,
                         <encode_func>pgproto.int2_encode,
                         <decode_func>pgproto.int2_decode,
+                        <decode_numpy_func>pgproto.int2_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(INT4OID,
                         <encode_func>pgproto.int4_encode,
                         <decode_func>pgproto.int4_decode,
+                        <decode_numpy_func>pgproto.int4_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(INT8OID,
                         <encode_func>pgproto.int8_encode,
                         <decode_func>pgproto.int8_decode,
+                        <decode_numpy_func>pgproto.int8_decode_numpy,
                         PG_FORMAT_BINARY)
 
 
@@ -214,12 +250,14 @@ cdef init_pseudo_codecs():
     register_core_codec(VOIDOID,
                         <encode_func>pgproto.void_encode,
                         <decode_func>pgproto.void_decode,
+                        <decode_numpy_func>pgproto.void_decode_numpy,
                         PG_FORMAT_BINARY)
 
     # Unknown type, always decoded as text
     register_core_codec(UNKNOWNOID,
                         <encode_func>pgproto.text_encode,
                         <decode_func>pgproto.text_decode,
+                        <decode_numpy_func>pgproto.text_decode_numpy,
                         PG_FORMAT_TEXT)
 
     # OID and friends
@@ -231,6 +269,7 @@ cdef init_pseudo_codecs():
         register_core_codec(oid_type,
                             <encode_func>pgproto.uint4_encode,
                             <decode_func>pgproto.uint4_decode,
+                            <decode_numpy_func>pgproto.uint4_decode_numpy,
                             PG_FORMAT_BINARY)
 
     # 64-bit OID types
@@ -242,6 +281,7 @@ cdef init_pseudo_codecs():
         register_core_codec(oid_type,
                             <encode_func>pgproto.uint8_encode,
                             <decode_func>pgproto.uint8_decode,
+                            <decode_numpy_func>pgproto.uint8_decode_numpy,
                             PG_FORMAT_BINARY)
 
     # reg* types -- these are really system catalog OIDs, but
@@ -259,12 +299,14 @@ cdef init_pseudo_codecs():
         register_core_codec(reg_type,
                             <encode_func>pgproto.text_encode,
                             <decode_func>pgproto.text_decode,
+                            <decode_numpy_func>pgproto.text_decode_numpy,
                             PG_FORMAT_TEXT)
 
     # cstring type is used by Postgres' I/O functions
     register_core_codec(CSTRINGOID,
                         <encode_func>pgproto.text_encode,
                         <decode_func>pgproto.text_decode,
+                        <decode_numpy_func>pgproto.text_decode_numpy,
                         PG_FORMAT_BINARY)
 
     # various system pseudotypes with no I/O
@@ -281,10 +323,12 @@ cdef init_pseudo_codecs():
     register_core_codec(ANYENUMOID,
                         NULL,
                         <decode_func>pgproto.text_decode,
+                        <decode_numpy_func>pgproto.text_decode_numpy,
                         PG_FORMAT_TEXT)
 
     for no_io_type in no_io_types:
         register_core_codec(no_io_type,
+                            NULL,
                             NULL,
                             NULL,
                             PG_FORMAT_BINARY)
@@ -293,23 +337,27 @@ cdef init_pseudo_codecs():
     register_core_codec(ACLITEMOID,
                         <encode_func>pgproto.text_encode,
                         <decode_func>pgproto.text_decode,
+                        <decode_numpy_func>pgproto.text_decode_numpy,
                         PG_FORMAT_TEXT)
 
     # Postgres' serialized expression tree type
     register_core_codec(PG_NODE_TREEOID,
                         NULL,
                         <decode_func>pgproto.text_decode,
+                        <decode_numpy_func>pgproto.text_decode_numpy,
                         PG_FORMAT_TEXT)
 
     # pg_lsn type -- a pointer to a location in the XLOG.
     register_core_codec(PG_LSNOID,
                         <encode_func>pgproto.int8_encode,
                         <decode_func>pgproto.int8_decode,
+                        <decode_numpy_func>pgproto.int8_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(SMGROID,
                         <encode_func>pgproto.text_encode,
                         <decode_func>pgproto.text_decode,
+                        <decode_numpy_func>pgproto.text_decode_numpy,
                         PG_FORMAT_TEXT)
 
     # pg_dependencies and pg_ndistinct are special types
@@ -317,11 +365,13 @@ cdef init_pseudo_codecs():
     register_core_codec(PG_DEPENDENCIESOID,
                         <encode_func>pgproto.text_encode,
                         <decode_func>pgproto.text_decode,
+                        <decode_numpy_func>pgproto.text_decode_numpy,
                         PG_FORMAT_TEXT)
 
     register_core_codec(PG_NDISTINCTOID,
                         <encode_func>pgproto.text_encode,
                         <decode_func>pgproto.text_decode,
+                        <decode_numpy_func>pgproto.text_decode_numpy,
                         PG_FORMAT_TEXT)
 
     # pg_mcv_list is a special type used in pg_statistic_ext_data
@@ -329,6 +379,7 @@ cdef init_pseudo_codecs():
     register_core_codec(PG_MCV_LISTOID,
                         <encode_func>pgproto.bytea_encode,
                         <decode_func>pgproto.bytea_decode,
+                        <decode_numpy_func>pgproto.bytea_decode_numpy,
                         PG_FORMAT_BINARY)
 
     # These two are internal to BRIN index support and are unlikely
@@ -337,11 +388,13 @@ cdef init_pseudo_codecs():
     register_core_codec(PG_BRIN_BLOOM_SUMMARYOID,
                         NULL,
                         <decode_func>pgproto.bytea_decode,
+                        <decode_numpy_func>pgproto.bytea_decode_numpy,
                         PG_FORMAT_BINARY)
 
     register_core_codec(PG_BRIN_MINMAX_MULTI_SUMMARYOID,
                         NULL,
                         <decode_func>pgproto.bytea_decode,
+                        <decode_numpy_func>pgproto.bytea_decode_numpy,
                         PG_FORMAT_BINARY)
 
 
@@ -358,11 +411,13 @@ cdef init_text_codecs():
         register_core_codec(oid,
                             <encode_func>pgproto.text_encode,
                             <decode_func>pgproto.text_decode,
+                            <decode_numpy_func>pgproto.text_decode_numpy,
                             PG_FORMAT_BINARY)
 
         register_core_codec(oid,
                             <encode_func>pgproto.text_encode,
                             <decode_func>pgproto.text_decode,
+                            <decode_numpy_func>pgproto.text_decode_numpy,
                             PG_FORMAT_TEXT)
 
 
@@ -370,6 +425,7 @@ cdef init_tid_codecs():
     register_core_codec(TIDOID,
                         <encode_func>pgproto.tid_encode,
                         <decode_func>pgproto.tid_decode,
+                        <decode_numpy_func>pgproto.tid_decode_numpy,
                         PG_FORMAT_BINARY)
 
 
@@ -377,11 +433,13 @@ cdef init_txid_codecs():
     register_core_codec(TXID_SNAPSHOTOID,
                         <encode_func>pgproto.pg_snapshot_encode,
                         <decode_func>pgproto.pg_snapshot_decode,
+                        NULL,
                         PG_FORMAT_BINARY)
 
     register_core_codec(PG_SNAPSHOTOID,
                         <encode_func>pgproto.pg_snapshot_encode,
                         <decode_func>pgproto.pg_snapshot_decode,
+                        NULL,
                         PG_FORMAT_BINARY)
 
 
@@ -395,11 +453,13 @@ cdef init_tsearch_codecs():
         register_core_codec(oid,
                             <encode_func>pgproto.text_encode,
                             <decode_func>pgproto.text_decode,
+                            <decode_numpy_func>pgproto.text_decode_numpy,
                             PG_FORMAT_TEXT)
 
     register_core_codec(GTSVECTOROID,
                         NULL,
                         <decode_func>pgproto.text_decode,
+                        <decode_numpy_func>pgproto.text_decode_numpy,
                         PG_FORMAT_TEXT)
 
 
@@ -407,6 +467,7 @@ cdef init_uuid_codecs():
     register_core_codec(UUIDOID,
                         <encode_func>pgproto.uuid_encode,
                         <decode_func>pgproto.uuid_decode,
+                        <decode_numpy_func>pgproto.uuid_decode_numpy,
                         PG_FORMAT_BINARY)
 
 
@@ -414,11 +475,13 @@ cdef init_numeric_codecs():
     register_core_codec(NUMERICOID,
                         <encode_func>pgproto.numeric_encode_text,
                         <decode_func>pgproto.numeric_decode_text,
+                        NULL,
                         PG_FORMAT_TEXT)
 
     register_core_codec(NUMERICOID,
                         <encode_func>pgproto.numeric_encode_binary,
                         <decode_func>pgproto.numeric_decode_binary,
+                        NULL,
                         PG_FORMAT_BINARY)
 
 
@@ -426,21 +489,25 @@ cdef init_network_codecs():
     register_core_codec(CIDROID,
                         <encode_func>pgproto.cidr_encode,
                         <decode_func>pgproto.cidr_decode,
+                        NULL,
                         PG_FORMAT_BINARY)
 
     register_core_codec(INETOID,
                         <encode_func>pgproto.inet_encode,
                         <decode_func>pgproto.inet_decode,
+                        NULL,
                         PG_FORMAT_BINARY)
 
     register_core_codec(MACADDROID,
                         <encode_func>pgproto.text_encode,
                         <decode_func>pgproto.text_decode,
+                        NULL,
                         PG_FORMAT_TEXT)
 
     register_core_codec(MACADDR8OID,
                         <encode_func>pgproto.text_encode,
                         <decode_func>pgproto.text_decode,
+                        NULL,
                         PG_FORMAT_TEXT)
 
 
@@ -453,6 +520,7 @@ cdef init_monetary_codecs():
         register_core_codec(oid,
                             <encode_func>pgproto.text_encode,
                             <decode_func>pgproto.text_decode,
+                            <decode_numpy_func>pgproto.text_decode_numpy,
                             PG_FORMAT_TEXT)
 
 

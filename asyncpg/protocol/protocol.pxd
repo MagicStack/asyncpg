@@ -14,6 +14,7 @@ from asyncpg.pgproto.pgproto cimport (
     WriteBuffer,
     ReadBuffer,
     FRBuffer,
+    ArrayWriter,
 )
 
 from asyncpg.pgproto cimport pgproto

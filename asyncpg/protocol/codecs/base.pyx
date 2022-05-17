@@ -27,6 +27,7 @@ cdef class Codec:
               CodecType type, ServerDataFormat format,
               ClientExchangeFormat xformat,
               encode_func c_encoder, decode_func c_decoder,
+              decode_numpy_func numpy_decoder,
               object py_encoder, object py_decoder,
               Codec element_codec, tuple element_type_oids,
               object element_names, list element_codecs,
@@ -40,6 +41,7 @@ cdef class Codec:
         self.xformat = xformat
         self.c_encoder = c_encoder
         self.c_decoder = c_decoder
+        self.numpy_decoder = numpy_decoder if type == CODEC_C else NULL
         self.py_encoder = py_encoder
         self.py_decoder = py_decoder
         self.element_codec = element_codec
@@ -98,7 +100,7 @@ cdef class Codec:
         codec = Codec(self.oid)
         codec.init(self.name, self.schema, self.kind,
                    self.type, self.format, self.xformat,
-                   self.c_encoder, self.c_decoder,
+                   self.c_encoder, self.c_decoder, self.numpy_decoder,
                    self.py_encoder, self.py_decoder,
                    self.element_codec,
                    self.element_type_oids, self.element_names,
@@ -305,6 +307,12 @@ cdef class Codec:
     cdef inline decode(self, ConnectionSettings settings, FRBuffer *buf):
         return self.decoder(self, settings, buf)
 
+    cdef inline void decode_numpy(self, ConnectionSettings settings, FRBuffer *buf, ArrayWriter aw):
+        if self.numpy_decoder != NULL:
+            self.numpy_decoder(settings, buf, aw)
+        else:
+            aw.write_object(self.decoder(self, settings, buf))
+
     cdef inline has_encoder(self):
         cdef Codec elem_codec
 
@@ -367,7 +375,7 @@ cdef class Codec:
         cdef Codec codec
         codec = Codec(oid)
         codec.init(name, schema, 'array', CODEC_ARRAY, element_codec.format,
-                   PG_XFORMAT_OBJECT, NULL, NULL, None, None, element_codec,
+                   PG_XFORMAT_OBJECT, NULL, NULL, NULL, None, None, element_codec,
                    None, None, None, element_delimiter)
         return codec
 
@@ -379,7 +387,7 @@ cdef class Codec:
         cdef Codec codec
         codec = Codec(oid)
         codec.init(name, schema, 'range', CODEC_RANGE, element_codec.format,
-                   PG_XFORMAT_OBJECT, NULL, NULL, None, None, element_codec,
+                   PG_XFORMAT_OBJECT, NULL, NULL, NULL, None, None, element_codec,
                    None, None, None, 0)
         return codec
 
@@ -391,7 +399,7 @@ cdef class Codec:
         cdef Codec codec
         codec = Codec(oid)
         codec.init(name, schema, 'multirange', CODEC_MULTIRANGE,
-                   element_codec.format, PG_XFORMAT_OBJECT, NULL, NULL,
+                   element_codec.format, PG_XFORMAT_OBJECT, NULL, NULL, NULL,
                    None, None, element_codec, None, None, None, 0)
         return codec
 
@@ -406,7 +414,7 @@ cdef class Codec:
         cdef Codec codec
         codec = Codec(oid)
         codec.init(name, schema, 'composite', CODEC_COMPOSITE,
-                   format, PG_XFORMAT_OBJECT, NULL, NULL, None, None, None,
+                   format, PG_XFORMAT_OBJECT, NULL, NULL, NULL, None, None, None,
                    element_type_oids, element_names, element_codecs, 0)
         return codec
 
@@ -419,12 +427,13 @@ cdef class Codec:
                                 object decoder,
                                 encode_func c_encoder,
                                 decode_func c_decoder,
+                                decode_numpy_func numpy_decoder,
                                 ServerDataFormat format,
                                 ClientExchangeFormat xformat):
         cdef Codec codec
         codec = Codec(oid)
         codec.init(name, schema, kind, CODEC_PY, format, xformat,
-                   c_encoder, c_decoder, encoder, decoder,
+                   c_encoder, c_decoder, numpy_decoder, encoder, decoder,
                    None, None, None, None, 0)
         return codec
 
@@ -622,7 +631,7 @@ cdef class DataCodecConfig:
 
             self._custom_type_codecs[typeoid, fmt] = \
                 Codec.new_python_codec(oid, typename, typeschema, typekind,
-                                       encoder, decoder, c_encoder, c_decoder,
+                                       encoder, decoder, c_encoder, c_decoder, NULL,
                                        fmt, xformat)
             codec_set = True
 
@@ -811,6 +820,7 @@ cdef inline int has_core_codec(uint32_t oid):
 cdef register_core_codec(uint32_t oid,
                          encode_func encode,
                          decode_func decode,
+                         decode_numpy_func decode_numpy,
                          ServerDataFormat format,
                          ClientExchangeFormat xformat=PG_XFORMAT_OBJECT):
 
@@ -829,7 +839,7 @@ cdef register_core_codec(uint32_t oid,
 
     codec = Codec(oid)
     codec.init(name, 'pg_catalog', kind, CODEC_C, format, xformat,
-               encode, decode, None, None, None, None, None, None, 0)
+               encode, decode, decode_numpy, None, None, None, None, None, None, 0)
     cpython.Py_INCREF(codec)  # immortalize
 
     if format == PG_FORMAT_BINARY:
@@ -844,6 +854,7 @@ cdef register_core_codec(uint32_t oid,
 cdef register_extra_codec(str name,
                           encode_func encode,
                           decode_func decode,
+                          decode_numpy_func numpy_decode,
                           ServerDataFormat format):
     cdef:
         Codec codec
@@ -853,7 +864,7 @@ cdef register_extra_codec(str name,
 
     codec = Codec(INVALIDOID)
     codec.init(name, None, kind, CODEC_C, format, PG_XFORMAT_OBJECT,
-               encode, decode, None, None, None, None, None, None, 0)
+               encode, decode, numpy_decode, None, None, None, None, None, None, 0)
     EXTRA_CODECS[name, format] = codec
 
 

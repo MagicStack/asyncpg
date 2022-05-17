@@ -865,11 +865,13 @@ cdef init_array_codecs():
     register_core_codec(_OIDOID,
                         <encode_func>&arrayoid_encode,
                         <decode_func>&arrayoid_decode,
+                        NULL,
                         PG_FORMAT_BINARY)
 
     register_core_codec(_TEXTOID,
                         <encode_func>&arraytext_encode,
                         <decode_func>&arraytext_decode,
+                        NULL,
                         PG_FORMAT_BINARY)
 
 init_array_codecs()

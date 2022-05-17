@@ -12,6 +12,10 @@ ctypedef object (*encode_func)(ConnectionSettings settings,
 ctypedef object (*decode_func)(ConnectionSettings settings,
                                FRBuffer *buf)
 
+ctypedef void (*decode_numpy_func)(ConnectionSettings settings,
+                                   FRBuffer *buf,
+                                   ArrayWriter writer)
+
 ctypedef object (*codec_encode_func)(Codec codec,
                                      ConnectionSettings settings,
                                      WriteBuffer buf,
@@ -55,8 +59,9 @@ cdef class Codec:
         ServerDataFormat format
         ClientExchangeFormat xformat
 
-        encode_func     c_encoder
-        decode_func     c_decoder
+        encode_func        c_encoder
+        decode_func        c_decoder
+        decode_numpy_func  numpy_decoder
 
         object          py_encoder
         object          py_decoder
@@ -79,6 +84,7 @@ cdef class Codec:
               CodecType type, ServerDataFormat format,
               ClientExchangeFormat xformat,
               encode_func c_encoder, decode_func c_decoder,
+              decode_numpy_func numpy_decoder,
               object py_encoder, object py_decoder,
               Codec element_codec, tuple element_type_oids,
               object element_names, list element_codecs,
@@ -126,6 +132,8 @@ cdef class Codec:
 
     cdef inline decode(self, ConnectionSettings settings, FRBuffer *buf)
 
+    cdef inline void decode_numpy(self, ConnectionSettings settings, FRBuffer *buf, ArrayWriter aw)
+
     cdef has_encoder(self)
     cdef has_decoder(self)
     cdef is_binary(self)
@@ -169,6 +177,7 @@ cdef class Codec:
                                 object decoder,
                                 encode_func c_encoder,
                                 decode_func c_decoder,
+                                decode_numpy_func numpy_decoder,
                                 ServerDataFormat format,
                                 ClientExchangeFormat xformat)
 
