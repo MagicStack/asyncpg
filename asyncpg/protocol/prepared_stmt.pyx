@@ -4,11 +4,13 @@
 # This module is part of asyncpg and is released under
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
-from cpython cimport PyObject
+from cpython cimport PyObject, Py_DECREF
 from libc.stdint cimport intptr_t
+from numpy cimport dtype as np_dtype
 from asyncpg.pgproto cimport cpythonunsafe
 
 from asyncpg import exceptions
+import pickle
 
 
 @cython.final
@@ -383,15 +385,17 @@ cdef class PreparedStatementState:
             raise BufferError(f'unexpected trailing {frb_get_len(&rbuf)} bytes in buffer')
 
     cdef void _parse_dtype(self):
-        if not self.query.startswith("🚀"):
+        cdef str query = self.query
+        if not query.startswith("🚀"):
             self.dtype = None
             return
-        addr = self.query[1:1 + sizeof(void*) * 2]
-        if len(addr) != sizeof(void*) * 2:
+        end = query.find("🚀\n", 1)
+        if end == -1:
             self.dtype = None
             return
-        self.query = self.query[1 + len(addr) + 1:]
-        self.dtype = <object><PyObject *><intptr_t>int.from_bytes(bytes.fromhex(addr), "little")
+        self.dtype = pickle.loads(bytes.fromhex(query[1:end]))
+        assert isinstance(self.dtype, np_dtype)
+        self.query = query[end + 2:]
 
 
 cdef _decode_parameters_desc(object desc):
