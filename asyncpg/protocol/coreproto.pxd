@@ -190,7 +190,7 @@ cdef class CoreProtocol:
     cdef _terminate(self)
 
     cdef _decode_row(self, const char* buf, ssize_t buf_len)
-    cdef void _decode_row_numpy(self, const char * buf, ssize_t buf_len, ArrayWriter aw)
+    cdef int _decode_row_numpy(self, const char * buf, ssize_t buf_len, ArrayWriter aw) except -1
 
     cdef _on_result(self)
     cdef _on_notification(self, pid, channel, payload)

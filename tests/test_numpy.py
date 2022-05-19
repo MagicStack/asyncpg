@@ -1,3 +1,4 @@
+import decimal
 import random
 
 import numpy as np
@@ -42,6 +43,76 @@ type_samples = [
      np.uint64),
     ("uint8_0", 0, "0::bigint", np.uint64),
     ("uint8_null", 1 << 63, "null", np.uint64),
+
+    ("float", 2.125, "2.125::float4", np.float32),
+    ("floatnan", np.nan, "'NaN'::float4", np.float32),
+    ("floatinf", np.inf, "'inf'::float4", np.float32),
+    ("floatneginf", -np.inf, "-'inf'::float4", np.float32),
+    ("floatnull", np.nan, "null", np.float32),
+
+    ("double", 2.125, "2.125::float8", np.float64),
+    ("doublenan", np.nan, "'NaN'::float8", np.float64),
+    ("doubleinf", np.inf, "'inf'::float8", np.float64),
+    ("doubleneginf", -np.inf, "-'inf'::float8", np.float64),
+    ("doublenull", np.nan, "null", np.float64),
+
+    ("numeric", decimal.Decimal(10000), "10000::numeric", object),
+
+    ("bytea0", b"", "''::bytea", "S1"),
+    ("bytea5", b"12345", "'12345'::bytea", "S5"),
+    ("bytea10", b"12345", "'12345'::bytea", "S10"),
+    ("byteanull", b"\xff", "null", "S1"),
+
+    ("text0", "", "''::text", "U1"),
+    ("text5", "12345", "'12345'::text", "U5"),
+    ("text10", "12345", "'12345'::text", "U10"),
+    ("textnull", "", "null", "U1"),
+
+    ("char", b"1", "'1'::char", "S1"),
+
+    ("dts", np.datetime64("1989-01-12 12:00:01", "s"),
+     "'1989-01-12 12:00:01.123'::timestamp", "datetime64[s]"),
+    ("dtms", np.datetime64("1989-01-12 12:00:01.123", "ms"),
+     "'1989-01-12 12:00:01.123'::timestamp", "datetime64[ms]"),
+    ("dtsz", np.datetime64("1989-01-12 11:00:01", "s"),
+     "'1989-01-12 12:00:01.123+01:00'::timestamptz", "datetime64[s]"),
+    ("dtmsz", np.datetime64("1989-01-12 11:00:01.123", "ms"),
+     "'1989-01-12 12:00:01.123+01:00'::timestamptz", "datetime64[ms]"),
+    ("dt1800", np.datetime64("1800-01-12 12:00:01", "s"),
+     "'1800-01-12 12:00:01.123'::timestamp", "datetime64[s]"),
+    ("dtmax", np.datetime64("294247-01-10T04:00:54.775807", "us"),
+     "'infinity'::timestamp", "datetime64[us]"),
+    ("dtmin", np.datetime64("-290308-12-21T19:59:05.224193", "us"),
+     "'-infinity'::timestamp", "datetime64[us]"),
+    ("dtnull", np.datetime64("NaT", "us"), "null", "datetime64[us]"),
+
+    ("date", np.datetime64("1989-01-12", "D"),
+     "'1989-01-12'::date", "datetime64[D]"),
+    ("datenull", np.datetime64("NaT", "D"), "null", "datetime64[D]"),
+
+    ("time100", np.timedelta64(100, "s"), "'00:01:40'::time",
+     "timedelta64[s]"),
+    ("time_100", np.timedelta64(-100, "s"), "-'00:01:40'::time",
+     "timedelta64[s]"),
+    ("time0", np.timedelta64(0, "us"), "'00:00:00'::time",
+     "timedelta64[us]"),
+    ("timenull", np.timedelta64("NaT", "us"), "null", "timedelta64[us]"),
+
+    ("timetz100", np.timedelta64(-3500, "s"), "'00:01:40+01:00'::timetz",
+     "timedelta64[s]"),
+
+    ("interval", np.timedelta64(10, "D"), "'10 days'::interval",
+     "timedelta64[D]"),
+
+    ("uuid", b"\x07" * 16, "'07070707-0707-0707-0707-070707070707'::uuid",
+     "S16"),
+
+    ("varbit", b"\x10", "'00010000'::varbit", "S1"),
+
+    ("tid", (10, 20), "'(10, 20)'::tid",
+     np.dtype([("major", np.int32), ("minor", np.int16)])),
+
+    ("oid", 987123, "987123::oid", np.uint32),
 ]
 
 
@@ -53,6 +124,7 @@ class TestCodecsNumpy(tb.ConnectedTestCase):
         value_strs = []
         baseline = []
         nulls = []
+        nans = []
         shuffled_type_samples = type_samples.copy()
         random.shuffle(shuffled_type_samples)
         for i, (name, value, value_sql, value_dtype) in enumerate(
@@ -62,6 +134,8 @@ class TestCodecsNumpy(tb.ConnectedTestCase):
             dtype_body.append((name, value_dtype))
             if value_sql == "null":
                 nulls.append(i)
+            if value != value:
+                nans.append(i)
         baseline = tuple(baseline)
         dtype = np.dtype(dtype_body)
         for length in (1, 512, 513, 1024):
@@ -78,5 +152,17 @@ class TestCodecsNumpy(tb.ConnectedTestCase):
                 self.assertEqual(len(fetched_nulls), len(nulls) * length)
                 self.assertEqual(fetched_nulls[:len(nulls)], nulls)
                 self.assertIsInstance(fetched_array, np.ndarray)
-                assert_array_equal(
-                    fetched_array, np.array([baseline] * length, dtype=dtype))
+                nan_mask = np.zeros(len(dtype), dtype=bool)
+                nan_mask[nulls] = True
+                nan_mask[nans] = True
+                baseline_array = np.array([baseline] * length, dtype=dtype)
+                # https://github.com/numpy/numpy/issues/21539
+                for is_nan, (key, (child_dtype, _)) in zip(
+                        nan_mask, dtype.fields.items()):
+                    if not is_nan:
+                        continue
+                    if child_dtype.kind in ("m", "M", "f"):
+                        assert_array_equal(
+                            fetched_array[key], baseline_array[key])
+                        fetched_array[key] = baseline_array[key] = 0
+                assert_array_equal(fetched_array, baseline_array)

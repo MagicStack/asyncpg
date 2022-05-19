@@ -307,11 +307,11 @@ cdef class Codec:
     cdef inline decode(self, ConnectionSettings settings, FRBuffer *buf):
         return self.decoder(self, settings, buf)
 
-    cdef inline void decode_numpy(self, ConnectionSettings settings, FRBuffer *buf, ArrayWriter aw):
+    cdef inline int decode_numpy(self, ConnectionSettings settings, FRBuffer *buf, ArrayWriter aw) except -1:
         if self.numpy_decoder != NULL:
-            self.numpy_decoder(settings, buf, aw)
+            return self.numpy_decoder(settings, buf, aw)
         else:
-            aw.write_object(self.decoder(self, settings, buf))
+            return aw.write_object(self.decoder(self, settings, buf))
 
     cdef inline has_encoder(self):
         cdef Codec elem_codec

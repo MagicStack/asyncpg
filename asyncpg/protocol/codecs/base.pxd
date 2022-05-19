@@ -132,7 +132,7 @@ cdef class Codec:
 
     cdef inline decode(self, ConnectionSettings settings, FRBuffer *buf)
 
-    cdef inline void decode_numpy(self, ConnectionSettings settings, FRBuffer *buf, ArrayWriter aw)
+    cdef inline int decode_numpy(self, ConnectionSettings settings, FRBuffer *buf, ArrayWriter aw) except -1
 
     cdef has_encoder(self)
     cdef has_decoder(self)

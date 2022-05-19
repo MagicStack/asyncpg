@@ -1166,7 +1166,7 @@ cdef class CoreProtocol:
     cdef _decode_row(self, const char* buf, ssize_t buf_len):
         pass
 
-    cdef void _decode_row_numpy(self, const char * buf, ssize_t buf_len, ArrayWriter aw):
+    cdef int _decode_row_numpy(self, const char * buf, ssize_t buf_len, ArrayWriter aw) except -1:
         pass
 
     cdef _set_server_parameter(self, name, val):
