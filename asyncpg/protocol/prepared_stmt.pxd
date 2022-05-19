@@ -37,5 +37,5 @@ cdef class PreparedStatementState:
     cdef _set_row_desc(self, object desc)
     cdef _set_args_desc(self, object desc)
     cdef _decode_row(self, const char *cbuf, ssize_t buf_len)
-    cdef void _decode_row_numpy(self, const char *cbuf, ssize_t buf_len, ArrayWriter aw)
-    cdef void _parse_dtype(self)
+    cdef int _decode_row_numpy(self, const char *cbuf, ssize_t buf_len, ArrayWriter aw) except -1
+    cdef _parse_dtype(self)

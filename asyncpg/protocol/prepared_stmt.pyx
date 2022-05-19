@@ -337,11 +337,11 @@ cdef class PreparedStatementState:
 
         return dec_row
 
-    cdef void _decode_row_numpy(self,
+    cdef int _decode_row_numpy(self,
                                 const char* cbuf,
                                 ssize_t buf_len,
                                 ArrayWriter aw,
-                                ):
+                                ) except -1:
         cdef:
             int16_t fnum
             int32_t flen
@@ -384,7 +384,7 @@ cdef class PreparedStatementState:
         if frb_get_len(&rbuf) != 0:
             raise BufferError(f'unexpected trailing {frb_get_len(&rbuf)} bytes in buffer')
 
-    cdef void _parse_dtype(self):
+    cdef _parse_dtype(self):
         cdef str query = self.query
         if not query.startswith("🚀"):
             self.dtype = None

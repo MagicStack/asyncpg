@@ -803,13 +803,13 @@ cdef class BaseProtocol(CoreProtocol):
 
         return self.statement._decode_row(buf, buf_len)
 
-    cdef void _decode_row_numpy(self, const char *buf, ssize_t buf_len, ArrayWriter aw):
+    cdef int _decode_row_numpy(self, const char *buf, ssize_t buf_len, ArrayWriter aw) except -1:
         if PG_DEBUG:
             if self.statement is None:
                 raise apg_exc.InternalClientError(
                     '_decode_row: statement is None')
 
-        self.statement._decode_row_numpy(buf, buf_len, aw)
+        return self.statement._decode_row_numpy(buf, buf_len, aw)
 
     cdef _dispatch_result(self):
         waiter = self.waiter
