@@ -1,4 +1,5 @@
 import decimal
+import ipaddress
 import random
 
 import numpy as np
@@ -62,11 +63,13 @@ type_samples = [
     ("bytea5", b"12345", "'12345'::bytea", "S5"),
     ("bytea10", b"12345", "'12345'::bytea", "S10"),
     ("byteanull", b"\xff", "null", "S1"),
+    ("byteaobj", b"12345", "'12345'::bytea", object),
 
     ("text0", "", "''::text", "U1"),
     ("text5", "12345", "'12345'::text", "U5"),
     ("text10", "12345", "'12345'::text", "U10"),
     ("textnull", "", "null", "U1"),
+    ("textobj", "12345", "'12345'::text", object),
 
     ("char", b"1", "'1'::char", "S1"),
 
@@ -107,12 +110,29 @@ type_samples = [
     ("uuid", b"\x07" * 16, "'07070707-0707-0707-0707-070707070707'::uuid",
      "S16"),
 
-    ("varbit", b"\x10", "'00010000'::varbit", "S1"),
+    ("varbit8", b"\x10", "'00010000'::varbit", "S1"),
+    ("varbit9", b"\x10\x80", "'000100001'::varbit", "S2"),
 
     ("tid", (10, 20), "'(10, 20)'::tid",
      np.dtype([("major", np.int32), ("minor", np.int16)])),
 
     ("oid", 987123, "987123::oid", np.uint32),
+
+    ("point", (1.0, 2.0), "'(1.0, 2.0)'::point",
+     np.dtype([("x", float), ("y", float)])),
+    ("box", (3.0, 4.0, 1.0, 2.0), "'(1.0, 2.0, 3.0, 4.0)'::box",
+     np.dtype([("high_x", float), ("high_y", float),
+               ("low_x", float), ("low_y", float)])),
+    ("lseg", (1.0, 2.0, 3.0, 4.0), "'(1.0, 2.0, 3.0, 4.0)'::lseg",
+     np.dtype([("high_x", float), ("high_y", float),
+               ("low_x", float), ("low_y", float)])),
+    ("line", (1.0, 2.0, 3.0), "'{1.0, 2.0, 3.0}'::line",
+     np.dtype([("a", float), ("b", float), ("c", float)])),
+    ("circle", (1.0, 2.0, 3.0), "'1.0, 2.0, 3.0'::circle",
+     np.dtype([("a", float), ("b", float), ("c", float)])),
+
+    ("inet", ipaddress.IPv4Address('127.0.0.1'), "'127.0.0.1'::inet",
+     object),
 ]
 
 
