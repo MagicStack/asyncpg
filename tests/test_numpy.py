@@ -5,7 +5,7 @@ import random
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from asyncpg import _testbase as tb
+from asyncpg import _testbase as tb, DTypeError
 from asyncpg.rkt import set_query_dtype
 
 
@@ -136,6 +136,17 @@ type_samples = [
      object),
 ]
 
+error_type_samples = [
+    ("sanity", "1::int", np.int32, None),
+    ("int", "7::int", object, DTypeError),
+    ("int64", "7::bigint", np.int32, DTypeError),
+    ("bytea", "'1234'::bytea", "S3", DTypeError),
+    ("text", "'1234'::text", "U3", DTypeError),
+    ("float", "1.0::float8", np.float32, DTypeError),
+    ("varbit9", "'000100001'::varbit", "S1", DTypeError),
+    ("dts", "'1989-01-12 12:00:01.123'::timestamp", object, DTypeError),
+]
+
 
 class TestCodecsNumpy(tb.ConnectedTestCase):
 
@@ -187,3 +198,15 @@ class TestCodecsNumpy(tb.ConnectedTestCase):
                             fetched_array[key], baseline_array[key])
                         fetched_array[key] = baseline_array[key] = 0
                 assert_array_equal(fetched_array, baseline_array)
+
+    async def test_exceptions(self):
+        """Test decoding of standard data types to numpy arrays."""
+        for name, value_sql, value_dtype, exc in error_type_samples:
+            dtype = np.dtype([(name, value_dtype)])
+            query = set_query_dtype(f"SELECT {value_sql}", dtype)
+            with self.subTest(name=name):
+                if exc is not None:
+                    with self.assertRaises(exc):
+                        await self.con.fetch(query)
+                else:
+                    await self.con.fetch(query)
