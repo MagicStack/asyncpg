@@ -320,7 +320,8 @@ cdef class PreparedStatementState:
                 # to make sure that codecs can rely on read_all() working
                 # properly.
                 bl = frb_get_len(&rbuf)
-                frb_check(&rbuf, flen)
+                if flen > rbuf.len:
+                    frb_raise(&rbuf, flen)
                 frb_set_len(&rbuf, flen)
                 codec = <Codec>cpython.PyTuple_GET_ITEM(rows_codecs, i)
                 val = codec.decode(settings, &rbuf)
@@ -372,7 +373,8 @@ cdef class PreparedStatementState:
                 # to make sure that codecs can rely on read_all() working
                 # properly.
                 bl = frb_get_len(&rbuf)
-                frb_check(&rbuf, flen)
+                if flen > rbuf.len:
+                    frb_raise(&rbuf, flen)
                 frb_set_len(&rbuf, flen)
                 (<Codec>cpythonunsafe.PyTuple_GET_ITEM(<PyObject*>rows_codecs, i)).decode_numpy(
                     settings, &rbuf, aw)

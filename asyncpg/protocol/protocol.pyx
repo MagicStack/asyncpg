@@ -27,7 +27,7 @@ from asyncpg.pgproto.pgproto cimport (
     frb_read,
     frb_read_all,
     frb_slice_from,
-    frb_check,
+    frb_raise,
     frb_set_len,
     frb_get_len,
 )
