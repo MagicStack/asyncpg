@@ -386,14 +386,14 @@ cdef class PreparedStatementState:
 
     cdef _parse_dtype(self):
         cdef str query = self.query
-        if not query.startswith("🚀"):
+        if not query.startswith("--🚀"):
             self.dtype = None
             return
-        end = query.find("🚀\n", 1)
+        end = query.find("🚀\n", 3)
         if end == -1:
             self.dtype = None
             return
-        self.dtype = pickle.loads(bytes.fromhex(query[1:end]))
+        self.dtype = pickle.loads(bytes.fromhex(query[3:end]))
         assert isinstance(self.dtype, np_dtype)
         self.query = query[end + 2:]
 

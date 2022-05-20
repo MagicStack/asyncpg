@@ -3,6 +3,7 @@
 
 from ._base import *  # NOQA
 from . import _base
+from asyncpg.pgproto.pgproto import DTypeError
 
 
 class PostgresWarning(_base.PostgresLogMessage, Warning):
@@ -1049,6 +1050,7 @@ class IndexCorruptedError(InternalServerError):
 
 
 __all__ = (
+    'DTypeError',
     'ActiveSQLTransactionError', 'AdminShutdownError',
     'AmbiguousAliasError', 'AmbiguousColumnError',
     'AmbiguousFunctionError', 'AmbiguousParameterError',
