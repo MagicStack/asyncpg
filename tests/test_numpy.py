@@ -68,6 +68,7 @@ type_samples = [
     ("text0", "", "''::text", "U1"),
     ("text5", "12345", "'12345'::text", "U5"),
     ("text10", "12345", "'12345'::text", "U10"),
+    ("textrocket", "🚀áño", "'🚀áño'::text", "U9"),
     ("textnull", "", "null", "U1"),
     ("textobj", "12345", "'12345'::text", object),
 
