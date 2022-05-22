@@ -415,8 +415,11 @@ cdef class CoreProtocol:
             msg = self.buffer.read_null_str()
         self.result_status_msg = msg
         if isinstance(self.result, np.dtype):
-            array_writer = self._array_writer
-            self.result = array_writer.consolidate(), array_writer.null_indexes
+            if self.result != np.void:
+                array_writer = self._array_writer
+                self.result = array_writer.consolidate(), array_writer.null_indexes
+            else:
+                self.result = None
 
     cdef _parse_copy_data_msgs(self):
         cdef:
@@ -500,7 +503,7 @@ cdef class CoreProtocol:
 
         if isinstance(self.result, list):
             self._parse_data_msgs_record()
-        else:
+        elif self.result != np.void:
             self._parse_data_msgs_numpy()
 
     cdef _parse_data_msgs_record(self):

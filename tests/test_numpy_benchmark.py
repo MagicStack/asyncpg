@@ -1,7 +1,13 @@
-import os
+import pickle
+import unittest
+
+import numpy as np
+try:
+    import pytest
+except ImportError:
+    raise unittest.SkipTest("This is a benchmark")
 
 from asyncpg.rkt import set_query_dtype
-import numpy as np
 from asyncpg._testbase import ConnectedTestCase
 
 
@@ -14,19 +20,24 @@ def setup_suite():
     return suite
 
 
-def _entry(suite, coro):
-    suite.loop.run_until_complete(coro(suite))
+def _entry(suite, coro, length):
+    suite.loop.run_until_complete(coro(suite, length))
 
 
-async def round_trip(suite):
+async def _round_trip(suite, _):
     if suite.stmt is None:
         suite.stmt = await suite.con.prepare("SELECT 1")
     await suite.stmt.fetch()
 
 
-def test_round_trip(benchmark):
+@pytest.mark.benchmark(
+    warmup=True,
+    warmup_iterations=2,
+)
+@pytest.mark.parametrize("length", [1])
+def test_min(benchmark, length):
     suite = setup_suite()
-    benchmark(_entry, suite, round_trip)
+    benchmark(_entry, suite, _round_trip, length)
 
 
 type_samples = [
@@ -56,33 +67,63 @@ type_samples = [
     ("time2", "'01:01:40'::time", "timedelta64[us]"),
 ]
 
+# lengths = [100, 200, 500, 1000, 1500, 2000]
+lengths = [5000, 10000, 15000, 20000, 30000, 50000]
 
-def compose_query():
-    length = int(os.getenv("SELECT_ROWS", "1000"))
+
+def compose_query(length):
     value_strs = [sql for _, sql, _ in type_samples]
     return f"SELECT {', '.join(value_strs)}\n" \
            f"FROM generate_series(1, {length}) i"
 
 
-async def fetch_records(suite):
+async def fetch_dummy(suite, length):
     if suite.stmt is None:
-        suite.stmt = await suite.con.prepare(compose_query())
+        suite.stmt = await suite.con.prepare(
+            set_query_dtype(compose_query(length),
+                            pickle.dumps(np.dtype(np.void))))
     await suite.stmt.fetch()
 
 
-def test_fetch_records(benchmark):
+@pytest.mark.benchmark(
+    warmup=True,
+    warmup_iterations=2,
+)
+@pytest.mark.parametrize("length", lengths)
+def test_dummy(benchmark, length):
     suite = setup_suite()
-    benchmark(_entry, suite, fetch_records)
+    benchmark(_entry, suite, fetch_dummy, length)
 
 
-async def fetch_numpy(suite):
+async def fetch_record(suite, length):
+    if suite.stmt is None:
+        suite.stmt = await suite.con.prepare(compose_query(length))
+    await suite.stmt.fetch()
+
+
+@pytest.mark.benchmark(
+    warmup=True,
+    warmup_iterations=2,
+)
+@pytest.mark.parametrize("length", lengths)
+def test_record(benchmark, length):
+    suite = setup_suite()
+    benchmark(_entry, suite, fetch_record, length)
+
+
+async def fetch_numpy(suite, length):
     if suite.stmt is None:
         dtype = np.dtype([(name, subdt) for name, _, subdt in type_samples])
         suite.stmt = await suite.con.prepare(
-            set_query_dtype(compose_query(), dtype))
+            set_query_dtype(compose_query(length), dtype))
     await suite.stmt.fetch()
 
 
-def test_fetch_numpy(benchmark):
+@pytest.mark.benchmark(
+    warmup=True,
+    warmup_iterations=2,
+)
+@pytest.mark.parametrize("length", lengths)
+def test_numpy(benchmark, length):
     suite = setup_suite()
-    benchmark(_entry, suite, fetch_numpy)
+    benchmark(_entry, suite, fetch_numpy, length)

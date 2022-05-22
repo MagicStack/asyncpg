@@ -7,6 +7,8 @@
 from cpython cimport PyObject, Py_DECREF
 from libc.stdint cimport intptr_t
 from numpy cimport dtype as np_dtype
+import numpy as np
+
 from asyncpg.pgproto cimport cpythonunsafe
 
 from asyncpg import exceptions
@@ -398,7 +400,6 @@ cdef class PreparedStatementState:
         self.dtype = pickle.loads(bytes.fromhex(query[3:end]))
         assert isinstance(self.dtype, np_dtype)
         self.query = query[end + 2:]
-
 
 cdef _decode_parameters_desc(object desc):
     cdef:
