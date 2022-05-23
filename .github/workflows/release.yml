@@ -1,49 +1,12 @@
-name: Release
+name: Publish Python 🐍 packages 📦 to PyPI
 
 on:
-  pull_request:
-    branches:
-      - "master"
-      - "ci"
-      - "[0-9]+.[0-9x]+*"
-    paths:
-      - "asyncpg/_version.py"
+  push:
+    tags:
+      - 'v?[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
-  validate-release-request:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Validate release PR
-      uses: edgedb/action-release/validate-pr@master
-      id: checkver
-      with:
-        require_team: Release Managers
-        require_approval: no
-        github_token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
-        version_file: asyncpg/_version.py
-        version_line_pattern: |
-          __version__\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
-
-    - name: Stop if not approved
-      if: steps.checkver.outputs.approved != 'true'
-      run: |
-        echo ::error::PR is not approved yet.
-        exit 1
-
-    - name: Store release version for later use
-      env:
-        VERSION: ${{ steps.checkver.outputs.version }}
-      run: |
-        mkdir -p dist/
-        echo "${VERSION}" > dist/VERSION
-
-    - uses: actions/upload-artifact@v2
-      with:
-        name: dist
-        path: dist/
-
   build-sdist:
-    needs: validate-release-request
     runs-on: ubuntu-latest
 
     env:
@@ -69,18 +32,17 @@ jobs:
         path: dist/*.tar.*
 
   build-wheels:
-    needs: validate-release-request
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        cibw_python: ["cp36-*", "cp37-*", "cp38-*", "cp39-*", "cp310-*"]
-        cibw_arch: ["auto64", "auto32"]
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        cibw_python: [ "cp36-*", "cp37-*", "cp38-*", "cp39-*", "cp310-*" ]
+        cibw_arch: [ "auto64", "auto32" ]
         exclude:
-          - os: macos-latest
-            cibw_arch: "auto32"
-          - os: ubuntu-latest
-            cibw_arch: "auto32"
+        - os: macos-latest
+          cibw_arch: "auto32"
+        - os: ubuntu-latest
+          cibw_arch: "auto32"
 
     defaults:
       run:
@@ -106,54 +68,8 @@ jobs:
         name: dist
         path: wheelhouse/*.whl
 
-  publish-docs:
-    needs: validate-release-request
-    runs-on: ubuntu-latest
-
-    env:
-      PIP_DISABLE_PIP_VERSION_CHECK: 1
-
-    steps:
-    - name: Checkout source
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 5
-        submodules: true
-
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.8
-
-    - name: Build docs
-      run: |
-        pip install -e .[dev]
-        make htmldocs
-
-    - name: Checkout gh-pages
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 5
-        ref: gh-pages
-        path: docs/gh-pages
-
-    - name: Sync docs
-      run: |
-        rsync -a docs/_build/html/ docs/gh-pages/current/
-
-    - name: Commit and push docs
-      uses: magicstack/gha-commit-and-push@master
-      with:
-        target_branch: gh-pages
-        workdir: docs/gh-pages
-        commit_message: Automatic documentation update
-        github_token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
-        ssh_key: ${{ secrets.RELEASE_BOT_SSH_KEY }}
-        gpg_key: ${{ secrets.RELEASE_BOT_GPG_KEY }}
-        gpg_key_id: "5C468778062D87BF!"
-
   publish:
-    needs: [build-sdist, build-wheels, publish-docs]
+    needs: [build-sdist, build-wheels]
     runs-on: ubuntu-latest
 
     steps:
@@ -167,32 +83,6 @@ jobs:
         name: dist
         path: dist/
 
-    - name: Extract Release Version
-      id: relver
-      run: |
-        set -e
-        echo ::set-output name=version::$(cat dist/VERSION)
-        rm dist/VERSION
-
-    - name: Merge and tag the PR
-      uses: edgedb/action-release/merge@master
-      with:
-        github_token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
-        ssh_key: ${{ secrets.RELEASE_BOT_SSH_KEY }}
-        gpg_key: ${{ secrets.RELEASE_BOT_GPG_KEY }}
-        gpg_key_id: "5C468778062D87BF!"
-        tag_name: v${{ steps.relver.outputs.version }}
-
-    - name: Publish Github Release
-      uses: elprans/gh-action-create-release@master
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v${{ steps.relver.outputs.version }}
-        release_name: v${{ steps.relver.outputs.version }}
-        target: ${{ github.event.pull_request.base.ref }}
-        body: ${{ github.event.pull_request.body }}
-
     - run: |
         ls -al dist/
 
@@ -201,5 +91,3 @@ jobs:
       with:
         user: __token__
         password: ${{ secrets.PYPI_TOKEN }}
-        # password: ${{ secrets.TEST_PYPI_TOKEN }}
-        # repository_url: https://test.pypi.org/legacy/

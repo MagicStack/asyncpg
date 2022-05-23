@@ -24,7 +24,6 @@ from setuptools.command import build_py as setuptools_build_py
 from setuptools.command import sdist as setuptools_sdist
 from setuptools.command import build_ext as setuptools_build_ext
 
-import numpy as np
 
 CYTHON_DEPENDENCY = 'Cython(>=0.29.24,<0.30.0)'
 
@@ -246,6 +245,12 @@ if (not (_ROOT / 'asyncpg' / 'protocol' / 'protocol.c').exists() or
     setup_requires.append(CYTHON_DEPENDENCY)
 
 
+class numpy_include(str):
+    def __str__(self):
+        import numpy
+        return numpy.get_include()
+
+
 setuptools.setup(
     name='asyncpg-rkt',
     version=VERSION,
@@ -286,7 +291,7 @@ setuptools.setup(
         setuptools.extension.Extension(
             "asyncpg.pgproto.pgproto",
             ["asyncpg/pgproto/pgproto.pyx"],
-            include_dirs=[np.get_include()],
+            include_dirs=[numpy_include()],
             extra_compile_args=CFLAGS,
             extra_link_args=LDFLAGS),
 
@@ -294,7 +299,7 @@ setuptools.setup(
             "asyncpg.protocol.protocol",
             ["asyncpg/protocol/record/recordobj.c",
              "asyncpg/protocol/protocol.pyx"],
-            include_dirs=['asyncpg/pgproto/', np.get_include()],
+            include_dirs=['asyncpg/pgproto/', numpy_include()],
             extra_compile_args=CFLAGS,
             extra_link_args=LDFLAGS),
     ],
