@@ -19,8 +19,8 @@ framework.  You can read more about asyncpg in an introductory
 - Such "typed" queries return numpy arrays instead of lists of Record objects.
 - We construct numpy arrays directly from the low-level PostgreSQL protocol, without materializing any Python objects.
 - Although, we support `object` fields, too.
-- The time from receiving the response from PostgreSQL server till `Connection.fetch()` is 10-100x less.
-It happens so because we avoid the overhead of dealing with Python objects in the result.
+- The time from receiving the response from PostgreSQL server until `Connection.fetch()` returns is ~20x less.
+This is because we avoid the overhead of dealing with Python objects in the result.
 - We return `ravel()`-ed indexes of nulls while writing NaN-s/NaT-s at the corresponding places in the array.
 
 **asyncpg-rkt** ensures the best performance when there are thousands of rows returned and the field types map to numpy.
