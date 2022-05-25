@@ -7,8 +7,8 @@
 
 import sys
 
-if sys.version_info < (3, 6):
-    raise RuntimeError('asyncpg requires Python 3.6 or greater')
+if sys.version_info < (3, 7):
+    raise RuntimeError('asyncpg requires Python 3.7 or greater')
 
 import os
 import os.path
@@ -237,7 +237,7 @@ class build_ext(setuptools_build_ext.build_ext):
         super(build_ext, self).finalize_options()
 
 
-setup_requires = ['numpy>=1.0.0']
+setup_requires = ['numpy>=1.21.0']
 
 if (not (_ROOT / 'asyncpg' / 'protocol' / 'protocol.c').exists() or
         '--cython-always' in sys.argv):
@@ -265,7 +265,6 @@ setuptools.setup(
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
@@ -274,7 +273,7 @@ setuptools.setup(
         'Topic :: Database :: Front-Ends',
     ],
     platforms=['macOS', 'POSIX', 'Windows'],
-    python_requires='>=3.6.0',
+    python_requires='>=3.7.0',
     zip_safe=False,
     author='MagicStack Inc',
     author_email='hello@magic.io',
@@ -304,7 +303,7 @@ setuptools.setup(
             extra_link_args=LDFLAGS),
     ],
     install_requires=['typing-extensions>=3.7.4.3;python_version<"3.8"',
-                      'numpy>=1.0.0'],
+                      'numpy>=1.21.0'],
     cmdclass={'build_ext': build_ext, 'build_py': build_py, 'sdist': sdist},
     test_suite='tests.suite',
     extras_require=EXTRA_DEPENDENCIES,

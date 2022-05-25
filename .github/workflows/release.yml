@@ -36,7 +36,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest, macos-latest, windows-latest ]
-        cibw_python: [ "cp36-*", "cp37-*", "cp38-*", "cp39-*", "cp310-*" ]
+        cibw_python: [ "cp37-*", "cp38-*", "cp39-*", "cp310-*" ]
         cibw_arch: [ "auto64", "auto32" ]
         exclude:
         - os: macos-latest
