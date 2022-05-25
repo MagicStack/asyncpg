@@ -25,7 +25,7 @@ This is because we avoid the overhead of dealing with Python objects in the resu
 
 **asyncpg-rkt** ensures the best performance when there are thousands of rows returned and the field types map to numpy.
 
-asyncpg requires Python 3.6 or later and is supported for PostgreSQL
+asyncpg requires Python 3.7 or later and is supported for PostgreSQL
 versions 9.5 to 14.  Older PostgreSQL versions or other databases implementing
 the PostgreSQL protocol *may* work, but are not being actively tested.
 

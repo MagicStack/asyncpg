@@ -3,7 +3,7 @@ name = "asyncpg"
 requires-python = ">=3.6"
 
 [build-system]
-requires = ["setuptools>=42", "wheel", "numpy>=1.0.0"]
+requires = ["setuptools>=42", "wheel", "numpy>=1.21.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.cibuildwheel]
