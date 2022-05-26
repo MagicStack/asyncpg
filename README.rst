@@ -4,8 +4,8 @@ asyncpg-rkt -- A fast PostgreSQL Database Client Library for Python/asyncio that
 .. image:: https://github.com/athenianco/asyncpg-rkt/workflows/Tests/badge.svg
    :target: https://github.com/athenianco/asyncpg-rkt/actions?query=workflow%3ATests+branch%3Amaster
    :alt: GitHub Actions status
-.. image:: https://img.shields.io/pypi/v/asyncpg.svg
-   :target: https://pypi.python.org/pypi/asyncpg
+.. image:: https://img.shields.io/pypi/v/asyncpg-rkt.svg
+   :target: https://pypi.python.org/pypi/asyncpg-rkt
 
 **asyncpg-rkt** is a fork of **asyncpg**, a database interface library designed specifically for
 PostgreSQL and Python/asyncio.  asyncpg is an efficient, clean implementation
