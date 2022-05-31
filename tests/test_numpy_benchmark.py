@@ -111,7 +111,7 @@ def test_record(benchmark, length):
     benchmark(_entry, suite, fetch_record, length)
 
 
-async def fetch_numpy(suite, length):
+async def fetch_numpy_row(suite, length):
     if suite.stmt is None:
         dtype = np.dtype([(name, subdt) for name, _, subdt in type_samples])
         suite.stmt = await suite.con.prepare(
@@ -124,6 +124,25 @@ async def fetch_numpy(suite, length):
     warmup_iterations=2,
 )
 @pytest.mark.parametrize("length", lengths)
-def test_numpy(benchmark, length):
+def test_numpy_row(benchmark, length):
     suite = setup_suite()
-    benchmark(_entry, suite, fetch_numpy, length)
+    benchmark(_entry, suite, fetch_numpy_row, length)
+
+
+async def fetch_numpy_column(suite, length):
+    if suite.stmt is None:
+        dtype = np.dtype([(name, subdt) for name, _, subdt in type_samples],
+                         metadata={"blocks": True})
+        suite.stmt = await suite.con.prepare(
+            set_query_dtype(compose_query(length), dtype))
+    await suite.stmt.fetch()
+
+
+@pytest.mark.benchmark(
+    warmup=True,
+    warmup_iterations=2,
+)
+@pytest.mark.parametrize("length", lengths)
+def test_numpy_column(benchmark, length):
+    suite = setup_suite()
+    benchmark(_entry, suite, fetch_numpy_column, length)

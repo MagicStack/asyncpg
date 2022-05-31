@@ -156,8 +156,7 @@ error_type_samples = [
 
 class TestCodecsNumpy(tb.ConnectedTestCase):
 
-    async def test_standard_codecs(self):
-        """Test decoding of standard data types to numpy arrays."""
+    def setup_standard_codecs(self, blocks: bool):
         dtype_body = []
         value_strs = []
         baseline = []
@@ -175,7 +174,16 @@ class TestCodecsNumpy(tb.ConnectedTestCase):
             if value != value:
                 nans.append(i)
         baseline = tuple(baseline)
-        dtype = np.dtype(dtype_body)
+        if blocks:
+            dtype = np.dtype(dtype_body, metadata={"blocks": True})
+        else:
+            dtype = np.dtype(dtype_body)
+        return dtype, baseline, value_strs, nulls, nans
+
+    async def test_standard_codecs_row(self):
+        """Test decoding of standard data types to numpy arrays, row-major."""
+        dtype, baseline, value_strs, nulls, nans = \
+            self.setup_standard_codecs(False)
         for length in (1, 512, 513, 1024):
             query = f"SELECT {', '.join(value_strs)}\n" \
                     f"FROM generate_series(1, {length}) i"
@@ -204,6 +212,30 @@ class TestCodecsNumpy(tb.ConnectedTestCase):
                             fetched_array[key], baseline_array[key])
                         fetched_array[key] = baseline_array[key] = 0
                 assert_array_equal(fetched_array, baseline_array)
+
+    async def test_standard_codecs_column(self):
+        """Test decoding of standard data types to numpy arrays,
+        column-major."""
+        dtype, baseline, value_strs, nulls, _ = \
+            self.setup_standard_codecs(True)
+        for length in (1, 512, 513, 1024):
+            query = f"SELECT {', '.join(value_strs)}\n" \
+                    f"FROM generate_series(1, {length}) i"
+
+            stmt = await self.con.prepare(
+                set_query_dtype(query, dtype)
+            )
+            with self.subTest(length=length):
+                fetched_array, fetched_nulls = await stmt.fetch()
+
+                self.assertIsInstance(fetched_nulls, list)
+                self.assertEqual(len(fetched_nulls), len(nulls) * length)
+                self.assertEqual(fetched_nulls[:len(nulls)], nulls)
+                self.assertIsInstance(fetched_array, np.ndarray)
+                for i, name in enumerate(dtype.names):
+                    baseline_array = np.array(
+                        [baseline[i]] * length, dtype=dtype.fields[name][0])
+                    assert_array_equal(fetched_array[i], baseline_array)
 
     async def test_exceptions(self):
         """Test decoding of standard data types to numpy arrays."""
