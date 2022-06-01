@@ -416,6 +416,8 @@ cdef class CoreProtocol:
         self.result_status_msg = msg
         if isinstance(self.result, np.dtype):
             if self.result != np.void:
+                if self._array_writer is None:
+                    self._array_writer = ArrayWriter(self.result)
                 array_writer = self._array_writer
                 self.result = array_writer.consolidate(), array_writer.null_indexes
             else:

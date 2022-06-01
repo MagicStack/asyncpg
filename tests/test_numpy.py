@@ -202,7 +202,7 @@ class TestCodecsNumpy(tb.ConnectedTestCase):
         """Test decoding of standard data types to numpy arrays, row-major."""
         dtype, baseline, value_strs, nulls, nans = \
             self.setup_standard_codecs(False)
-        for length in (1, 512, 513, 1024):
+        for length in (0, 1, 512, 513, 1024):
             query = f"SELECT {', '.join(value_strs)}\n" \
                     f"FROM generate_series(1, {length}) i"
 
@@ -214,7 +214,8 @@ class TestCodecsNumpy(tb.ConnectedTestCase):
 
                 self.assertIsInstance(fetched_nulls, list)
                 self.assertEqual(len(fetched_nulls), len(nulls) * length)
-                self.assertEqual(fetched_nulls[:len(nulls)], nulls)
+                if length > 0:
+                    self.assertEqual(fetched_nulls[:len(nulls)], nulls)
                 self.assertIsInstance(fetched_array, np.ndarray)
                 nan_mask = np.zeros(len(dtype), dtype=bool)
                 nan_mask[nulls] = True
@@ -236,7 +237,7 @@ class TestCodecsNumpy(tb.ConnectedTestCase):
         column-major."""
         dtype, baseline, value_strs, nulls, _ = \
             self.setup_standard_codecs(True)
-        for length in (1, 512, 513, 1024):
+        for length in (0, 1, 512, 513, 1024):
             query = f"SELECT {', '.join(value_strs)}\n" \
                     f"FROM generate_series(1, {length}) i"
 
@@ -248,7 +249,8 @@ class TestCodecsNumpy(tb.ConnectedTestCase):
 
                 self.assertIsInstance(fetched_nulls, list)
                 self.assertEqual(len(fetched_nulls), len(nulls) * length)
-                self.assertEqual(fetched_nulls[:len(nulls)], nulls)
+                if length > 0:
+                    self.assertEqual(fetched_nulls[:len(nulls)], nulls)
                 self.assertIsInstance(fetched_array, np.void)
                 for i, name in enumerate(dtype.names):
                     baseline_array = np.array(
