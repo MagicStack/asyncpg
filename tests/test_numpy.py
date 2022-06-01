@@ -231,7 +231,7 @@ class TestCodecsNumpy(tb.ConnectedTestCase):
                 self.assertIsInstance(fetched_nulls, list)
                 self.assertEqual(len(fetched_nulls), len(nulls) * length)
                 self.assertEqual(fetched_nulls[:len(nulls)], nulls)
-                self.assertIsInstance(fetched_array, np.ndarray)
+                self.assertIsInstance(fetched_array, np.void)
                 for i, name in enumerate(dtype.names):
                     baseline_array = np.array(
                         [baseline[i]] * length, dtype=dtype.fields[name][0])
