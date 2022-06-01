@@ -1,6 +1,8 @@
+from datetime import date, datetime, time, timedelta
 import decimal
 import ipaddress
 import random
+from uuid import UUID
 
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -12,11 +14,13 @@ from asyncpg.rkt import set_query_dtype
 type_samples = [
     ("bool_false", False, "false", np.bool8),
     ("bool_true", True, "true", np.bool8),
+    ("bool_obj", True, "true", object),
     ("bool_null", True, "null", np.bool8),
 
     ("int2_32000", 32000, "32000::smallint", np.int16),
     ("int2_1024", -1024, "-1024::smallint", np.int16),
     ("int2_0", 0, "0::smallint", np.int16),
+    ("int2_obj", 32000, "32000::smallint", object),
     ("int2_null", -(1 << 15), "null", np.int16),
 
     ("uint2_32000", 32000, "32000::smallint", np.uint16),
@@ -27,6 +31,7 @@ type_samples = [
     ("int4_320000", 3200000, "3200000::int", np.int32),
     ("int4_100024", -100024, "-100024::int", np.int32),
     ("int4_0", 0, "0::int", np.int32),
+    ("int4_obj", 3200000, "3200000::int", object),
     ("int4_null", -(1 << 31), "null", np.int32),
 
     ("uint4_320000", 3200000, "3200000::int", np.uint32),
@@ -37,6 +42,7 @@ type_samples = [
     ("int8_32000000000", 32000000000, "32000000000::bigint", np.int64),
     ("int8_10000000024", -10000000024, "-10000000024::bigint", np.int64),
     ("int8_0", 0, "0::bigint", np.int64),
+    ("int8_obj", 32000000000, "32000000000::bigint", object),
     ("int8_null", -(1 << 63), "null", np.int64),
 
     ("uint8_32000000000", 32000000000, "32000000000::bigint", np.uint64),
@@ -50,12 +56,14 @@ type_samples = [
     ("floatinf", np.inf, "'inf'::float4", np.float32),
     ("floatneginf", -np.inf, "-'inf'::float4", np.float32),
     ("floatnull", np.nan, "null", np.float32),
+    ("floatobj", 2.125, "2.125::float4", object),
 
     ("double", 2.125, "2.125::float8", np.float64),
     ("doublenan", np.nan, "'NaN'::float8", np.float64),
     ("doubleinf", np.inf, "'inf'::float8", np.float64),
     ("doubleneginf", -np.inf, "-'inf'::float8", np.float64),
     ("doublenull", np.nan, "null", np.float64),
+    ("doubleobj", 2.125, "2.125::float8", object),
 
     ("numeric", decimal.Decimal(10000), "10000::numeric", object),
 
@@ -95,10 +103,13 @@ type_samples = [
     ("dtmin", np.datetime64("-290308-12-21T19:59:05.224193", "us"),
      "'-infinity'::timestamp", "datetime64[us]"),
     ("dtnull", np.datetime64("NaT", "us"), "null", "datetime64[us]"),
+    ("dtobj", datetime(1989, 1, 12, 12, 0, 1, microsecond=123000),
+     "'1989-01-12 12:00:01.123'::timestamp", object),
 
     ("date", np.datetime64("1989-01-12", "D"),
      "'1989-01-12'::date", "datetime64[D]"),
     ("datenull", np.datetime64("NaT", "D"), "null", "datetime64[D]"),
+    ("dateobj", date(1989, 1, 12), "'1989-01-12'::date", object),
 
     ("time100", np.timedelta64(100, "s"), "'00:01:40.123'::time",
      "timedelta64[s]"),
@@ -107,18 +118,24 @@ type_samples = [
     ("time0", np.timedelta64(0, "us"), "'00:00:00'::time",
      "timedelta64[us]"),
     ("timenull", np.timedelta64("NaT", "us"), "null", "timedelta64[us]"),
+    ("timeobj", time(0, 1, 40, 123000), "'00:01:40.123'::time",
+     object),
 
     ("timetz100", np.timedelta64(-3500, "s"), "'00:01:40+01:00'::timetz",
      "timedelta64[s]"),
 
     ("interval", np.timedelta64(10, "D"), "'10 days'::interval",
      "timedelta64[D]"),
+    ("intervalobj", timedelta(days=10), "'10 days'::interval", object),
 
     ("uuid", b"\x07" * 16, "'07070707-0707-0707-0707-070707070707'::uuid",
      "S16"),
+    ("uuidobj", UUID(bytes=b"\x07" * 16),
+     "'07070707-0707-0707-0707-070707070707'::uuid", object),
 
     ("varbit8", b"\x10", "'00010000'::varbit", "S1"),
     ("varbit9", b"\x10\x80", "'000100001'::varbit", "S2"),
+    ("varbitobj", b"\x10", "'00010000'::varbit", object),
 
     ("tid", (10, 20), "'(10, 20)'::tid",
      np.dtype([("major", np.int32), ("minor", np.int16)])),
@@ -144,13 +161,14 @@ type_samples = [
 
 error_type_samples = [
     ("sanity", "1::int", np.int32, None),
-    ("int", "7::int", object, DTypeError),
+    ("int", "7::int", bool, DTypeError),
     ("int64", "7::bigint", np.int32, DTypeError),
+    ("int64", "7::bigint", "datetime64[s]", DTypeError),
     ("bytea", "'1234'::bytea", "S3", DTypeError),
     ("text", "'1234'::text", "U3", DTypeError),
     ("float", "1.0::float8", np.float32, DTypeError),
     ("varbit9", "'000100001'::varbit", "S1", DTypeError),
-    ("dts", "'1989-01-12 12:00:01.123'::timestamp", object, DTypeError),
+    ("dts", "'1989-01-12 12:00:01.123'::timestamp", int, DTypeError),
 ]
 
 
