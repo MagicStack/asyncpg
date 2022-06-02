@@ -251,6 +251,26 @@ class TestCodecsNumpy(tb.ConnectedTestCase):
                 self.assertEqual(len(fetched_nulls), len(nulls) * length)
                 if length > 0:
                     self.assertEqual(fetched_nulls[:len(nulls)], nulls)
+                    if length > 1:
+                        fetched_nulls_chunk = fetched_nulls[
+                            len(nulls):len(nulls) * 2
+                        ]
+                        nulls_chunk = (
+                            np.array(nulls) + len(dtype)
+                        ).tolist()
+                        self.assertEqual(
+                            fetched_nulls_chunk,
+                            nulls_chunk)
+                        if length > 512:
+                            fetched_nulls_chunk = fetched_nulls[
+                                len(nulls) * 512:len(nulls) * 513
+                            ]
+                            nulls_chunk = (
+                                np.array(nulls) + 512 * len(dtype)
+                            ).tolist()
+                            self.assertEqual(
+                                fetched_nulls_chunk,
+                                nulls_chunk)
                 self.assertIsInstance(fetched_array, np.void)
                 for i, name in enumerate(dtype.names):
                     baseline_array = np.array(
