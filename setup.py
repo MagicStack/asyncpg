@@ -65,7 +65,7 @@ if platform.uname().system != 'Windows':
 _ROOT = pathlib.Path(__file__).parent
 
 
-with open(str(_ROOT / 'README.rst')) as f:
+with open(str(_ROOT / 'README.rst'), encoding="utf-8") as f:
     readme = f.read()
 
 
@@ -252,10 +252,11 @@ class numpy_include(str):
 
 
 setuptools.setup(
-    name='asyncpg-rkt',
+    name="asyncpg-rkt",
     version=VERSION,
-    description='An asyncio PostgreSQL driver that returns numpy arrays',
+    description="An asyncio PostgreSQL driver that returns numpy arrays",
     long_description=readme,
+    long_description_content_type="text/x-rst",
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Framework :: AsyncIO',

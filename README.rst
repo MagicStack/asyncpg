@@ -1,5 +1,5 @@
 asyncpg-🚀 -- A fast PostgreSQL Database Client Library for Python/asyncio that returns numpy arrays
-=====================================================================================================
+====================================================================================================
 
 .. image:: https://github.com/athenianco/asyncpg-rkt/workflows/Tests/badge.svg
    :target: https://github.com/athenianco/asyncpg-rkt/actions?query=workflow%3ATests+branch%3Amaster
