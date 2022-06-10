@@ -612,7 +612,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
                              statement_cache_size,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
-                             ssl, server_settings):
+                             ssl, tls_proxy, server_settings):
 
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
@@ -640,8 +640,8 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
     addrs, params = _parse_connect_dsn_and_args(
         dsn=dsn, host=host, port=port, user=user,
         password=password, passfile=passfile, ssl=ssl,
-        database=database, connect_timeout=timeout,
-        server_settings=server_settings)
+        tls_proxy=tls_proxy, database=database,
+        connect_timeout=timeout, server_settings=server_settings)
 
     config = _ClientConfiguration(
         command_timeout=command_timeout,
@@ -812,6 +812,14 @@ async def __connect_addr(
     if isinstance(addr, str):
         # UNIX socket
         connector = loop.create_unix_connection(proto_factory, addr)
+    
+    elif params.ssl and params.tls_proxy:
+        # if ssl and tls_proxy are given, skip STARTTLS and perform direct
+        # SSL connection
+        connector = loop.create_connection(
+            proto_factory, *addr, ssl=params.ssl
+        )
+
     elif params.ssl:
         connector = _create_ssl_connection(
             proto_factory, *addr, loop=loop, ssl_context=params.ssl,
