@@ -53,6 +53,7 @@ _ConnectionParameters = collections.namedtuple(
         'database',
         'ssl',
         'sslmode',
+        'tls_proxy',
         'connect_timeout',
         'server_settings',
     ])
