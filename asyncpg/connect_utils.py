@@ -258,7 +258,7 @@ def _dot_postgresql_path(filename) -> pathlib.Path:
 
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                                 password, passfile, database, ssl,
-                                connect_timeout, server_settings):
+                                tls_proxy, connect_timeout, server_settings):
     # `auth_hosts` is the version of host information for the purposes
     # of reading the pgpass file.
     auth_hosts = None
@@ -601,8 +601,8 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
     params = _ConnectionParameters(
         user=user, password=password, database=database, ssl=ssl,
-        sslmode=sslmode, connect_timeout=connect_timeout,
-        server_settings=server_settings)
+        sslmode=sslmode, tls_proxy=tls_proxy,
+        connect_timeout=connect_timeout, server_settings=server_settings)
 
     return addrs, params
 
