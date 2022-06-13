@@ -811,7 +811,8 @@ class TestConnectParams(tb.TestCase):
             addrs, params = connect_utils._parse_connect_dsn_and_args(
                 dsn=dsn, host=host, port=port, user=user, password=password,
                 passfile=passfile, database=database, ssl=sslmode,
-                connect_timeout=None, server_settings=server_settings)
+                direct_tls=False, connect_timeout=None,
+                server_settings=server_settings)
 
             params = {
                 k: v for k, v in params._asdict().items()
@@ -829,6 +830,10 @@ class TestConnectParams(tb.TestCase):
                 # unless explicitly tested for.
                 params.pop('ssl', None)
                 params.pop('sslmode', None)
+            if 'direct_tls' not in expected[1]:
+                # Avoid the hassle of specifying direct_tls
+                # unless explicitly tested for
+                params.pop('direct_tls', False)
 
             self.assertEqual(expected, result, 'Testcase: {}'.format(testcase))
 
