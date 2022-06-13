@@ -813,7 +813,7 @@ async def __connect_addr(
     if isinstance(addr, str):
         # UNIX socket
         connector = loop.create_unix_connection(proto_factory, addr)
-    
+
     elif params.ssl and params.direct_tls:
         # if ssl and direct_tls are given, skip STARTTLS and perform direct
         # SSL connection

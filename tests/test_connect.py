@@ -834,7 +834,7 @@ class TestConnectParams(tb.TestCase):
                 # Avoid the hassle of specifying direct_tls
                 # unless explicitly tested for
                 params.pop('direct_tls', False)
-    
+
             self.assertEqual(expected, result, 'Testcase: {}'.format(testcase))
 
     def test_test_connect_params_environ(self):
