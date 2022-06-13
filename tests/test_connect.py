@@ -830,7 +830,11 @@ class TestConnectParams(tb.TestCase):
                 # unless explicitly tested for.
                 params.pop('ssl', None)
                 params.pop('sslmode', None)
-
+            if 'direct_tls' not in expected[1]:
+                # Avoid the hassle of specifying direct_tls
+                # unless explicitly tested for
+                params.pop('direct_tls', False)
+    
             self.assertEqual(expected, result, 'Testcase: {}'.format(testcase))
 
     def test_test_connect_params_environ(self):
