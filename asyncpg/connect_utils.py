@@ -53,7 +53,7 @@ _ConnectionParameters = collections.namedtuple(
         'database',
         'ssl',
         'sslmode',
-        'tls_proxy',
+        'direct_tls',
         'connect_timeout',
         'server_settings',
     ])
@@ -259,7 +259,7 @@ def _dot_postgresql_path(filename) -> pathlib.Path:
 
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                                 password, passfile, database, ssl,
-                                tls_proxy, connect_timeout, server_settings):
+                                direct_tls, connect_timeout, server_settings):
     # `auth_hosts` is the version of host information for the purposes
     # of reading the pgpass file.
     auth_hosts = None
@@ -602,7 +602,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
     params = _ConnectionParameters(
         user=user, password=password, database=database, ssl=ssl,
-        sslmode=sslmode, tls_proxy=tls_proxy,
+        sslmode=sslmode, direct_tls=direct_tls,
         connect_timeout=connect_timeout, server_settings=server_settings)
 
     return addrs, params
@@ -613,7 +613,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
                              statement_cache_size,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
-                             ssl, tls_proxy, server_settings):
+                             ssl, direct_tls, server_settings):
 
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
@@ -641,7 +641,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
     addrs, params = _parse_connect_dsn_and_args(
         dsn=dsn, host=host, port=port, user=user,
         password=password, passfile=passfile, ssl=ssl,
-        tls_proxy=tls_proxy, database=database,
+        direct_tls=direct_tls, database=database,
         connect_timeout=timeout, server_settings=server_settings)
 
     config = _ClientConfiguration(
@@ -814,8 +814,8 @@ async def __connect_addr(
         # UNIX socket
         connector = loop.create_unix_connection(proto_factory, addr)
     
-    elif params.ssl and params.tls_proxy:
-        # if ssl and tls_proxy are given, skip STARTTLS and perform direct
+    elif params.ssl and params.direct_tls:
+        # if ssl and direct_tls are given, skip STARTTLS and perform direct
         # SSL connection
         connector = loop.create_connection(
             proto_factory, *addr, ssl=params.ssl

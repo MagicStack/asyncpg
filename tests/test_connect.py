@@ -811,7 +811,8 @@ class TestConnectParams(tb.TestCase):
             addrs, params = connect_utils._parse_connect_dsn_and_args(
                 dsn=dsn, host=host, port=port, user=user, password=password,
                 passfile=passfile, database=database, ssl=sslmode,
-                connect_timeout=None, server_settings=server_settings)
+                direct_tls=False, connect_timeout=None,
+                server_settings=server_settings)
 
             params = {
                 k: v for k, v in params._asdict().items()
