@@ -407,6 +407,7 @@ cdef class CoreProtocol:
             const char* cbuf
             ssize_t cbuf_len
             ArrayWriter array_writer
+            np_dtype dtype
 
         cbuf = self.buffer.try_consume_message(&cbuf_len)
         if cbuf != NULL and cbuf_len > 0:
@@ -414,14 +415,13 @@ cdef class CoreProtocol:
         else:
             msg = self.buffer.read_null_str()
         self.result_status_msg = msg
-        if isinstance(self.result, np.dtype):
-            if self.result != np.void:
+        if isinstance(self.result, tuple):
+            dtype = self.result[0].dtype
+            if dtype != np.void:
                 if self._array_writer is None:
-                    self._array_writer = ArrayWriter(self.result)
+                    self._array_writer = ArrayWriter(dtype)
                 array_writer = self._array_writer
                 self.result = array_writer.consolidate(), array_writer.null_indexes
-            else:
-                self.result = None
 
     cdef _parse_copy_data_msgs(self):
         cdef:
@@ -499,13 +499,14 @@ cdef class CoreProtocol:
             return
 
         if PG_DEBUG:
-            if not isinstance(self.result, (list, np.dtype)):
+            if not isinstance(self.result, (list, tuple)):
                 raise apg_exc.InternalClientError(
-                    f'_parse_data_msgs: result is neither a list nor a numpy array, but {self.result}')
+                    f'_parse_data_msgs: result is neither a list nor a numpy array with nulls, '
+                    f'but {self.result}')
 
         if isinstance(self.result, list):
             self._parse_data_msgs_record()
-        elif self.result != np.void:
+        elif self.result[0].dtype != np.void:
             self._parse_data_msgs_numpy()
 
     cdef _parse_data_msgs_record(self):
@@ -554,7 +555,7 @@ cdef class CoreProtocol:
             ArrayWriter array_writer
 
         if self._array_writer is None:
-            self._array_writer = array_writer = ArrayWriter(self.result)
+            self._array_writer = array_writer = ArrayWriter(self.result[0].dtype)
         else:
             array_writer = self._array_writer
         while take_message_type(buf, b'D'):
@@ -973,7 +974,7 @@ cdef class CoreProtocol:
         self._ensure_connected()
         self._set_state(PROTOCOL_BIND_EXECUTE)
 
-        self.result = dtype if dtype is not None else []
+        self.result = (np.array([], dtype=dtype), []) if dtype is not None else []
 
         self._send_bind_message(portal_name, stmt_name, bind_data, limit)
 
@@ -1080,7 +1081,7 @@ cdef class CoreProtocol:
         self._ensure_connected()
         self._set_state(PROTOCOL_EXECUTE)
 
-        self.result = dtype if dtype is not None else []
+        self.result = (np.array([], dtype=dtype), []) if dtype is not None else []
 
         buf = self._build_execute_message(portal_name, limit)
 
