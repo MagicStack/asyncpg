@@ -288,3 +288,10 @@ class TestCodecsNumpy(tb.ConnectedTestCase):
                         await self.con.fetch(query)
                 else:
                     await self.con.fetch(query)
+
+    async def test_empty_query(self):
+        """Test return nothing with an empty query and a dtype."""
+        dtype = np.dtype([("sha", "S40")])
+        result = await self.con.fetch(set_query_dtype("", dtype))
+        assert_array_equal(result[0], np.array([], dtype=dtype))
+        assert result[1] == []
