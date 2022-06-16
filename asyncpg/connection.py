@@ -1836,6 +1836,7 @@ async def connect(dsn=None, *,
                   max_cacheable_statement_size=1024 * 15,
                   command_timeout=None,
                   ssl=None,
+                  direct_tls=False,
                   connection_class=Connection,
                   record_class=protocol.Record,
                   server_settings=None,
@@ -2032,6 +2033,10 @@ async def connect(dsn=None, *,
             ...     await con.close()
             >>> asyncio.run(run())
 
+    :param bool direct_tls:
+        Pass ``True`` to skip PostgreSQL STARTTLS mode and perform a direct
+        SSL connection. Must be used alongside ``ssl`` param.
+
     :param dict server_settings:
         An optional dict of server runtime parameters.  Refer to
         PostgreSQL documentation for
@@ -2146,6 +2151,7 @@ async def connect(dsn=None, *,
         password=password,
         passfile=passfile,
         ssl=ssl,
+        direct_tls=direct_tls,
         database=database,
         server_settings=server_settings,
         command_timeout=command_timeout,
