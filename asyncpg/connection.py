@@ -2065,6 +2065,9 @@ async def connect(dsn=None, *,
        in the *dsn* argument now have consistent default values of files under
        ``~/.postgresql/`` as libpq.
 
+    .. versionchanged:: 0.26.0
+       Added the *direct_tls* parameter.
+
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
         https://docs.python.org/3/library/ssl.html#ssl.create_default_context
