@@ -63,7 +63,7 @@
             
             
               <div class="version">
-                0.25.0
+                0.26.0
               </div>
             
           
@@ -1950,6 +1950,7 @@
                   <span class="n">max_cacheable_statement_size</span><span class="o">=</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">15</span><span class="p">,</span>
                   <span class="n">command_timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                   <span class="n">ssl</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">direct_tls</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                   <span class="n">connection_class</span><span class="o">=</span><span class="n">Connection</span><span class="p">,</span>
                   <span class="n">record_class</span><span class="o">=</span><span class="n">protocol</span><span class="o">.</span><span class="n">Record</span><span class="p">,</span>
                   <span class="n">server_settings</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -2145,6 +2146,10 @@
 <span class="sd">            ...     await con.close()</span>
 <span class="sd">            &gt;&gt;&gt; asyncio.run(run())</span>
 
+<span class="sd">    :param bool direct_tls:</span>
+<span class="sd">        Pass ``True`` to skip PostgreSQL STARTTLS mode and perform a direct</span>
+<span class="sd">        SSL connection. Must be used alongside ``ssl`` param.</span>
+
 <span class="sd">    :param dict server_settings:</span>
 <span class="sd">        An optional dict of server runtime parameters.  Refer to</span>
 <span class="sd">        PostgreSQL documentation for</span>
@@ -2221,6 +2226,9 @@
 <span class="sd">       in the *dsn* argument now have consistent default values of files under</span>
 <span class="sd">       ``~/.postgresql/`` as libpq.</span>
 
+<span class="sd">    .. versionchanged:: 0.26.0</span>
+<span class="sd">       Added the *direct_tls* parameter.</span>
+
 <span class="sd">    .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext</span>
 <span class="sd">    .. _create_default_context:</span>
 <span class="sd">        https://docs.python.org/3/library/ssl.html#ssl.create_default_context</span>
@@ -2255,6 +2263,7 @@
         <span class="n">password</span><span class="o">=</span><span class="n">password</span><span class="p">,</span>
         <span class="n">passfile</span><span class="o">=</span><span class="n">passfile</span><span class="p">,</span>
         <span class="n">ssl</span><span class="o">=</span><span class="n">ssl</span><span class="p">,</span>
+        <span class="n">direct_tls</span><span class="o">=</span><span class="n">direct_tls</span><span class="p">,</span>
         <span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">,</span>
         <span class="n">server_settings</span><span class="o">=</span><span class="n">server_settings</span><span class="p">,</span>
         <span class="n">command_timeout</span><span class="o">=</span><span class="n">command_timeout</span><span class="p">,</span>
