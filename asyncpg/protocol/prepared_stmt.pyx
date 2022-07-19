@@ -204,7 +204,7 @@ cdef class PreparedStatementState:
 
                     raise exceptions.DataError(
                         f'invalid input for query argument'
-                        f' {pos}: {value_repr} ({e})'
+                        f' {pos} of type {codec.name}: {value_repr} ({e})'
                     ) from e
 
         if self.have_text_cols:
