@@ -14,7 +14,6 @@ import platform
 import shutil
 import ssl
 import stat
-import sys
 import tempfile
 import textwrap
 import unittest
@@ -1466,10 +1465,6 @@ class TestSSLConnection(BaseTestSSLConnection):
             finally:
                 await con.close()
 
-    @unittest.skipIf(
-        sys.version_info < (3, 7),
-        "Python < 3.7 doesn't have ssl.TLSVersion"
-    )
     async def test_tls_version(self):
         if self.cluster.get_pg_version() < (12, 0):
             self.skipTest("PostgreSQL < 12 cannot set ssl protocol version")

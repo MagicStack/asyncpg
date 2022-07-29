@@ -20,7 +20,6 @@ import typing
 import warnings
 import weakref
 
-from . import compat
 from . import connect_utils
 from . import cursor
 from . import exceptions
@@ -1468,7 +1467,7 @@ class Connection(metaclass=ConnectionMeta):
                 waiter.set_exception(ex)
         finally:
             self._cancellations.discard(
-                compat.current_asyncio_task(self._loop))
+                asyncio.current_task(self._loop))
             if not waiter.done():
                 waiter.set_result(None)
 
