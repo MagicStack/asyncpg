@@ -866,7 +866,7 @@ class Connection(metaclass=ConnectionMeta):
                             delimiter=None, null=None, header=None,
                             quote=None, escape=None, force_quote=None,
                             force_not_null=None, force_null=None,
-                            encoding=None):
+                            encoding=None, where=None):
         """Copy data to the specified table.
 
         :param str table_name:
@@ -884,6 +884,15 @@ class Connection(metaclass=ConnectionMeta):
 
         :param str schema_name:
             An optional schema name to qualify the table.
+
+        :param str where:
+            An optional SQL expression used to filter rows when copying.
+
+            .. note::
+
+                Usage of this parameter requires support for the
+                ``COPY FROM ... WHERE`` syntax, introduced in
+                PostgreSQL version 12.
 
         :param float timeout:
             Optional timeout value in seconds.
@@ -912,6 +921,9 @@ class Connection(metaclass=ConnectionMeta):
             https://www.postgresql.org/docs/current/static/sql-copy.html
 
         .. versionadded:: 0.11.0
+
+        .. versionadded:: 0.29.0
+            Added the *where* parameter.
         """
         tabname = utils._quote_ident(table_name)
         if schema_name:
@@ -923,6 +935,7 @@ class Connection(metaclass=ConnectionMeta):
         else:
             cols = ''
 
+        cond = self._format_copy_where(where)
         opts = self._format_copy_opts(
             format=format, oids=oids, freeze=freeze, delimiter=delimiter,
             null=null, header=header, quote=quote, escape=escape,
@@ -930,14 +943,14 @@ class Connection(metaclass=ConnectionMeta):
             encoding=encoding
         )
 
-        copy_stmt = 'COPY {tab}{cols} FROM STDIN {opts}'.format(
-            tab=tabname, cols=cols, opts=opts)
+        copy_stmt = 'COPY {tab}{cols} FROM STDIN {opts} {cond}'.format(
+            tab=tabname, cols=cols, opts=opts, cond=cond)
 
         return await self._copy_in(copy_stmt, source, timeout)
 
     async def copy_records_to_table(self, table_name, *, records,
                                     columns=None, schema_name=None,
-                                    timeout=None):
+                                    timeout=None, where=None):
         """Copy a list of records to the specified table using binary COPY.
 
         :param str table_name:
@@ -953,6 +966,16 @@ class Connection(metaclass=ConnectionMeta):
 
         :param str schema_name:
             An optional schema name to qualify the table.
+
+        :param str where:
+            An optional SQL expression used to filter rows when copying.
+
+            .. note::
+
+                Usage of this parameter requires support for the
+                ``COPY FROM ... WHERE`` syntax, introduced in
+                PostgreSQL version 12.
+
 
         :param float timeout:
             Optional timeout value in seconds.
@@ -998,6 +1021,9 @@ class Connection(metaclass=ConnectionMeta):
 
         .. versionchanged:: 0.24.0
             The ``records`` argument may be an asynchronous iterable.
+
+        .. versionadded:: 0.29.0
+            Added the *where* parameter.
         """
         tabname = utils._quote_ident(table_name)
         if schema_name:
@@ -1015,13 +1041,26 @@ class Connection(metaclass=ConnectionMeta):
 
         intro_ps = await self._prepare(intro_query, use_cache=True)
 
+        cond = self._format_copy_where(where)
         opts = '(FORMAT binary)'
 
-        copy_stmt = 'COPY {tab}{cols} FROM STDIN {opts}'.format(
-            tab=tabname, cols=cols, opts=opts)
+        copy_stmt = 'COPY {tab}{cols} FROM STDIN {opts} {cond}'.format(
+            tab=tabname, cols=cols, opts=opts, cond=cond)
 
         return await self._protocol.copy_in(
             copy_stmt, None, None, records, intro_ps._state, timeout)
+
+    def _format_copy_where(self, where):
+        if where and not self._server_caps.sql_copy_from_where:
+            raise exceptions.UnsupportedServerFeatureError(
+                'the `where` parameter requires PostgreSQL 12 or later')
+
+        if where:
+            where_clause = 'WHERE ' + where
+        else:
+            where_clause = ''
+
+        return where_clause
 
     def _format_copy_opts(self, *, format=None, oids=None, freeze=None,
                           delimiter=None, null=None, header=None, quote=None,
@@ -2404,7 +2443,7 @@ class _ConnectionProxy:
 ServerCapabilities = collections.namedtuple(
     'ServerCapabilities',
     ['advisory_locks', 'notifications', 'plpgsql', 'sql_reset',
-     'sql_close_all', 'jit'])
+     'sql_close_all', 'sql_copy_from_where', 'jit'])
 ServerCapabilities.__doc__ = 'PostgreSQL server capabilities.'
 
 
@@ -2417,6 +2456,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_reset = True
         sql_close_all = False
         jit = False
+        sql_copy_from_where = False
     elif hasattr(connection_settings, 'crdb_version'):
         # CockroachDB detected.
         advisory_locks = False
@@ -2425,6 +2465,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_reset = False
         sql_close_all = False
         jit = False
+        sql_copy_from_where = False
     elif hasattr(connection_settings, 'crate_version'):
         # CrateDB detected.
         advisory_locks = False
@@ -2433,6 +2474,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_reset = False
         sql_close_all = False
         jit = False
+        sql_copy_from_where = False
     else:
         # Standard PostgreSQL server assumed.
         advisory_locks = True
@@ -2441,6 +2483,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_reset = True
         sql_close_all = True
         jit = server_version >= (11, 0)
+        sql_copy_from_where = server_version.major >= 12
 
     return ServerCapabilities(
         advisory_locks=advisory_locks,
@@ -2448,6 +2491,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         plpgsql=plpgsql,
         sql_reset=sql_reset,
         sql_close_all=sql_close_all,
+        sql_copy_from_where=sql_copy_from_where,
         jit=jit,
     )
 

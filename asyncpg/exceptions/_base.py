@@ -12,9 +12,10 @@ import textwrap
 
 __all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError',
            'InterfaceError', 'InterfaceWarning', 'PostgresLogMessage',
+           'ClientConfigurationError',
            'InternalClientError', 'OutdatedSchemaCacheError', 'ProtocolError',
            'UnsupportedClientFeatureError', 'TargetServerAttributeNotMatched',
-           'ClientConfigurationError')
+           'UnsupportedServerFeatureError')
 
 
 def _is_asyncpg_class(cls):
@@ -231,6 +232,10 @@ class DataError(InterfaceError, ValueError):
 
 class UnsupportedClientFeatureError(InterfaceError):
     """Requested feature is unsupported by asyncpg."""
+
+
+class UnsupportedServerFeatureError(InterfaceError):
+    """Requested feature is unsupported by PostgreSQL server."""
 
 
 class InterfaceWarning(InterfaceMessage, UserWarning):
