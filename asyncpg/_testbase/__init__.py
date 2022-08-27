@@ -435,3 +435,92 @@ class ConnectedTestCase(ClusterTestCase):
             self.con = None
         finally:
             super().tearDown()
+
+
+class HotStandbyTestCase(ClusterTestCase):
+    @classmethod
+    def setup_cluster(cls):
+        cls.master_cluster = cls.new_cluster(pg_cluster.TempCluster)
+        cls.start_cluster(
+            cls.master_cluster,
+            server_settings={
+                'max_wal_senders': 10,
+                'wal_level': 'hot_standby'
+            }
+        )
+
+        con = None
+
+        try:
+            con = cls.loop.run_until_complete(
+                cls.master_cluster.connect(
+                    database='postgres', user='postgres', loop=cls.loop))
+
+            cls.loop.run_until_complete(
+                con.execute('''
+                    CREATE ROLE replication WITH LOGIN REPLICATION
+                '''))
+
+            cls.master_cluster.trust_local_replication_by('replication')
+
+            conn_spec = cls.master_cluster.get_connection_spec()
+
+            cls.standby_cluster = cls.new_cluster(
+                pg_cluster.HotStandbyCluster,
+                cluster_kwargs={
+                    'master': conn_spec,
+                    'replication_user': 'replication'
+                }
+            )
+            cls.start_cluster(
+                cls.standby_cluster,
+                server_settings={
+                    'hot_standby': True
+                }
+            )
+
+        finally:
+            if con is not None:
+                cls.loop.run_until_complete(con.close())
+
+    @classmethod
+    def get_cluster_connection_spec(cls, cluster, kwargs={}):
+        conn_spec = cluster.get_connection_spec()
+        if kwargs.get('dsn'):
+            conn_spec.pop('host')
+        conn_spec.update(kwargs)
+        if not os.environ.get('PGHOST') and not kwargs.get('dsn'):
+            if 'database' not in conn_spec:
+                conn_spec['database'] = 'postgres'
+            if 'user' not in conn_spec:
+                conn_spec['user'] = 'postgres'
+        return conn_spec
+
+    @classmethod
+    def get_connection_spec(cls, kwargs={}):
+        primary_spec = cls.get_cluster_connection_spec(
+            cls.master_cluster, kwargs
+        )
+        standby_spec = cls.get_cluster_connection_spec(
+            cls.standby_cluster, kwargs
+        )
+        return {
+            'host': [primary_spec['host'], standby_spec['host']],
+            'port': [primary_spec['port'], standby_spec['port']],
+            'database': primary_spec['database'],
+            'user': primary_spec['user'],
+            **kwargs
+        }
+
+    @classmethod
+    def connect_primary(cls, **kwargs):
+        conn_spec = cls.get_cluster_connection_spec(cls.master_cluster, kwargs)
+        return pg_connection.connect(**conn_spec, loop=cls.loop)
+
+    @classmethod
+    def connect_standby(cls, **kwargs):
+        conn_spec = cls.get_cluster_connection_spec(
+            cls.standby_cluster,
+            kwargs
+        )
+        return pg_connection.connect(**conn_spec, loop=cls.loop)

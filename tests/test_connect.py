@@ -789,6 +789,7 @@ class TestConnectParams(tb.TestCase):
         database = testcase.get('database')
         sslmode = testcase.get('ssl')
         server_settings = testcase.get('server_settings')
+        target_session_attribute = testcase.get('target_session_attribute')
 
         expected = testcase.get('result')
         expected_error = testcase.get('error')
@@ -812,7 +813,8 @@ class TestConnectParams(tb.TestCase):
                 dsn=dsn, host=host, port=port, user=user, password=password,
                 passfile=passfile, database=database, ssl=sslmode,
                 direct_tls=False, connect_timeout=None,
-                server_settings=server_settings)
+                server_settings=server_settings,
+                target_session_attribute=target_session_attribute)
 
             params = {
                 k: v for k, v in params._asdict().items()
@@ -1743,3 +1745,66 @@ class TestConnectionGC(tb.ClusterTestCase):
             self.assertIn('in test_no_explicit_close_with_debug', msg)
         finally:
             self.loop.set_debug(olddebug)
+
+
+class TestConnectionAttributes(tb.HotStandbyTestCase):
+
+    async def _run_connection_test(
+        self, connect, target_attribute, expected_host
+    ):
+        conn = await connect(target_session_attribute=target_attribute)
+        self.assertTrue(_get_connected_host(conn).startswith(expected_host))
+        await conn.close()
+
+    async def test_target_server_attribute_host(self):
+        master_host = self.master_cluster.get_connection_spec()['host']
+        standby_host = self.standby_cluster.get_connection_spec()['host']
+        tests = [
+            (self.connect_primary, 'primary', master_host),
+            (self.connect_standby, 'standby', standby_host),
+        ]
+
+        for connect, target_attr, expected_host in tests:
+            await self._run_connection_test(
+                connect, target_attr, expected_host
+            )
+
+    async def test_target_attribute_not_matched(self):
+        tests = [
+            (self.connect_standby, 'primary'),
+            (self.connect_primary, 'standby'),
+        ]
+
+        for connect, target_attr in tests:
+            with self.assertRaises(exceptions.TargetServerAttributeNotMatched):
+                await connect(target_session_attribute=target_attr)
+
+    async def test_prefer_standby_when_standby_is_up(self):
+        con = await self.connect(target_session_attribute='prefer-standby')
+        standby_host = self.standby_cluster.get_connection_spec()['host']
+        connected_host = _get_connected_host(con)
+        self.assertTrue(connected_host.startswith(standby_host))
+        await con.close()
+
+    async def test_prefer_standby_picks_master_when_standby_is_down(self):
+        primary_spec = self.get_cluster_connection_spec(self.master_cluster)
+        connection_spec = {
+            'host': [
+                primary_spec['host'],
+                '/var/test/a/cluster/that/does/not/exist',
+            ],
+            'port': [primary_spec['port'], 12345],
+            'database': primary_spec['database'],
+            'user': primary_spec['user'],
+            'target_session_attribute': 'prefer-standby'
+        }
+
+        con = await connection.connect(**connection_spec, loop=self.loop)
+        master_host = self.master_cluster.get_connection_spec()['host']
+        connected_host = _get_connected_host(con)
+        self.assertTrue(connected_host.startswith(master_host))
+        await con.close()
+
+
+def _get_connected_host(con):
+    return con._transport.get_extra_info('peername')

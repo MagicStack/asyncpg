@@ -13,6 +13,7 @@ import getpass
 import os
 import pathlib
 import platform
+import random
 import re
 import socket
 import ssl as ssl_module
@@ -56,6 +57,7 @@ _ConnectionParameters = collections.namedtuple(
         'direct_tls',
         'connect_timeout',
         'server_settings',
+        'target_session_attribute',
     ])
 
 
@@ -259,7 +261,8 @@ def _dot_postgresql_path(filename) -> pathlib.Path:
 
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                                 password, passfile, database, ssl,
-                                direct_tls, connect_timeout, server_settings):
+                                direct_tls, connect_timeout, server_settings,
+                                target_session_attribute):
     # `auth_hosts` is the version of host information for the purposes
     # of reading the pgpass file.
     auth_hosts = None
@@ -603,7 +606,8 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     params = _ConnectionParameters(
         user=user, password=password, database=database, ssl=ssl,
         sslmode=sslmode, direct_tls=direct_tls,
-        connect_timeout=connect_timeout, server_settings=server_settings)
+        connect_timeout=connect_timeout, server_settings=server_settings,
+        target_session_attribute=target_session_attribute)
 
     return addrs, params
 
@@ -613,8 +617,8 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
                              statement_cache_size,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
-                             ssl, direct_tls, server_settings):
-
+                             ssl, direct_tls, server_settings,
+                             target_session_attribute):
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
                      'max_cached_statement_lifetime',
@@ -642,7 +646,8 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
         dsn=dsn, host=host, port=port, user=user,
         password=password, passfile=passfile, ssl=ssl,
         direct_tls=direct_tls, database=database,
-        connect_timeout=timeout, server_settings=server_settings)
+        connect_timeout=timeout, server_settings=server_settings,
+        target_session_attribute=target_session_attribute)
 
     config = _ClientConfiguration(
         command_timeout=command_timeout,
@@ -875,18 +880,64 @@ async def __connect_addr(
     return con
 
 
+class SessionAttribute(str, enum.Enum):
+    any = 'any'
+    primary = 'primary'
+    standby = 'standby'
+    prefer_standby = 'prefer-standby'
+
+
+def _accept_in_hot_standby(should_be_in_hot_standby: bool):
+    """
+    If the server didn't report "in_hot_standby" at startup, we must determine
+    the state by checking "SELECT pg_catalog.pg_is_in_recovery()".
+    """
+    async def can_be_used(connection):
+        settings = connection.get_settings()
+        hot_standby_status = getattr(settings, 'in_hot_standby', None)
+        if hot_standby_status is not None:
+            is_in_hot_standby = hot_standby_status == 'on'
+        else:
+            is_in_hot_standby = await connection.fetchval(
+                "SELECT pg_catalog.pg_is_in_recovery()"
+            )
+
+        return is_in_hot_standby == should_be_in_hot_standby
+
+    return can_be_used
+
+
+async def _accept_any(_):
+    return True
+
+
+target_attrs_check = {
+    SessionAttribute.any: _accept_any,
+    SessionAttribute.primary: _accept_in_hot_standby(False),
+    SessionAttribute.standby: _accept_in_hot_standby(True),
+    SessionAttribute.prefer_standby: _accept_in_hot_standby(True),
+}
+
+
+async def _can_use_connection(connection, attr: SessionAttribute):
+    can_use = target_attrs_check[attr]
+    return await can_use(connection)
+
+
 async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
     if loop is None:
         loop = asyncio.get_event_loop()
 
     addrs, params, config = _parse_connect_arguments(timeout=timeout, **kwargs)
+    target_attr = params.target_session_attribute
 
+    candidates = []
+    chosen_connection = None
     last_error = None
-    addr = None
     for addr in addrs:
         before = time.monotonic()
         try:
-            return await _connect_addr(
+            conn = await _connect_addr(
                 addr=addr,
                 loop=loop,
                 timeout=timeout,
@@ -895,12 +946,30 @@ async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
                 connection_class=connection_class,
                 record_class=record_class,
             )
+            candidates.append(conn)
+            if await _can_use_connection(conn, target_attr):
+                chosen_connection = conn
+                break
         except (OSError, asyncio.TimeoutError, ConnectionError) as ex:
             last_error = ex
         finally:
             timeout -= time.monotonic() - before
+    else:
+        if target_attr == SessionAttribute.prefer_standby and candidates:
+            chosen_connection = random.choice(candidates)
 
-    raise last_error
+    await asyncio.gather(
+        (c.close() for c in candidates if c is not chosen_connection),
+        return_exceptions=True
+    )
+
+    if chosen_connection:
+        return chosen_connection
+
+    raise last_error or exceptions.TargetServerAttributeNotMatched(
+        'None of the hosts match the target attribute requirement '
+        '{!r}'.format(target_attr)
+    )
 
 
 async def _cancel(*, loop, addr, params: _ConnectionParameters,
