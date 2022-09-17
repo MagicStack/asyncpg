@@ -71,16 +71,25 @@ jobs:
   build-wheels:
     needs: validate-release-request
     runs-on: ${{ matrix.os }}
+    continue-on-error: true
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        cibw_python: ["cp36-*", "cp37-*", "cp38-*", "cp39-*", "cp310-*"]
-        cibw_arch: ["auto64", "auto32"]
-        exclude:
-          - os: macos-latest
-            cibw_arch: "auto32"
-          - os: ubuntu-latest
-            cibw_arch: "auto32"
+        include:
+          - {os: macos-latest, arch: x86_64, build: "*"}
+          - {os: macos-latest, arch: arm64, build: "*"}
+          - {os: windows-latest, arch: AMD64, build: "*"}
+          - {os: windows-latest, arch: x86, build: "*"}
+          - {os: ubuntu-latest, arch: x86_64, build: "*"}
+          - {os: ubuntu-latest, arch: aarch64, build: "*[61]-manylinux*"}
+          - {os: ubuntu-latest, arch: aarch64, build: "*[72]-manylinux*"}
+          - {os: ubuntu-latest, arch: aarch64, build: "*[83]-manylinux*"}
+          - {os: ubuntu-latest, arch: aarch64, build: "*[94]-manylinux*"}
+          - {os: ubuntu-latest, arch: aarch64, build: "*[05]-manylinux*"}
+          - {os: ubuntu-latest, arch: aarch64, build: "*[61]-musllinux*"}
+          - {os: ubuntu-latest, arch: aarch64, build: "*[72]-musllinux*"}
+          - {os: ubuntu-latest, arch: aarch64, build: "*[83]-musllinux*"}
+          - {os: ubuntu-latest, arch: aarch64, build: "*[94]-musllinux*"}
+          - {os: ubuntu-latest, arch: aarch64, build: "*[05]-musllinux*"}
 
     defaults:
       run:
@@ -94,12 +103,19 @@ jobs:
       with:
         fetch-depth: 50
         submodules: true
+        
+    - name: Set up QEMU
+      if: runner.os == 'Linux'
+      uses: docker/setup-qemu-action@v2
 
-    - uses: pypa/cibuildwheel@v2.8.0
+    - uses: pypa/cibuildwheel@v2.10.0
       env:
         CIBW_BUILD_VERBOSITY: 1
-        CIBW_BUILD: ${{ matrix.cibw_python }}
-        CIBW_ARCHS: ${{ matrix.cibw_arch }}
+        CIBW_ARCHS: ${{ matrix.arch }}
+        CIBW_BUILD: ${{ matrix.build }}  # py versions from setup.py -> python_requires
+        CIBW_SKIP: pp*
+        CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+        CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
 
     - uses: actions/upload-artifact@v2
       with:
@@ -107,7 +123,7 @@ jobs:
         path: wheelhouse/*.whl
 
   publish-docs:
-    needs: validate-release-request
+    needs: [build-sdist, build-wheels]
     runs-on: ubuntu-latest
 
     env:
