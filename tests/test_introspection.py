@@ -12,7 +12,7 @@ from asyncpg import _testbase as tb
 from asyncpg import connection as apg_con
 
 
-MAX_RUNTIME = 0.1
+MAX_RUNTIME = 0.25
 
 
 class SlowIntrospectionConnection(apg_con.Connection):

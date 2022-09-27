@@ -56,7 +56,7 @@ jobs:
         submodules: true
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
 
     - name: Build source distribution
       run: |
@@ -68,19 +68,35 @@ jobs:
         name: dist
         path: dist/*.tar.*
 
-  build-wheels:
+  build-wheels-matrix:
     needs: validate-release-request
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.set-matrix.outputs.include }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v4
+      - run: pip install cibuildwheel==2.10.2
+      - id: set-matrix
+        run: |
+          MATRIX_INCLUDE=$(
+            {
+              cibuildwheel --print-build-identifiers --platform linux --arch x86_64,aarch64 | grep cp |  jq -Rc '{"only": inputs, "os": "ubuntu-latest"}' \
+              && cibuildwheel --print-build-identifiers --platform macos --arch x86_64,arm64 | grep cp |  jq -Rc '{"only": inputs, "os": "macos-latest"}' \
+              && cibuildwheel --print-build-identifiers --platform windows --arch x86,AMD64 | grep cp |  jq -Rc '{"only": inputs, "os": "windows-latest"}'
+            } | jq -sc
+          )
+          echo ::set-output name=include::"$MATRIX_INCLUDE"
+
+  build-wheels:
+    needs: build-wheels-matrix
     runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    name: Build ${{ matrix.only }}
+
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        cibw_python: ["cp36-*", "cp37-*", "cp38-*", "cp39-*", "cp310-*"]
-        cibw_arch: ["auto64", "auto32"]
-        exclude:
-          - os: macos-latest
-            cibw_arch: "auto32"
-          - os: ubuntu-latest
-            cibw_arch: "auto32"
+        include: ${{ fromJson(needs.build-wheels-matrix.outputs.include) }}
 
     defaults:
       run:
@@ -94,12 +110,18 @@ jobs:
       with:
         fetch-depth: 50
         submodules: true
+        
+    - name: Set up QEMU
+      if: runner.os == 'Linux'
+      uses: docker/setup-qemu-action@v2
 
-    - uses: pypa/cibuildwheel@v2.8.0
+    - uses: pypa/cibuildwheel@v2.10.2
+      with:
+        only: ${{ matrix.only }}
       env:
         CIBW_BUILD_VERBOSITY: 1
-        CIBW_BUILD: ${{ matrix.cibw_python }}
-        CIBW_ARCHS: ${{ matrix.cibw_arch }}
+        CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+        CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
 
     - uses: actions/upload-artifact@v2
       with:
@@ -107,7 +129,7 @@ jobs:
         path: wheelhouse/*.whl
 
   publish-docs:
-    needs: validate-release-request
+    needs: [build-sdist, build-wheels]
     runs-on: ubuntu-latest
 
     env:
@@ -121,7 +143,7 @@ jobs:
         submodules: true
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.8
 

@@ -27,11 +27,16 @@ if [ "${ID}" = "debian" -o "${ID}" = "ubuntu" ]; then
     apt-get install -y --no-install-recommends \
         "postgresql-${PGVERSION}" \
         "postgresql-contrib-${PGVERSION}"
+elif [ "${ID}" = "almalinux" ]; then
+    yum install -y \
+        "postgresql-server" \
+        "postgresql-devel" \
+        "postgresql-contrib"
 elif [ "${ID}" = "centos" ]; then
-    el="EL-${VERSION_ID}-$(arch)"
+    el="EL-${VERSION_ID%.*}-$(arch)"
     baseurl="https://download.postgresql.org/pub/repos/yum/reporpms"
     yum install -y "${baseurl}/${el}/pgdg-redhat-repo-latest.noarch.rpm"
-    if [ ${VERSION_ID} -ge 8 ]; then
+    if [ ${VERSION_ID%.*} -ge 8 ]; then
         dnf -qy module disable postgresql
     fi
     yum install -y \
