@@ -1287,6 +1287,7 @@ class BaseTestSSLConnection(tb.ConnectedTestCase):
 
         create_script = []
         create_script.append('CREATE ROLE ssl_user WITH LOGIN;')
+        create_script.append('GRANT ALL ON SCHEMA public TO ssl_user;')
 
         self._add_hba_entry()
 
@@ -1301,6 +1302,7 @@ class BaseTestSSLConnection(tb.ConnectedTestCase):
         self.cluster.trust_local_connections()
 
         drop_script = []
+        drop_script.append('REVOKE ALL ON SCHEMA public FROM ssl_user;')
         drop_script.append('DROP ROLE ssl_user;')
         drop_script = '\n'.join(drop_script)
         self.loop.run_until_complete(self.con.execute(drop_script))
@@ -1461,7 +1463,7 @@ class TestSSLConnection(BaseTestSSLConnection):
             )
         finally:
             try:
-                await con.execute('DROP TABLE test_many')
+                await con.execute('DROP TABLE IF EXISTS test_many')
             finally:
                 await con.close()
 
