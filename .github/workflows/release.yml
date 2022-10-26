@@ -57,6 +57,8 @@ jobs:
 
     - name: Set up Python
       uses: actions/setup-python@v4
+      with:
+        python-version: "3.x"
 
     - name: Build source distribution
       run: |
@@ -76,6 +78,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
       - run: pip install cibuildwheel==2.10.2
       - id: set-matrix
         run: |
@@ -144,7 +148,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.8
+        python-version: "3.x"
 
     - name: Build docs
       run: |
