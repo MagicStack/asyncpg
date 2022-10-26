@@ -43,10 +43,6 @@ class PoolConnectionProxyMeta(type):
 
         return super().__new__(mcls, name, bases, dct)
 
-    def __init__(cls, name, bases, dct, *, wrap=False):
-        # Needed for Python 3.5 to handle `wrap` class keyword argument.
-        super().__init__(name, bases, dct)
-
     @staticmethod
     def _wrap_connection_method(meth_name):
         def call_con_method(self, *args, **kwargs):
