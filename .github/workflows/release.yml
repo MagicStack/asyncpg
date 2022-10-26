@@ -91,7 +91,6 @@ jobs:
   build-wheels:
     needs: build-wheels-matrix
     runs-on: ${{ matrix.os }}
-    continue-on-error: true
     name: Build ${{ matrix.only }}
 
     strategy:
