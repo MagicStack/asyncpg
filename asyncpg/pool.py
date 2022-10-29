@@ -446,6 +446,14 @@ class Pool:
 
                 await asyncio.gather(*connect_tasks)
 
+    @property
+    def closed(self):
+        """Return a boolean for whether this pool has already been closed/terminated.
+
+        .. versionadded:: 0.28.0
+        """
+        return self._closed
+
     def get_size(self):
         """Return the current number of connections in this pool.
 
