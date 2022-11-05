@@ -446,8 +446,8 @@ class Pool:
 
                 await asyncio.gather(*connect_tasks)
 
-    def is_closed(self):
-        """Return a boolean for whether this pool has already been closed/terminated.
+    def is_closing(self):
+        """Return ``True`` if the pool is closing or is closed.
 
         .. versionadded:: 0.28.0
         """
