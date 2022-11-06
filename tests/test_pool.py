@@ -748,7 +748,7 @@ class TestPool(tb.ConnectedTestCase):
 
         async with self.create_pool() as pool:
             self.assertFalse(pool.is_closing())
-            await pool.terminate()
+            pool.terminate()
             self.assertTrue(pool.is_closing())
 
     async def test_pool_handles_transaction_exit_in_asyncgen_1(self):
