@@ -1497,13 +1497,14 @@ class TestSSLConnection(BaseTestSSLConnection):
                             '&ssl_min_protocol_version=TLSv1.1'
                             '&ssl_max_protocol_version=TLSv1.1'
                     )
-                with self.assertRaisesRegex(ssl.SSLError, 'no protocols'):
-                    await self.connect(
-                        dsn='postgresql://ssl_user@localhost/postgres'
-                            '?sslmode=require'
-                            '&ssl_min_protocol_version=TLSv1.2'
-                            '&ssl_max_protocol_version=TLSv1.1'
-                    )
+                if not ssl.OPENSSL_VERSION.startswith('LibreSSL'):
+                    with self.assertRaisesRegex(ssl.SSLError, 'no protocols'):
+                        await self.connect(
+                            dsn='postgresql://ssl_user@localhost/postgres'
+                                '?sslmode=require'
+                                '&ssl_min_protocol_version=TLSv1.2'
+                                '&ssl_max_protocol_version=TLSv1.1'
+                        )
                 con = await self.connect(
                     dsn='postgresql://ssl_user@localhost/postgres'
                         '?sslmode=require'
