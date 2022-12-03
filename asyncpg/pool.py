@@ -446,6 +446,13 @@ class Pool:
 
                 await asyncio.gather(*connect_tasks)
 
+    def is_closing(self):
+        """Return ``True`` if the pool is closing or is closed.
+
+        .. versionadded:: 0.28.0
+        """
+        return self._closed or self._closing
+
     def get_size(self):
         """Return the current number of connections in this pool.
 

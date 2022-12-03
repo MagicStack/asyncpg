@@ -740,6 +740,17 @@ class TestPool(tb.ConnectedTestCase):
                         self.assertEqual(pool.get_size(), 3)
                         self.assertEqual(pool.get_idle_size(), 0)
 
+    async def test_pool_closing(self):
+        async with self.create_pool() as pool:
+            self.assertFalse(pool.is_closing())
+            await pool.close()
+            self.assertTrue(pool.is_closing())
+
+        async with self.create_pool() as pool:
+            self.assertFalse(pool.is_closing())
+            pool.terminate()
+            self.assertTrue(pool.is_closing())
+
     async def test_pool_handles_transaction_exit_in_asyncgen_1(self):
         pool = await self.create_pool(database='postgres',
                                       min_size=1, max_size=1)
