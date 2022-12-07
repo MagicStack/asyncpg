@@ -25,7 +25,7 @@ import weakref
 
 import asyncpg
 from asyncpg import _testbase as tb
-from asyncpg import connection
+from asyncpg import connection as pg_connection
 from asyncpg import connect_utils
 from asyncpg import cluster as pg_cluster
 from asyncpg import exceptions
@@ -1167,7 +1167,7 @@ class TestConnectParams(tb.TestCase):
 class TestConnection(tb.ConnectedTestCase):
 
     async def test_connection_isinstance(self):
-        self.assertTrue(isinstance(self.con, connection.Connection))
+        self.assertTrue(isinstance(self.con, pg_connection.Connection))
         self.assertTrue(isinstance(self.con, object))
         self.assertFalse(isinstance(self.con, list))
 
@@ -1750,23 +1750,23 @@ class TestConnectionGC(tb.ClusterTestCase):
 class TestConnectionAttributes(tb.HotStandbyTestCase):
 
     async def _run_connection_test(
-        self, connect, target_attribute, expected_host
+        self, connect, target_attribute, expected_port
     ):
         conn = await connect(target_session_attribute=target_attribute)
-        self.assertTrue(_get_connected_host(conn).startswith(expected_host))
+        self.assertTrue(_get_connected_host(conn).endswith(expected_port))
         await conn.close()
 
-    async def test_target_server_attribute_host(self):
-        master_host = self.master_cluster.get_connection_spec()['host']
-        standby_host = self.standby_cluster.get_connection_spec()['host']
+    async def test_target_server_attribute_port(self):
+        master_port = self.master_cluster.get_connection_spec()['port']
+        standby_port = self.standby_cluster.get_connection_spec()['port']
         tests = [
-            (self.connect_primary, 'primary', master_host),
-            (self.connect_standby, 'standby', standby_host),
+            (self.connect_primary, 'primary', master_port),
+            (self.connect_standby, 'standby', standby_port),
         ]
 
-        for connect, target_attr, expected_host in tests:
+        for connect, target_attr, expected_port in tests:
             await self._run_connection_test(
-                connect, target_attr, expected_host
+                connect, target_attr, expected_port
             )
 
     async def test_target_attribute_not_matched(self):
@@ -1781,9 +1781,9 @@ class TestConnectionAttributes(tb.HotStandbyTestCase):
 
     async def test_prefer_standby_when_standby_is_up(self):
         con = await self.connect(target_session_attribute='prefer-standby')
-        standby_host = self.standby_cluster.get_connection_spec()['host']
+        standby_port = self.standby_cluster.get_connection_spec()['port']
         connected_host = _get_connected_host(con)
-        self.assertTrue(connected_host.startswith(standby_host))
+        self.assertTrue(connected_host.endswith(standby_port))
         await con.close()
 
     async def test_prefer_standby_picks_master_when_standby_is_down(self):
@@ -1791,20 +1791,23 @@ class TestConnectionAttributes(tb.HotStandbyTestCase):
         connection_spec = {
             'host': [
                 primary_spec['host'],
-                '/var/test/a/cluster/that/does/not/exist',
+                'unlocalhost',
             ],
-            'port': [primary_spec['port'], 12345],
+            'port': [primary_spec['port'], 15345],
             'database': primary_spec['database'],
             'user': primary_spec['user'],
             'target_session_attribute': 'prefer-standby'
         }
 
-        con = await connection.connect(**connection_spec, loop=self.loop)
-        master_host = self.master_cluster.get_connection_spec()['host']
+        con = await self.connect(**connection_spec)
+        master_port = self.master_cluster.get_connection_spec()['port']
         connected_host = _get_connected_host(con)
-        self.assertTrue(connected_host.startswith(master_host))
+        self.assertTrue(connected_host.endswith(master_port))
         await con.close()
 
 
 def _get_connected_host(con):
-    return con._transport.get_extra_info('peername')
+    peername = con._transport.get_extra_info('peername')
+    if isinstance(peername, tuple):
+        peername = "".join((str(s) for s in peername if s))
+    return peername
