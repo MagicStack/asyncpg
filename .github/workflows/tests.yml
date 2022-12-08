@@ -17,13 +17,10 @@ jobs:
     # job.
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
         os: [ubuntu-latest, macos-latest, windows-latest]
         loop: [asyncio, uvloop]
         exclude:
-          # uvloop does not support Python 3.6
-          - loop: uvloop
-            python-version: "3.6"
           # uvloop does not support windows
           - loop: uvloop
             os: windows-latest
@@ -38,7 +35,7 @@ jobs:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 50
         submodules: true
@@ -54,7 +51,7 @@ jobs:
           __version__\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       if: steps.release.outputs.version == 0
       with:
         python-version: ${{ matrix.python-version }}
@@ -79,7 +76,7 @@ jobs:
   test-postgres:
     strategy:
       matrix:
-        postgres-version: ["9.5", "9.6", "10", "11", "12", "13", "14"]
+        postgres-version: ["9.5", "9.6", "10", "11", "12", "13", "14", "15"]
 
     runs-on: ubuntu-latest
 
@@ -87,7 +84,7 @@ jobs:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 50
         submodules: true
@@ -114,8 +111,10 @@ jobs:
           >> "${GITHUB_ENV}"
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       if: steps.release.outputs.version == 0
+      with:
+        python-version: "3.x"
 
     - name: Install Python Deps
       if: steps.release.outputs.version == 0
