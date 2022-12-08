@@ -1806,7 +1806,6 @@ class TestConnectionAttributes(tb.HotStandbyTestCase):
         await con.close()
 
 
-
 def _get_connected_host(con):
     peername = con._transport.get_extra_info('peername')
     if isinstance(peername, tuple):
