@@ -7,8 +7,8 @@
 
 import sys
 
-if sys.version_info < (3, 6):
-    raise RuntimeError('asyncpg requires Python 3.6 or greater')
+if sys.version_info < (3, 7):
+    raise RuntimeError('asyncpg requires Python 3.7 or greater')
 
 import os
 import os.path
@@ -29,12 +29,8 @@ CYTHON_DEPENDENCY = 'Cython(>=0.29.24,<0.30.0)'
 
 # Minimal dependencies required to test asyncpg.
 TEST_DEPENDENCIES = [
-    # pycodestyle is a dependency of flake8, but it must be frozen because
-    # their combination breaks too often
-    # (example breakage: https://gitlab.com/pycqa/flake8/issues/427)
-    'pycodestyle~=2.7.0',
-    'flake8~=3.9.2',
-    'uvloop>=0.15.3; platform_system != "Windows" and python_version >= "3.7"',
+    'flake8~=5.0.4',
+    'uvloop>=0.15.3; platform_system != "Windows"',
 ]
 
 # Dependencies required to build documentation.
@@ -259,7 +255,6 @@ setuptools.setup(
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
@@ -268,7 +263,7 @@ setuptools.setup(
         'Topic :: Database :: Front-Ends',
     ],
     platforms=['macOS', 'POSIX', 'Windows'],
-    python_requires='>=3.6.0',
+    python_requires='>=3.7.0',
     zip_safe=False,
     author='MagicStack Inc',
     author_email='hello@magic.io',
