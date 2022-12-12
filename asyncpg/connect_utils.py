@@ -33,6 +33,7 @@ from . import protocol
 
 logger = logging.getLogger(__name__)
 
+
 class SSLMode(enum.IntEnum):
     disable = 0
     allow = 1
@@ -904,10 +905,14 @@ def _accept_in_hot_standby(should_be_in_hot_standby: bool):
                 "SELECT pg_catalog.pg_is_in_recovery()"
             )
             if is_in_recovery:
-                logger.warning("Connection {!r} is still in recovery mode".format(connection))
+                logger.warning("Connection {!r} is still in recovery mode"
+                               .format(connection))
             is_in_hot_standby = not is_in_recovery
         connection_eligible = is_in_hot_standby == should_be_in_hot_standby
-        logger.debug("Connection {!r} is eligible ({!r}). Allow".format(connection, connection_eligible))
+        logger.debug(
+            "Connection {!r} eligible=({!r}). Allow hot standby={!r}".
+            format(connection, connection_eligible, should_be_in_hot_standby)
+        )
         return connection_eligible
 
     return can_be_used
