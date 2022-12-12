@@ -1464,7 +1464,7 @@ class TestSSLConnection(BaseTestSSLConnection):
             )
         finally:
             try:
-                await con.execute('DROP TABLE test_many')
+                await con.execute('DROP TABLE IF EXISTS test_many')
             finally:
                 await con.close()
 
