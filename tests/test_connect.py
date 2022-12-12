@@ -1740,7 +1740,7 @@ class TestConnectionGC(tb.ClusterTestCase):
                                        r'unclosed connection') as rw:
                 await self._run_no_explicit_close_test()
 
-            msg = rw.warning.args[0]
+            msg = " ".join(rw.warning.args)
             self.assertIn(' created at:\n', msg)
             self.assertIn('in test_no_explicit_close_with_debug', msg)
         finally:

@@ -10,6 +10,7 @@ import collections
 import enum
 import functools
 import getpass
+import logging
 import os
 import pathlib
 import platform
@@ -30,6 +31,7 @@ from . import compat
 from . import exceptions
 from . import protocol
 
+logger = logging.getLogger(__name__)
 
 class SSLMode(enum.IntEnum):
     disable = 0
@@ -898,11 +900,15 @@ def _accept_in_hot_standby(should_be_in_hot_standby: bool):
         if hot_standby_status is not None:
             is_in_hot_standby = hot_standby_status == 'on'
         else:
-            is_in_hot_standby = await connection.fetchval(
+            is_in_recovery = await connection.fetchval(
                 "SELECT pg_catalog.pg_is_in_recovery()"
             )
-
-        return is_in_hot_standby == should_be_in_hot_standby
+            if is_in_recovery:
+                logger.warning("Connection {!r} is still in recovery mode".format(connection))
+            is_in_hot_standby = not is_in_recovery
+        connection_eligible = is_in_hot_standby == should_be_in_hot_standby
+        logger.debug("Connection {!r} is eligible ({!r}). Allow".format(connection, connection_eligible))
+        return connection_eligible
 
     return can_be_used
 
