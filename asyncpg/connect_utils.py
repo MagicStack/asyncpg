@@ -894,6 +894,8 @@ def _accept_in_hot_standby(should_be_in_hot_standby: bool):
     """
     If the server didn't report "in_hot_standby" at startup, we must determine
     the state by checking "SELECT pg_catalog.pg_is_in_recovery()".
+    If the server allows a connection and states it is in recovery it must
+    be a replica/standby server.
     """
     async def can_be_used(connection):
         settings = connection.get_settings()
@@ -901,13 +903,9 @@ def _accept_in_hot_standby(should_be_in_hot_standby: bool):
         if hot_standby_status is not None:
             is_in_hot_standby = hot_standby_status == 'on'
         else:
-            is_in_recovery = await connection.fetchval(
+            is_in_hot_standby = await connection.fetchval(
                 "SELECT pg_catalog.pg_is_in_recovery()"
             )
-            if is_in_recovery:
-                logger.warning("Connection {!r} is still in recovery mode"
-                               .format(connection))
-            is_in_hot_standby = not is_in_recovery
         connection_eligible = is_in_hot_standby == should_be_in_hot_standby
         logger.debug(
             "Connection {!r} eligible=({!r}). Allow hot standby={!r}".
