@@ -917,18 +917,11 @@ def _accept_read_only(should_be_read_only: bool):
     """
     async def can_be_used(connection):
         settings = connection.get_settings()
-        is_read_only = getattr(settings, 'default_transaction_read_only', None)
-        if is_read_only is not None:
-            is_read_only = is_read_only == "on"
-        else:
-            is_read_only = False
-        if should_be_read_only:
-            if is_read_only:
-                return True
-            elif await _accept_in_hot_standby(True)(connection):
-                return True
-            return False
-        return _accept_in_hot_standby(False)(connection)
+        is_read_only = getattr(settings, 'default_transaction_read_only', 'off')
+
+        if should_be_read_only and is_read_only == "on":
+            return True
+        return await _accept_in_hot_standby(should_be_read_only)(connection)
     return can_be_used
 
 
