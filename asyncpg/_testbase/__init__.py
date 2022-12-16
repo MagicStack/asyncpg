@@ -438,6 +438,7 @@ class ConnectedTestCase(ClusterTestCase):
 
 
 class HotStandbyTestCase(ClusterTestCase):
+
     @classmethod
     def setup_cluster(cls):
         cls.master_cluster = cls.new_cluster(pg_cluster.TempCluster)

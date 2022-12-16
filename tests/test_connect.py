@@ -1772,6 +1772,17 @@ class TestConnectionAttributes(tb.HotStandbyTestCase):
             await self._run_connection_test(
                 connect, target_attr, expected_port
             )
+        if self.master_cluster.get_pg_version()[0] < 14:
+            self.skipTest("PostgreSQL<14 does not support these features")
+        tests = [
+            (self.connect_primary, 'read-write', master_port),
+            (self.connect_standby, 'read-only', standby_port),
+        ]
+
+        for connect, target_attr, expected_port in tests:
+            await self._run_connection_test(
+                connect, target_attr, expected_port
+            )
 
     async def test_target_attribute_not_matched(self):
         if self.master_cluster.get_pg_version()[0] == 11:
@@ -1779,6 +1790,17 @@ class TestConnectionAttributes(tb.HotStandbyTestCase):
         tests = [
             (self.connect_standby, 'primary'),
             (self.connect_primary, 'standby'),
+        ]
+
+        for connect, target_attr in tests:
+            with self.assertRaises(exceptions.TargetServerAttributeNotMatched):
+                await connect(target_session_attribute=target_attr)
+
+        if self.master_cluster.get_pg_version()[0] < 14:
+            self.skipTest("PostgreSQL<14 does not support these features")
+        tests = [
+            (self.connect_standby, 'read-write'),
+            (self.connect_primary, 'read-only'),
         ]
 
         for connect, target_attr in tests:

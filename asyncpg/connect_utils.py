@@ -885,6 +885,8 @@ class SessionAttribute(str, enum.Enum):
     primary = 'primary'
     standby = 'standby'
     prefer_standby = 'prefer-standby'
+    read_write = "read-write"
+    read_only = "read-only"
 
 
 def _accept_in_hot_standby(should_be_in_hot_standby: bool):
@@ -909,6 +911,27 @@ def _accept_in_hot_standby(should_be_in_hot_standby: bool):
     return can_be_used
 
 
+def _accept_read_only(should_be_read_only: bool):
+    """
+    Verify the server has not set default_transaction_read_only=True
+    """
+    async def can_be_used(connection):
+        settings = connection.get_settings()
+        is_read_only = getattr(settings, 'default_transaction_read_only', None)
+        if is_read_only is not None:
+            is_read_only = is_read_only == "on"
+        else:
+            is_read_only = False
+        if should_be_read_only:
+            if is_read_only:
+                return True
+            elif await _accept_in_hot_standby(True)(connection):
+                return True
+            return False
+        return _accept_in_hot_standby(False)(connection)
+    return can_be_used
+
+
 async def _accept_any(_):
     return True
 
@@ -918,6 +941,8 @@ target_attrs_check = {
     SessionAttribute.primary: _accept_in_hot_standby(False),
     SessionAttribute.standby: _accept_in_hot_standby(True),
     SessionAttribute.prefer_standby: _accept_in_hot_standby(True),
+    SessionAttribute.read_write: _accept_read_only(False),
+    SessionAttribute.read_only: _accept_read_only(True),
 }
 
 
