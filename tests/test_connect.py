@@ -14,7 +14,6 @@ import platform
 import shutil
 import ssl
 import stat
-import sys
 import tempfile
 import textwrap
 import unittest
@@ -1470,10 +1469,6 @@ class TestSSLConnection(BaseTestSSLConnection):
             finally:
                 await con.close()
 
-    @unittest.skipIf(
-        sys.version_info < (3, 7),
-        "Python < 3.7 doesn't have ssl.TLSVersion"
-    )
     async def test_tls_version(self):
         if self.cluster.get_pg_version() < (12, 0):
             self.skipTest("PostgreSQL < 12 cannot set ssl protocol version")
@@ -1504,13 +1499,14 @@ class TestSSLConnection(BaseTestSSLConnection):
                             '&ssl_min_protocol_version=TLSv1.1'
                             '&ssl_max_protocol_version=TLSv1.1'
                     )
-                with self.assertRaisesRegex(ssl.SSLError, 'no protocols'):
-                    await self.connect(
-                        dsn='postgresql://ssl_user@localhost/postgres'
-                            '?sslmode=require'
-                            '&ssl_min_protocol_version=TLSv1.2'
-                            '&ssl_max_protocol_version=TLSv1.1'
-                    )
+                if not ssl.OPENSSL_VERSION.startswith('LibreSSL'):
+                    with self.assertRaisesRegex(ssl.SSLError, 'no protocols'):
+                        await self.connect(
+                            dsn='postgresql://ssl_user@localhost/postgres'
+                                '?sslmode=require'
+                                '&ssl_min_protocol_version=TLSv1.2'
+                                '&ssl_max_protocol_version=TLSv1.1'
+                        )
                 con = await self.connect(
                     dsn='postgresql://ssl_user@localhost/postgres'
                         '?sslmode=require'

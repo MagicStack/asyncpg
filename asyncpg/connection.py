@@ -20,7 +20,6 @@ import typing
 import warnings
 import weakref
 
-from . import compat
 from . import connect_utils
 from . import cursor
 from . import exceptions
@@ -1418,6 +1417,7 @@ class Connection(metaclass=ConnectionMeta):
     def _maybe_gc_stmt(self, stmt):
         if (
             stmt.refs == 0
+            and stmt.name
             and not self._stmt_cache.has(
                 (stmt.query, stmt.record_class, stmt.ignore_custom_codec)
             )
@@ -1469,7 +1469,7 @@ class Connection(metaclass=ConnectionMeta):
                 waiter.set_exception(ex)
         finally:
             self._cancellations.discard(
-                compat.current_asyncio_task(self._loop))
+                asyncio.current_task(self._loop))
             if not waiter.done():
                 waiter.set_result(None)
 
