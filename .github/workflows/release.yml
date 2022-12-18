@@ -37,7 +37,7 @@ jobs:
         mkdir -p dist/
         echo "${VERSION}" > dist/VERSION
 
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: dist
         path: dist/
@@ -50,37 +50,56 @@ jobs:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 50
         submodules: true
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.x"
 
     - name: Build source distribution
       run: |
         pip install -U setuptools wheel pip
         python setup.py sdist
 
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: dist
         path: dist/*.tar.*
 
-  build-wheels:
+  build-wheels-matrix:
     needs: validate-release-request
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.set-matrix.outputs.include }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+      - run: pip install cibuildwheel==2.10.2
+      - id: set-matrix
+        run: |
+          MATRIX_INCLUDE=$(
+            {
+              cibuildwheel --print-build-identifiers --platform linux --arch x86_64,aarch64 | grep cp |  jq -Rc '{"only": inputs, "os": "ubuntu-latest"}' \
+              && cibuildwheel --print-build-identifiers --platform macos --arch x86_64,arm64 | grep cp |  jq -Rc '{"only": inputs, "os": "macos-latest"}' \
+              && cibuildwheel --print-build-identifiers --platform windows --arch x86,AMD64 | grep cp |  jq -Rc '{"only": inputs, "os": "windows-latest"}'
+            } | jq -sc
+          )
+          echo "include=$MATRIX_INCLUDE" >> $GITHUB_OUTPUT
+
+  build-wheels:
+    needs: build-wheels-matrix
     runs-on: ${{ matrix.os }}
+    name: Build ${{ matrix.only }}
+
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        cibw_python: ["cp36-*", "cp37-*", "cp38-*", "cp39-*", "cp310-*"]
-        cibw_arch: ["auto64", "auto32"]
-        exclude:
-          - os: macos-latest
-            cibw_arch: "auto32"
-          - os: ubuntu-latest
-            cibw_arch: "auto32"
+        include: ${{ fromJson(needs.build-wheels-matrix.outputs.include) }}
 
     defaults:
       run:
@@ -90,24 +109,30 @@ jobs:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 50
         submodules: true
 
-    - uses: pypa/cibuildwheel@v2.8.0
+    - name: Set up QEMU
+      if: runner.os == 'Linux'
+      uses: docker/setup-qemu-action@v2
+
+    - uses: pypa/cibuildwheel@v2.10.2
+      with:
+        only: ${{ matrix.only }}
       env:
         CIBW_BUILD_VERBOSITY: 1
-        CIBW_BUILD: ${{ matrix.cibw_python }}
-        CIBW_ARCHS: ${{ matrix.cibw_arch }}
+        CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+        CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
 
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: dist
         path: wheelhouse/*.whl
 
   publish-docs:
-    needs: validate-release-request
+    needs: [build-sdist, build-wheels]
     runs-on: ubuntu-latest
 
     env:
@@ -115,15 +140,15 @@ jobs:
 
     steps:
     - name: Checkout source
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 5
         submodules: true
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
-        python-version: 3.8
+        python-version: "3.x"
 
     - name: Build docs
       run: |
@@ -131,7 +156,7 @@ jobs:
         make htmldocs
 
     - name: Checkout gh-pages
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 5
         ref: gh-pages
@@ -157,12 +182,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 5
         submodules: false
 
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: dist
         path: dist/
@@ -171,7 +196,7 @@ jobs:
       id: relver
       run: |
         set -e
-        echo ::set-output name=version::$(cat dist/VERSION)
+        echo "version=$(cat dist/VERSION)" >> $GITHUB_OUTPUT
         rm dist/VERSION
 
     - name: Merge and tag the PR
@@ -197,7 +222,7 @@ jobs:
         ls -al dist/
 
     - name: Upload to PyPI
-      uses: pypa/gh-action-pypi-publish@master
+      uses: pypa/gh-action-pypi-publish@release/v1
       with:
         user: __token__
         password: ${{ secrets.PYPI_TOKEN }}

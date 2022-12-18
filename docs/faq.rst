@@ -34,6 +34,12 @@ class that implements dot-notation via the ``record_class`` argument to
 :func:`connect() <asyncpg.connection.connect>` or any of the Record-returning
 methods.
 
+.. code-block:: python
+
+    class MyRecord(asyncpg.Record):
+        def __getattr__(self, name):
+            return self[name]
+
 
 Why can't I use a :ref:`cursor <asyncpg-api-cursor>` outside of a transaction?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

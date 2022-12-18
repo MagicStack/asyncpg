@@ -523,6 +523,7 @@ class TestRecord(tb.ConnectedTestCase):
             record_class=MyRecord,
         )
         self.assertIsInstance(r, MyRecord)
+        self.assertEqual(repr(r), "<MyRecord a=1 b='2'>")
 
         self.assertEqual(list(r.items()), [('a', 1), ('b', '2')])
         self.assertEqual(list(r.keys()), ['a', 'b'])

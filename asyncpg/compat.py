@@ -8,10 +8,8 @@
 import asyncio
 import pathlib
 import platform
-import sys
 
 
-PY_37 = sys.version_info >= (3, 7)
 SYSTEM = platform.uname().system
 
 
@@ -34,14 +32,6 @@ if SYSTEM == 'Windows':
 else:
     def get_pg_home_directory() -> pathlib.Path:
         return pathlib.Path.home()
-
-
-if PY_37:
-    def current_asyncio_task(loop):
-        return asyncio.current_task(loop)
-else:
-    def current_asyncio_task(loop):
-        return asyncio.Task.current_task(loop)
 
 
 async def wait_closed(stream):

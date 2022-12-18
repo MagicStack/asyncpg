@@ -239,10 +239,6 @@ def _parse_hostlist(hostlist, port, *, unquote=False):
 
 
 def _parse_tls_version(tls_version):
-    if not hasattr(ssl_module, 'TLSVersion'):
-        raise ValueError(
-            "TLSVersion is not supported in this version of Python"
-        )
     if tls_version.startswith('SSL'):
         raise ValueError(
             f"Unsupported TLS version: {tls_version}"
@@ -576,11 +572,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     ssl_min_protocol_version
                 )
             else:
-                try:
-                    ssl.minimum_version = _parse_tls_version('TLSv1.2')
-                except ValueError:
-                    # Python 3.6 does not have ssl.TLSVersion
-                    pass
+                ssl.minimum_version = _parse_tls_version('TLSv1.2')
 
             if ssl_max_protocol_version is None:
                 ssl_max_protocol_version = os.getenv('PGSSLMAXPROTOCOLVERSION')
