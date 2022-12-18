@@ -905,8 +905,7 @@ def _accept_in_hot_standby(should_be_in_hot_standby: bool):
             is_in_hot_standby = await connection.fetchval(
                 "SELECT pg_catalog.pg_is_in_recovery()"
             )
-        connection_eligible = is_in_hot_standby == should_be_in_hot_standby
-        return connection_eligible
+        return is_in_hot_standby == should_be_in_hot_standby
 
     return can_be_used
 
@@ -919,8 +918,9 @@ def _accept_read_only(should_be_read_only: bool):
         settings = connection.get_settings()
         is_readonly = getattr(settings, 'default_transaction_read_only', 'off')
 
-        if should_be_read_only and is_readonly == "on":
-            return True
+        if is_readonly == "on":
+            return should_be_read_only
+
         return await _accept_in_hot_standby(should_be_read_only)(connection)
     return can_be_used
 
