@@ -1966,7 +1966,7 @@ async def connect(dsn=None, *,
             ...     )
             ...     con = await asyncpg.connect(user='postgres', ssl=sslctx)
             ...     await con.close()
-            >>> asyncio.run(run())
+            >>> asyncio.run(main())
 
         Example of programmatic SSL context configuration that is equivalent
         to ``sslmode=require`` (no server certificate or host verification):
@@ -1983,7 +1983,7 @@ async def connect(dsn=None, *,
             ...     sslctx.verify_mode = ssl.CERT_NONE
             ...     con = await asyncpg.connect(user='postgres', ssl=sslctx)
             ...     await con.close()
-            >>> asyncio.run(run())
+            >>> asyncio.run(main())
 
     :param bool direct_tls:
         Pass ``True`` to skip PostgreSQL STARTTLS mode and perform a direct
