@@ -57,7 +57,7 @@ _ConnectionParameters = collections.namedtuple(
         'direct_tls',
         'connect_timeout',
         'server_settings',
-        'target_session_attribute',
+        'target_session_attrs',
     ])
 
 
@@ -258,7 +258,7 @@ def _dot_postgresql_path(filename) -> pathlib.Path:
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                                 password, passfile, database, ssl,
                                 direct_tls, connect_timeout, server_settings,
-                                target_session_attribute):
+                                target_session_attrs):
     # `auth_hosts` is the version of host information for the purposes
     # of reading the pgpass file.
     auth_hosts = None
@@ -595,11 +595,24 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             'server_settings is expected to be None or '
             'a Dict[str, str]')
 
+    if target_session_attrs is None:
+
+        target_session_attrs = os.getenv("PGTARGETSESSIONATTRS", SessionAttribute.any)
+    try:
+
+        target_session_attrs = SessionAttribute(target_session_attrs)
+    except ValueError as exc:
+        raise exceptions.InterfaceError(
+            "target_session_attrs is expected to be one of "
+            "{!r}"
+            ", got {!r}".format(SessionAttribute.__members__.values, target_session_attrs)
+        ) from exc
+
     params = _ConnectionParameters(
         user=user, password=password, database=database, ssl=ssl,
         sslmode=sslmode, direct_tls=direct_tls,
         connect_timeout=connect_timeout, server_settings=server_settings,
-        target_session_attribute=target_session_attribute)
+        target_session_attrs=target_session_attrs)
 
     return addrs, params
 
@@ -610,7 +623,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
                              ssl, direct_tls, server_settings,
-                             target_session_attribute):
+                             target_session_attrs):
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
                      'max_cached_statement_lifetime',
@@ -639,7 +652,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
         password=password, passfile=passfile, ssl=ssl,
         direct_tls=direct_tls, database=database,
         connect_timeout=timeout, server_settings=server_settings,
-        target_session_attribute=target_session_attribute)
+        target_session_attrs=target_session_attrs)
 
     config = _ClientConfiguration(
         command_timeout=command_timeout,
@@ -941,7 +954,7 @@ async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
         loop = asyncio.get_event_loop()
 
     addrs, params, config = _parse_connect_arguments(timeout=timeout, **kwargs)
-    target_attr = params.target_session_attribute
+    target_attr = params.target_session_attrs
 
     candidates = []
     chosen_connection = None

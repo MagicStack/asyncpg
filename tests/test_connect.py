@@ -788,7 +788,7 @@ class TestConnectParams(tb.TestCase):
         database = testcase.get('database')
         sslmode = testcase.get('ssl')
         server_settings = testcase.get('server_settings')
-        target_session_attribute = testcase.get('target_session_attribute')
+        target_session_attrs = testcase.get('target_session_attrs')
 
         expected = testcase.get('result')
         expected_error = testcase.get('error')
@@ -813,7 +813,7 @@ class TestConnectParams(tb.TestCase):
                 passfile=passfile, database=database, ssl=sslmode,
                 direct_tls=False, connect_timeout=None,
                 server_settings=server_settings,
-                target_session_attribute=target_session_attribute)
+                target_session_attrs=target_session_attrs)
 
             params = {
                 k: v for k, v in params._asdict().items()
@@ -1750,7 +1750,7 @@ class TestConnectionAttributes(tb.HotStandbyTestCase):
     async def _run_connection_test(
         self, connect, target_attribute, expected_port
     ):
-        conn = await connect(target_session_attribute=target_attribute)
+        conn = await connect(target_session_attrs=target_attribute)
         self.assertTrue(_get_connected_host(conn).endswith(expected_port))
         await conn.close()
 
@@ -1790,7 +1790,7 @@ class TestConnectionAttributes(tb.HotStandbyTestCase):
 
         for connect, target_attr in tests:
             with self.assertRaises(exceptions.TargetServerAttributeNotMatched):
-                await connect(target_session_attribute=target_attr)
+                await connect(target_session_attrs=target_attr)
 
         if self.master_cluster.get_pg_version()[0] < 14:
             self.skipTest("PostgreSQL<14 does not support these features")
@@ -1801,12 +1801,12 @@ class TestConnectionAttributes(tb.HotStandbyTestCase):
 
         for connect, target_attr in tests:
             with self.assertRaises(exceptions.TargetServerAttributeNotMatched):
-                await connect(target_session_attribute=target_attr)
+                await connect(target_session_attrs=target_attr)
 
     async def test_prefer_standby_when_standby_is_up(self):
         if self.master_cluster.get_pg_version()[0] == 11:
             self.skipTest("PostgreSQL 11 seems to have issues with this test")
-        con = await self.connect(target_session_attribute='prefer-standby')
+        con = await self.connect(target_session_attrs='prefer-standby')
         standby_port = self.standby_cluster.get_connection_spec()['port']
         connected_host = _get_connected_host(con)
         self.assertTrue(connected_host.endswith(standby_port))
@@ -1824,7 +1824,7 @@ class TestConnectionAttributes(tb.HotStandbyTestCase):
             'port': [primary_spec['port'], 15345],
             'database': primary_spec['database'],
             'user': primary_spec['user'],
-            'target_session_attribute': 'prefer-standby'
+            'target_session_attrs': 'prefer-standby'
         }
 
         con = await self.connect(**connection_spec)
