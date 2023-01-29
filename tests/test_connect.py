@@ -384,7 +384,8 @@ class TestConnectParams(tb.TestCase):
                 'password': 'passw',
                 'database': 'testdb',
                 'ssl': True,
-                'sslmode': SSLMode.prefer})
+                'sslmode': SSLMode.prefer,
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -406,7 +407,8 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host2', 456)], {
                 'user': 'user2',
                 'password': 'passw2',
-                'database': 'db2'})
+                'database': 'db2',
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -434,7 +436,8 @@ class TestConnectParams(tb.TestCase):
                 'password': 'passw2',
                 'database': 'db2',
                 'sslmode': SSLMode.disable,
-                'ssl': False})
+                'ssl': False,
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -455,7 +458,8 @@ class TestConnectParams(tb.TestCase):
                 'password': '123123',
                 'database': 'abcdef',
                 'ssl': True,
-                'sslmode': SSLMode.allow})
+                'sslmode': SSLMode.allow,
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -483,7 +487,8 @@ class TestConnectParams(tb.TestCase):
                 'password': 'passw2',
                 'database': 'db2',
                 'sslmode': SSLMode.disable,
-                'ssl': False})
+                'ssl': False,
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -504,7 +509,8 @@ class TestConnectParams(tb.TestCase):
                 'password': '123123',
                 'database': 'abcdef',
                 'ssl': True,
-                'sslmode': SSLMode.prefer})
+                'sslmode': SSLMode.prefer,
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -513,7 +519,8 @@ class TestConnectParams(tb.TestCase):
             'result': ([('localhost', 5555)], {
                 'user': 'user3',
                 'password': '123123',
-                'database': 'abcdef'})
+                'database': 'abcdef',
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -522,6 +529,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host1', 5432), ('host2', 5432)], {
                 'database': 'db',
                 'user': 'user',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -531,6 +539,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host1', 1111), ('host2', 2222)], {
                 'database': 'db',
                 'user': 'user',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -540,6 +549,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('2001:db8::1234%eth0', 5432), ('::1', 5432)], {
                 'database': 'db',
                 'user': 'user',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -549,6 +559,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('2001:db8::1234', 1111), ('::1', 2222)], {
                 'database': 'db',
                 'user': 'user',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -558,6 +569,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('2001:db8::1234', 5432), ('::1', 5432)], {
                 'database': 'db',
                 'user': 'user',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -572,6 +584,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host1', 1111), ('host2', 2222)], {
                 'database': 'db',
                 'user': 'foo',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -584,6 +597,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host1', 1111), ('host2', 2222)], {
                 'database': 'db',
                 'user': 'foo',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -597,6 +611,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host1', 5432), ('host2', 5432)], {
                 'database': 'db',
                 'user': 'foo',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -616,7 +631,8 @@ class TestConnectParams(tb.TestCase):
                 'password': 'ask',
                 'database': 'db',
                 'ssl': True,
-                'sslmode': SSLMode.require})
+                'sslmode': SSLMode.require,
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -637,7 +653,8 @@ class TestConnectParams(tb.TestCase):
                 'password': 'ask',
                 'database': 'db',
                 'sslmode': SSLMode.verify_full,
-                'ssl': True})
+                'ssl': True,
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -645,7 +662,8 @@ class TestConnectParams(tb.TestCase):
             'dsn': 'postgresql:///dbname?host=/unix_sock/test&user=spam',
             'result': ([os.path.join('/unix_sock/test', '.s.PGSQL.5432')], {
                 'user': 'spam',
-                'database': 'dbname'})
+                'database': 'dbname',
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -657,6 +675,7 @@ class TestConnectParams(tb.TestCase):
                     'user': 'us@r',
                     'password': 'p@ss',
                     'database': 'db',
+                    'target_session_attrs': 'any',
                 }
             )
         },
@@ -670,6 +689,7 @@ class TestConnectParams(tb.TestCase):
                     'user': 'user',
                     'password': 'p',
                     'database': 'db',
+                    'target_session_attrs': 'any',
                 }
             )
         },
@@ -682,6 +702,7 @@ class TestConnectParams(tb.TestCase):
                 {
                     'user': 'us@r',
                     'database': 'db',
+                    'target_session_attrs': 'any',
                 }
             )
         },
@@ -709,7 +730,8 @@ class TestConnectParams(tb.TestCase):
                     'user': 'user',
                     'database': 'user',
                     'sslmode': SSLMode.disable,
-                    'ssl': None
+                    'ssl': None,
+                    'target_session_attrs': 'any',
                 }
             )
         },
@@ -723,7 +745,8 @@ class TestConnectParams(tb.TestCase):
                     '.s.PGSQL.5432'
                 )], {
                     'user': 'spam',
-                    'database': 'db'
+                    'database': 'db',
+                    'target_session_attrs': 'any',
                 }
             )
         },
@@ -744,6 +767,7 @@ class TestConnectParams(tb.TestCase):
                     'database': 'db',
                     'ssl': True,
                     'sslmode': SSLMode.prefer,
+                    'target_session_attrs': 'any',
                 }
             )
         },
@@ -874,7 +898,9 @@ class TestConnectParams(tb.TestCase):
                 'host': 'abc',
                 'result': (
                     [('abc', 5432)],
-                    {'user': '__test__', 'database': '__test__'}
+                    {'user': '__test__',
+                     'database': '__test__',
+                     'target_session_attrs': 'any'}
                 )
             })
 
@@ -912,6 +938,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for user@abc',
                         'user': 'user',
                         'database': 'db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -928,6 +955,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for user@abc',
                         'user': 'user',
                         'database': 'db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -942,6 +970,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for user@abc',
                         'user': 'user',
                         'database': 'db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -957,6 +986,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for localhost',
                         'user': 'user',
                         'database': 'db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -974,6 +1004,7 @@ class TestConnectParams(tb.TestCase):
                             'password': 'password from pgpass for localhost',
                             'user': 'user',
                             'database': 'db',
+                            'target_session_attrs': 'any',
                         }
                     )
                 })
@@ -991,6 +1022,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for cde:5433',
                         'user': 'user',
                         'database': 'db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -1007,6 +1039,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for testuser',
                         'user': 'testuser',
                         'database': 'db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -1023,6 +1056,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for testdb',
                         'user': 'user',
                         'database': 'testdb',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -1039,6 +1073,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass with escapes',
                         'user': R'test\\',
                         'database': R'test\:db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -1066,6 +1101,7 @@ class TestConnectParams(tb.TestCase):
                         {
                             'user': 'user',
                             'database': 'db',
+                            'target_session_attrs': 'any',
                         }
                     )
                 })
@@ -1086,6 +1122,7 @@ class TestConnectParams(tb.TestCase):
                         {
                             'user': 'user',
                             'database': 'db',
+                            'target_session_attrs': 'any',
                         }
                     )
                 })
@@ -1102,6 +1139,7 @@ class TestConnectParams(tb.TestCase):
                 {
                     'user': 'user',
                     'database': 'db',
+                    'target_session_attrs': 'any',
                 }
             )
         })
@@ -1122,6 +1160,7 @@ class TestConnectParams(tb.TestCase):
                     {
                         'user': 'user',
                         'database': 'db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -1144,6 +1183,7 @@ class TestConnectParams(tb.TestCase):
                             {
                                 'user': 'user',
                                 'database': 'db',
+                                'target_session_attrs': 'any',
                             }
                         )
                     })

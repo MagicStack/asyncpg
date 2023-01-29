@@ -29,7 +29,6 @@ from . import protocol
 from . import serverversion
 from . import transaction
 from . import utils
-from .connect_utils import SessionAttribute
 
 
 class ConnectionMeta(type):
@@ -2017,7 +2016,8 @@ async def connect(dsn=None, *,
                             none of the listed hosts is a standby server,
                             return any of them.
 
-        If not specified will try to use PGTARGETSESSIONATTRS from the environment.
+        If not specified will try to use PGTARGETSESSIONATTRS
+        from the environment.
         Defaults to "any" if no value is set.
 
     :return: A :class:`~asyncpg.connection.Connection` instance.
