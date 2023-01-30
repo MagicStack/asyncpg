@@ -1795,8 +1795,6 @@ class TestConnectionAttributes(tb.HotStandbyTestCase):
         await conn.close()
 
     async def test_target_server_attribute_port(self):
-        #if self.master_cluster.get_pg_version()[0] == 11:
-        #    self.skipTest("PostgreSQL 11 seems to have issues with this test")
         master_port = self.master_cluster.get_connection_spec()['port']
         standby_port = self.standby_cluster.get_connection_spec()['port']
         tests = [
