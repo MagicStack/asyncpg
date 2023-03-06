@@ -1811,8 +1811,7 @@ async def connect(dsn=None, *,
         The following options are recognized by asyncpg: ``host``,
         ``port``, ``user``, ``database`` (or ``dbname``), ``password``,
         ``passfile``, ``sslmode``, ``sslcert``, ``sslkey``, ``sslrootcert``,
-        and ``sslcrl``.  Unlike libpq, asyncpg will treat unrecognized
-        options as `server settings`_ to be used for the connection.
+        and ``sslcrl``. 
 
         .. note::
 
