@@ -71,6 +71,14 @@ def mock_dot_postgresql(*, ca=True, crl=False, client=False, protected=False):
             yield
 
 
+@contextlib.contextmanager
+def mock_no_home_dir():
+    with unittest.mock.patch(
+        'pathlib.Path.home', unittest.mock.Mock(side_effect=RuntimeError)
+    ):
+        yield
+
+
 class TestSettings(tb.ConnectedTestCase):
 
     async def test_get_settings_01(self):
@@ -1256,6 +1264,27 @@ class TestConnection(tb.ConnectedTestCase):
             database=conn_spec.get('database'),
             user=conn_spec.get('user'))
         await con.close()
+
+    @unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
+    async def test_connection_no_home_dir(self):
+        with mock_no_home_dir():
+            con = await self.connect(
+                dsn='postgresql://foo/',
+                user='postgres',
+                database='postgres',
+                host='localhost')
+            await con.fetchval('SELECT 42')
+            await con.close()
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            'Cannot determine home directory'
+        ):
+            with mock_no_home_dir():
+                await self.connect(
+                    host='localhost',
+                    user='ssl_user',
+                    ssl='verify-full')
 
 
 class BaseTestSSLConnection(tb.ConnectedTestCase):
