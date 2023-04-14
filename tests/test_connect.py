@@ -607,6 +607,19 @@ class TestConnectParams(tb.TestCase):
                 'user': 'foo',
             })
         },
+        
+        {
+            'name': 'params_multi_host_dsn_env_mix_tuple',
+            'env': {
+                'PGUSER': 'foo',
+            },
+            'dsn': 'postgresql:///db',
+            'host': ('host1', 'host2'),
+            'result': ([('host1', 5432), ('host2', 5432)], {
+                'database': 'db',
+                'user': 'foo',
+            })
+        },
 
         {
             'name': 'params_combine_dsn_settings_override_and_ssl',

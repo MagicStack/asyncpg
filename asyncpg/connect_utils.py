@@ -395,7 +395,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             host = ['/run/postgresql', '/var/run/postgresql',
                     '/tmp', '/private/tmp', 'localhost']
 
-    if not isinstance(host, list):
+    if not isinstance(host, (list, tuple)):
         host = [host]
 
     if auth_hosts is None:
