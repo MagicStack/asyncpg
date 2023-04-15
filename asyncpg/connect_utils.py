@@ -873,9 +873,9 @@ async def _connect(*, loop, timeout, connection_class, record_class, connect_tim
         loop = asyncio.get_event_loop()
 
     addrs, params, config = _parse_connect_arguments(timeout=timeout, **kwargs)
-    
+
     random.shuffle(addrs)
-    last_error = ConnectionError(f"Can't conenct to all hosts {addrs}")
+    last_error = ConnectionError(f"Can't connect to all hosts {addrs}")
     addr = None
     for addr in addrs:
         if addr in _connect._skip_addresses:
