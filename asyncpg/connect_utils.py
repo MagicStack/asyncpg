@@ -10,6 +10,9 @@ import collections
 import enum
 import functools
 import getpass
+import inspect
+import logging
+import random
 import os
 import pathlib
 import platform
@@ -23,12 +26,10 @@ import time
 import typing
 import urllib.parse
 import warnings
-import inspect
 
-from . import compat
-from . import exceptions
-from . import protocol
+from . import compat, exceptions, protocol
 
+logger = logging.getLogger(__name__)
 
 class SSLMode(enum.IntEnum):
     disable = 0
@@ -867,21 +868,27 @@ async def __connect_addr(
     return con
 
 
-async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
+async def _connect(*, loop, timeout, connection_class, record_class, connect_timeout=60, **kwargs):
     if loop is None:
         loop = asyncio.get_event_loop()
 
     addrs, params, config = _parse_connect_arguments(timeout=timeout, **kwargs)
-
-    last_error = None
+    
+    random.shuffle(addrs)
+    last_error = ConnectionError(f"Can't conenct to all hosts {addrs}")
     addr = None
     for addr in addrs:
+        if addr in _connect._skip_addresses:
+            current_time = time.monotonic()
+            if current_time < _connect._skip_addresses[addr]:
+                del _connect._skip_addresses[addr]
+                continue
         before = time.monotonic()
         try:
             return await _connect_addr(
                 addr=addr,
                 loop=loop,
-                timeout=timeout,
+                timeout=connect_timeout,
                 params=params,
                 config=config,
                 connection_class=connection_class,
@@ -889,10 +896,14 @@ async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
             )
         except (OSError, asyncio.TimeoutError, ConnectionError) as ex:
             last_error = ex
+            _connect._skip_addresses[addr] = time.monotonic() + connect_timeout
+            logger.warning("Can't connect to %s: %s", addr, ex, exc_info=True)
         finally:
             timeout -= time.monotonic() - before
 
     raise last_error
+
+_connect._skip_addresses = {}
 
 
 async def _cancel(*, loop, addr, params: _ConnectionParameters,
