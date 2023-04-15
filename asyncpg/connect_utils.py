@@ -878,11 +878,6 @@ async def _connect(*, loop, timeout, connection_class, record_class, connect_tim
     last_error = ConnectionError(f"Can't connect to all hosts {addrs}")
     addr = None
     for addr in addrs:
-        if addr in _connect._skip_addresses:
-            current_time = time.monotonic()
-            if current_time < _connect._skip_addresses[addr]:
-                del _connect._skip_addresses[addr]
-                continue
         before = time.monotonic()
         try:
             return await _connect_addr(
@@ -896,14 +891,11 @@ async def _connect(*, loop, timeout, connection_class, record_class, connect_tim
             )
         except (OSError, asyncio.TimeoutError, ConnectionError) as ex:
             last_error = ex
-            _connect._skip_addresses[addr] = time.monotonic() + connect_timeout
             logger.warning("Can't connect to %s: %s", addr, ex, exc_info=True)
         finally:
             timeout -= time.monotonic() - before
 
     raise last_error
-
-_connect._skip_addresses = {}
 
 
 async def _cancel(*, loop, addr, params: _ConnectionParameters,
