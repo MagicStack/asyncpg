@@ -250,8 +250,13 @@ def _parse_tls_version(tls_version):
         )
 
 
-def _dot_postgresql_path(filename) -> pathlib.Path:
-    return (pathlib.Path.home() / '.postgresql' / filename).resolve()
+def _dot_postgresql_path(filename) -> typing.Optional[pathlib.Path]:
+    try:
+        homedir = pathlib.Path.home()
+    except (RuntimeError, KeyError):
+        return None
+
+    return (homedir / '.postgresql' / filename).resolve()
 
 
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
@@ -502,11 +507,16 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     ssl.load_verify_locations(cafile=sslrootcert)
                     ssl.verify_mode = ssl_module.CERT_REQUIRED
                 else:
-                    sslrootcert = _dot_postgresql_path('root.crt')
                     try:
+                        sslrootcert = _dot_postgresql_path('root.crt')
+                        assert sslrootcert is not None
                         ssl.load_verify_locations(cafile=sslrootcert)
-                    except FileNotFoundError:
+                    except (AssertionError, FileNotFoundError):
                         if sslmode > SSLMode.require:
+                            if sslrootcert is None:
+                                raise RuntimeError(
+                                    'Cannot determine home directory'
+                                )
                             raise ValueError(
                                 f'root certificate file "{sslrootcert}" does '
                                 f'not exist\nEither provide the file or '
@@ -527,18 +537,20 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     ssl.verify_flags |= ssl_module.VERIFY_CRL_CHECK_CHAIN
                 else:
                     sslcrl = _dot_postgresql_path('root.crl')
-                    try:
-                        ssl.load_verify_locations(cafile=sslcrl)
-                    except FileNotFoundError:
-                        pass
-                    else:
-                        ssl.verify_flags |= ssl_module.VERIFY_CRL_CHECK_CHAIN
+                    if sslcrl is not None:
+                        try:
+                            ssl.load_verify_locations(cafile=sslcrl)
+                        except FileNotFoundError:
+                            pass
+                        else:
+                            ssl.verify_flags |= \
+                                ssl_module.VERIFY_CRL_CHECK_CHAIN
 
             if sslkey is None:
                 sslkey = os.getenv('PGSSLKEY')
             if not sslkey:
                 sslkey = _dot_postgresql_path('postgresql.key')
-                if not sslkey.exists():
+                if sslkey is not None and not sslkey.exists():
                     sslkey = None
             if not sslpassword:
                 sslpassword = ''
@@ -550,12 +562,15 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 )
             else:
                 sslcert = _dot_postgresql_path('postgresql.crt')
-                try:
-                    ssl.load_cert_chain(
-                        sslcert, keyfile=sslkey, password=lambda: sslpassword
-                    )
-                except FileNotFoundError:
-                    pass
+                if sslcert is not None:
+                    try:
+                        ssl.load_cert_chain(
+                            sslcert,
+                            keyfile=sslkey,
+                            password=lambda: sslpassword
+                        )
+                    except FileNotFoundError:
+                        pass
 
             # OpenSSL 1.1.1 keylog file, copied from create_default_context()
             if hasattr(ssl, 'keylog_filename'):
