@@ -156,12 +156,12 @@ cdef class SCRAMAuthentication:
         if not self.server_nonce.startswith(self.client_nonce):
             raise Exception("invalid nonce")
         try:
-            self.password_salt = re.search(b's=([^,]+),',
+            self.password_salt = re.search(b',s=([^,]+),',
                 self.server_first_message).group(1)
         except IndexError:
             raise Exception("could not get salt")
         try:
-            self.password_iterations = int(re.search(b'i=(\d+),?',
+            self.password_iterations = int(re.search(b',i=(\d+),?',
                 self.server_first_message).group(1))
         except (IndexError, TypeError, ValueError):
             raise Exception("could not get iterations")
