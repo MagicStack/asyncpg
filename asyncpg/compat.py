@@ -8,6 +8,7 @@
 import asyncio
 import pathlib
 import platform
+import typing
 
 
 SYSTEM = platform.uname().system
@@ -18,7 +19,7 @@ if SYSTEM == 'Windows':
 
     CSIDL_APPDATA = 0x001a
 
-    def get_pg_home_directory() -> pathlib.Path:
+    def get_pg_home_directory() -> typing.Optional[pathlib.Path]:
         # We cannot simply use expanduser() as that returns the user's
         # home directory, whereas Postgres stores its config in
         # %AppData% on Windows.
@@ -30,8 +31,11 @@ if SYSTEM == 'Windows':
             return pathlib.Path(buf.value) / 'postgresql'
 
 else:
-    def get_pg_home_directory() -> pathlib.Path:
-        return pathlib.Path.home()
+    def get_pg_home_directory() -> typing.Optional[pathlib.Path]:
+        try:
+            return pathlib.Path.home()
+        except (RuntimeError, KeyError):
+            return None
 
 
 async def wait_closed(stream):
