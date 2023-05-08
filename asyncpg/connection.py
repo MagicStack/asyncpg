@@ -20,7 +20,6 @@ import typing
 import warnings
 import weakref
 
-from . import compat
 from . import connect_utils
 from . import cursor
 from . import exceptions
@@ -1417,6 +1416,7 @@ class Connection(metaclass=ConnectionMeta):
     def _maybe_gc_stmt(self, stmt):
         if (
             stmt.refs == 0
+            and stmt.name
             and not self._stmt_cache.has(
                 (stmt.query, stmt.record_class, stmt.ignore_custom_codec)
             )
@@ -1468,7 +1468,7 @@ class Connection(metaclass=ConnectionMeta):
                 waiter.set_exception(ex)
         finally:
             self._cancellations.discard(
-                compat.current_asyncio_task(self._loop))
+                asyncio.current_task(self._loop))
             if not waiter.done():
                 waiter.set_result(None)
 
@@ -1792,7 +1792,8 @@ async def connect(dsn=None, *,
                   direct_tls=False,
                   connection_class=Connection,
                   record_class=protocol.Record,
-                  server_settings=None):
+                  server_settings=None,
+                  target_session_attrs=None):
     r"""A coroutine to establish a connection to a PostgreSQL server.
 
     The connection parameters may be specified either as a connection
@@ -2003,6 +2004,22 @@ async def connect(dsn=None, *,
         this connection object.  Must be a subclass of
         :class:`~asyncpg.Record`.
 
+    :param SessionAttribute target_session_attrs:
+        If specified, check that the host has the correct attribute.
+        Can be one of:
+            "any": the first successfully connected host
+            "primary": the host must NOT be in hot standby mode
+            "standby": the host must be in hot standby mode
+            "read-write": the host must allow writes
+            "read-only": the host most NOT allow writes
+            "prefer-standby": first try to find a standby host, but if
+                            none of the listed hosts is a standby server,
+                            return any of them.
+
+        If not specified will try to use PGTARGETSESSIONATTRS
+        from the environment.
+        Defaults to "any" if no value is set.
+
     :return: A :class:`~asyncpg.connection.Connection` instance.
 
     Example:
@@ -2065,6 +2082,9 @@ async def connect(dsn=None, *,
        in the *dsn* argument now have consistent default values of files under
        ``~/.postgresql/`` as libpq.
 
+    .. versionchanged:: 0.26.0
+       Added the *direct_tls* parameter.
+
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
         https://docs.python.org/3/library/ssl.html#ssl.create_default_context
@@ -2106,6 +2126,7 @@ async def connect(dsn=None, *,
         statement_cache_size=statement_cache_size,
         max_cached_statement_lifetime=max_cached_statement_lifetime,
         max_cacheable_statement_size=max_cacheable_statement_size,
+        target_session_attrs=target_session_attrs
     )
 
 

@@ -43,10 +43,6 @@ class PoolConnectionProxyMeta(type):
 
         return super().__new__(mcls, name, bases, dct)
 
-    def __init__(cls, name, bases, dct, *, wrap=False):
-        # Needed for Python 3.5 to handle `wrap` class keyword argument.
-        super().__init__(name, bases, dct)
-
     @staticmethod
     def _wrap_connection_method(meth_name):
         def call_con_method(self, *args, **kwargs):
@@ -449,6 +445,13 @@ class Pool:
                     connect_tasks.append(ch.connect())
 
                 await asyncio.gather(*connect_tasks)
+
+    def is_closing(self):
+        """Return ``True`` if the pool is closing or is closed.
+
+        .. versionadded:: 0.28.0
+        """
+        return self._closed or self._closing
 
     def get_size(self):
         """Return the current number of connections in this pool.

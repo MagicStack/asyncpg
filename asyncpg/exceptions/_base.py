@@ -13,7 +13,7 @@ import textwrap
 __all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError',
            'InterfaceError', 'InterfaceWarning', 'PostgresLogMessage',
            'InternalClientError', 'OutdatedSchemaCacheError', 'ProtocolError',
-           'UnsupportedClientFeatureError')
+           'UnsupportedClientFeatureError', 'TargetServerAttributeNotMatched')
 
 
 def _is_asyncpg_class(cls):
@@ -242,6 +242,10 @@ class InternalClientError(Exception):
 
 class ProtocolError(InternalClientError):
     """Unexpected condition in the handling of PostgreSQL protocol input."""
+
+
+class TargetServerAttributeNotMatched(InternalClientError):
+    """Could not find a host that satisfies the target attribute requirement"""
 
 
 class OutdatedSchemaCacheError(InternalClientError):
