@@ -662,22 +662,23 @@ class TLSUpgradeProto(asyncio.Protocol):
         self.ssl_is_advisory = ssl_is_advisory
 
     def data_received(self, data):
-        if data == b'S':
-            self.on_data.set_result(True)
-        elif (self.ssl_is_advisory and
-                self.ssl_context.verify_mode == ssl_module.CERT_NONE and
-                data == b'N'):
-            # ssl_is_advisory will imply that ssl.verify_mode == CERT_NONE,
-            # since the only way to get ssl_is_advisory is from
-            # sslmode=prefer. But be extra sure to disallow insecure
-            # connections when the ssl context asks for real security.
-            self.on_data.set_result(False)
-        else:
-            self.on_data.set_exception(
-                ConnectionError(
-                    'PostgreSQL server at "{host}:{port}" '
-                    'rejected SSL upgrade'.format(
-                        host=self.host, port=self.port)))
+        if not self.on_data.done():
+            if data == b'S':
+                self.on_data.set_result(True)
+            elif (self.ssl_is_advisory and
+                    self.ssl_context.verify_mode == ssl_module.CERT_NONE and
+                    data == b'N'):
+                # ssl_is_advisory will imply that ssl.verify_mode == CERT_NONE,
+                # since the only way to get ssl_is_advisory is from
+                # sslmode=prefer. But be extra sure to disallow insecure
+                # connections when the ssl context asks for real security.
+                self.on_data.set_result(False)
+            else:
+                self.on_data.set_exception(
+                    ConnectionError(
+                        'PostgreSQL server at "{host}:{port}" '
+                        'rejected SSL upgrade'.format(
+                            host=self.host, port=self.port)))
 
     def connection_lost(self, exc):
         if not self.on_data.done():
