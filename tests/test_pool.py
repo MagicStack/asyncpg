@@ -17,7 +17,6 @@ import unittest
 import asyncpg
 from asyncpg import _testbase as tb
 from asyncpg import connection as pg_connection
-from asyncpg import cluster as pg_cluster
 from asyncpg import pool as pg_pool
 
 _system = platform.uname().system
@@ -971,52 +970,7 @@ class TestPool(tb.ConnectedTestCase):
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
-class TestHotStandby(tb.ClusterTestCase):
-    @classmethod
-    def setup_cluster(cls):
-        cls.master_cluster = cls.new_cluster(pg_cluster.TempCluster)
-        cls.start_cluster(
-            cls.master_cluster,
-            server_settings={
-                'max_wal_senders': 10,
-                'wal_level': 'hot_standby'
-            }
-        )
-
-        con = None
-
-        try:
-            con = cls.loop.run_until_complete(
-                cls.master_cluster.connect(
-                    database='postgres', user='postgres', loop=cls.loop))
-
-            cls.loop.run_until_complete(
-                con.execute('''
-                    CREATE ROLE replication WITH LOGIN REPLICATION
-                '''))
-
-            cls.master_cluster.trust_local_replication_by('replication')
-
-            conn_spec = cls.master_cluster.get_connection_spec()
-
-            cls.standby_cluster = cls.new_cluster(
-                pg_cluster.HotStandbyCluster,
-                cluster_kwargs={
-                    'master': conn_spec,
-                    'replication_user': 'replication'
-                }
-            )
-            cls.start_cluster(
-                cls.standby_cluster,
-                server_settings={
-                    'hot_standby': True
-                }
-            )
-
-        finally:
-            if con is not None:
-                cls.loop.run_until_complete(con.close())
-
+class TestHotStandby(tb.HotStandbyTestCase):
     def create_pool(self, **kwargs):
         conn_spec = self.standby_cluster.get_connection_spec()
         conn_spec.update(kwargs)
