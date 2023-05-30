@@ -257,9 +257,9 @@ class Connection(metaclass=ConnectionMeta):
 
         :param isolation: Transaction isolation mode, can be one of:
                           `'serializable'`, `'repeatable_read'`,
-                          `'read_committed'`. If not specified, the behavior
-                          is up to the server and session, which is usually
-                          ``read_committed``.
+                          `'read_uncommitted'`, `'read_committed'`. If not
+                          specified, the behavior is up to the server and
+                          session, which is usually ``read_committed``.
 
         :param readonly: Specifies whether or not this transaction is
                          read-only.
