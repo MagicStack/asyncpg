@@ -30,7 +30,7 @@ Performance
 
 In our testing asyncpg is, on average, **5x** faster than psycopg3.
 
-.. image:: https://raw.githubusercontent.com/MagicStack/asyncpg/master/performance.png
+.. image:: https://raw.githubusercontent.com/MagicStack/asyncpg/master/performance.png?fddca40ab0
     :target: https://gistpreview.github.io/?0ed296e93523831ea0918d42dd1258c2
 
 The above results are a geometric mean of benchmarks obtained with PostgreSQL
