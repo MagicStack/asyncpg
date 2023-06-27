@@ -10,7 +10,6 @@ import inspect
 import os
 import platform
 import random
-import sys
 import textwrap
 import time
 import unittest
@@ -18,7 +17,6 @@ import unittest
 import asyncpg
 from asyncpg import _testbase as tb
 from asyncpg import connection as pg_connection
-from asyncpg import cluster as pg_cluster
 from asyncpg import pool as pg_pool
 
 _system = platform.uname().system
@@ -741,7 +739,17 @@ class TestPool(tb.ConnectedTestCase):
                         self.assertEqual(pool.get_size(), 3)
                         self.assertEqual(pool.get_idle_size(), 0)
 
-    @unittest.skipIf(sys.version_info[:2] < (3, 6), 'no asyncgen support')
+    async def test_pool_closing(self):
+        async with self.create_pool() as pool:
+            self.assertFalse(pool.is_closing())
+            await pool.close()
+            self.assertTrue(pool.is_closing())
+
+        async with self.create_pool() as pool:
+            self.assertFalse(pool.is_closing())
+            pool.terminate()
+            self.assertTrue(pool.is_closing())
+
     async def test_pool_handles_transaction_exit_in_asyncgen_1(self):
         pool = await self.create_pool(database='postgres',
                                       min_size=1, max_size=1)
@@ -763,7 +771,6 @@ class TestPool(tb.ConnectedTestCase):
                 async for _ in iterate(con):  # noqa
                     raise MyException()
 
-    @unittest.skipIf(sys.version_info[:2] < (3, 6), 'no asyncgen support')
     async def test_pool_handles_transaction_exit_in_asyncgen_2(self):
         pool = await self.create_pool(database='postgres',
                                       min_size=1, max_size=1)
@@ -788,7 +795,6 @@ class TestPool(tb.ConnectedTestCase):
 
             del iterator
 
-    @unittest.skipIf(sys.version_info[:2] < (3, 6), 'no asyncgen support')
     async def test_pool_handles_asyncgen_finalization(self):
         pool = await self.create_pool(database='postgres',
                                       min_size=1, max_size=1)
@@ -964,52 +970,7 @@ class TestPool(tb.ConnectedTestCase):
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
-class TestHotStandby(tb.ClusterTestCase):
-    @classmethod
-    def setup_cluster(cls):
-        cls.master_cluster = cls.new_cluster(pg_cluster.TempCluster)
-        cls.start_cluster(
-            cls.master_cluster,
-            server_settings={
-                'max_wal_senders': 10,
-                'wal_level': 'hot_standby'
-            }
-        )
-
-        con = None
-
-        try:
-            con = cls.loop.run_until_complete(
-                cls.master_cluster.connect(
-                    database='postgres', user='postgres', loop=cls.loop))
-
-            cls.loop.run_until_complete(
-                con.execute('''
-                    CREATE ROLE replication WITH LOGIN REPLICATION
-                '''))
-
-            cls.master_cluster.trust_local_replication_by('replication')
-
-            conn_spec = cls.master_cluster.get_connection_spec()
-
-            cls.standby_cluster = cls.new_cluster(
-                pg_cluster.HotStandbyCluster,
-                cluster_kwargs={
-                    'master': conn_spec,
-                    'replication_user': 'replication'
-                }
-            )
-            cls.start_cluster(
-                cls.standby_cluster,
-                server_settings={
-                    'hot_standby': True
-                }
-            )
-
-        finally:
-            if con is not None:
-                cls.loop.run_until_complete(con.close())
-
+class TestHotStandby(tb.HotStandbyTestCase):
     def create_pool(self, **kwargs):
         conn_spec = self.standby_cluster.get_connection_spec()
         conn_spec.update(kwargs)

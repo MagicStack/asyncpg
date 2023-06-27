@@ -13,8 +13,8 @@ of PostgreSQL server binary protocol for use with Python's ``asyncio``
 framework.  You can read more about asyncpg in an introductory
 `blog post <http://magic.io/blog/asyncpg-1m-rows-from-postgres-to-python/>`_.
 
-asyncpg requires Python 3.6 or later and is supported for PostgreSQL
-versions 9.5 to 14.  Older PostgreSQL versions or other databases implementing
+asyncpg requires Python 3.7 or later and is supported for PostgreSQL
+versions 9.5 to 15.  Older PostgreSQL versions or other databases implementing
 the PostgreSQL protocol *may* work, but are not being actively tested.
 
 
@@ -28,15 +28,14 @@ The project documentation can be found
 Performance
 -----------
 
-In our testing asyncpg is, on average, **3x** faster than psycopg2
-(and its asyncio variant -- aiopg).
+In our testing asyncpg is, on average, **5x** faster than psycopg3.
 
-.. image:: https://raw.githubusercontent.com/MagicStack/asyncpg/master/performance.png
-    :target: https://gistpreview.github.io/?b8eac294ac85da177ff82f784ff2cb60
+.. image:: https://raw.githubusercontent.com/MagicStack/asyncpg/master/performance.png?fddca40ab0
+    :target: https://gistpreview.github.io/?0ed296e93523831ea0918d42dd1258c2
 
 The above results are a geometric mean of benchmarks obtained with PostgreSQL
 `client driver benchmarking toolbench <https://github.com/MagicStack/pgbench>`_
-in November 2020 (click on the chart to see full details).
+in June 2023 (click on the chart to see full details).
 
 
 Features

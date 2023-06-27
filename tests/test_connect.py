@@ -14,7 +14,6 @@ import platform
 import shutil
 import ssl
 import stat
-import sys
 import tempfile
 import textwrap
 import unittest
@@ -25,7 +24,7 @@ import weakref
 
 import asyncpg
 from asyncpg import _testbase as tb
-from asyncpg import connection
+from asyncpg import connection as pg_connection
 from asyncpg import connect_utils
 from asyncpg import cluster as pg_cluster
 from asyncpg import exceptions
@@ -70,6 +69,14 @@ def mock_dot_postgresql(*, ca=True, crl=False, client=False, protected=False):
             'pathlib.Path.home', unittest.mock.Mock(return_value=home)
         ):
             yield
+
+
+@contextlib.contextmanager
+def mock_no_home_dir():
+    with unittest.mock.patch(
+        'pathlib.Path.home', unittest.mock.Mock(side_effect=RuntimeError)
+    ):
+        yield
 
 
 class TestSettings(tb.ConnectedTestCase):
@@ -385,7 +392,8 @@ class TestConnectParams(tb.TestCase):
                 'password': 'passw',
                 'database': 'testdb',
                 'ssl': True,
-                'sslmode': SSLMode.prefer})
+                'sslmode': SSLMode.prefer,
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -407,7 +415,8 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host2', 456)], {
                 'user': 'user2',
                 'password': 'passw2',
-                'database': 'db2'})
+                'database': 'db2',
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -435,7 +444,8 @@ class TestConnectParams(tb.TestCase):
                 'password': 'passw2',
                 'database': 'db2',
                 'sslmode': SSLMode.disable,
-                'ssl': False})
+                'ssl': False,
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -456,7 +466,8 @@ class TestConnectParams(tb.TestCase):
                 'password': '123123',
                 'database': 'abcdef',
                 'ssl': True,
-                'sslmode': SSLMode.allow})
+                'sslmode': SSLMode.allow,
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -484,7 +495,8 @@ class TestConnectParams(tb.TestCase):
                 'password': 'passw2',
                 'database': 'db2',
                 'sslmode': SSLMode.disable,
-                'ssl': False})
+                'ssl': False,
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -505,7 +517,8 @@ class TestConnectParams(tb.TestCase):
                 'password': '123123',
                 'database': 'abcdef',
                 'ssl': True,
-                'sslmode': SSLMode.prefer})
+                'sslmode': SSLMode.prefer,
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -514,7 +527,8 @@ class TestConnectParams(tb.TestCase):
             'result': ([('localhost', 5555)], {
                 'user': 'user3',
                 'password': '123123',
-                'database': 'abcdef'})
+                'database': 'abcdef',
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -523,6 +537,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host1', 5432), ('host2', 5432)], {
                 'database': 'db',
                 'user': 'user',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -532,6 +547,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host1', 1111), ('host2', 2222)], {
                 'database': 'db',
                 'user': 'user',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -541,6 +557,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('2001:db8::1234%eth0', 5432), ('::1', 5432)], {
                 'database': 'db',
                 'user': 'user',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -550,6 +567,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('2001:db8::1234', 1111), ('::1', 2222)], {
                 'database': 'db',
                 'user': 'user',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -559,6 +577,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('2001:db8::1234', 5432), ('::1', 5432)], {
                 'database': 'db',
                 'user': 'user',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -573,6 +592,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host1', 1111), ('host2', 2222)], {
                 'database': 'db',
                 'user': 'foo',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -585,6 +605,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host1', 1111), ('host2', 2222)], {
                 'database': 'db',
                 'user': 'foo',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -598,6 +619,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host1', 5432), ('host2', 5432)], {
                 'database': 'db',
                 'user': 'foo',
+                'target_session_attrs': 'any',
             })
         },
 
@@ -617,7 +639,8 @@ class TestConnectParams(tb.TestCase):
                 'password': 'ask',
                 'database': 'db',
                 'ssl': True,
-                'sslmode': SSLMode.require})
+                'sslmode': SSLMode.require,
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -638,7 +661,8 @@ class TestConnectParams(tb.TestCase):
                 'password': 'ask',
                 'database': 'db',
                 'sslmode': SSLMode.verify_full,
-                'ssl': True})
+                'ssl': True,
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -646,7 +670,8 @@ class TestConnectParams(tb.TestCase):
             'dsn': 'postgresql:///dbname?host=/unix_sock/test&user=spam',
             'result': ([os.path.join('/unix_sock/test', '.s.PGSQL.5432')], {
                 'user': 'spam',
-                'database': 'dbname'})
+                'database': 'dbname',
+                'target_session_attrs': 'any'})
         },
 
         {
@@ -658,6 +683,7 @@ class TestConnectParams(tb.TestCase):
                     'user': 'us@r',
                     'password': 'p@ss',
                     'database': 'db',
+                    'target_session_attrs': 'any',
                 }
             )
         },
@@ -671,6 +697,7 @@ class TestConnectParams(tb.TestCase):
                     'user': 'user',
                     'password': 'p',
                     'database': 'db',
+                    'target_session_attrs': 'any',
                 }
             )
         },
@@ -683,6 +710,7 @@ class TestConnectParams(tb.TestCase):
                 {
                     'user': 'us@r',
                     'database': 'db',
+                    'target_session_attrs': 'any',
                 }
             )
         },
@@ -710,7 +738,8 @@ class TestConnectParams(tb.TestCase):
                     'user': 'user',
                     'database': 'user',
                     'sslmode': SSLMode.disable,
-                    'ssl': None
+                    'ssl': None,
+                    'target_session_attrs': 'any',
                 }
             )
         },
@@ -724,7 +753,8 @@ class TestConnectParams(tb.TestCase):
                     '.s.PGSQL.5432'
                 )], {
                     'user': 'spam',
-                    'database': 'db'
+                    'database': 'db',
+                    'target_session_attrs': 'any',
                 }
             )
         },
@@ -745,6 +775,7 @@ class TestConnectParams(tb.TestCase):
                     'database': 'db',
                     'ssl': True,
                     'sslmode': SSLMode.prefer,
+                    'target_session_attrs': 'any',
                 }
             )
         },
@@ -789,6 +820,7 @@ class TestConnectParams(tb.TestCase):
         database = testcase.get('database')
         sslmode = testcase.get('ssl')
         server_settings = testcase.get('server_settings')
+        target_session_attrs = testcase.get('target_session_attrs')
 
         expected = testcase.get('result')
         expected_error = testcase.get('error')
@@ -812,7 +844,8 @@ class TestConnectParams(tb.TestCase):
                 dsn=dsn, host=host, port=port, user=user, password=password,
                 passfile=passfile, database=database, ssl=sslmode,
                 direct_tls=False, connect_timeout=None,
-                server_settings=server_settings)
+                server_settings=server_settings,
+                target_session_attrs=target_session_attrs)
 
             params = {
                 k: v for k, v in params._asdict().items()
@@ -873,7 +906,9 @@ class TestConnectParams(tb.TestCase):
                 'host': 'abc',
                 'result': (
                     [('abc', 5432)],
-                    {'user': '__test__', 'database': '__test__'}
+                    {'user': '__test__',
+                     'database': '__test__',
+                     'target_session_attrs': 'any'}
                 )
             })
 
@@ -911,6 +946,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for user@abc',
                         'user': 'user',
                         'database': 'db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -927,6 +963,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for user@abc',
                         'user': 'user',
                         'database': 'db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -941,6 +978,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for user@abc',
                         'user': 'user',
                         'database': 'db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -956,6 +994,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for localhost',
                         'user': 'user',
                         'database': 'db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -973,6 +1012,7 @@ class TestConnectParams(tb.TestCase):
                             'password': 'password from pgpass for localhost',
                             'user': 'user',
                             'database': 'db',
+                            'target_session_attrs': 'any',
                         }
                     )
                 })
@@ -990,6 +1030,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for cde:5433',
                         'user': 'user',
                         'database': 'db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -1006,6 +1047,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for testuser',
                         'user': 'testuser',
                         'database': 'db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -1022,6 +1064,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass for testdb',
                         'user': 'user',
                         'database': 'testdb',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -1038,6 +1081,7 @@ class TestConnectParams(tb.TestCase):
                         'password': 'password from pgpass with escapes',
                         'user': R'test\\',
                         'database': R'test\:db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -1065,6 +1109,7 @@ class TestConnectParams(tb.TestCase):
                         {
                             'user': 'user',
                             'database': 'db',
+                            'target_session_attrs': 'any',
                         }
                     )
                 })
@@ -1085,6 +1130,7 @@ class TestConnectParams(tb.TestCase):
                         {
                             'user': 'user',
                             'database': 'db',
+                            'target_session_attrs': 'any',
                         }
                     )
                 })
@@ -1101,6 +1147,7 @@ class TestConnectParams(tb.TestCase):
                 {
                     'user': 'user',
                     'database': 'db',
+                    'target_session_attrs': 'any',
                 }
             )
         })
@@ -1121,6 +1168,7 @@ class TestConnectParams(tb.TestCase):
                     {
                         'user': 'user',
                         'database': 'db',
+                        'target_session_attrs': 'any',
                     }
                 )
             })
@@ -1143,6 +1191,7 @@ class TestConnectParams(tb.TestCase):
                             {
                                 'user': 'user',
                                 'database': 'db',
+                                'target_session_attrs': 'any',
                             }
                         )
                     })
@@ -1165,7 +1214,7 @@ class TestConnectParams(tb.TestCase):
 class TestConnection(tb.ConnectedTestCase):
 
     async def test_connection_isinstance(self):
-        self.assertTrue(isinstance(self.con, connection.Connection))
+        self.assertTrue(isinstance(self.con, pg_connection.Connection))
         self.assertTrue(isinstance(self.con, object))
         self.assertFalse(isinstance(self.con, list))
 
@@ -1258,6 +1307,27 @@ class TestConnection(tb.ConnectedTestCase):
             user=conn_spec.get('user'))
         await con.close()
 
+    @unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
+    async def test_connection_no_home_dir(self):
+        with mock_no_home_dir():
+            con = await self.connect(
+                dsn='postgresql://foo/',
+                user='postgres',
+                database='postgres',
+                host='localhost')
+            await con.fetchval('SELECT 42')
+            await con.close()
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            'Cannot determine home directory'
+        ):
+            with mock_no_home_dir():
+                await self.connect(
+                    host='localhost',
+                    user='ssl_user',
+                    ssl='verify-full')
+
 
 class BaseTestSSLConnection(tb.ConnectedTestCase):
     @classmethod
@@ -1288,6 +1358,7 @@ class BaseTestSSLConnection(tb.ConnectedTestCase):
 
         create_script = []
         create_script.append('CREATE ROLE ssl_user WITH LOGIN;')
+        create_script.append('GRANT ALL ON SCHEMA public TO ssl_user;')
 
         self._add_hba_entry()
 
@@ -1302,6 +1373,7 @@ class BaseTestSSLConnection(tb.ConnectedTestCase):
         self.cluster.trust_local_connections()
 
         drop_script = []
+        drop_script.append('REVOKE ALL ON SCHEMA public FROM ssl_user;')
         drop_script.append('DROP ROLE ssl_user;')
         drop_script = '\n'.join(drop_script)
         self.loop.run_until_complete(self.con.execute(drop_script))
@@ -1462,14 +1534,10 @@ class TestSSLConnection(BaseTestSSLConnection):
             )
         finally:
             try:
-                await con.execute('DROP TABLE test_many')
+                await con.execute('DROP TABLE IF EXISTS test_many')
             finally:
                 await con.close()
 
-    @unittest.skipIf(
-        sys.version_info < (3, 7),
-        "Python < 3.7 doesn't have ssl.TLSVersion"
-    )
     async def test_tls_version(self):
         if self.cluster.get_pg_version() < (12, 0):
             self.skipTest("PostgreSQL < 12 cannot set ssl protocol version")
@@ -1500,13 +1568,14 @@ class TestSSLConnection(BaseTestSSLConnection):
                             '&ssl_min_protocol_version=TLSv1.1'
                             '&ssl_max_protocol_version=TLSv1.1'
                     )
-                with self.assertRaisesRegex(ssl.SSLError, 'no protocols'):
-                    await self.connect(
-                        dsn='postgresql://ssl_user@localhost/postgres'
-                            '?sslmode=require'
-                            '&ssl_min_protocol_version=TLSv1.2'
-                            '&ssl_max_protocol_version=TLSv1.1'
-                    )
+                if not ssl.OPENSSL_VERSION.startswith('LibreSSL'):
+                    with self.assertRaisesRegex(ssl.SSLError, 'no protocols'):
+                        await self.connect(
+                            dsn='postgresql://ssl_user@localhost/postgres'
+                                '?sslmode=require'
+                                '&ssl_min_protocol_version=TLSv1.2'
+                                '&ssl_max_protocol_version=TLSv1.1'
+                        )
                 con = await self.connect(
                     dsn='postgresql://ssl_user@localhost/postgres'
                         '?sslmode=require'
@@ -1738,8 +1807,96 @@ class TestConnectionGC(tb.ClusterTestCase):
                                        r'unclosed connection') as rw:
                 await self._run_no_explicit_close_test()
 
-            msg = rw.warning.args[0]
+            msg = " ".join(rw.warning.args)
             self.assertIn(' created at:\n', msg)
             self.assertIn('in test_no_explicit_close_with_debug', msg)
         finally:
             self.loop.set_debug(olddebug)
+
+
+class TestConnectionAttributes(tb.HotStandbyTestCase):
+
+    async def _run_connection_test(
+        self, connect, target_attribute, expected_port
+    ):
+        conn = await connect(target_session_attrs=target_attribute)
+        self.assertTrue(_get_connected_host(conn).endswith(expected_port))
+        await conn.close()
+
+    async def test_target_server_attribute_port(self):
+        master_port = self.master_cluster.get_connection_spec()['port']
+        standby_port = self.standby_cluster.get_connection_spec()['port']
+        tests = [
+            (self.connect_primary, 'primary', master_port),
+            (self.connect_standby, 'standby', standby_port),
+        ]
+
+        for connect, target_attr, expected_port in tests:
+            await self._run_connection_test(
+                connect, target_attr, expected_port
+            )
+        if self.master_cluster.get_pg_version()[0] < 14:
+            self.skipTest("PostgreSQL<14 does not support these features")
+        tests = [
+            (self.connect_primary, 'read-write', master_port),
+            (self.connect_standby, 'read-only', standby_port),
+        ]
+
+        for connect, target_attr, expected_port in tests:
+            await self._run_connection_test(
+                connect, target_attr, expected_port
+            )
+
+    async def test_target_attribute_not_matched(self):
+        tests = [
+            (self.connect_standby, 'primary'),
+            (self.connect_primary, 'standby'),
+        ]
+
+        for connect, target_attr in tests:
+            with self.assertRaises(exceptions.TargetServerAttributeNotMatched):
+                await connect(target_session_attrs=target_attr)
+
+        if self.master_cluster.get_pg_version()[0] < 14:
+            self.skipTest("PostgreSQL<14 does not support these features")
+        tests = [
+            (self.connect_standby, 'read-write'),
+            (self.connect_primary, 'read-only'),
+        ]
+
+        for connect, target_attr in tests:
+            with self.assertRaises(exceptions.TargetServerAttributeNotMatched):
+                await connect(target_session_attrs=target_attr)
+
+    async def test_prefer_standby_when_standby_is_up(self):
+        con = await self.connect(target_session_attrs='prefer-standby')
+        standby_port = self.standby_cluster.get_connection_spec()['port']
+        connected_host = _get_connected_host(con)
+        self.assertTrue(connected_host.endswith(standby_port))
+        await con.close()
+
+    async def test_prefer_standby_picks_master_when_standby_is_down(self):
+        primary_spec = self.get_cluster_connection_spec(self.master_cluster)
+        connection_spec = {
+            'host': [
+                primary_spec['host'],
+                'unlocalhost',
+            ],
+            'port': [primary_spec['port'], 15345],
+            'database': primary_spec['database'],
+            'user': primary_spec['user'],
+            'target_session_attrs': 'prefer-standby'
+        }
+
+        con = await self.connect(**connection_spec)
+        master_port = self.master_cluster.get_connection_spec()['port']
+        connected_host = _get_connected_host(con)
+        self.assertTrue(connected_host.endswith(master_port))
+        await con.close()
+
+
+def _get_connected_host(con):
+    peername = con._transport.get_extra_info('peername')
+    if isinstance(peername, tuple):
+        peername = "".join((str(s) for s in peername if s))
+    return peername
