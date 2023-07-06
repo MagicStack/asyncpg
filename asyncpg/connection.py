@@ -2007,14 +2007,15 @@ async def connect(dsn=None, *,
     :param SessionAttribute target_session_attrs:
         If specified, check that the host has the correct attribute.
         Can be one of:
-            "any": the first successfully connected host
-            "primary": the host must NOT be in hot standby mode
-            "standby": the host must be in hot standby mode
-            "read-write": the host must allow writes
-            "read-only": the host most NOT allow writes
-            "prefer-standby": first try to find a standby host, but if
-                            none of the listed hosts is a standby server,
-                            return any of them.
+
+        "any": the first successfully connected host
+        "primary": the host must NOT be in hot standby mode
+        "standby": the host must be in hot standby mode
+        "read-write": the host must allow writes
+        "read-only": the host most NOT allow writes
+        "prefer-standby": first try to find a standby host, but if
+        none of the listed hosts is a standby server,
+        return any of them.
 
         If not specified will try to use PGTARGETSESSIONATTRS
         from the environment.

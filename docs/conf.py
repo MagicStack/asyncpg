@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import alabaster
 import os
 import sys
 
@@ -39,7 +38,7 @@ project = 'asyncpg'
 copyright = '2016-present, the asyncpg authors and contributors'
 author = '<See AUTHORS file>'
 release = version
-language = None
+language = "en"
 exclude_patterns = ['_build']
 pygments_style = 'sphinx'
 todo_include_todos = False
@@ -48,12 +47,6 @@ suppress_warnings = ['image.nonlocal_uri']
 # -- Options for HTML output ----------------------------------------------
 
 html_theme = 'sphinx_rtd_theme'
-# html_theme_options = {
-#     'description': 'asyncpg is a fast PostgreSQL client library for the '
-#                    'Python asyncio framework',
-#     'show_powered_by': False,
-# }
-html_theme_path = [alabaster.get_path()]
 html_title = 'asyncpg Documentation'
 html_short_title = 'asyncpg'
 html_static_path = ['_static']
@@ -66,11 +59,6 @@ html_sidebars = {
 html_show_sourcelink = False
 html_show_sphinx = False
 html_show_copyright = True
-html_context = {
-    'css_files': [
-        '_static/theme_overrides.css',
-    ],
-}
 htmlhelp_basename = 'asyncpgdoc'
 
 

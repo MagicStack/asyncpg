@@ -20,17 +20,16 @@ clean:
 
 
 compile:
-	$(PYTHON) setup.py build_ext --inplace --cython-always
+	env ASYNCPG_BUILD_CYTHON_ALWAYS=1 $(PYTHON) -m pip install -e .
 
 
 debug:
-	ASYNCPG_DEBUG=1 $(PYTHON) setup.py build_ext --inplace
-
+	env ASYNCPG_DEBUG=1 $(PYTHON) -m pip install -e .
 
 test:
-	PYTHONASYNCIODEBUG=1 $(PYTHON) setup.py test
-	$(PYTHON) setup.py test
-	USE_UVLOOP=1 $(PYTHON) setup.py test
+	PYTHONASYNCIODEBUG=1 $(PYTHON) -m unittest -v tests.suite
+	$(PYTHON) -m unittest -v tests.suite
+	USE_UVLOOP=1 $(PYTHON) -m unittest -v tests.suite
 
 
 testinstalled:
@@ -38,9 +37,9 @@ testinstalled:
 
 
 quicktest:
-	$(PYTHON) setup.py test
+	$(PYTHON) -m unittest -v tests.suite
 
 
 htmldocs:
-	$(PYTHON) setup.py build_ext --inplace
+	$(PYTHON) -m pip install -e .[docs]
 	$(MAKE) -C docs html

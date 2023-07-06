@@ -152,7 +152,7 @@ jobs:
 
     - name: Build docs
       run: |
-        pip install -e .[dev]
+        pip install -e .[docs]
         make htmldocs
 
     - name: Checkout gh-pages
