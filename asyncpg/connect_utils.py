@@ -1003,7 +1003,7 @@ async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
             chosen_connection = random.choice(candidates)
 
     await asyncio.gather(
-        (c.close() for c in candidates if c is not chosen_connection),
+        *(c.close() for c in candidates if c is not chosen_connection),
         return_exceptions=True
     )
 
