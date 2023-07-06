@@ -2008,18 +2008,18 @@ async def connect(dsn=None, *,
         If specified, check that the host has the correct attribute.
         Can be one of:
 
-        "any": the first successfully connected host
-        "primary": the host must NOT be in hot standby mode
-        "standby": the host must be in hot standby mode
-        "read-write": the host must allow writes
-        "read-only": the host most NOT allow writes
-        "prefer-standby": first try to find a standby host, but if
-        none of the listed hosts is a standby server,
-        return any of them.
+        - ``"any"`` - the first successfully connected host
+        - ``"primary"`` - the host must NOT be in hot standby mode
+        - ``"standby"`` - the host must be in hot standby mode
+        - ``"read-write"`` - the host must allow writes
+        - ``"read-only"`` - the host most NOT allow writes
+        - ``"prefer-standby"`` - first try to find a standby host, but if
+          none of the listed hosts is a standby server,
+          return any of them.
 
-        If not specified will try to use PGTARGETSESSIONATTRS
-        from the environment.
-        Defaults to "any" if no value is set.
+        If not specified, the value parsed from the *dsn* argument is used,
+        or the value of the ``PGTARGETSESSIONATTRS`` environment variable,
+        or ``"any"`` if neither is specified.
 
     :return: A :class:`~asyncpg.connection.Connection` instance.
 
@@ -2085,6 +2085,9 @@ async def connect(dsn=None, *,
 
     .. versionchanged:: 0.26.0
        Added the *direct_tls* parameter.
+
+    .. versionchanged:: 0.28.0
+       Added the *target_session_attrs* parameter.
 
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:

@@ -611,21 +611,19 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             'a Dict[str, str]')
 
     if target_session_attrs is None:
-
         target_session_attrs = os.getenv(
             "PGTARGETSESSIONATTRS", SessionAttribute.any
         )
     try:
-
         target_session_attrs = SessionAttribute(target_session_attrs)
-    except ValueError as exc:
+    except ValueError:
         raise exceptions.InterfaceError(
             "target_session_attrs is expected to be one of "
             "{!r}"
             ", got {!r}".format(
                 SessionAttribute.__members__.values, target_session_attrs
             )
-        ) from exc
+        ) from None
 
     params = _ConnectionParameters(
         user=user, password=password, database=database, ssl=ssl,
