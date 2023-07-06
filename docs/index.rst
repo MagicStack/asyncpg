@@ -1,5 +1,6 @@
-.. image:: https://travis-ci.org/MagicStack/asyncpg.svg?branch=master
-    :target: https://travis-ci.org/MagicStack/asyncpg
+.. image:: https://github.com/MagicStack/asyncpg/workflows/Tests/badge.svg
+   :target: https://github.com/MagicStack/asyncpg/actions?query=workflow%3ATests+branch%3Amaster
+   :alt: GitHub Actions status
 
 .. image:: https://img.shields.io/pypi/status/asyncpg.svg?maxAge=2592000?style=plastic
     :target: https://pypi.python.org/pypi/asyncpg
