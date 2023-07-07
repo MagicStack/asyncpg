@@ -231,7 +231,7 @@ class Connection(metaclass=ConnectionMeta):
             **query**: a LoggedQuery containing the query, args, timeout, and
                        elapsed.
 
-        .. versionadded:: 0.28.0
+        .. versionadded:: 0.29.0
         """
         self._query_loggers.add(_Callback.from_callable(callback))
 
@@ -242,7 +242,7 @@ class Connection(metaclass=ConnectionMeta):
             The callable or coroutine function that was passed to
             :meth:`Connection.add_query_logger`.
 
-        .. versionadded:: 0.28.0
+        .. versionadded:: 0.29.0
         """
         self._query_loggers.discard(_Callback.from_callable(callback))
 
@@ -1696,6 +1696,31 @@ class Connection(metaclass=ConnectionMeta):
         return result
 
     def logger(self, callback):
+        """Context manager that adds `callback` to the list of query loggers,
+        and removes it upon exit.
+
+        :param callable callback:
+            A callable or a coroutine function receiving two arguments:
+            **connection**: a Connection the callback is registered with.
+            **query**: a LoggedQuery containing the query, args, timeout, and
+                       elapsed.
+
+        Example:
+
+        .. code-block:: pycon
+
+            >>> class QuerySaver:
+                    def __init__(self):
+                        self.queries = []
+                    def __call__(self, conn, record):
+                        self.queries.append(record.query)
+            >>> with con.logger(QuerySaver()) as log:
+            >>>     await con.execute("SELECT 1")
+            >>> print(log.queries)
+            ['SELECT 1']
+
+        .. versionadded:: 0.29.0
+        """
         return _LoggingContext(self, callback)
 
     def _log_query(self, query, args, timeout, elapsed):
@@ -2389,7 +2414,7 @@ class _LoggingContext:
 
     def __enter__(self):
         self._conn.add_query_logger(self._cb)
-        return self
+        return self._cb
 
     def __exit__(self, *exc_info):
         self._conn.remove_query_logger(self._cb)
