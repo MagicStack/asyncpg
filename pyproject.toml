@@ -36,7 +36,7 @@ github = "https://github.com/MagicStack/asyncpg"
 
 [project.optional-dependencies]
 test = [
-    'flake8~=6.0.0',
+    'flake8~=5.0',
     'uvloop>=0.15.3; platform_system != "Windows"',
 ]
 docs = [
