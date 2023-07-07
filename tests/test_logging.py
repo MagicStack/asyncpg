@@ -14,6 +14,7 @@ class TestQueryLogging(tb.ConnectedTestCase):
         class QuerySaver:
             def __init__(self):
                 self.queries = []
+
             def __call__(self, conn, record):
                 self.queries.append(record.query)
 
