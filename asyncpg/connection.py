@@ -9,6 +9,7 @@ import asyncio
 import asyncpg
 import collections
 import collections.abc
+import contextlib
 import functools
 import itertools
 import inspect
@@ -226,10 +227,9 @@ class Connection(metaclass=ConnectionMeta):
         """Add a logger that will be called when queries are executed.
 
         :param callable callback:
-            A callable or a coroutine function receiving two arguments:
-            **connection**: a Connection the callback is registered with.
-            **query**: a LoggedQuery containing the query, args, timeout, and
-                       elapsed.
+            A callable or a coroutine function receiving one argument:
+            **record**: a LoggedQuery containing `query`, `args`, `timeout`,
+                        `elapsed`, `addr`, `params`, and `exception`.
 
         .. versionadded:: 0.29.0
         """
@@ -339,9 +339,8 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
 
         if not args:
-            with utils.timer() as t:
+            with self._time_and_log(query, args, timeout):
                 result = await self._protocol.query(query, timeout)
-            self._log_query(query, args, timeout, t.elapsed)
             return result
 
         _, status, _ = await self._execute(
@@ -1412,6 +1411,7 @@ class Connection(metaclass=ConnectionMeta):
         self._mark_stmts_as_closed()
         self._listeners.clear()
         self._log_listeners.clear()
+        self._query_loggers.clear()
         self._clean_tasks()
 
     def _clean_tasks(self):
@@ -1695,15 +1695,15 @@ class Connection(metaclass=ConnectionMeta):
             )
         return result
 
+    @contextlib.contextmanager
     def logger(self, callback):
         """Context manager that adds `callback` to the list of query loggers,
         and removes it upon exit.
 
         :param callable callback:
-            A callable or a coroutine function receiving two arguments:
-            **connection**: a Connection the callback is registered with.
-            **query**: a LoggedQuery containing the query, args, timeout, and
-                       elapsed.
+            A callable or a coroutine function receiving one argument:
+            **record**: a LoggedQuery containing `query`, `args`, `timeout`,
+                        `elapsed`, `addr`, and `params`.
 
         Example:
 
@@ -1721,18 +1721,35 @@ class Connection(metaclass=ConnectionMeta):
 
         .. versionadded:: 0.29.0
         """
-        return _LoggingContext(self, callback)
+        self.add_query_logger(callback)
+        yield callback
+        self.remove_query_logger(callback)
 
-    def _log_query(self, query, args, timeout, elapsed):
-        if not self._query_loggers:
-            return
-        con_ref = self._unwrap()
-        record = LoggedQuery(query, args, timeout, elapsed)
-        for cb in self._query_loggers:
-            if cb.is_async:
-                self._loop.create_task(cb.cb(con_ref, record))
-            else:
-                self._loop.call_soon(cb.cb, con_ref, record)
+    @contextlib.contextmanager
+    def _time_and_log(self, query, args, timeout):
+        start = time.monotonic()
+        exception = None
+        try:
+            yield
+        except Exception as ex:
+            exception = ex
+            raise
+        finally:
+            elapsed = time.monotonic() - start
+            record = LoggedQuery(
+                query=query,
+                args=args,
+                timeout=timeout,
+                elapsed=elapsed,
+                addr=self._addr,
+                params=self._params,
+                exception=exception,
+            )
+            for cb in self._query_loggers:
+                if cb.is_async:
+                    self._loop.create_task(cb.cb(record))
+                else:
+                    self._loop.call_soon(cb.cb, record)
 
     async def __execute(
         self,
@@ -1748,7 +1765,7 @@ class Connection(metaclass=ConnectionMeta):
         executor = lambda stmt, timeout: self._protocol.bind_execute(
             stmt, args, '', limit, return_status, timeout)
         timeout = self._protocol._get_timeout(timeout)
-        with utils.timer() as t:
+        with self._time_and_log(query, args, timeout):
             result, stmt = await self._do_execute(
                 query,
                 executor,
@@ -1756,7 +1773,6 @@ class Connection(metaclass=ConnectionMeta):
                 record_class=record_class,
                 ignore_custom_codec=ignore_custom_codec,
             )
-        self._log_query(query, args, timeout, t.elapsed)
         return result, stmt
 
     async def _executemany(self, query, args, timeout):
@@ -1764,9 +1780,8 @@ class Connection(metaclass=ConnectionMeta):
             stmt, args, '', timeout)
         timeout = self._protocol._get_timeout(timeout)
         with self._stmt_exclusive_section:
-            with utils.timer() as t:
+            with self._time_and_log(query, args, timeout):
                 result, _ = await self._do_execute(query, executor, timeout)
-        self._log_query(query, args, timeout, t.elapsed)
         return result
 
     async def _do_execute(
@@ -2401,23 +2416,8 @@ class _ConnectionProxy:
 
 LoggedQuery = collections.namedtuple(
     'LoggedQuery',
-    ['query', 'args', 'timeout', 'elapsed'])
+    ['query', 'args', 'timeout', 'elapsed', 'exception', 'addr', 'params'])
 LoggedQuery.__doc__ = 'Log record of an executed query.'
-
-
-class _LoggingContext:
-    __slots__ = ('_conn', '_cb')
-
-    def __init__(self, conn, callback):
-        self._conn = conn
-        self._cb = callback
-
-    def __enter__(self):
-        self._conn.add_query_logger(self._cb)
-        return self._cb
-
-    def __exit__(self, *exc_info):
-        self._conn.remove_query_logger(self._cb)
 
 
 ServerCapabilities = collections.namedtuple(

@@ -6,7 +6,6 @@
 
 
 import re
-import time
 
 
 def _quote_ident(ident):
@@ -44,28 +43,3 @@ async def _mogrify(conn, query, args):
     # Finally, replace $n references with text values.
     return re.sub(
         r'\$(\d+)\b', lambda m: textified[int(m.group(1)) - 1], query)
-
-
-class timer:
-    __slots__ = ('start', 'elapsed')
-
-    def __init__(self):
-        self.start = time.monotonic()
-        self.elapsed = None
-
-    @property
-    def current(self):
-        return time.monotonic() - self.start
-
-    def restart(self):
-        self.start = time.monotonic()
-
-    def stop(self):
-        self.elapsed = self.current
-
-    def __enter__(self):
-        self.restart()
-        return self
-
-    def __exit__(self, *exc):
-        self.stop()
