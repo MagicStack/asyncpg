@@ -1,93 +1,48 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8" />
-  
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
   <title>asyncpg.pool &mdash; asyncpg Documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="../../_static/theme_overrides.css" type="text/css" />
-
-  
-  
-
-  
-  
-
-  
-
-  
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
         <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="../../_static/doctools.js"></script>
-    
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
-
-    
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
 
           
-            <a href="../../index.html" class="icon icon-home"> asyncpg
           
-
-          
+          <a href="../../index.html" class="icon icon-home">
+            asyncpg
           </a>
-
-          
-            
-            
               <div class="version">
-                0.27.0
+                0.28.0
               </div>
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../usage.html">asyncpg Usage</a></li>
@@ -95,69 +50,30 @@
 <li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../index.html">asyncpg</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
-      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-        
-          <li><a href="../index.html">Module code</a> &raquo;</li>
-        
-      <li>asyncpg.pool</li>
-    
-    
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">asyncpg.pool</li>
       <li class="wy-breadcrumbs-aside">
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <h1>Source code for asyncpg.pool</h1><div class="highlight"><pre>
 <span></span><span class="c1"># Copyright (C) 2016-present the asyncpg authors and contributors</span>
 <span class="c1"># &lt;see AUTHORS file&gt;</span>
@@ -439,7 +355,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_con</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span> <span class="nf">_release</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Release this connection holder.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Release this connection holder.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_use</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># The holder is not checked out.</span>
             <span class="k">return</span>
@@ -459,7 +375,7 @@
 
 
 <div class="viewcode-block" id="Pool"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool">[docs]</a><span class="k">class</span> <span class="nc">Pool</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;A connection pool.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A connection pool.</span>
 
 <span class="sd">    Connection pool can be used to manage a set of connections to the database.</span>
 <span class="sd">    Connections are first acquired from the pool, then used, and then released</span>
@@ -607,36 +523,43 @@
 
                 <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">connect_tasks</span><span class="p">)</span>
 
+<div class="viewcode-block" id="Pool.is_closing"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.is_closing">[docs]</a>    <span class="k">def</span> <span class="nf">is_closing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``True`` if the pool is closing or is closed.</span>
+
+<span class="sd">        .. versionadded:: 0.28.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closing</span></div>
+
 <div class="viewcode-block" id="Pool.get_size"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.get_size">[docs]</a>    <span class="k">def</span> <span class="nf">get_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return the current number of connections in this pool.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the current number of connections in this pool.</span>
 
 <span class="sd">        .. versionadded:: 0.25.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">is_connected</span><span class="p">()</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_holders</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Pool.get_min_size"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.get_min_size">[docs]</a>    <span class="k">def</span> <span class="nf">get_min_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return the minimum number of connections in this pool.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the minimum number of connections in this pool.</span>
 
 <span class="sd">        .. versionadded:: 0.25.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_minsize</span></div>
 
 <div class="viewcode-block" id="Pool.get_max_size"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.get_max_size">[docs]</a>    <span class="k">def</span> <span class="nf">get_max_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return the maximum allowed number of connections in this pool.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the maximum allowed number of connections in this pool.</span>
 
 <span class="sd">        .. versionadded:: 0.25.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxsize</span></div>
 
 <div class="viewcode-block" id="Pool.get_idle_size"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.get_idle_size">[docs]</a>    <span class="k">def</span> <span class="nf">get_idle_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return the current number of idle connections in this pool.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the current number of idle connections in this pool.</span>
 
 <span class="sd">        .. versionadded:: 0.25.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">is_connected</span><span class="p">()</span> <span class="ow">and</span> <span class="n">h</span><span class="o">.</span><span class="n">is_idle</span><span class="p">()</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_holders</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Pool.set_connect_args"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.set_connect_args">[docs]</a>    <span class="k">def</span> <span class="nf">set_connect_args</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dsn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">connect_kwargs</span><span class="p">):</span>
-        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Set the new connection arguments for this pool.</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Set the new connection arguments for this pool.</span>
 
 <span class="sd">        The new connection arguments will be used for all subsequent</span>
 <span class="sd">        new connection attempts.  Existing connections will remain until</span>
@@ -709,7 +632,7 @@
         <span class="k">return</span> <span class="n">con</span>
 
 <div class="viewcode-block" id="Pool.execute"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.execute">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Execute an SQL command (or commands).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute an SQL command (or commands).</span>
 
 <span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
 <span class="sd">        that, it behaves identically to</span>
@@ -721,7 +644,7 @@
             <span class="k">return</span> <span class="k">await</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Pool.executemany"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.executemany">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">executemany</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Execute an SQL *command* for each sequence of arguments in *args*.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute an SQL *command* for each sequence of arguments in *args*.</span>
 
 <span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
 <span class="sd">        that, it behaves identically to</span>
@@ -740,7 +663,7 @@
         <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Run a query and return the results as a list of :class:`Record`.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run a query and return the results as a list of :class:`Record`.</span>
 
 <span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
 <span class="sd">        that, it behaves identically to</span>
@@ -757,7 +680,7 @@
             <span class="p">)</span></div>
 
 <div class="viewcode-block" id="Pool.fetchval"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.fetchval">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Run a query and return a value in the first row.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run a query and return a value in the first row.</span>
 
 <span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
 <span class="sd">        that, it behaves identically to</span>
@@ -771,7 +694,7 @@
                 <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="n">column</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Pool.fetchrow"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.fetchrow">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchrow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Run a query and return the first row.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run a query and return the first row.</span>
 
 <span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
 <span class="sd">        that, it behaves identically to</span>
@@ -805,7 +728,7 @@
         <span class="n">force_quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Copy table contents to a file or file-like object.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy table contents to a file or file-like object.</span>
 
 <span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
 <span class="sd">        that, it behaves identically to</span>
@@ -848,7 +771,7 @@
         <span class="n">force_quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Copy the results of a query to a file or file-like object.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy the results of a query to a file or file-like object.</span>
 
 <span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
 <span class="sd">        that, it behaves identically to</span>
@@ -895,7 +818,7 @@
         <span class="n">force_null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Copy data to the specified table.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy data to the specified table.</span>
 
 <span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
 <span class="sd">        that, it behaves identically to</span>
@@ -934,7 +857,7 @@
         <span class="n">schema_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Copy a list of records to the specified table using binary COPY.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy a list of records to the specified table using binary COPY.</span>
 
 <span class="sd">        Pool performs this operation using one of its connections.  Other than</span>
 <span class="sd">        that, it behaves identically to</span>
@@ -953,7 +876,7 @@
             <span class="p">)</span></div>
 
 <div class="viewcode-block" id="Pool.acquire"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.acquire">[docs]</a>    <span class="k">def</span> <span class="nf">acquire</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Acquire a database connection from the pool.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Acquire a database connection from the pool.</span>
 
 <span class="sd">        :param float timeout: A timeout for acquiring a Connection.</span>
 <span class="sd">        :return: An instance of :class:`~asyncpg.connection.Connection`.</span>
@@ -1002,7 +925,7 @@
                 <span class="n">_acquire_impl</span><span class="p">(),</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Pool.release"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.release">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">release</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Release a database connection back to the pool.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Release a database connection back to the pool.</span>
 
 <span class="sd">        :param Connection connection:</span>
 <span class="sd">            A :class:`~asyncpg.connection.Connection` object to release.</span>
@@ -1040,7 +963,7 @@
         <span class="k">return</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">shield</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="n">timeout</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="Pool.close"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.close">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Attempt to gracefully close all connections in the pool.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Attempt to gracefully close all connections in the pool.</span>
 
 <span class="sd">        Wait until all pool connections are released, close them and</span>
 <span class="sd">        shut down the pool.  If any error (including cancellation) occurs</span>
@@ -1091,7 +1014,7 @@
                        <span class="s1">&#39;Pool.close().&#39;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Pool.terminate"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.terminate">[docs]</a>    <span class="k">def</span> <span class="nf">terminate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Terminate all connections in the pool.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Terminate all connections in the pool.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span><span class="p">:</span>
             <span class="k">return</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_init</span><span class="p">()</span>
@@ -1100,7 +1023,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">True</span></div>
 
 <div class="viewcode-block" id="Pool.expire_connections"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.expire_connections">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">expire_connections</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Expire all currently open connections.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Expire all currently open connections.</span>
 
 <span class="sd">        Cause all currently open connections to get replaced on the</span>
 <span class="sd">        next :meth:`~asyncpg.pool.Pool.acquire()` call.</span>
@@ -1181,7 +1104,7 @@
                 <span class="n">connection_class</span><span class="o">=</span><span class="n">connection</span><span class="o">.</span><span class="n">Connection</span><span class="p">,</span>
                 <span class="n">record_class</span><span class="o">=</span><span class="n">protocol</span><span class="o">.</span><span class="n">Record</span><span class="p">,</span>
                 <span class="o">**</span><span class="n">connect_kwargs</span><span class="p">):</span>
-    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Create a connection pool.</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Create a connection pool.</span>
 
 <span class="sd">    Can be used either with an ``async with`` block:</span>
 
@@ -1309,38 +1232,27 @@
 </pre></div>
 
            </div>
-           
           </div>
           <footer>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        &#169; Copyright 2016-present, the asyncpg authors and contributors.
+    <p>&#169; Copyright 2016-present, the asyncpg authors and contributors.</p>
+  </div>
 
-    </p>
-  </div> 
+   
 
 </footer>
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

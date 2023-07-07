@@ -1,93 +1,48 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8" />
-  
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
   <title>asyncpg.connection &mdash; asyncpg Documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="../../_static/theme_overrides.css" type="text/css" />
-
-  
-  
-
-  
-  
-
-  
-
-  
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
         <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="../../_static/doctools.js"></script>
-    
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
-
-    
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
 
           
-            <a href="../../index.html" class="icon icon-home"> asyncpg
           
-
-          
+          <a href="../../index.html" class="icon icon-home">
+            asyncpg
           </a>
-
-          
-            
-            
               <div class="version">
-                0.27.0
+                0.28.0
               </div>
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../usage.html">asyncpg Usage</a></li>
@@ -95,69 +50,30 @@
 <li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../index.html">asyncpg</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
-      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-        
-          <li><a href="../index.html">Module code</a> &raquo;</li>
-        
-      <li>asyncpg.connection</li>
-    
-    
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">asyncpg.connection</li>
       <li class="wy-breadcrumbs-aside">
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <h1>Source code for asyncpg.connection</h1><div class="highlight"><pre>
 <span></span><span class="c1"># Copyright (C) 2016-present the asyncpg authors and contributors</span>
 <span class="c1"># &lt;see AUTHORS file&gt;</span>
@@ -200,7 +116,7 @@
 
 
 <div class="viewcode-block" id="Connection"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection">[docs]</a><span class="k">class</span> <span class="nc">Connection</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">ConnectionMeta</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;A representation of a database session.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A representation of a database session.</span>
 
 <span class="sd">    Connections are created by calling :func:`~asyncpg.connection.connect`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -293,7 +209,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
 
 <div class="viewcode-block" id="Connection.add_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.add_listener">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">add_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Add a listener for Postgres notifications.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a listener for Postgres notifications.</span>
 
 <span class="sd">        :param str channel: Channel to listen on.</span>
 
@@ -315,7 +231,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">_Callback</span><span class="o">.</span><span class="n">from_callable</span><span class="p">(</span><span class="n">callback</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="Connection.remove_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.remove_listener">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">remove_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Remove a listening callback on the specified channel.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Remove a listening callback on the specified channel.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
             <span class="k">return</span>
         <span class="k">if</span> <span class="n">channel</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listeners</span><span class="p">:</span>
@@ -329,7 +245,7 @@
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;UNLISTEN </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">utils</span><span class="o">.</span><span class="n">_quote_ident</span><span class="p">(</span><span class="n">channel</span><span class="p">)))</span></div>
 
 <div class="viewcode-block" id="Connection.add_log_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.add_log_listener">[docs]</a>    <span class="k">def</span> <span class="nf">add_log_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Add a listener for Postgres log messages.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a listener for Postgres log messages.</span>
 
 <span class="sd">        It will be called when asyncronous NoticeResponse is received</span>
 <span class="sd">        from the connection.  Possible message types are: WARNING, NOTICE,</span>
@@ -351,14 +267,14 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_listeners</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">_Callback</span><span class="o">.</span><span class="n">from_callable</span><span class="p">(</span><span class="n">callback</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="Connection.remove_log_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.remove_log_listener">[docs]</a>    <span class="k">def</span> <span class="nf">remove_log_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Remove a listening callback for log messages.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Remove a listening callback for log messages.</span>
 
 <span class="sd">        .. versionadded:: 0.12.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_listeners</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">_Callback</span><span class="o">.</span><span class="n">from_callable</span><span class="p">(</span><span class="n">callback</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="Connection.add_termination_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.add_termination_listener">[docs]</a>    <span class="k">def</span> <span class="nf">add_termination_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Add a listener that will be called when the connection is closed.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a listener that will be called when the connection is closed.</span>
 
 <span class="sd">        :param callable callback:</span>
 <span class="sd">            A callable or a coroutine function receiving one argument:</span>
@@ -372,7 +288,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_termination_listeners</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">_Callback</span><span class="o">.</span><span class="n">from_callable</span><span class="p">(</span><span class="n">callback</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="Connection.remove_termination_listener"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.remove_termination_listener">[docs]</a>    <span class="k">def</span> <span class="nf">remove_termination_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Remove a listening callback for connection termination.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Remove a listening callback for connection termination.</span>
 
 <span class="sd">        :param callable callback:</span>
 <span class="sd">            The callable or coroutine function that was passed to</span>
@@ -383,11 +299,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_termination_listeners</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">_Callback</span><span class="o">.</span><span class="n">from_callable</span><span class="p">(</span><span class="n">callback</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="Connection.get_server_pid"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.get_server_pid">[docs]</a>    <span class="k">def</span> <span class="nf">get_server_pid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return the PID of the Postgres server the connection is bound to.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the PID of the Postgres server the connection is bound to.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">get_server_pid</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Connection.get_server_version"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.get_server_version">[docs]</a>    <span class="k">def</span> <span class="nf">get_server_version</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return the version of the connected PostgreSQL server.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the version of the connected PostgreSQL server.</span>
 
 <span class="sd">        The returned value is a named tuple similar to that in</span>
 <span class="sd">        ``sys.version_info``:</span>
@@ -403,7 +319,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_version</span></div>
 
 <div class="viewcode-block" id="Connection.get_settings"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.get_settings">[docs]</a>    <span class="k">def</span> <span class="nf">get_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return connection settings.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return connection settings.</span>
 
 <span class="sd">        :return: :class:`~asyncpg.ConnectionSettings`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -411,16 +327,16 @@
 
 <div class="viewcode-block" id="Connection.transaction"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.transaction">[docs]</a>    <span class="k">def</span> <span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">isolation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">readonly</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                     <span class="n">deferrable</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Create a :class:`~transaction.Transaction` object.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a :class:`~transaction.Transaction` object.</span>
 
 <span class="sd">        Refer to `PostgreSQL documentation`_ on the meaning of transaction</span>
 <span class="sd">        parameters.</span>
 
 <span class="sd">        :param isolation: Transaction isolation mode, can be one of:</span>
 <span class="sd">                          `&#39;serializable&#39;`, `&#39;repeatable_read&#39;`,</span>
-<span class="sd">                          `&#39;read_committed&#39;`. If not specified, the behavior</span>
-<span class="sd">                          is up to the server and session, which is usually</span>
-<span class="sd">                          ``read_committed``.</span>
+<span class="sd">                          `&#39;read_uncommitted&#39;`, `&#39;read_committed&#39;`. If not</span>
+<span class="sd">                          specified, the behavior is up to the server and</span>
+<span class="sd">                          session, which is usually ``read_committed``.</span>
 
 <span class="sd">        :param readonly: Specifies whether or not this transaction is</span>
 <span class="sd">                         read-only.</span>
@@ -436,7 +352,7 @@
         <span class="k">return</span> <span class="n">transaction</span><span class="o">.</span><span class="n">Transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">isolation</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">deferrable</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Connection.is_in_transaction"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.is_in_transaction">[docs]</a>    <span class="k">def</span> <span class="nf">is_in_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return True if Connection is currently inside a transaction.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return True if Connection is currently inside a transaction.</span>
 
 <span class="sd">        :return bool: True if inside transaction, False otherwise.</span>
 
@@ -445,7 +361,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">is_in_transaction</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Connection.execute"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.execute">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Execute an SQL command (or commands).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute an SQL command (or commands).</span>
 
 <span class="sd">        This method can execute many SQL commands at once, when no arguments</span>
 <span class="sd">        are provided.</span>
@@ -487,7 +403,7 @@
         <span class="k">return</span> <span class="n">status</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Connection.executemany"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.executemany">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">executemany</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Execute an SQL *command* for each sequence of arguments in *args*.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute an SQL *command* for each sequence of arguments in *args*.</span>
 
 <span class="sd">        Example:</span>
 
@@ -660,7 +576,7 @@
         <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return a *cursor factory* for the specified query.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a *cursor factory* for the specified query.</span>
 
 <span class="sd">        :param args:</span>
 <span class="sd">            Query arguments.</span>
@@ -699,7 +615,7 @@
         <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Create a *prepared statement* for the specified query.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a *prepared statement* for the specified query.</span>
 
 <span class="sd">        :param str query:</span>
 <span class="sd">            Text of the query to create a prepared statement for.</span>
@@ -757,7 +673,7 @@
         <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Run a query and return the results as a list of :class:`Record`.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run a query and return the results as a list of :class:`Record`.</span>
 
 <span class="sd">        :param str query:</span>
 <span class="sd">            Query text.</span>
@@ -787,7 +703,7 @@
         <span class="p">)</span></div>
 
 <div class="viewcode-block" id="Connection.fetchval"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.fetchval">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Run a query and return a value in the first row.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run a query and return a value in the first row.</span>
 
 <span class="sd">        :param str query: Query text.</span>
 <span class="sd">        :param args: Query arguments.</span>
@@ -814,7 +730,7 @@
         <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">record_class</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Run a query and return the first row.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run a query and return the first row.</span>
 
 <span class="sd">        :param str query:</span>
 <span class="sd">            Query text</span>
@@ -852,7 +768,7 @@
                               <span class="nb">format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">oids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                               <span class="n">null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                               <span class="n">escape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Copy table contents to a file or file-like object.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy table contents to a file or file-like object.</span>
 
 <span class="sd">        :param str table_name:</span>
 <span class="sd">            The name of the table to copy data from.</span>
@@ -924,7 +840,7 @@
                               <span class="n">delimiter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                               <span class="n">quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">escape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                               <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Copy the results of a query to a file or file-like object.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy the results of a query to a file or file-like object.</span>
 
 <span class="sd">        :param str query:</span>
 <span class="sd">            The query to copy the results of.</span>
@@ -988,7 +904,7 @@
                             <span class="n">quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">escape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                             <span class="n">force_not_null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                             <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Copy data to the specified table.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy data to the specified table.</span>
 
 <span class="sd">        :param str table_name:</span>
 <span class="sd">            The name of the table to copy data to.</span>
@@ -1059,7 +975,7 @@
 <div class="viewcode-block" id="Connection.copy_records_to_table"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.copy_records_to_table">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">copy_records_to_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span>
                                     <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">schema_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                                     <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Copy a list of records to the specified table using binary COPY.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy a list of records to the specified table using binary COPY.</span>
 
 <span class="sd">        :param str table_name:</span>
 <span class="sd">            The name of the table to copy data to.</span>
@@ -1191,7 +1107,7 @@
         <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;write&#39;</span><span class="p">):</span>
             <span class="c1"># file-like</span>
             <span class="n">f</span> <span class="o">=</span> <span class="n">output</span>
-        <span class="k">elif</span> <span class="n">callable</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
+        <span class="k">elif</span> <span class="nb">callable</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
             <span class="c1"># assuming calling output returns an awaitable.</span>
             <span class="n">writer</span> <span class="o">=</span> <span class="n">output</span>
         <span class="k">else</span><span class="p">:</span>
@@ -1267,7 +1183,7 @@
 <div class="viewcode-block" id="Connection.set_type_codec"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.set_type_codec">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">set_type_codec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                              <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;public&#39;</span><span class="p">,</span> <span class="n">encoder</span><span class="p">,</span> <span class="n">decoder</span><span class="p">,</span>
                              <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;text&#39;</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Set an encoder/decoder pair for the specified data type.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set an encoder/decoder pair for the specified data type.</span>
 
 <span class="sd">        :param typename:</span>
 <span class="sd">            Name of the data type the codec is for.</span>
@@ -1403,7 +1319,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_statement_cache</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Connection.reset_type_codec"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.reset_type_codec">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">reset_type_codec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;public&#39;</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Reset *typename* codec to the default implementation.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset *typename* codec to the default implementation.</span>
 
 <span class="sd">        :param typename:</span>
 <span class="sd">            Name of the data type the codec is for.</span>
@@ -1425,7 +1341,7 @@
 <div class="viewcode-block" id="Connection.set_builtin_type_codec"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.set_builtin_type_codec">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">set_builtin_type_codec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                                      <span class="n">schema</span><span class="o">=</span><span class="s1">&#39;public&#39;</span><span class="p">,</span> <span class="n">codec_name</span><span class="p">,</span>
                                      <span class="nb">format</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Set a builtin codec for the specified scalar data type.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set a builtin codec for the specified scalar data type.</span>
 
 <span class="sd">        This method has two uses.  The first is to register a builtin</span>
 <span class="sd">        codec for an extension type without a stable OID, such as &#39;hstore&#39;.</span>
@@ -1473,7 +1389,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_statement_cache</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Connection.is_closed"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.is_closed">[docs]</a>    <span class="k">def</span> <span class="nf">is_closed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return ``True`` if the connection is closed, ``False`` otherwise.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``True`` if the connection is closed, ``False`` otherwise.</span>
 
 <span class="sd">        :return bool: ``True`` if the connection is closed, ``False``</span>
 <span class="sd">                      otherwise.</span>
@@ -1481,7 +1397,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_aborted</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protocol</span><span class="o">.</span><span class="n">is_connected</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Connection.close"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.close">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Close the connection gracefully.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Close the connection gracefully.</span>
 
 <span class="sd">        :param float timeout:</span>
 <span class="sd">            Optional timeout value in seconds.</span>
@@ -1500,7 +1416,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Connection.terminate"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.terminate">[docs]</a>    <span class="k">def</span> <span class="nf">terminate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Terminate the connection without waiting for pending data.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Terminate the connection without waiting for pending data.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_closed</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_abort</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup</span><span class="p">()</span></div>
@@ -1577,6 +1493,7 @@
     <span class="k">def</span> <span class="nf">_maybe_gc_stmt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stmt</span><span class="p">):</span>
         <span class="k">if</span> <span class="p">(</span>
             <span class="n">stmt</span><span class="o">.</span><span class="n">refs</span> <span class="o">==</span> <span class="mi">0</span>
+            <span class="ow">and</span> <span class="n">stmt</span><span class="o">.</span><span class="n">name</span>
             <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stmt_cache</span><span class="o">.</span><span class="n">has</span><span class="p">(</span>
                 <span class="p">(</span><span class="n">stmt</span><span class="o">.</span><span class="n">query</span><span class="p">,</span> <span class="n">stmt</span><span class="o">.</span><span class="n">record_class</span><span class="p">,</span> <span class="n">stmt</span><span class="o">.</span><span class="n">ignore_custom_codec</span><span class="p">)</span>
             <span class="p">)</span>
@@ -1760,7 +1677,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_drop_local_type_cache</span><span class="p">()</span>
 
 <div class="viewcode-block" id="Connection.reload_schema_state"><a class="viewcode-back" href="../../api/index.html#asyncpg.connection.Connection.reload_schema_state">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">reload_schema_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Indicate that the database schema information must be reloaded.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Indicate that the database schema information must be reloaded.</span>
 
 <span class="sd">        For performance reasons, asyncpg caches certain aspects of the</span>
 <span class="sd">        database schema, such as the layout of composite types.  Consequently,</span>
@@ -1952,8 +1869,9 @@
                   <span class="n">direct_tls</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                   <span class="n">connection_class</span><span class="o">=</span><span class="n">Connection</span><span class="p">,</span>
                   <span class="n">record_class</span><span class="o">=</span><span class="n">protocol</span><span class="o">.</span><span class="n">Record</span><span class="p">,</span>
-                  <span class="n">server_settings</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;A coroutine to establish a connection to a PostgreSQL server.</span>
+                  <span class="n">server_settings</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">target_session_attrs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;A coroutine to establish a connection to a PostgreSQL server.</span>
 
 <span class="sd">    The connection parameters may be specified either as a connection</span>
 <span class="sd">    URI in *dsn*, or as specific keyword arguments, or both.</span>
@@ -2163,6 +2081,23 @@
 <span class="sd">        this connection object.  Must be a subclass of</span>
 <span class="sd">        :class:`~asyncpg.Record`.</span>
 
+<span class="sd">    :param SessionAttribute target_session_attrs:</span>
+<span class="sd">        If specified, check that the host has the correct attribute.</span>
+<span class="sd">        Can be one of:</span>
+
+<span class="sd">        - ``&quot;any&quot;`` - the first successfully connected host</span>
+<span class="sd">        - ``&quot;primary&quot;`` - the host must NOT be in hot standby mode</span>
+<span class="sd">        - ``&quot;standby&quot;`` - the host must be in hot standby mode</span>
+<span class="sd">        - ``&quot;read-write&quot;`` - the host must allow writes</span>
+<span class="sd">        - ``&quot;read-only&quot;`` - the host most NOT allow writes</span>
+<span class="sd">        - ``&quot;prefer-standby&quot;`` - first try to find a standby host, but if</span>
+<span class="sd">          none of the listed hosts is a standby server,</span>
+<span class="sd">          return any of them.</span>
+
+<span class="sd">        If not specified, the value parsed from the *dsn* argument is used,</span>
+<span class="sd">        or the value of the ``PGTARGETSESSIONATTRS`` environment variable,</span>
+<span class="sd">        or ``&quot;any&quot;`` if neither is specified.</span>
+
 <span class="sd">    :return: A :class:`~asyncpg.connection.Connection` instance.</span>
 
 <span class="sd">    Example:</span>
@@ -2228,6 +2163,9 @@
 <span class="sd">    .. versionchanged:: 0.26.0</span>
 <span class="sd">       Added the *direct_tls* parameter.</span>
 
+<span class="sd">    .. versionchanged:: 0.28.0</span>
+<span class="sd">       Added the *target_session_attrs* parameter.</span>
+
 <span class="sd">    .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext</span>
 <span class="sd">    .. _create_default_context:</span>
 <span class="sd">        https://docs.python.org/3/library/ssl.html#ssl.create_default_context</span>
@@ -2269,6 +2207,7 @@
         <span class="n">statement_cache_size</span><span class="o">=</span><span class="n">statement_cache_size</span><span class="p">,</span>
         <span class="n">max_cached_statement_lifetime</span><span class="o">=</span><span class="n">max_cached_statement_lifetime</span><span class="p">,</span>
         <span class="n">max_cacheable_statement_size</span><span class="o">=</span><span class="n">max_cacheable_statement_size</span><span class="p">,</span>
+        <span class="n">target_session_attrs</span><span class="o">=</span><span class="n">target_session_attrs</span>
     <span class="p">)</span></div>
 
 
@@ -2433,7 +2372,7 @@
     <span class="k">def</span> <span class="nf">from_callable</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">cb</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s1">&#39;_Callback&#39;</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">cb</span><span class="p">):</span>
             <span class="n">is_async</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="k">elif</span> <span class="n">callable</span><span class="p">(</span><span class="n">cb</span><span class="p">):</span>
+        <span class="k">elif</span> <span class="nb">callable</span><span class="p">(</span><span class="n">cb</span><span class="p">):</span>
             <span class="n">is_async</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
@@ -2512,7 +2451,7 @@
 
 
 <span class="k">def</span> <span class="nf">_extract_stack</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Replacement for traceback.extract_stack() that only does the</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Replacement for traceback.extract_stack() that only does the</span>
 <span class="sd">    necessary work for asyncio debug mode.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">frame</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span>
@@ -2563,38 +2502,27 @@
 </pre></div>
 
            </div>
-           
           </div>
           <footer>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        &#169; Copyright 2016-present, the asyncpg authors and contributors.
+    <p>&#169; Copyright 2016-present, the asyncpg authors and contributors.</p>
+  </div>
 
-    </p>
-  </div> 
+   
 
 </footer>
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

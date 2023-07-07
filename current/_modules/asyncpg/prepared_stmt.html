@@ -1,93 +1,48 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8" />
-  
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
   <title>asyncpg.prepared_stmt &mdash; asyncpg Documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="../../_static/theme_overrides.css" type="text/css" />
-
-  
-  
-
-  
-  
-
-  
-
-  
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
         <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="../../_static/doctools.js"></script>
-    
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
-
-    
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
 
           
-            <a href="../../index.html" class="icon icon-home"> asyncpg
           
-
-          
+          <a href="../../index.html" class="icon icon-home">
+            asyncpg
           </a>
-
-          
-            
-            
               <div class="version">
-                0.27.0
+                0.28.0
               </div>
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../usage.html">asyncpg Usage</a></li>
@@ -95,69 +50,30 @@
 <li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../index.html">asyncpg</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
-      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-        
-          <li><a href="../index.html">Module code</a> &raquo;</li>
-        
-      <li>asyncpg.prepared_stmt</li>
-    
-    
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">asyncpg.prepared_stmt</li>
       <li class="wy-breadcrumbs-aside">
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <h1>Source code for asyncpg.prepared_stmt</h1><div class="highlight"><pre>
 <span></span><span class="c1"># Copyright (C) 2016-present the asyncpg authors and contributors</span>
 <span class="c1"># &lt;see AUTHORS file&gt;</span>
@@ -174,7 +90,7 @@
 
 
 <div class="viewcode-block" id="PreparedStatement"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement">[docs]</a><span class="k">class</span> <span class="nc">PreparedStatement</span><span class="p">(</span><span class="n">connresource</span><span class="o">.</span><span class="n">ConnectionResource</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;A representation of a prepared statement.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A representation of a prepared statement.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_state&#39;</span><span class="p">,</span> <span class="s1">&#39;_query&#39;</span><span class="p">,</span> <span class="s1">&#39;_last_status&#39;</span><span class="p">)</span>
 
@@ -187,7 +103,7 @@
 
 <div class="viewcode-block" id="PreparedStatement.get_name"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.get_name">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">def</span> <span class="nf">get_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Return the name of this prepared statement.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the name of this prepared statement.</span>
 
 <span class="sd">        .. versionadded:: 0.25.0</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -195,7 +111,7 @@
 
 <div class="viewcode-block" id="PreparedStatement.get_query"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.get_query">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">def</span> <span class="nf">get_query</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Return the text of the query for this prepared statement.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the text of the query for this prepared statement.</span>
 
 <span class="sd">        Example::</span>
 
@@ -206,7 +122,7 @@
 
 <div class="viewcode-block" id="PreparedStatement.get_statusmsg"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.get_statusmsg">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">def</span> <span class="nf">get_statusmsg</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Return the status of the executed command.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the status of the executed command.</span>
 
 <span class="sd">        Example::</span>
 
@@ -220,7 +136,7 @@
 
 <div class="viewcode-block" id="PreparedStatement.get_parameters"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.get_parameters">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">def</span> <span class="nf">get_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return a description of statement parameters types.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a description of statement parameters types.</span>
 
 <span class="sd">        :return: A tuple of :class:`asyncpg.types.Type`.</span>
 
@@ -237,7 +153,7 @@
 
 <div class="viewcode-block" id="PreparedStatement.get_attributes"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.get_attributes">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">def</span> <span class="nf">get_attributes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return a description of relation attributes (columns).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a description of relation attributes (columns).</span>
 
 <span class="sd">        :return: A tuple of :class:`asyncpg.types.Attribute`.</span>
 
@@ -263,7 +179,7 @@
 <div class="viewcode-block" id="PreparedStatement.cursor"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.cursor">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">def</span> <span class="nf">cursor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">prefetch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">cursor</span><span class="o">.</span><span class="n">CursorFactory</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Return a *cursor factory* for the prepared statement.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a *cursor factory* for the prepared statement.</span>
 
 <span class="sd">        :param args: Query arguments.</span>
 <span class="sd">        :param int prefetch: The number of rows the *cursor iterator*</span>
@@ -284,7 +200,7 @@
 
 <div class="viewcode-block" id="PreparedStatement.explain"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.explain">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">explain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">analyze</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return the execution plan of the statement.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the execution plan of the statement.</span>
 
 <span class="sd">        :param args: Query arguments.</span>
 <span class="sd">        :param analyze: If ``True``, the statement will be executed and</span>
@@ -326,7 +242,7 @@
 
 <div class="viewcode-block" id="PreparedStatement.fetch"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.fetch">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">fetch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Execute the statement and return a list of :class:`Record` objects.</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Execute the statement and return a list of :class:`Record` objects.</span>
 
 <span class="sd">        :param str query: Query text</span>
 <span class="sd">        :param args: Query arguments</span>
@@ -339,7 +255,7 @@
 
 <div class="viewcode-block" id="PreparedStatement.fetchval"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.fetchval">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Execute the statement and return a value in the first row.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute the statement and return a value in the first row.</span>
 
 <span class="sd">        :param args: Query arguments.</span>
 <span class="sd">        :param int column: Numeric index within the record of the value to</span>
@@ -358,7 +274,7 @@
 
 <div class="viewcode-block" id="PreparedStatement.fetchrow"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.fetchrow">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">fetchrow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Execute the statement and return the first row.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute the statement and return the first row.</span>
 
 <span class="sd">        :param str query: Query text</span>
 <span class="sd">        :param args: Query arguments</span>
@@ -373,7 +289,7 @@
 
 <div class="viewcode-block" id="PreparedStatement.executemany"><a class="viewcode-back" href="../../api/index.html#asyncpg.prepared_stmt.PreparedStatement.executemany">[docs]</a>    <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">executemany</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Execute the statement for each sequence of arguments in *args*.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute the statement for each sequence of arguments in *args*.</span>
 
 <span class="sd">        :param args: An iterable containing sequences of arguments.</span>
 <span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
@@ -421,38 +337,27 @@
 </pre></div>
 
            </div>
-           
           </div>
           <footer>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        &#169; Copyright 2016-present, the asyncpg authors and contributors.
+    <p>&#169; Copyright 2016-present, the asyncpg authors and contributors.</p>
+  </div>
 
-    </p>
-  </div> 
+   
 
 </footer>
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>
