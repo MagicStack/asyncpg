@@ -7,6 +7,7 @@
 
 import asyncio
 import contextlib
+import gc
 import ipaddress
 import os
 import pathlib
@@ -1846,14 +1847,27 @@ class TestNoSSLConnection(BaseTestSSLConnection):
 class TestConnectionGC(tb.ClusterTestCase):
 
     async def _run_no_explicit_close_test(self):
-        con = await self.connect()
-        await con.fetchval("select 123")
-        proto = con._protocol
-        conref = weakref.ref(con)
-        del con
+        gc_was_enabled = gc.isenabled()
+        gc.disable()
+        try:
+            con = await self.connect()
+            await con.fetchval("select 123")
+            proto = con._protocol
+            conref = weakref.ref(con)
+            del con
 
-        self.assertIsNone(conref())
-        self.assertTrue(proto.is_closed())
+            self.assertIsNone(conref())
+            self.assertTrue(proto.is_closed())
+
+            # tick event loop so asyncio.selector_events._SelectorSocketTransport
+            # has a chance to close itself and remove its reference to proto
+            await asyncio.sleep(0)
+            protoref = weakref.ref(proto)
+            del proto
+            self.assertIsNone(protoref())
+        finally:
+            if gc_was_enabled:
+                gc.enable()
 
     async def test_no_explicit_close_no_debug(self):
         olddebug = self.loop.get_debug()

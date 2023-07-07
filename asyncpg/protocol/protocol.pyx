@@ -614,6 +614,7 @@ cdef class BaseProtocol(CoreProtocol):
         # Ask the server to terminate the connection and wait for it
         # to drop.
         self.waiter = self._new_waiter(timeout)
+        self.timeout_callback = self.completed_callback = None
         self._terminate()
         try:
             await self.waiter
@@ -682,6 +683,7 @@ cdef class BaseProtocol(CoreProtocol):
                 exc.__cause__ = cause
             self.waiter.set_exception(exc)
         self.waiter = None
+        self.timeout_callback = self.completed_callback = None
 
     cdef _set_server_parameter(self, name, val):
         self.settings.add_setting(name, val)
