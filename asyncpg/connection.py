@@ -339,10 +339,9 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
 
         if not args:
-            start = time.monotonic()
-            result = await self._protocol.query(query, timeout)
-            elapsed = time.monotonic() - start
-            self._log_query(query, args, timeout, elapsed)
+            with utils.timer() as t:
+                result = await self._protocol.query(query, timeout)
+            self._log_query(query, args, timeout, t.elapsed)
             return result
 
         _, status, _ = await self._execute(
@@ -1724,16 +1723,15 @@ class Connection(metaclass=ConnectionMeta):
         executor = lambda stmt, timeout: self._protocol.bind_execute(
             stmt, args, '', limit, return_status, timeout)
         timeout = self._protocol._get_timeout(timeout)
-        start = time.monotonic()
-        result, stmt = await self._do_execute(
-            query,
-            executor,
-            timeout,
-            record_class=record_class,
-            ignore_custom_codec=ignore_custom_codec,
-        )
-        elapsed = time.monotonic() - start
-        self._log_query(query, args, timeout, elapsed)
+        with utils.timer() as t:
+            result, stmt = await self._do_execute(
+                query,
+                executor,
+                timeout,
+                record_class=record_class,
+                ignore_custom_codec=ignore_custom_codec,
+            )
+        self._log_query(query, args, timeout, t.elapsed)
         return result, stmt
 
     async def _executemany(self, query, args, timeout):
@@ -1741,10 +1739,9 @@ class Connection(metaclass=ConnectionMeta):
             stmt, args, '', timeout)
         timeout = self._protocol._get_timeout(timeout)
         with self._stmt_exclusive_section:
-            start = time.monotonic()
-            result, _ = await self._do_execute(query, executor, timeout)
-            elapsed = time.monotonic() - start
-        self._log_query(query, args, timeout, elapsed)
+            with utils.timer() as t:
+                result, _ = await self._do_execute(query, executor, timeout)
+        self._log_query(query, args, timeout, t.elapsed)
         return result
 
     async def _do_execute(
