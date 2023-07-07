@@ -229,7 +229,8 @@ class Connection(metaclass=ConnectionMeta):
         :param callable callback:
             A callable or a coroutine function receiving one argument:
             **record**: a LoggedQuery containing `query`, `args`, `timeout`,
-                        `elapsed`, `addr`, `params`, and `exception`.
+                        `elapsed`, `exception`, `conn_addr`, and
+                        `conn_params`.
 
         .. versionadded:: 0.29.0
         """
@@ -1703,7 +1704,8 @@ class Connection(metaclass=ConnectionMeta):
         :param callable callback:
             A callable or a coroutine function receiving one argument:
             **record**: a LoggedQuery containing `query`, `args`, `timeout`,
-                        `elapsed`, `addr`, `params`, and `exception`.
+                        `elapsed`, `exception`, `conn_addr`, and
+                        `conn_params`.
 
         Example:
 
@@ -1741,9 +1743,9 @@ class Connection(metaclass=ConnectionMeta):
                 args=args,
                 timeout=timeout,
                 elapsed=elapsed,
-                addr=self._addr,
-                params=self._params,
                 exception=exception,
+                conn_addr=self._addr,
+                conn_params=self._params,
             )
             for cb in self._query_loggers:
                 if cb.is_async:
@@ -2416,7 +2418,8 @@ class _ConnectionProxy:
 
 LoggedQuery = collections.namedtuple(
     'LoggedQuery',
-    ['query', 'args', 'timeout', 'elapsed', 'exception', 'addr', 'params'])
+    ['query', 'args', 'timeout', 'elapsed', 'exception', 'conn_addr',
+     'conn_params'])
 LoggedQuery.__doc__ = 'Log record of an executed query.'
 
 
