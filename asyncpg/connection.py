@@ -1703,7 +1703,7 @@ class Connection(metaclass=ConnectionMeta):
         :param callable callback:
             A callable or a coroutine function receiving one argument:
             **record**: a LoggedQuery containing `query`, `args`, `timeout`,
-                        `elapsed`, `addr`, and `params`.
+                        `elapsed`, `addr`, `params`, and `exception`.
 
         Example:
 
@@ -1712,7 +1712,7 @@ class Connection(metaclass=ConnectionMeta):
             >>> class QuerySaver:
                     def __init__(self):
                         self.queries = []
-                    def __call__(self, conn, record):
+                    def __call__(self, record):
                         self.queries.append(record.query)
             >>> with con.logger(QuerySaver()) as log:
             >>>     await con.execute("SELECT 1")
