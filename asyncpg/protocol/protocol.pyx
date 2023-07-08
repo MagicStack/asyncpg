@@ -98,8 +98,6 @@ cdef class BaseProtocol(CoreProtocol):
         self.writing_allowed.set()
 
         self.timeout_handle = None
-        self.timeout_callback = self._on_timeout
-        self.completed_callback = self._on_waiter_completed
 
         self.queries_count = 0
 
@@ -614,7 +612,6 @@ cdef class BaseProtocol(CoreProtocol):
         # Ask the server to terminate the connection and wait for it
         # to drop.
         self.waiter = self._new_waiter(timeout)
-        self.timeout_callback = self.completed_callback = None
         self._terminate()
         try:
             await self.waiter
@@ -683,7 +680,6 @@ cdef class BaseProtocol(CoreProtocol):
                 exc.__cause__ = cause
             self.waiter.set_exception(exc)
         self.waiter = None
-        self.timeout_callback = self.completed_callback = None
 
     cdef _set_server_parameter(self, name, val):
         self.settings.add_setting(name, val)
@@ -756,8 +752,8 @@ cdef class BaseProtocol(CoreProtocol):
         self.waiter = self.create_future()
         if timeout is not None:
             self.timeout_handle = self.loop.call_later(
-                timeout, self.timeout_callback, self.waiter)
-        self.waiter.add_done_callback(self.completed_callback)
+                timeout, self._on_timeout, self.waiter)
+        self.waiter.add_done_callback(self._on_waiter_completed)
         return self.waiter
 
     cdef _on_result__connect(self, object waiter):
