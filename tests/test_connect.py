@@ -1859,8 +1859,8 @@ class TestConnectionGC(tb.ClusterTestCase):
             self.assertIsNone(conref())
             self.assertTrue(proto.is_closed())
 
-            # tick event loop so asyncio.selector_events._SelectorSocketTransport
-            # has a chance to close itself and remove its reference to proto
+            # tick event loop; asyncio.selector_events._SelectorSocketTransport
+            # needs a chance to close itself and remove its reference to proto
             await asyncio.sleep(0)
             protoref = weakref.ref(proto)
             del proto
