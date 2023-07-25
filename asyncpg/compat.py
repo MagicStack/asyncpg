@@ -58,8 +58,8 @@ async def wait_for(fut, timeout):
 
     try:
         return await asyncio.wait_for(fut, timeout)
-    except asyncio.CancelledError:
-        if fut.done():
+    except (asyncio.CancelledError, asyncio.TimeoutError):
+        if fut.done() and not fut.cancelled():
             return fut.result()
         else:
             raise
