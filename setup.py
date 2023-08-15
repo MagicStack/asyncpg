@@ -7,8 +7,8 @@
 
 import sys
 
-if sys.version_info < (3, 7):
-    raise RuntimeError('asyncpg requires Python 3.7 or greater')
+if sys.version_info < (3, 8):
+    raise RuntimeError('asyncpg requires Python 3.8 or greater')
 
 import os
 import os.path
