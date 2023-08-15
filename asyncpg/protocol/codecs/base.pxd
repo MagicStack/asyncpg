@@ -57,6 +57,7 @@ cdef class Codec:
 
         encode_func     c_encoder
         decode_func     c_decoder
+        Codec           base_codec
 
         object          py_encoder
         object          py_decoder
@@ -79,6 +80,7 @@ cdef class Codec:
               CodecType type, ServerDataFormat format,
               ClientExchangeFormat xformat,
               encode_func c_encoder, decode_func c_decoder,
+              Codec base_codec,
               object py_encoder, object py_decoder,
               Codec element_codec, tuple element_type_oids,
               object element_names, list element_codecs,
@@ -169,6 +171,7 @@ cdef class Codec:
                                 object decoder,
                                 encode_func c_encoder,
                                 decode_func c_decoder,
+                                Codec base_codec,
                                 ServerDataFormat format,
                                 ClientExchangeFormat xformat)
 

@@ -18,7 +18,7 @@ cdef class ConnectionSettings(pgproto.CodecContext):
     cpdef get_text_codec(self)
     cpdef inline register_data_types(self, types)
     cpdef inline add_python_codec(
-        self, typeoid, typename, typeschema, typekind, encoder,
+        self, typeoid, typename, typeschema, typeinfos, typekind, encoder,
         decoder, format)
     cpdef inline remove_python_codec(
         self, typeoid, typename, typeschema)
