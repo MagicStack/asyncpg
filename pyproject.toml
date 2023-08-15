@@ -2,7 +2,7 @@
 name = "asyncpg"
 description = "An asyncio PostgreSQL driver"
 authors = [{name = "MagicStack Inc", email = "hello@magic.io"}]
-requires-python = '>=3.7.0'
+requires-python = '>=3.8.0'
 readme = "README.rst"
 license = {text = "Apache License, Version 2.0"}
 dynamic = ["version"]
@@ -19,16 +19,12 @@ classifiers = [
     "Operating System :: MacOS :: MacOS X",
     "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: Implementation :: CPython",
     "Topic :: Database :: Front-Ends",
-]
-dependencies = [
-    'typing-extensions>=3.7.4.3;python_version<"3.8"',
 ]
 
 [project.urls]
