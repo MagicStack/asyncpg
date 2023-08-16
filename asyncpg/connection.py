@@ -47,6 +47,7 @@ class Connection(metaclass=ConnectionMeta):
     __slots__ = ('_protocol', '_transport', '_loop',
                  '_top_xact', '_aborted',
                  '_pool_release_ctr', '_stmt_cache', '_stmts_to_close',
+                 '_stmt_cache_enabled',
                  '_listeners', '_server_version', '_server_caps',
                  '_intro_query', '_reset_query', '_proxy',
                  '_stmt_exclusive_section', '_config', '_params', '_addr',
@@ -79,6 +80,7 @@ class Connection(metaclass=ConnectionMeta):
             max_lifetime=config.max_cached_statement_lifetime)
 
         self._stmts_to_close = set()
+        self._stmt_cache_enabled = config.statement_cache_size > 0
 
         self._listeners = {}
         self._log_listeners = set()
@@ -381,11 +383,13 @@ class Connection(metaclass=ConnectionMeta):
             # Only use the cache when:
             #  * `statement_cache_size` is greater than 0;
             #  * query size is less than `max_cacheable_statement_size`.
-            use_cache = self._stmt_cache.get_max_size() > 0
-            if (use_cache and
-                    self._config.max_cacheable_statement_size and
-                    len(query) > self._config.max_cacheable_statement_size):
-                use_cache = False
+            use_cache = (
+                self._stmt_cache_enabled
+                and (
+                    not self._config.max_cacheable_statement_size
+                    or len(query) <= self._config.max_cacheable_statement_size
+                )
+            )
 
         if isinstance(named, str):
             stmt_name = named
@@ -434,14 +438,16 @@ class Connection(metaclass=ConnectionMeta):
         # for the statement.
         statement._init_codecs()
 
-        if need_reprepare:
-            await self._protocol.prepare(
-                stmt_name,
-                query,
-                timeout,
-                state=statement,
-                record_class=record_class,
-            )
+        if (
+            need_reprepare
+            or (not statement.name and not self._stmt_cache_enabled)
+        ):
+            # Mark this anonymous prepared statement as "unprepared",
+            # causing it to get re-Parsed in next bind_execute.
+            # We always do this when stmt_cache_size is set to 0 assuming
+            # people are running PgBouncer which is mishandling implicit
+            # transactions.
+            statement.mark_unprepared()
 
         if use_cache:
             self._stmt_cache.put(
@@ -1679,7 +1685,13 @@ class Connection(metaclass=ConnectionMeta):
         record_class=None
     ):
         executor = lambda stmt, timeout: self._protocol.bind_execute(
-            stmt, args, '', limit, return_status, timeout)
+            state=stmt,
+            args=args,
+            portal_name='',
+            limit=limit,
+            return_extra=return_status,
+            timeout=timeout,
+        )
         timeout = self._protocol._get_timeout(timeout)
         return await self._do_execute(
             query,
@@ -1691,7 +1703,11 @@ class Connection(metaclass=ConnectionMeta):
 
     async def _executemany(self, query, args, timeout):
         executor = lambda stmt, timeout: self._protocol.bind_execute_many(
-            stmt, args, '', timeout)
+            state=stmt,
+            args=args,
+            portal_name='',
+            timeout=timeout,
+        )
         timeout = self._protocol._get_timeout(timeout)
         with self._stmt_exclusive_section:
             result, _ = await self._do_execute(query, executor, timeout)

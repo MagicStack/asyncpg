@@ -167,7 +167,8 @@ cdef class CoreProtocol:
 
 
     cdef _connect(self)
-    cdef _prepare(self, str stmt_name, str query)
+    cdef _prepare_and_describe(self, str stmt_name, str query)
+    cdef _send_parse_message(self, str stmt_name, str query)
     cdef _send_bind_message(self, str portal_name, str stmt_name,
                             WriteBuffer bind_data, int32_t limit)
     cdef _bind_execute(self, str portal_name, str stmt_name,
