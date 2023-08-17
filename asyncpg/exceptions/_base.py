@@ -13,7 +13,8 @@ import textwrap
 __all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError',
            'InterfaceError', 'InterfaceWarning', 'PostgresLogMessage',
            'InternalClientError', 'OutdatedSchemaCacheError', 'ProtocolError',
-           'UnsupportedClientFeatureError', 'TargetServerAttributeNotMatched')
+           'UnsupportedClientFeatureError', 'TargetServerAttributeNotMatched',
+           'ClientConfigurationError')
 
 
 def _is_asyncpg_class(cls):
@@ -218,6 +219,10 @@ class InterfaceError(InterfaceMessage, Exception):
         ).with_traceback(
             self.__traceback__
         )
+
+
+class ClientConfigurationError(InterfaceError, ValueError):
+    """An error caused by improper client configuration."""
 
 
 class DataError(InterfaceError, ValueError):

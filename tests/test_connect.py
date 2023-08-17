@@ -79,6 +79,15 @@ def mock_no_home_dir():
         yield
 
 
+@contextlib.contextmanager
+def mock_dev_null_home_dir():
+    with unittest.mock.patch(
+        'pathlib.Path.home',
+        unittest.mock.Mock(return_value=pathlib.Path('/dev/null')),
+    ):
+        yield
+
+
 class TestSettings(tb.ConnectedTestCase):
 
     async def test_get_settings_01(self):
@@ -1318,11 +1327,30 @@ class TestConnection(tb.ConnectedTestCase):
             await con.fetchval('SELECT 42')
             await con.close()
 
+        with mock_dev_null_home_dir():
+            con = await self.connect(
+                dsn='postgresql://foo/',
+                user='postgres',
+                database='postgres',
+                host='localhost')
+            await con.fetchval('SELECT 42')
+            await con.close()
+
         with self.assertRaisesRegex(
-            RuntimeError,
-            'Cannot determine home directory'
+            exceptions.ClientConfigurationError,
+            r'root certificate file "~/\.postgresql/root\.crt" does not exist'
         ):
             with mock_no_home_dir():
+                await self.connect(
+                    host='localhost',
+                    user='ssl_user',
+                    ssl='verify-full')
+
+        with self.assertRaisesRegex(
+            exceptions.ClientConfigurationError,
+            r'root certificate file ".*" does not exist'
+        ):
+            with mock_dev_null_home_dir():
                 await self.connect(
                     host='localhost',
                     user='ssl_user',
