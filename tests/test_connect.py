@@ -126,6 +126,9 @@ class TestSettings(tb.ConnectedTestCase):
             self.assertEqual(expected, result)
 
 
+CORRECT_PASSWORD = 'correct\u1680password'
+
+
 class TestAuthentication(tb.ConnectedTestCase):
     def setUp(self):
         super().setUp()
@@ -136,9 +139,9 @@ class TestAuthentication(tb.ConnectedTestCase):
         methods = [
             ('trust', None),
             ('reject', None),
-            ('scram-sha-256', 'correctpassword'),
-            ('md5', 'correctpassword'),
-            ('password', 'correctpassword'),
+            ('scram-sha-256', CORRECT_PASSWORD),
+            ('md5', CORRECT_PASSWORD),
+            ('password', CORRECT_PASSWORD),
         ]
 
         self.cluster.reset_hba()
@@ -160,7 +163,7 @@ class TestAuthentication(tb.ConnectedTestCase):
             create_script.append(
                 'CREATE ROLE {}_user WITH LOGIN{};'.format(
                     username,
-                    ' PASSWORD {!r}'.format(password) if password else ''
+                    f' PASSWORD E{(password or "")!r}'
                 )
             )
 
@@ -250,7 +253,7 @@ class TestAuthentication(tb.ConnectedTestCase):
     async def test_auth_password_cleartext(self):
         conn = await self.connect(
             user='password_user',
-            password='correctpassword')
+            password=CORRECT_PASSWORD)
         await conn.close()
 
         with self.assertRaisesRegex(
@@ -262,7 +265,7 @@ class TestAuthentication(tb.ConnectedTestCase):
 
     async def test_auth_password_cleartext_callable(self):
         def get_correctpassword():
-            return 'correctpassword'
+            return CORRECT_PASSWORD
 
         def get_wrongpassword():
             return 'wrongpassword'
@@ -281,7 +284,7 @@ class TestAuthentication(tb.ConnectedTestCase):
 
     async def test_auth_password_cleartext_callable_coroutine(self):
         async def get_correctpassword():
-            return 'correctpassword'
+            return CORRECT_PASSWORD
 
         async def get_wrongpassword():
             return 'wrongpassword'
@@ -300,7 +303,7 @@ class TestAuthentication(tb.ConnectedTestCase):
 
     async def test_auth_password_cleartext_callable_awaitable(self):
         async def get_correctpassword():
-            return 'correctpassword'
+            return CORRECT_PASSWORD
 
         async def get_wrongpassword():
             return 'wrongpassword'
@@ -319,7 +322,7 @@ class TestAuthentication(tb.ConnectedTestCase):
 
     async def test_auth_password_md5(self):
         conn = await self.connect(
-            user='md5_user', password='correctpassword')
+            user='md5_user', password=CORRECT_PASSWORD)
         await conn.close()
 
         with self.assertRaisesRegex(
@@ -334,7 +337,7 @@ class TestAuthentication(tb.ConnectedTestCase):
             return
 
         conn = await self.connect(
-            user='scram_sha_256_user', password='correctpassword')
+            user='scram_sha_256_user', password=CORRECT_PASSWORD)
         await conn.close()
 
         with self.assertRaisesRegex(
@@ -371,7 +374,7 @@ class TestAuthentication(tb.ConnectedTestCase):
             await conn.close()
 
         alter_password = \
-            "ALTER ROLE scram_sha_256_user PASSWORD 'correctpassword';"
+            f"ALTER ROLE scram_sha_256_user PASSWORD E{CORRECT_PASSWORD!r};"
         await self.con.execute(alter_password)
         await self.con.execute("SET password_encryption = 'md5';")
 
@@ -381,7 +384,7 @@ class TestAuthentication(tb.ConnectedTestCase):
             exceptions.InternalClientError,
             ".*no md5.*",
         ):
-            await self.connect(user='md5_user', password='correctpassword')
+            await self.connect(user='md5_user', password=CORRECT_PASSWORD)
 
 
 class TestConnectParams(tb.TestCase):

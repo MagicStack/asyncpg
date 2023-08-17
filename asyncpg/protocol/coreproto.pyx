@@ -642,7 +642,7 @@ cdef class CoreProtocol:
             WriteBuffer msg
 
         msg = WriteBuffer.new_message(b'p')
-        msg.write_bytestring(self.password.encode('ascii'))
+        msg.write_bytestring(self.password.encode(self.encoding))
         msg.end_message()
 
         return msg
@@ -654,11 +654,11 @@ cdef class CoreProtocol:
         msg = WriteBuffer.new_message(b'p')
 
         # 'md5' + md5(md5(password + username) + salt))
-        userpass = ((self.password or '') + (self.user or '')).encode('ascii')
-        hash = hashlib.md5(hashlib.md5(userpass).hexdigest().\
-                encode('ascii') + salt).hexdigest().encode('ascii')
+        userpass = (self.password or '') + (self.user or '')
+        md5_1 = hashlib.md5(userpass.encode(self.encoding)).hexdigest()
+        md5_2 = hashlib.md5(md5_1.encode('ascii') + salt).hexdigest()
 
-        msg.write_bytestring(b'md5' + hash)
+        msg.write_bytestring(b'md5' + md5_2.encode('ascii'))
         msg.end_message()
 
         return msg
