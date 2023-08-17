@@ -47,6 +47,7 @@ class Connection(metaclass=ConnectionMeta):
     __slots__ = ('_protocol', '_transport', '_loop',
                  '_top_xact', '_aborted',
                  '_pool_release_ctr', '_stmt_cache', '_stmts_to_close',
+                 '_stmt_cache_enabled',
                  '_listeners', '_server_version', '_server_caps',
                  '_intro_query', '_reset_query', '_proxy',
                  '_stmt_exclusive_section', '_config', '_params', '_addr',
@@ -79,6 +80,7 @@ class Connection(metaclass=ConnectionMeta):
             max_lifetime=config.max_cached_statement_lifetime)
 
         self._stmts_to_close = set()
+        self._stmt_cache_enabled = config.statement_cache_size > 0
 
         self._listeners = {}
         self._log_listeners = set()
@@ -257,9 +259,9 @@ class Connection(metaclass=ConnectionMeta):
 
         :param isolation: Transaction isolation mode, can be one of:
                           `'serializable'`, `'repeatable_read'`,
-                          `'read_committed'`. If not specified, the behavior
-                          is up to the server and session, which is usually
-                          ``read_committed``.
+                          `'read_uncommitted'`, `'read_committed'`. If not
+                          specified, the behavior is up to the server and
+                          session, which is usually ``read_committed``.
 
         :param readonly: Specifies whether or not this transaction is
                          read-only.
@@ -381,11 +383,13 @@ class Connection(metaclass=ConnectionMeta):
             # Only use the cache when:
             #  * `statement_cache_size` is greater than 0;
             #  * query size is less than `max_cacheable_statement_size`.
-            use_cache = self._stmt_cache.get_max_size() > 0
-            if (use_cache and
-                    self._config.max_cacheable_statement_size and
-                    len(query) > self._config.max_cacheable_statement_size):
-                use_cache = False
+            use_cache = (
+                self._stmt_cache_enabled
+                and (
+                    not self._config.max_cacheable_statement_size
+                    or len(query) <= self._config.max_cacheable_statement_size
+                )
+            )
 
         if isinstance(named, str):
             stmt_name = named
@@ -434,14 +438,16 @@ class Connection(metaclass=ConnectionMeta):
         # for the statement.
         statement._init_codecs()
 
-        if need_reprepare:
-            await self._protocol.prepare(
-                stmt_name,
-                query,
-                timeout,
-                state=statement,
-                record_class=record_class,
-            )
+        if (
+            need_reprepare
+            or (not statement.name and not self._stmt_cache_enabled)
+        ):
+            # Mark this anonymous prepared statement as "unprepared",
+            # causing it to get re-Parsed in next bind_execute.
+            # We always do this when stmt_cache_size is set to 0 assuming
+            # people are running PgBouncer which is mishandling implicit
+            # transactions.
+            statement.mark_unprepared()
 
         if use_cache:
             self._stmt_cache.put(
@@ -1154,6 +1160,9 @@ class Connection(metaclass=ConnectionMeta):
             | ``time with     | (``microseconds``,                          |
             | time zone``     | ``time zone offset in seconds``)            |
             +-----------------+---------------------------------------------+
+            | any composite   | Composite value elements                    |
+            | type            |                                             |
+            +-----------------+---------------------------------------------+
 
         :param encoder:
             Callable accepting a Python object as a single argument and
@@ -1208,6 +1217,10 @@ class Connection(metaclass=ConnectionMeta):
             The ``binary`` keyword argument was removed in favor of
             ``format``.
 
+        .. versionchanged:: 0.29.0
+            Custom codecs for composite types are now supported with
+            ``format='tuple'``.
+
         .. note::
 
            It is recommended to use the ``'binary'`` or ``'tuple'`` *format*
@@ -1218,11 +1231,28 @@ class Connection(metaclass=ConnectionMeta):
            codecs.
         """
         self._check_open()
+        settings = self._protocol.get_settings()
         typeinfo = await self._introspect_type(typename, schema)
-        if not introspection.is_scalar_type(typeinfo):
+        full_typeinfos = []
+        if introspection.is_scalar_type(typeinfo):
+            kind = 'scalar'
+        elif introspection.is_composite_type(typeinfo):
+            if format != 'tuple':
+                raise exceptions.UnsupportedClientFeatureError(
+                    'only tuple-format codecs can be used on composite types',
+                    hint="Use `set_type_codec(..., format='tuple')` and "
+                         "pass/interpret data as a Python tuple.  See an "
+                         "example at https://magicstack.github.io/asyncpg/"
+                         "current/usage.html#example-decoding-complex-types",
+                )
+            kind = 'composite'
+            full_typeinfos, _ = await self._introspect_types(
+                (typeinfo['oid'],), 10)
+        else:
             raise exceptions.InterfaceError(
-                'cannot use custom codec on non-scalar type {}.{}'.format(
-                    schema, typename))
+                f'cannot use custom codec on type {schema}.{typename}: '
+                f'it is neither a scalar type nor a composite type'
+            )
         if introspection.is_domain_type(typeinfo):
             raise exceptions.UnsupportedClientFeatureError(
                 'custom codecs on domain types are not supported',
@@ -1234,8 +1264,8 @@ class Connection(metaclass=ConnectionMeta):
             )
 
         oid = typeinfo['oid']
-        self._protocol.get_settings().add_python_codec(
-            oid, typename, schema, 'scalar',
+        settings.add_python_codec(
+            oid, typename, schema, full_typeinfos, kind,
             encoder, decoder, format)
 
         # Statement cache is no longer valid due to codec changes.
@@ -1679,7 +1709,13 @@ class Connection(metaclass=ConnectionMeta):
         record_class=None
     ):
         executor = lambda stmt, timeout: self._protocol.bind_execute(
-            stmt, args, '', limit, return_status, timeout)
+            state=stmt,
+            args=args,
+            portal_name='',
+            limit=limit,
+            return_extra=return_status,
+            timeout=timeout,
+        )
         timeout = self._protocol._get_timeout(timeout)
         return await self._do_execute(
             query,
@@ -1691,7 +1727,11 @@ class Connection(metaclass=ConnectionMeta):
 
     async def _executemany(self, query, args, timeout):
         executor = lambda stmt, timeout: self._protocol.bind_execute_many(
-            stmt, args, '', timeout)
+            state=stmt,
+            args=args,
+            portal_name='',
+            timeout=timeout,
+        )
         timeout = self._protocol._get_timeout(timeout)
         with self._stmt_exclusive_section:
             result, _ = await self._do_execute(query, executor, timeout)
@@ -1792,7 +1832,8 @@ async def connect(dsn=None, *,
                   direct_tls=False,
                   connection_class=Connection,
                   record_class=protocol.Record,
-                  server_settings=None):
+                  server_settings=None,
+                  target_session_attrs=None):
     r"""A coroutine to establish a connection to a PostgreSQL server.
 
     The connection parameters may be specified either as a connection
@@ -2003,6 +2044,23 @@ async def connect(dsn=None, *,
         this connection object.  Must be a subclass of
         :class:`~asyncpg.Record`.
 
+    :param SessionAttribute target_session_attrs:
+        If specified, check that the host has the correct attribute.
+        Can be one of:
+
+        - ``"any"`` - the first successfully connected host
+        - ``"primary"`` - the host must NOT be in hot standby mode
+        - ``"standby"`` - the host must be in hot standby mode
+        - ``"read-write"`` - the host must allow writes
+        - ``"read-only"`` - the host most NOT allow writes
+        - ``"prefer-standby"`` - first try to find a standby host, but if
+          none of the listed hosts is a standby server,
+          return any of them.
+
+        If not specified, the value parsed from the *dsn* argument is used,
+        or the value of the ``PGTARGETSESSIONATTRS`` environment variable,
+        or ``"any"`` if neither is specified.
+
     :return: A :class:`~asyncpg.connection.Connection` instance.
 
     Example:
@@ -2068,6 +2126,9 @@ async def connect(dsn=None, *,
     .. versionchanged:: 0.26.0
        Added the *direct_tls* parameter.
 
+    .. versionchanged:: 0.28.0
+       Added the *target_session_attrs* parameter.
+
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
         https://docs.python.org/3/library/ssl.html#ssl.create_default_context
@@ -2109,6 +2170,7 @@ async def connect(dsn=None, *,
         statement_cache_size=statement_cache_size,
         max_cached_statement_lifetime=max_cached_statement_lifetime,
         max_cacheable_statement_size=max_cacheable_statement_size,
+        target_session_attrs=target_session_attrs
     )
 
 

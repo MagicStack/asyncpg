@@ -626,7 +626,7 @@ class HotStandbyCluster(TempCluster):
                 'pg_basebackup init exited with status {:d}:\n{}'.format(
                     process.returncode, output.decode()))
 
-        if self._pg_version <= (11, 0):
+        if self._pg_version < (12, 0):
             with open(os.path.join(self._data_dir, 'recovery.conf'), 'w') as f:
                 f.write(textwrap.dedent("""\
                     standby_mode = 'on'

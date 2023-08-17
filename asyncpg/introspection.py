@@ -286,3 +286,7 @@ def is_scalar_type(typeinfo) -> bool:
 
 def is_domain_type(typeinfo) -> bool:
     return typeinfo['kind'] == b'd'
+
+
+def is_composite_type(typeinfo) -> bool:
+    return typeinfo['kind'] == b'c'
