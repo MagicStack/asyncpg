@@ -1160,6 +1160,9 @@ class Connection(metaclass=ConnectionMeta):
             | ``time with     | (``microseconds``,                          |
             | time zone``     | ``time zone offset in seconds``)            |
             +-----------------+---------------------------------------------+
+            | any composite   | Composite value elements                    |
+            | type            |                                             |
+            +-----------------+---------------------------------------------+
 
         :param encoder:
             Callable accepting a Python object as a single argument and
@@ -1214,6 +1217,10 @@ class Connection(metaclass=ConnectionMeta):
             The ``binary`` keyword argument was removed in favor of
             ``format``.
 
+        .. versionchanged:: 0.29.0
+            Custom codecs for composite types are now supported with
+            ``format='tuple'``.
+
         .. note::
 
            It is recommended to use the ``'binary'`` or ``'tuple'`` *format*
@@ -1224,11 +1231,28 @@ class Connection(metaclass=ConnectionMeta):
            codecs.
         """
         self._check_open()
+        settings = self._protocol.get_settings()
         typeinfo = await self._introspect_type(typename, schema)
-        if not introspection.is_scalar_type(typeinfo):
+        full_typeinfos = []
+        if introspection.is_scalar_type(typeinfo):
+            kind = 'scalar'
+        elif introspection.is_composite_type(typeinfo):
+            if format != 'tuple':
+                raise exceptions.UnsupportedClientFeatureError(
+                    'only tuple-format codecs can be used on composite types',
+                    hint="Use `set_type_codec(..., format='tuple')` and "
+                         "pass/interpret data as a Python tuple.  See an "
+                         "example at https://magicstack.github.io/asyncpg/"
+                         "current/usage.html#example-decoding-complex-types",
+                )
+            kind = 'composite'
+            full_typeinfos, _ = await self._introspect_types(
+                (typeinfo['oid'],), 10)
+        else:
             raise exceptions.InterfaceError(
-                'cannot use custom codec on non-scalar type {}.{}'.format(
-                    schema, typename))
+                f'cannot use custom codec on type {schema}.{typename}: '
+                f'it is neither a scalar type nor a composite type'
+            )
         if introspection.is_domain_type(typeinfo):
             raise exceptions.UnsupportedClientFeatureError(
                 'custom codecs on domain types are not supported',
@@ -1240,8 +1264,8 @@ class Connection(metaclass=ConnectionMeta):
             )
 
         oid = typeinfo['oid']
-        self._protocol.get_settings().add_python_codec(
-            oid, typename, schema, 'scalar',
+        settings.add_python_codec(
+            oid, typename, schema, full_typeinfos, kind,
             encoder, decoder, format)
 
         # Statement cache is no longer valid due to codec changes.

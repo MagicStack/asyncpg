@@ -36,7 +36,8 @@ cdef class ConnectionSettings(pgproto.CodecContext):
         self._data_codecs.add_types(types)
 
     cpdef inline add_python_codec(self, typeoid, typename, typeschema,
-                                  typekind, encoder, decoder, format):
+                                  typeinfos, typekind, encoder, decoder,
+                                  format):
         cdef:
             ServerDataFormat _format
             ClientExchangeFormat xformat
@@ -57,7 +58,8 @@ cdef class ConnectionSettings(pgproto.CodecContext):
                 ))
 
         self._data_codecs.add_python_codec(typeoid, typename, typeschema,
-                                           typekind, encoder, decoder,
+                                           typekind, typeinfos,
+                                           encoder, decoder,
                                            _format, xformat)
 
     cpdef inline remove_python_codec(self, typeoid, typename, typeschema):
