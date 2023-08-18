@@ -633,17 +633,32 @@ class TestCodecs(tb.ConnectedTestCase):
             "SELECT $1::numeric", decimal.Decimal('sNaN'))
         self.assertTrue(res.is_nan())
 
-        with self.assertRaisesRegex(asyncpg.DataError,
-                                    'numeric type does not '
-                                    'support infinite values'):
-            await self.con.fetchval(
-                "SELECT $1::numeric", decimal.Decimal('-Inf'))
+        if self.server_version < (14, 0):
+            with self.assertRaisesRegex(
+                asyncpg.DataError,
+                'invalid sign in external "numeric" value'
+            ):
+                await self.con.fetchval(
+                    "SELECT $1::numeric", decimal.Decimal('-Inf'))
 
-        with self.assertRaisesRegex(asyncpg.DataError,
-                                    'numeric type does not '
-                                    'support infinite values'):
-            await self.con.fetchval(
-                "SELECT $1::numeric", decimal.Decimal('+Inf'))
+            with self.assertRaisesRegex(
+                asyncpg.DataError,
+                'invalid sign in external "numeric" value'
+            ):
+                await self.con.fetchval(
+                    "SELECT $1::numeric", decimal.Decimal('+Inf'))
+
+            with self.assertRaisesRegex(asyncpg.DataError, 'invalid'):
+                await self.con.fetchval(
+                    "SELECT $1::numeric", 'invalid')
+        else:
+            res = await self.con.fetchval(
+                "SELECT $1::numeric", decimal.Decimal("-Inf"))
+            self.assertTrue(res.is_infinite())
+
+            res = await self.con.fetchval(
+                "SELECT $1::numeric", decimal.Decimal("+Inf"))
+            self.assertTrue(res.is_infinite())
 
         with self.assertRaisesRegex(asyncpg.DataError, 'invalid'):
             await self.con.fetchval(
