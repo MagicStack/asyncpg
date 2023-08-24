@@ -564,6 +564,42 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'target_session_attrs',
+            'dsn': 'postgresql://user@host1:1111,host2:2222/db'
+                   '?target_session_attrs=read-only',
+            'result': ([('host1', 1111), ('host2', 2222)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'read-only',
+            })
+        },
+
+        {
+            'name': 'target_session_attrs_2',
+            'dsn': 'postgresql://user@host1:1111,host2:2222/db'
+                   '?target_session_attrs=read-only',
+            'target_session_attrs': 'read-write',
+            'result': ([('host1', 1111), ('host2', 2222)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'read-write',
+            })
+        },
+
+        {
+            'name': 'target_session_attrs_3',
+            'dsn': 'postgresql://user@host1:1111,host2:2222/db',
+            'env': {
+                'PGTARGETSESSIONATTRS': 'read-only',
+            },
+            'result': ([('host1', 1111), ('host2', 2222)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'read-only',
+            })
+        },
+
+        {
             'name': 'dsn_ipv6_multi_host',
             'dsn': 'postgresql://user@[2001:db8::1234%25eth0],[::1]/db',
             'result': ([('2001:db8::1234%eth0', 5432), ('::1', 5432)], {

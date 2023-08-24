@@ -378,6 +378,13 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     'ssl_max_protocol_version'
                 )
 
+            if 'target_session_attrs' in query:
+                dsn_target_session_attrs = query.pop(
+                    'target_session_attrs'
+                )
+                if target_session_attrs is None:
+                    target_session_attrs = dsn_target_session_attrs
+
             if query:
                 if server_settings is None:
                     server_settings = query
