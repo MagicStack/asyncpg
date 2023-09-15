@@ -25,7 +25,6 @@ __pycache__/
 .d8_history
 /*.egg
 /*.egg-info
-/dist
 /.cache
 docs/_build
 *,cover
@@ -34,3 +33,4 @@ docs/_build
 /.eggs
 /.vscode
 /.mypy_cache
+venv/
