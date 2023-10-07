@@ -94,6 +94,15 @@ class TestSettings(tb.ConnectedTestCase):
         self.assertEqual(
             self.con.get_settings().client_encoding,
             'UTF8')
+        await self.con.execute("set client_encoding to 'sql-ascii'")
+        self.assertEqual(self.con.get_settings().client_encoding, "SQL_ASCII")
+
+    async def test_client_encoding(self):
+        await self.con.execute("set client_encoding to 'sql-ascii'")
+        encoding = await self.con.fetchval("show client_encoding")
+        self.assertEqual(encoding, "SQL_ASCII")
+        encoding = await self.con.fetchval("select $1::text", encoding)
+        self.assertEqual(encoding, "SQL_ASCII")
 
     async def test_server_version_01(self):
         version = self.con.get_server_version()
