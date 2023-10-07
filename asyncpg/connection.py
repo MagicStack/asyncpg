@@ -461,13 +461,46 @@ class Connection(metaclass=ConnectionMeta):
         return statement
 
     async def _introspect_types(self, typeoids, timeout):
-        return await self.__execute(
+        if self._server_caps.jit:
+            try:
+                cfgrow, _ = await self.__execute(
+                    """
+                    SELECT
+                        current_setting('jit') AS cur,
+                        set_config('jit', 'off', false) AS new
+                    """,
+                    (),
+                    0,
+                    timeout,
+                    ignore_custom_codec=True,
+                )
+                jit_state = cfgrow[0]['cur']
+            except exceptions.UndefinedObjectError:
+                jit_state = 'off'
+        else:
+            jit_state = 'off'
+
+        result = await self.__execute(
             self._intro_query,
             (list(typeoids),),
             0,
             timeout,
             ignore_custom_codec=True,
         )
+
+        if jit_state != 'off':
+            await self.__execute(
+                """
+                SELECT
+                    set_config('jit', $1, false)
+                """,
+                (jit_state,),
+                0,
+                timeout,
+                ignore_custom_codec=True,
+            )
+
+        return result
 
     async def _introspect_type(self, typename, schema):
         if (
@@ -2370,7 +2403,7 @@ class _ConnectionProxy:
 ServerCapabilities = collections.namedtuple(
     'ServerCapabilities',
     ['advisory_locks', 'notifications', 'plpgsql', 'sql_reset',
-     'sql_close_all'])
+     'sql_close_all', 'jit'])
 ServerCapabilities.__doc__ = 'PostgreSQL server capabilities.'
 
 
@@ -2382,6 +2415,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         plpgsql = False
         sql_reset = True
         sql_close_all = False
+        jit = False
     elif hasattr(connection_settings, 'crdb_version'):
         # CockroachDB detected.
         advisory_locks = False
@@ -2389,6 +2423,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         plpgsql = False
         sql_reset = False
         sql_close_all = False
+        jit = False
     elif hasattr(connection_settings, 'crate_version'):
         # CrateDB detected.
         advisory_locks = False
@@ -2396,6 +2431,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         plpgsql = False
         sql_reset = False
         sql_close_all = False
+        jit = False
     else:
         # Standard PostgreSQL server assumed.
         advisory_locks = True
@@ -2403,13 +2439,15 @@ def _detect_server_capabilities(server_version, connection_settings):
         plpgsql = True
         sql_reset = True
         sql_close_all = True
+        jit = server_version >= (11, 0)
 
     return ServerCapabilities(
         advisory_locks=advisory_locks,
         notifications=notifications,
         plpgsql=plpgsql,
         sql_reset=sql_reset,
-        sql_close_all=sql_close_all
+        sql_close_all=sql_close_all,
+        jit=jit,
     )
 
 

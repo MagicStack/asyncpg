@@ -43,6 +43,12 @@ class TestIntrospection(tb.ConnectedTestCase):
 
         super().tearDownClass()
 
+    @classmethod
+    def get_server_settings(cls):
+        settings = super().get_server_settings()
+        settings.pop('jit', None)
+        return settings
+
     def setUp(self):
         super().setUp()
         self.loop.run_until_complete(self._add_custom_codec(self.con))
@@ -124,7 +130,7 @@ class TestIntrospection(tb.ConnectedTestCase):
         await self.con.fetchval(
             "SELECT $1::int[], '{foo}'".format(foo='a' * 10000), [1, 2])
 
-        self.assertEqual(apg_con._uid, old_uid + 1)
+        self.assertGreater(apg_con._uid, old_uid)
 
     async def test_introspection_sticks_for_ps(self):
         # Test that the introspected codec pipeline for a prepared
