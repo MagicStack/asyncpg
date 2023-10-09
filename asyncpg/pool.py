@@ -711,7 +711,8 @@ class Pool:
         force_quote=None,
         force_not_null=None,
         force_null=None,
-        encoding=None
+        encoding=None,
+        where=None
     ):
         """Copy data to the specified table.
 
@@ -740,7 +741,8 @@ class Pool:
                 force_quote=force_quote,
                 force_not_null=force_not_null,
                 force_null=force_null,
-                encoding=encoding
+                encoding=encoding,
+                where=where
             )
 
     async def copy_records_to_table(
@@ -750,7 +752,8 @@ class Pool:
         records,
         columns=None,
         schema_name=None,
-        timeout=None
+        timeout=None,
+        where=None
     ):
         """Copy a list of records to the specified table using binary COPY.
 
@@ -767,7 +770,8 @@ class Pool:
                 records=records,
                 columns=columns,
                 schema_name=schema_name,
-                timeout=timeout
+                timeout=timeout,
+                where=where
             )
 
     def acquire(self, *, timeout=None):
