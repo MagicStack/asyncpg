@@ -98,8 +98,6 @@ cdef class BaseProtocol(CoreProtocol):
         self.writing_allowed.set()
 
         self.timeout_handle = None
-        self.timeout_callback = self._on_timeout
-        self.completed_callback = self._on_waiter_completed
 
         self.queries_count = 0
 
@@ -607,6 +605,7 @@ cdef class BaseProtocol(CoreProtocol):
         self._handle_waiter_on_connection_lost(None)
         self._terminate()
         self.transport.abort()
+        self.transport = None
 
     @cython.iterable_coroutine
     async def close(self, timeout):
@@ -777,8 +776,8 @@ cdef class BaseProtocol(CoreProtocol):
         self.waiter = self.create_future()
         if timeout is not None:
             self.timeout_handle = self.loop.call_later(
-                timeout, self.timeout_callback, self.waiter)
-        self.waiter.add_done_callback(self.completed_callback)
+                timeout, self._on_timeout, self.waiter)
+        self.waiter.add_done_callback(self._on_waiter_completed)
         return self.waiter
 
     cdef _on_result__connect(self, object waiter):
