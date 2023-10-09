@@ -20,10 +20,12 @@ class TestQueryLogging(tb.ConnectedTestCase):
         def query_saver(record):
             queries.put_nowait(record)
 
-        with self.con.logger(query_saver):
+        log = LogCollector()
+
+        with self.con.query_logger(query_saver):
             self.assertEqual(len(self.con._query_loggers), 1)
             await self.con.execute("SELECT 1")
-            with self.con.logger(LogCollector()) as log:
+            with self.con.query_logger(log):
                 self.assertEqual(len(self.con._query_loggers), 2)
                 await self.con.execute("SELECT 2")
 
@@ -36,7 +38,8 @@ class TestQueryLogging(tb.ConnectedTestCase):
         self.assertEqual(len(self.con._query_loggers), 0)
 
     async def test_error_logging(self):
-        with self.con.logger(LogCollector()) as log:
+        log = LogCollector()
+        with self.con.query_logger(log):
             with self.assertRaises(exceptions.UndefinedColumnError):
                 await self.con.execute("SELECT x")
 

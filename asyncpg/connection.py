@@ -1803,7 +1803,7 @@ class Connection(metaclass=ConnectionMeta):
         return result
 
     @contextlib.contextmanager
-    def logger(self, callback):
+    def query_logger(self, callback):
         """Context manager that adds `callback` to the list of query loggers,
         and removes it upon exit.
 
@@ -1822,7 +1822,7 @@ class Connection(metaclass=ConnectionMeta):
                         self.queries = []
                     def __call__(self, record):
                         self.queries.append(record.query)
-            >>> with con.logger(QuerySaver()) as log:
+            >>> with con.query_logger(QuerySaver()):
             >>>     await con.execute("SELECT 1")
             >>> print(log.queries)
             ['SELECT 1']
@@ -1830,7 +1830,7 @@ class Connection(metaclass=ConnectionMeta):
         .. versionadded:: 0.29.0
         """
         self.add_query_logger(callback)
-        yield callback
+        yield
         self.remove_query_logger(callback)
 
     @contextlib.contextmanager
@@ -1839,7 +1839,7 @@ class Connection(metaclass=ConnectionMeta):
         exception = None
         try:
             yield
-        except Exception as ex:
+        except BaseException as ex:
             exception = ex
             raise
         finally:
