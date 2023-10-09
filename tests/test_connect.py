@@ -891,7 +891,7 @@ class TestConnectParams(tb.TestCase):
             addrs, params = connect_utils._parse_connect_dsn_and_args(
                 dsn=dsn, host=host, port=port, user=user, password=password,
                 passfile=passfile, database=database, ssl=sslmode,
-                direct_tls=False, connect_timeout=None,
+                direct_tls=False,
                 server_settings=server_settings,
                 target_session_attrs=target_session_attrs)
 

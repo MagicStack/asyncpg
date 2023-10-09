@@ -53,3 +53,9 @@ if sys.version_info < (3, 12):
     from ._asyncio_compat import wait_for as wait_for  # noqa: F401
 else:
     from asyncio import wait_for as wait_for  # noqa: F401
+
+
+if sys.version_info < (3, 11):
+    from ._asyncio_compat import timeout_ctx as timeout  # noqa: F401
+else:
+    from asyncio import timeout as timeout  # noqa: F401

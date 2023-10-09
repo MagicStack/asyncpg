@@ -20,6 +20,7 @@ import typing
 import warnings
 import weakref
 
+from . import compat
 from . import connect_utils
 from . import cursor
 from . import exceptions
@@ -2184,27 +2185,27 @@ async def connect(dsn=None, *,
     if loop is None:
         loop = asyncio.get_event_loop()
 
-    return await connect_utils._connect(
-        loop=loop,
-        timeout=timeout,
-        connection_class=connection_class,
-        record_class=record_class,
-        dsn=dsn,
-        host=host,
-        port=port,
-        user=user,
-        password=password,
-        passfile=passfile,
-        ssl=ssl,
-        direct_tls=direct_tls,
-        database=database,
-        server_settings=server_settings,
-        command_timeout=command_timeout,
-        statement_cache_size=statement_cache_size,
-        max_cached_statement_lifetime=max_cached_statement_lifetime,
-        max_cacheable_statement_size=max_cacheable_statement_size,
-        target_session_attrs=target_session_attrs
-    )
+    async with compat.timeout(timeout):
+        return await connect_utils._connect(
+            loop=loop,
+            connection_class=connection_class,
+            record_class=record_class,
+            dsn=dsn,
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            passfile=passfile,
+            ssl=ssl,
+            direct_tls=direct_tls,
+            database=database,
+            server_settings=server_settings,
+            command_timeout=command_timeout,
+            statement_cache_size=statement_cache_size,
+            max_cached_statement_lifetime=max_cached_statement_lifetime,
+            max_cacheable_statement_size=max_cacheable_statement_size,
+            target_session_attrs=target_session_attrs
+        )
 
 
 class _StatementCacheEntry:
