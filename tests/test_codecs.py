@@ -633,17 +633,32 @@ class TestCodecs(tb.ConnectedTestCase):
             "SELECT $1::numeric", decimal.Decimal('sNaN'))
         self.assertTrue(res.is_nan())
 
-        with self.assertRaisesRegex(asyncpg.DataError,
-                                    'numeric type does not '
-                                    'support infinite values'):
-            await self.con.fetchval(
-                "SELECT $1::numeric", decimal.Decimal('-Inf'))
+        if self.server_version < (14, 0):
+            with self.assertRaisesRegex(
+                asyncpg.DataError,
+                'invalid sign in external "numeric" value'
+            ):
+                await self.con.fetchval(
+                    "SELECT $1::numeric", decimal.Decimal('-Inf'))
 
-        with self.assertRaisesRegex(asyncpg.DataError,
-                                    'numeric type does not '
-                                    'support infinite values'):
-            await self.con.fetchval(
-                "SELECT $1::numeric", decimal.Decimal('+Inf'))
+            with self.assertRaisesRegex(
+                asyncpg.DataError,
+                'invalid sign in external "numeric" value'
+            ):
+                await self.con.fetchval(
+                    "SELECT $1::numeric", decimal.Decimal('+Inf'))
+
+            with self.assertRaisesRegex(asyncpg.DataError, 'invalid'):
+                await self.con.fetchval(
+                    "SELECT $1::numeric", 'invalid')
+        else:
+            res = await self.con.fetchval(
+                "SELECT $1::numeric", decimal.Decimal("-Inf"))
+            self.assertTrue(res.is_infinite())
+
+            res = await self.con.fetchval(
+                "SELECT $1::numeric", decimal.Decimal("+Inf"))
+            self.assertTrue(res.is_infinite())
 
         with self.assertRaisesRegex(asyncpg.DataError, 'invalid'):
             await self.con.fetchval(
@@ -1212,28 +1227,11 @@ class TestCodecs(tb.ConnectedTestCase):
             self.assertEqual(at[0].name, 'result')
             self.assertEqual(at[0].type, pt[0])
 
-            err = 'cannot use custom codec on non-scalar type public._hstore'
+            err = 'cannot use custom codec on type public._hstore'
             with self.assertRaisesRegex(asyncpg.InterfaceError, err):
                 await self.con.set_type_codec('_hstore',
                                               encoder=hstore_encoder,
                                               decoder=hstore_decoder)
-
-            await self.con.execute('''
-                CREATE TYPE mytype AS (a int);
-            ''')
-
-            try:
-                err = 'cannot use custom codec on non-scalar type ' + \
-                      'public.mytype'
-                with self.assertRaisesRegex(asyncpg.InterfaceError, err):
-                    await self.con.set_type_codec(
-                        'mytype', encoder=hstore_encoder,
-                        decoder=hstore_decoder)
-            finally:
-                await self.con.execute('''
-                    DROP TYPE mytype;
-                ''')
-
         finally:
             await self.con.execute('''
                 DROP EXTENSION hstore
@@ -1545,6 +1543,53 @@ class TestCodecs(tb.ConnectedTestCase):
                         await self.con.execute('DROP TABLE tab')
         finally:
             await conn.close()
+
+    async def test_custom_codec_composite_tuple(self):
+        await self.con.execute('''
+            CREATE TYPE mycomplex AS (r float, i float);
+        ''')
+
+        try:
+            await self.con.set_type_codec(
+                'mycomplex',
+                encoder=lambda x: (x.real, x.imag),
+                decoder=lambda t: complex(t[0], t[1]),
+                format='tuple',
+            )
+
+            num = complex('1+2j')
+
+            res = await self.con.fetchval(
+                'SELECT $1::mycomplex',
+                num,
+            )
+
+            self.assertEqual(num, res)
+
+        finally:
+            await self.con.execute('''
+                DROP TYPE mycomplex;
+            ''')
+
+    async def test_custom_codec_composite_non_tuple(self):
+        await self.con.execute('''
+            CREATE TYPE mycomplex AS (r float, i float);
+        ''')
+
+        try:
+            with self.assertRaisesRegex(
+                asyncpg.UnsupportedClientFeatureError,
+                "only tuple-format codecs can be used on composite types",
+            ):
+                await self.con.set_type_codec(
+                    'mycomplex',
+                    encoder=lambda x: (x.real, x.imag),
+                    decoder=lambda t: complex(t[0], t[1]),
+                )
+        finally:
+            await self.con.execute('''
+                DROP TYPE mycomplex;
+            ''')
 
     async def test_timetz_encoding(self):
         try:

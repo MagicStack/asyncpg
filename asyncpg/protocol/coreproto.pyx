@@ -237,6 +237,10 @@ cdef class CoreProtocol:
             # ErrorResponse
             self._parse_msg_error_response(True)
 
+        elif mtype == b'1':
+            # ParseComplete, in case `_bind_execute()` is reparsing
+            self.buffer.discard_message()
+
         elif mtype == b'2':
             # BindComplete
             self.buffer.discard_message()
@@ -268,6 +272,10 @@ cdef class CoreProtocol:
         elif mtype == b'E':
             # ErrorResponse
             self._parse_msg_error_response(True)
+
+        elif mtype == b'1':
+            # ParseComplete, in case `_bind_execute_many()` is reparsing
+            self.buffer.discard_message()
 
         elif mtype == b'2':
             # BindComplete
@@ -634,7 +642,7 @@ cdef class CoreProtocol:
             WriteBuffer msg
 
         msg = WriteBuffer.new_message(b'p')
-        msg.write_bytestring(self.password.encode('ascii'))
+        msg.write_bytestring(self.password.encode(self.encoding))
         msg.end_message()
 
         return msg
@@ -646,11 +654,11 @@ cdef class CoreProtocol:
         msg = WriteBuffer.new_message(b'p')
 
         # 'md5' + md5(md5(password + username) + salt))
-        userpass = ((self.password or '') + (self.user or '')).encode('ascii')
-        hash = hashlib.md5(hashlib.md5(userpass).hexdigest().\
-                encode('ascii') + salt).hexdigest().encode('ascii')
+        userpass = (self.password or '') + (self.user or '')
+        md5_1 = hashlib.md5(userpass.encode(self.encoding)).hexdigest()
+        md5_2 = hashlib.md5(md5_1.encode('ascii') + salt).hexdigest()
 
-        msg.write_bytestring(b'md5' + hash)
+        msg.write_bytestring(b'md5' + md5_2.encode('ascii'))
         msg.end_message()
 
         return msg
@@ -874,7 +882,15 @@ cdef class CoreProtocol:
         outbuf.write_buffer(buf)
         self._write(outbuf)
 
-    cdef _prepare(self, str stmt_name, str query):
+    cdef _send_parse_message(self, str stmt_name, str query):
+        cdef:
+            WriteBuffer msg
+
+        self._ensure_connected()
+        msg = self._build_parse_message(stmt_name, query)
+        self._write(msg)
+
+    cdef _prepare_and_describe(self, str stmt_name, str query):
         cdef:
             WriteBuffer packet
             WriteBuffer buf

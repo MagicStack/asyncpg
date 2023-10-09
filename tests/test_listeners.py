@@ -8,7 +8,6 @@
 import asyncio
 import os
 import platform
-import sys
 import unittest
 
 from asyncpg import _testbase as tb
@@ -314,9 +313,8 @@ class TestLogListeners(tb.ConnectedTestCase):
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
 @unittest.skipIf(
-    platform.system() == 'Windows' and
-    sys.version_info >= (3, 8),
-    'not compatible with ProactorEventLoop which is default in Python 3.8')
+    platform.system() == 'Windows',
+    'not compatible with ProactorEventLoop which is default in Python 3.8+')
 class TestConnectionTerminationListener(tb.ProxiedClusterTestCase):
 
     async def test_connection_termination_callback_called_on_remote(self):

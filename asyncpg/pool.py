@@ -14,7 +14,6 @@ import warnings
 
 from . import compat
 from . import connection
-from . import connect_utils
 from . import exceptions
 from . import protocol
 
@@ -311,7 +310,6 @@ class Pool:
     __slots__ = (
         '_queue', '_loop', '_minsize', '_maxsize',
         '_init', '_connect_args', '_connect_kwargs',
-        '_working_addr', '_working_config', '_working_params',
         '_holders', '_initialized', '_initializing', '_closing',
         '_closed', '_connection_class', '_record_class', '_generation',
         '_setup', '_max_queries', '_max_inactive_connection_lifetime'
@@ -377,10 +375,6 @@ class Pool:
         self._initializing = False
         self._queue = None
 
-        self._working_addr = None
-        self._working_config = None
-        self._working_params = None
-
         self._connection_class = connection_class
         self._record_class = record_class
 
@@ -430,9 +424,8 @@ class Pool:
             # first few connections in the queue, therefore we want to walk
             # `self._holders` in reverse.
 
-            # Connect the first connection holder in the queue so that it
-            # can record `_working_addr` and `_working_opts`, which will
-            # speed up successive connection attempts.
+            # Connect the first connection holder in the queue so that
+            # any connection issues are visible early.
             first_ch = self._holders[-1]  # type: PoolConnectionHolder
             await first_ch.connect()
 
@@ -504,36 +497,15 @@ class Pool:
 
         self._connect_args = [dsn]
         self._connect_kwargs = connect_kwargs
-        self._working_addr = None
-        self._working_config = None
-        self._working_params = None
 
     async def _get_new_connection(self):
-        if self._working_addr is None:
-            # First connection attempt on this pool.
-            con = await connection.connect(
-                *self._connect_args,
-                loop=self._loop,
-                connection_class=self._connection_class,
-                record_class=self._record_class,
-                **self._connect_kwargs)
-
-            self._working_addr = con._addr
-            self._working_config = con._config
-            self._working_params = con._params
-
-        else:
-            # We've connected before and have a resolved address,
-            # and parsed options and config.
-            con = await connect_utils._connect_addr(
-                loop=self._loop,
-                addr=self._working_addr,
-                timeout=self._working_params.connect_timeout,
-                config=self._working_config,
-                params=self._working_params,
-                connection_class=self._connection_class,
-                record_class=self._record_class,
-            )
+        con = await connection.connect(
+            *self._connect_args,
+            loop=self._loop,
+            connection_class=self._connection_class,
+            record_class=self._record_class,
+            **self._connect_kwargs,
+        )
 
         if self._init is not None:
             try:
@@ -739,7 +711,8 @@ class Pool:
         force_quote=None,
         force_not_null=None,
         force_null=None,
-        encoding=None
+        encoding=None,
+        where=None
     ):
         """Copy data to the specified table.
 
@@ -768,7 +741,8 @@ class Pool:
                 force_quote=force_quote,
                 force_not_null=force_not_null,
                 force_null=force_null,
-                encoding=encoding
+                encoding=encoding,
+                where=where
             )
 
     async def copy_records_to_table(
@@ -778,7 +752,8 @@ class Pool:
         records,
         columns=None,
         schema_name=None,
-        timeout=None
+        timeout=None,
+        where=None
     ):
         """Copy a list of records to the specified table using binary COPY.
 
@@ -795,7 +770,8 @@ class Pool:
                 records=records,
                 columns=columns,
                 schema_name=schema_name,
-                timeout=timeout
+                timeout=timeout,
+                where=where
             )
 
     def acquire(self, *, timeout=None):

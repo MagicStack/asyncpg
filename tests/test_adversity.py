@@ -10,16 +10,14 @@ import asyncio
 import os
 import platform
 import unittest
-import sys
 
 from asyncpg import _testbase as tb
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')
 @unittest.skipIf(
-    platform.system() == 'Windows' and
-    sys.version_info >= (3, 8),
-    'not compatible with ProactorEventLoop which is default in Python 3.8')
+    platform.system() == 'Windows',
+    'not compatible with ProactorEventLoop which is default in Python 3.8+')
 class TestConnectionLoss(tb.ProxiedClusterTestCase):
     @tb.with_timeout(30.0)
     async def test_connection_close_timeout(self):
@@ -27,6 +25,23 @@ class TestConnectionLoss(tb.ProxiedClusterTestCase):
         self.proxy.trigger_connectivity_loss()
         with self.assertRaises(asyncio.TimeoutError):
             await con.close(timeout=0.5)
+
+    @tb.with_timeout(30.0)
+    async def test_pool_acquire_timeout(self):
+        pool = await self.create_pool(
+            database='postgres', min_size=2, max_size=2)
+        try:
+            self.proxy.trigger_connectivity_loss()
+            for _ in range(2):
+                with self.assertRaises(asyncio.TimeoutError):
+                    async with pool.acquire(timeout=0.5):
+                        pass
+            self.proxy.restore_connectivity()
+            async with pool.acquire(timeout=0.5):
+                pass
+        finally:
+            self.proxy.restore_connectivity()
+            pool.terminate()
 
     @tb.with_timeout(30.0)
     async def test_pool_release_timeout(self):

@@ -7,6 +7,7 @@
 
 import asyncio
 import contextlib
+import gc
 import ipaddress
 import os
 import pathlib
@@ -79,6 +80,15 @@ def mock_no_home_dir():
         yield
 
 
+@contextlib.contextmanager
+def mock_dev_null_home_dir():
+    with unittest.mock.patch(
+        'pathlib.Path.home',
+        unittest.mock.Mock(return_value=pathlib.Path('/dev/null')),
+    ):
+        yield
+
+
 class TestSettings(tb.ConnectedTestCase):
 
     async def test_get_settings_01(self):
@@ -117,6 +127,9 @@ class TestSettings(tb.ConnectedTestCase):
             self.assertEqual(expected, result)
 
 
+CORRECT_PASSWORD = 'correct\u1680password'
+
+
 class TestAuthentication(tb.ConnectedTestCase):
     def setUp(self):
         super().setUp()
@@ -127,9 +140,9 @@ class TestAuthentication(tb.ConnectedTestCase):
         methods = [
             ('trust', None),
             ('reject', None),
-            ('scram-sha-256', 'correctpassword'),
-            ('md5', 'correctpassword'),
-            ('password', 'correctpassword'),
+            ('scram-sha-256', CORRECT_PASSWORD),
+            ('md5', CORRECT_PASSWORD),
+            ('password', CORRECT_PASSWORD),
         ]
 
         self.cluster.reset_hba()
@@ -151,7 +164,7 @@ class TestAuthentication(tb.ConnectedTestCase):
             create_script.append(
                 'CREATE ROLE {}_user WITH LOGIN{};'.format(
                     username,
-                    ' PASSWORD {!r}'.format(password) if password else ''
+                    f' PASSWORD E{(password or "")!r}'
                 )
             )
 
@@ -241,7 +254,7 @@ class TestAuthentication(tb.ConnectedTestCase):
     async def test_auth_password_cleartext(self):
         conn = await self.connect(
             user='password_user',
-            password='correctpassword')
+            password=CORRECT_PASSWORD)
         await conn.close()
 
         with self.assertRaisesRegex(
@@ -253,7 +266,7 @@ class TestAuthentication(tb.ConnectedTestCase):
 
     async def test_auth_password_cleartext_callable(self):
         def get_correctpassword():
-            return 'correctpassword'
+            return CORRECT_PASSWORD
 
         def get_wrongpassword():
             return 'wrongpassword'
@@ -272,7 +285,7 @@ class TestAuthentication(tb.ConnectedTestCase):
 
     async def test_auth_password_cleartext_callable_coroutine(self):
         async def get_correctpassword():
-            return 'correctpassword'
+            return CORRECT_PASSWORD
 
         async def get_wrongpassword():
             return 'wrongpassword'
@@ -291,7 +304,7 @@ class TestAuthentication(tb.ConnectedTestCase):
 
     async def test_auth_password_cleartext_callable_awaitable(self):
         async def get_correctpassword():
-            return 'correctpassword'
+            return CORRECT_PASSWORD
 
         async def get_wrongpassword():
             return 'wrongpassword'
@@ -310,7 +323,7 @@ class TestAuthentication(tb.ConnectedTestCase):
 
     async def test_auth_password_md5(self):
         conn = await self.connect(
-            user='md5_user', password='correctpassword')
+            user='md5_user', password=CORRECT_PASSWORD)
         await conn.close()
 
         with self.assertRaisesRegex(
@@ -325,7 +338,7 @@ class TestAuthentication(tb.ConnectedTestCase):
             return
 
         conn = await self.connect(
-            user='scram_sha_256_user', password='correctpassword')
+            user='scram_sha_256_user', password=CORRECT_PASSWORD)
         await conn.close()
 
         with self.assertRaisesRegex(
@@ -362,7 +375,7 @@ class TestAuthentication(tb.ConnectedTestCase):
             await conn.close()
 
         alter_password = \
-            "ALTER ROLE scram_sha_256_user PASSWORD 'correctpassword';"
+            f"ALTER ROLE scram_sha_256_user PASSWORD E{CORRECT_PASSWORD!r};"
         await self.con.execute(alter_password)
         await self.con.execute("SET password_encryption = 'md5';")
 
@@ -372,7 +385,7 @@ class TestAuthentication(tb.ConnectedTestCase):
             exceptions.InternalClientError,
             ".*no md5.*",
         ):
-            await self.connect(user='md5_user', password='correctpassword')
+            await self.connect(user='md5_user', password=CORRECT_PASSWORD)
 
 
 class TestConnectParams(tb.TestCase):
@@ -548,6 +561,42 @@ class TestConnectParams(tb.TestCase):
                 'database': 'db',
                 'user': 'user',
                 'target_session_attrs': 'any',
+            })
+        },
+
+        {
+            'name': 'target_session_attrs',
+            'dsn': 'postgresql://user@host1:1111,host2:2222/db'
+                   '?target_session_attrs=read-only',
+            'result': ([('host1', 1111), ('host2', 2222)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'read-only',
+            })
+        },
+
+        {
+            'name': 'target_session_attrs_2',
+            'dsn': 'postgresql://user@host1:1111,host2:2222/db'
+                   '?target_session_attrs=read-only',
+            'target_session_attrs': 'read-write',
+            'result': ([('host1', 1111), ('host2', 2222)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'read-write',
+            })
+        },
+
+        {
+            'name': 'target_session_attrs_3',
+            'dsn': 'postgresql://user@host1:1111,host2:2222/db',
+            'env': {
+                'PGTARGETSESSIONATTRS': 'read-only',
+            },
+            'result': ([('host1', 1111), ('host2', 2222)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'read-only',
             })
         },
 
@@ -856,7 +905,7 @@ class TestConnectParams(tb.TestCase):
             addrs, params = connect_utils._parse_connect_dsn_and_args(
                 dsn=dsn, host=host, port=port, user=user, password=password,
                 passfile=passfile, database=database, ssl=sslmode,
-                direct_tls=False, connect_timeout=None,
+                direct_tls=False,
                 server_settings=server_settings,
                 target_session_attrs=target_session_attrs)
 
@@ -1331,11 +1380,30 @@ class TestConnection(tb.ConnectedTestCase):
             await con.fetchval('SELECT 42')
             await con.close()
 
+        with mock_dev_null_home_dir():
+            con = await self.connect(
+                dsn='postgresql://foo/',
+                user='postgres',
+                database='postgres',
+                host='localhost')
+            await con.fetchval('SELECT 42')
+            await con.close()
+
         with self.assertRaisesRegex(
-            RuntimeError,
-            'Cannot determine home directory'
+            exceptions.ClientConfigurationError,
+            r'root certificate file "~/\.postgresql/root\.crt" does not exist'
         ):
             with mock_no_home_dir():
+                await self.connect(
+                    host='localhost',
+                    user='ssl_user',
+                    ssl='verify-full')
+
+        with self.assertRaisesRegex(
+            exceptions.ClientConfigurationError,
+            r'root certificate file ".*" does not exist'
+        ):
+            with mock_dev_null_home_dir():
                 await self.connect(
                     host='localhost',
                     user='ssl_user',
@@ -1792,14 +1860,27 @@ class TestNoSSLConnection(BaseTestSSLConnection):
 class TestConnectionGC(tb.ClusterTestCase):
 
     async def _run_no_explicit_close_test(self):
-        con = await self.connect()
-        await con.fetchval("select 123")
-        proto = con._protocol
-        conref = weakref.ref(con)
-        del con
+        gc_was_enabled = gc.isenabled()
+        gc.disable()
+        try:
+            con = await self.connect()
+            await con.fetchval("select 123")
+            proto = con._protocol
+            conref = weakref.ref(con)
+            del con
 
-        self.assertIsNone(conref())
-        self.assertTrue(proto.is_closed())
+            self.assertIsNone(conref())
+            self.assertTrue(proto.is_closed())
+
+            # tick event loop; asyncio.selector_events._SelectorSocketTransport
+            # needs a chance to close itself and remove its reference to proto
+            await asyncio.sleep(0)
+            protoref = weakref.ref(proto)
+            del proto
+            self.assertIsNone(protoref())
+        finally:
+            if gc_was_enabled:
+                gc.enable()
 
     async def test_no_explicit_close_no_debug(self):
         olddebug = self.loop.get_debug()
