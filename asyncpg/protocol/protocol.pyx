@@ -582,6 +582,7 @@ cdef class BaseProtocol(CoreProtocol):
         self._handle_waiter_on_connection_lost(None)
         self._terminate()
         self.transport.abort()
+        self.transport = None
 
     @cython.iterable_coroutine
     async def close(self, timeout):
