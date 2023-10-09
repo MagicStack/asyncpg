@@ -27,6 +27,9 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
     "Topic :: Database :: Front-Ends",
 ]
+dependencies = [
+    'async_timeout>=4.0.3; python_version < "3.12.0"'
+]
 
 [project.urls]
 github = "https://github.com/MagicStack/asyncpg"

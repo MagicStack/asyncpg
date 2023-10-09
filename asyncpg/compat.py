@@ -5,10 +5,10 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-import asyncio
 import pathlib
 import platform
 import typing
+import sys
 
 
 SYSTEM = platform.uname().system
@@ -49,17 +49,7 @@ async def wait_closed(stream):
             pass
 
 
-# Workaround for https://bugs.python.org/issue37658
-async def wait_for(fut, timeout):
-    if timeout is None:
-        return await fut
-
-    fut = asyncio.ensure_future(fut)
-
-    try:
-        return await asyncio.wait_for(fut, timeout)
-    except asyncio.CancelledError:
-        if fut.done():
-            return fut.result()
-        else:
-            raise
+if sys.version_info < (3, 12):
+    from ._asyncio_compat import wait_for as wait_for  # noqa: F401
+else:
+    from asyncio import wait_for as wait_for  # noqa: F401
