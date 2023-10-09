@@ -84,11 +84,21 @@ class TestIterableCursor(tb.ConnectedTestCase):
         recs = []
 
         async with self.con.transaction():
-            async for rec in self.con.cursor(
-                    'SELECT generate_series(0, $1::int)', 10):
-                recs.append(rec)
+            await self.con.execute('''
+                CREATE TABLE cursor_iterable_06 (id int);
+                INSERT INTO cursor_iterable_06 VALUES (0), (1);
+            ''')
+            try:
+                cur = self.con.cursor('SELECT * FROM cursor_iterable_06')
+                async for rec in cur:
+                    recs.append(rec)
+            finally:
+                # Check that after iteration has exhausted the cursor,
+                # its associated portal is closed properly, unlocking
+                # the table.
+                await self.con.execute('DROP TABLE cursor_iterable_06')
 
-        self.assertEqual(recs, [(i,) for i in range(11)])
+        self.assertEqual(recs, [(i,) for i in range(2)])
 
 
 class TestCursor(tb.ConnectedTestCase):
