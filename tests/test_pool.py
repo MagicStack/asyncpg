@@ -8,6 +8,7 @@
 import asyncio
 import inspect
 import os
+import pathlib
 import platform
 import random
 import textwrap
@@ -18,6 +19,7 @@ import asyncpg
 from asyncpg import _testbase as tb
 from asyncpg import connection as pg_connection
 from asyncpg import pool as pg_pool
+from asyncpg import cluster as pg_cluster
 
 _system = platform.uname().system
 
@@ -967,6 +969,70 @@ class TestPool(tb.ConnectedTestCase):
         # Check that connection_lost has released the pool holder.
         conn = await pool.acquire(timeout=0.1)
         await pool.release(conn)
+
+
+@unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
+class TestPoolReconnectWithTargetSessionAttrs(tb.ClusterTestCase):
+
+    @classmethod
+    def setup_cluster(cls):
+        cls.cluster = cls.new_cluster(pg_cluster.TempCluster)
+        cls.start_cluster(cls.cluster)
+
+    async def simulate_cluster_recovery_mode(self):
+        port = self.cluster.get_connection_spec()['port']
+        await self.loop.run_in_executor(
+            None,
+            lambda: self.cluster.stop()
+        )
+
+        # Simulate recovery mode
+        (pathlib.Path(self.cluster._data_dir) / 'standby.signal').touch()
+
+        await self.loop.run_in_executor(
+            None,
+            lambda: self.cluster.start(
+                port=port,
+                server_settings=self.get_server_settings(),
+            )
+        )
+
+    async def test_full_reconnect_on_node_change_role(self):
+        if self.cluster.get_pg_version() < (12, 0):
+            self.skipTest("PostgreSQL < 12 cannot support standby.signal")
+            return
+
+        pool = await self.create_pool(
+            min_size=1,
+            max_size=1,
+            target_session_attrs='primary'
+        )
+
+        # Force a new connection to be created
+        await pool.fetchval('SELECT 1')
+
+        await self.simulate_cluster_recovery_mode()
+
+        # current pool connection info cache is expired,
+        # but we don't know it yet
+        with self.assertRaises(asyncpg.TargetServerAttributeNotMatched) as cm:
+            await pool.execute('SELECT 1')
+
+        self.assertEqual(
+            cm.exception.args[0],
+            "None of the hosts match the target attribute requirement "
+            "<SessionAttribute.primary: 'primary'>"
+        )
+
+        # force reconnect
+        with self.assertRaises(asyncpg.TargetServerAttributeNotMatched) as cm:
+            await pool.execute('SELECT 1')
+
+        self.assertEqual(
+            cm.exception.args[0],
+            "None of the hosts match the target attribute requirement "
+            "<SessionAttribute.primary: 'primary'>"
+        )
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'using remote cluster for testing')

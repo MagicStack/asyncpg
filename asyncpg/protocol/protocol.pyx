@@ -155,7 +155,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         waiter = self._new_waiter(timeout)
         try:
-            self._prepare(stmt_name, query)  # network op
+            self._prepare_and_describe(stmt_name, query)  # network op
             self.last_query = query
             if state is None:
                 state = PreparedStatementState(
@@ -168,10 +168,15 @@ cdef class BaseProtocol(CoreProtocol):
             return await waiter
 
     @cython.iterable_coroutine
-    async def bind_execute(self, PreparedStatementState state, args,
-                           str portal_name, int limit, return_extra,
-                           timeout):
-
+    async def bind_execute(
+        self,
+        state: PreparedStatementState,
+        args,
+        portal_name: str,
+        limit: int,
+        return_extra: bool,
+        timeout,
+    ):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
         if self.cancel_sent_waiter is not None:
@@ -184,6 +189,9 @@ cdef class BaseProtocol(CoreProtocol):
 
         waiter = self._new_waiter(timeout)
         try:
+            if not state.prepared:
+                self._send_parse_message(state.name, state.query)
+
             self._bind_execute(
                 portal_name,
                 state.name,
@@ -201,9 +209,13 @@ cdef class BaseProtocol(CoreProtocol):
             return await waiter
 
     @cython.iterable_coroutine
-    async def bind_execute_many(self, PreparedStatementState state, args,
-                                str portal_name, timeout):
-
+    async def bind_execute_many(
+        self,
+        state: PreparedStatementState,
+        args,
+        portal_name: str,
+        timeout,
+    ):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
         if self.cancel_sent_waiter is not None:
@@ -222,6 +234,9 @@ cdef class BaseProtocol(CoreProtocol):
 
         waiter = self._new_waiter(timeout)
         try:
+            if not state.prepared:
+                self._send_parse_message(state.name, state.query)
+
             more = self._bind_execute_many(
                 portal_name,
                 state.name,
@@ -234,7 +249,7 @@ cdef class BaseProtocol(CoreProtocol):
 
             while more:
                 with timer:
-                    await asyncio.wait_for(
+                    await compat.wait_for(
                         self.writing_allowed.wait(),
                         timeout=timer.get_remaining_budget())
                     # On Windows the above event somehow won't allow context
@@ -368,7 +383,7 @@ cdef class BaseProtocol(CoreProtocol):
                 if buffer:
                     try:
                         with timer:
-                            await asyncio.wait_for(
+                            await compat.wait_for(
                                 sink(buffer),
                                 timeout=timer.get_remaining_budget())
                     except (Exception, asyncio.CancelledError) as ex:
@@ -496,7 +511,7 @@ cdef class BaseProtocol(CoreProtocol):
                         with timer:
                             await self.writing_allowed.wait()
                         with timer:
-                            chunk = await asyncio.wait_for(
+                            chunk = await compat.wait_for(
                                 iterator.__anext__(),
                                 timeout=timer.get_remaining_budget())
                         self._write_copy_data_msg(chunk)

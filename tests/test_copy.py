@@ -10,6 +10,7 @@ import datetime
 import io
 import os
 import tempfile
+import unittest
 
 import asyncpg
 from asyncpg import _testbase as tb
@@ -414,7 +415,7 @@ class TestCopyTo(tb.ConnectedTestCase):
                     '*a4*|b4',
                     '*a5*|b5',
                     '*!**|*n-u-l-l*',
-                    'n-u-l-l|bb'
+                    'n-u-l-l|bb',
                 ]).encode('utf-8')
             )
             f.seek(0)
@@ -644,6 +645,35 @@ class TestCopyTo(tb.ConnectedTestCase):
         finally:
             await self.con.execute('DROP TABLE copytab')
 
+    async def test_copy_records_to_table_where(self):
+        if not self.con._server_caps.sql_copy_from_where:
+            raise unittest.SkipTest(
+                'COPY WHERE not supported on server')
+
+        await self.con.execute('''
+            CREATE TABLE copytab_where(a text, b int, c timestamptz);
+        ''')
+
+        try:
+            date = datetime.datetime.now(tz=datetime.timezone.utc)
+            delta = datetime.timedelta(days=1)
+
+            records = [
+                ('a-{}'.format(i), i, date + delta)
+                for i in range(100)
+            ]
+
+            records.append(('a-100', None, None))
+            records.append(('b-999', None, None))
+
+            res = await self.con.copy_records_to_table(
+                'copytab_where', records=records, where='a <> \'b-999\'')
+
+            self.assertEqual(res, 'COPY 101')
+
+        finally:
+            await self.con.execute('DROP TABLE copytab_where')
+
     async def test_copy_records_to_table_async(self):
         await self.con.execute('''
             CREATE TABLE copytab_async(a text, b int, c timestamptz);
@@ -660,7 +690,8 @@ class TestCopyTo(tb.ConnectedTestCase):
                 yield ('a-100', None, None)
 
             res = await self.con.copy_records_to_table(
-                'copytab_async', records=record_generator())
+                'copytab_async', records=record_generator(),
+            )
 
             self.assertEqual(res, 'COPY 101')
 

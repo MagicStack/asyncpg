@@ -20,7 +20,6 @@ import ssl as ssl_module
 import stat
 import struct
 import sys
-import time
 import typing
 import urllib.parse
 import warnings
@@ -55,7 +54,6 @@ _ConnectionParameters = collections.namedtuple(
         'ssl',
         'sslmode',
         'direct_tls',
-        'connect_timeout',
         'server_settings',
         'target_session_attrs',
     ])
@@ -165,7 +163,7 @@ def _validate_port_spec(hosts, port):
         # If there is a list of ports, its length must
         # match that of the host list.
         if len(port) != len(hosts):
-            raise exceptions.InterfaceError(
+            raise exceptions.ClientConfigurationError(
                 'could not match {} port numbers to {} hosts'.format(
                     len(port), len(hosts)))
     else:
@@ -211,7 +209,7 @@ def _parse_hostlist(hostlist, port, *, unquote=False):
                 addr = m.group(1)
                 hostspec_port = m.group(2)
             else:
-                raise ValueError(
+                raise exceptions.ClientConfigurationError(
                     'invalid IPv6 address in the connection URI: {!r}'.format(
                         hostspec
                     )
@@ -240,13 +238,13 @@ def _parse_hostlist(hostlist, port, *, unquote=False):
 
 def _parse_tls_version(tls_version):
     if tls_version.startswith('SSL'):
-        raise ValueError(
+        raise exceptions.ClientConfigurationError(
             f"Unsupported TLS version: {tls_version}"
         )
     try:
         return ssl_module.TLSVersion[tls_version.replace('.', '_')]
     except KeyError:
-        raise ValueError(
+        raise exceptions.ClientConfigurationError(
             f"No such TLS version: {tls_version}"
         )
 
@@ -262,7 +260,7 @@ def _dot_postgresql_path(filename) -> typing.Optional[pathlib.Path]:
 
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                                 password, passfile, database, ssl,
-                                direct_tls, connect_timeout, server_settings,
+                                direct_tls, server_settings,
                                 target_session_attrs):
     # `auth_hosts` is the version of host information for the purposes
     # of reading the pgpass file.
@@ -274,7 +272,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         parsed = urllib.parse.urlparse(dsn)
 
         if parsed.scheme not in {'postgresql', 'postgres'}:
-            raise ValueError(
+            raise exceptions.ClientConfigurationError(
                 'invalid DSN: scheme is expected to be either '
                 '"postgresql" or "postgres", got {!r}'.format(parsed.scheme))
 
@@ -378,6 +376,13 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     'ssl_max_protocol_version'
                 )
 
+            if 'target_session_attrs' in query:
+                dsn_target_session_attrs = query.pop(
+                    'target_session_attrs'
+                )
+                if target_session_attrs is None:
+                    target_session_attrs = dsn_target_session_attrs
+
             if query:
                 if server_settings is None:
                     server_settings = query
@@ -437,11 +442,11 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         database = user
 
     if user is None:
-        raise exceptions.InterfaceError(
+        raise exceptions.ClientConfigurationError(
             'could not determine user name to connect with')
 
     if database is None:
-        raise exceptions.InterfaceError(
+        raise exceptions.ClientConfigurationError(
             'could not determine database name to connect to')
 
     if password is None:
@@ -477,7 +482,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             have_tcp_addrs = True
 
     if not addrs:
-        raise ValueError(
+        raise exceptions.InternalClientError(
             'could not determine the database address to connect to')
 
     if ssl is None:
@@ -491,7 +496,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             sslmode = SSLMode.parse(ssl)
         except AttributeError:
             modes = ', '.join(m.name.replace('_', '-') for m in SSLMode)
-            raise exceptions.InterfaceError(
+            raise exceptions.ClientConfigurationError(
                 '`sslmode` parameter must be one of: {}'.format(modes))
 
         # docs at https://www.postgresql.org/docs/10/static/libpq-connect.html
@@ -511,19 +516,36 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 else:
                     try:
                         sslrootcert = _dot_postgresql_path('root.crt')
-                        assert sslrootcert is not None
-                        ssl.load_verify_locations(cafile=sslrootcert)
-                    except (AssertionError, FileNotFoundError):
+                        if sslrootcert is not None:
+                            ssl.load_verify_locations(cafile=sslrootcert)
+                        else:
+                            raise exceptions.ClientConfigurationError(
+                                'cannot determine location of user '
+                                'PostgreSQL configuration directory'
+                            )
+                    except (
+                        exceptions.ClientConfigurationError,
+                        FileNotFoundError,
+                        NotADirectoryError,
+                    ):
                         if sslmode > SSLMode.require:
                             if sslrootcert is None:
-                                raise RuntimeError(
-                                    'Cannot determine home directory'
+                                sslrootcert = '~/.postgresql/root.crt'
+                                detail = (
+                                    'Could not determine location of user '
+                                    'home directory (HOME is either unset, '
+                                    'inaccessible, or does not point to a '
+                                    'valid directory)'
                                 )
-                            raise ValueError(
+                            else:
+                                detail = None
+                            raise exceptions.ClientConfigurationError(
                                 f'root certificate file "{sslrootcert}" does '
-                                f'not exist\nEither provide the file or '
-                                f'change sslmode to disable server '
-                                f'certificate verification.'
+                                f'not exist or cannot be accessed',
+                                hint='Provide the certificate file directly '
+                                     f'or make sure "{sslrootcert}" '
+                                     'exists and is readable.',
+                                detail=detail,
                             )
                         elif sslmode == SSLMode.require:
                             ssl.verify_mode = ssl_module.CERT_NONE
@@ -542,7 +564,10 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     if sslcrl is not None:
                         try:
                             ssl.load_verify_locations(cafile=sslcrl)
-                        except FileNotFoundError:
+                        except (
+                            FileNotFoundError,
+                            NotADirectoryError,
+                        ):
                             pass
                         else:
                             ssl.verify_flags |= \
@@ -571,7 +596,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                             keyfile=sslkey,
                             password=lambda: sslpassword
                         )
-                    except FileNotFoundError:
+                    except (FileNotFoundError, NotADirectoryError):
                         pass
 
             # OpenSSL 1.1.1 keylog file, copied from create_default_context()
@@ -606,7 +631,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             not isinstance(server_settings, dict) or
             not all(isinstance(k, str) for k in server_settings) or
             not all(isinstance(v, str) for v in server_settings.values())):
-        raise ValueError(
+        raise exceptions.ClientConfigurationError(
             'server_settings is expected to be None or '
             'a Dict[str, str]')
 
@@ -617,7 +642,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     try:
         target_session_attrs = SessionAttribute(target_session_attrs)
     except ValueError:
-        raise exceptions.InterfaceError(
+        raise exceptions.ClientConfigurationError(
             "target_session_attrs is expected to be one of "
             "{!r}"
             ", got {!r}".format(
@@ -628,14 +653,14 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     params = _ConnectionParameters(
         user=user, password=password, database=database, ssl=ssl,
         sslmode=sslmode, direct_tls=direct_tls,
-        connect_timeout=connect_timeout, server_settings=server_settings,
+        server_settings=server_settings,
         target_session_attrs=target_session_attrs)
 
     return addrs, params
 
 
 def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
-                             database, timeout, command_timeout,
+                             database, command_timeout,
                              statement_cache_size,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
@@ -668,7 +693,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
         dsn=dsn, host=host, port=port, user=user,
         password=password, passfile=passfile, ssl=ssl,
         direct_tls=direct_tls, database=database,
-        connect_timeout=timeout, server_settings=server_settings,
+        server_settings=server_settings,
         target_session_attrs=target_session_attrs)
 
     config = _ClientConfiguration(
@@ -772,16 +797,12 @@ async def _connect_addr(
     *,
     addr,
     loop,
-    timeout,
     params,
     config,
     connection_class,
     record_class
 ):
     assert loop is not None
-
-    if timeout <= 0:
-        raise asyncio.TimeoutError
 
     params_input = params
     if callable(params.password):
@@ -800,21 +821,16 @@ async def _connect_addr(
         params_retry = params._replace(ssl=None)
     else:
         # skip retry if we don't have to
-        return await __connect_addr(params, timeout, False, *args)
+        return await __connect_addr(params, False, *args)
 
     # first attempt
-    before = time.monotonic()
     try:
-        return await __connect_addr(params, timeout, True, *args)
+        return await __connect_addr(params, True, *args)
     except _RetryConnectSignal:
         pass
 
     # second attempt
-    timeout -= time.monotonic() - before
-    if timeout <= 0:
-        raise asyncio.TimeoutError
-    else:
-        return await __connect_addr(params_retry, timeout, False, *args)
+    return await __connect_addr(params_retry, False, *args)
 
 
 class _RetryConnectSignal(Exception):
@@ -823,7 +839,6 @@ class _RetryConnectSignal(Exception):
 
 async def __connect_addr(
     params,
-    timeout,
     retry,
     addr,
     loop,
@@ -855,15 +870,10 @@ async def __connect_addr(
     else:
         connector = loop.create_connection(proto_factory, *addr)
 
-    connector = asyncio.ensure_future(connector)
-    before = time.monotonic()
-    tr, pr = await compat.wait_for(connector, timeout=timeout)
-    timeout -= time.monotonic() - before
+    tr, pr = await connector
 
     try:
-        if timeout <= 0:
-            raise asyncio.TimeoutError
-        await compat.wait_for(connected, timeout=timeout)
+        await connected
     except (
         exceptions.InvalidAuthorizationSpecificationError,
         exceptions.ConnectionDoesNotExistError,  # seen on Windows
@@ -966,23 +976,21 @@ async def _can_use_connection(connection, attr: SessionAttribute):
     return await can_use(connection)
 
 
-async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
+async def _connect(*, loop, connection_class, record_class, **kwargs):
     if loop is None:
         loop = asyncio.get_event_loop()
 
-    addrs, params, config = _parse_connect_arguments(timeout=timeout, **kwargs)
+    addrs, params, config = _parse_connect_arguments(**kwargs)
     target_attr = params.target_session_attrs
 
     candidates = []
     chosen_connection = None
     last_error = None
     for addr in addrs:
-        before = time.monotonic()
         try:
             conn = await _connect_addr(
                 addr=addr,
                 loop=loop,
-                timeout=timeout,
                 params=params,
                 config=config,
                 connection_class=connection_class,
@@ -992,10 +1000,8 @@ async def _connect(*, loop, timeout, connection_class, record_class, **kwargs):
             if await _can_use_connection(conn, target_attr):
                 chosen_connection = conn
                 break
-        except (OSError, asyncio.TimeoutError, ConnectionError) as ex:
+        except OSError as ex:
             last_error = ex
-        finally:
-            timeout -= time.monotonic() - before
     else:
         if target_attr == SessionAttribute.prefer_standby and candidates:
             chosen_connection = random.choice(candidates)
