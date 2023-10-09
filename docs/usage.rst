@@ -288,7 +288,7 @@ will work.
                 if not hasattr(geometry, '__geo_interface__'):
                     raise TypeError('{g} does not conform to '
                                     'the geo interface'.format(g=geometry))
-                shape = shapely.geometry.asShape(geometry)
+                shape = shapely.geometry.shape(geometry)
                 return shapely.wkb.dumps(shape)
 
             def decode_geometry(wkb):
