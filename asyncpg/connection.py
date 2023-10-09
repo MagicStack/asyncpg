@@ -343,7 +343,10 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
 
         if not args:
-            with self._time_and_log(query, args, timeout):
+            if self._query_loggers:
+                with self._time_and_log(query, args, timeout):
+                    result = await self._protocol.query(query, timeout)
+            else:
                 result = await self._protocol.query(query, timeout)
             return result
 
@@ -1876,7 +1879,16 @@ class Connection(metaclass=ConnectionMeta):
             timeout=timeout,
         )
         timeout = self._protocol._get_timeout(timeout)
-        with self._time_and_log(query, args, timeout):
+        if self._query_loggers:
+            with self._time_and_log(query, args, timeout):
+                result, stmt = await self._do_execute(
+                    query,
+                    executor,
+                    timeout,
+                    record_class=record_class,
+                    ignore_custom_codec=ignore_custom_codec,
+                )
+        else:
             result, stmt = await self._do_execute(
                 query,
                 executor,
