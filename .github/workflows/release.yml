@@ -50,7 +50,7 @@ jobs:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 50
         submodules: true
@@ -76,11 +76,11 @@ jobs:
     outputs:
       include: ${{ steps.set-matrix.outputs.include }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
           python-version: "3.x"
-      - run: pip install cibuildwheel==2.13.1
+      - run: pip install cibuildwheel==2.16.2
       - id: set-matrix
         run: |
           MATRIX_INCLUDE=$(
@@ -109,7 +109,7 @@ jobs:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 50
         submodules: true
@@ -118,7 +118,7 @@ jobs:
       if: runner.os == 'Linux'
       uses: docker/setup-qemu-action@v2
 
-    - uses: pypa/cibuildwheel@v2.13.1
+    - uses: pypa/cibuildwheel@fff9ec32ed25a9c576750c91e06b410ed0c15db7  # v2.16.2
       with:
         only: ${{ matrix.only }}
       env:
@@ -138,7 +138,7 @@ jobs:
 
     steps:
     - name: Checkout source
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 5
         submodules: true
@@ -154,7 +154,7 @@ jobs:
         make htmldocs
 
     - name: Checkout gh-pages
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 5
         ref: gh-pages
@@ -180,7 +180,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 5
         submodules: false

@@ -397,6 +397,10 @@ class SQLJsonScalarRequiredError(DataError):
     sqlstate = '2203F'
 
 
+class SQLJsonItemCannotBeCastToTargetTypeError(DataError):
+    sqlstate = '2203G'
+
+
 class IntegrityConstraintViolationError(_base.PostgresError):
     sqlstate = '23000'
 
@@ -1163,6 +1167,7 @@ __all__ = (
     'ReadingExternalRoutineSQLDataNotPermittedError',
     'ReadingSQLDataNotPermittedError', 'ReservedNameError',
     'RestrictViolationError', 'SQLJsonArrayNotFoundError',
+    'SQLJsonItemCannotBeCastToTargetTypeError',
     'SQLJsonMemberNotFoundError', 'SQLJsonNumberNotFoundError',
     'SQLJsonObjectNotFoundError', 'SQLJsonScalarRequiredError',
     'SQLRoutineError', 'SQLStatementNotYetCompleteError',

@@ -216,7 +216,46 @@ JSON values using the :mod:`json <python:json>` module.
         finally:
             await conn.close()
 
-    asyncio.get_event_loop().run_until_complete(main())
+    asyncio.run(main())
+
+
+Example: complex types
+~~~~~~~~~~~~~~~~~~~~~~
+
+The example below shows how to configure asyncpg to encode and decode
+Python :class:`complex <python:complex>` values to a custom composite
+type in PostgreSQL.
+
+.. code-block:: python
+
+    import asyncio
+    import asyncpg
+
+
+    async def main():
+        conn = await asyncpg.connect()
+
+        try:
+            await conn.execute(
+                '''
+                CREATE TYPE mycomplex AS (
+                    r float,
+                    i float
+                );'''
+            )
+            await conn.set_type_codec(
+                'complex',
+                encoder=lambda x: (x.real, x.imag),
+                decoder=lambda t: complex(t[0], t[1]),
+                format='tuple',
+            )
+
+            res = await conn.fetchval('SELECT $1::mycomplex', (1+2j))
+
+        finally:
+            await conn.close()
+
+    asyncio.run(main())
 
 
 Example: automatic conversion of PostGIS types
@@ -274,7 +313,7 @@ will work.
         finally:
             await conn.close()
 
-    asyncio.get_event_loop().run_until_complete(main())
+    asyncio.run(main())
 
 
 Example: decoding numeric columns as floats
