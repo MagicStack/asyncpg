@@ -671,7 +671,6 @@ class TestConnectParams(tb.TestCase):
                 'target_session_attrs': 'any',
             })
         },
-        
         {
             'name': 'params_multi_host_dsn_env_mix_tuple',
             'env': {
