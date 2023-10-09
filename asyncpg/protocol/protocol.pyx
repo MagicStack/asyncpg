@@ -249,7 +249,7 @@ cdef class BaseProtocol(CoreProtocol):
 
             while more:
                 with timer:
-                    await asyncio.wait_for(
+                    await compat.wait_for(
                         self.writing_allowed.wait(),
                         timeout=timer.get_remaining_budget())
                     # On Windows the above event somehow won't allow context
@@ -383,7 +383,7 @@ cdef class BaseProtocol(CoreProtocol):
                 if buffer:
                     try:
                         with timer:
-                            await asyncio.wait_for(
+                            await compat.wait_for(
                                 sink(buffer),
                                 timeout=timer.get_remaining_budget())
                     except (Exception, asyncio.CancelledError) as ex:
@@ -511,7 +511,7 @@ cdef class BaseProtocol(CoreProtocol):
                         with timer:
                             await self.writing_allowed.wait()
                         with timer:
-                            chunk = await asyncio.wait_for(
+                            chunk = await compat.wait_for(
                                 iterator.__anext__(),
                                 timeout=timer.get_remaining_budget())
                         self._write_copy_data_msg(chunk)
