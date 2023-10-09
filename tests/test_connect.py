@@ -682,6 +682,7 @@ class TestConnectParams(tb.TestCase):
             'result': ([('host1', 5432), ('host2', 5432)], {
                 'database': 'db',
                 'user': 'foo',
+                'target_session_attrs': 'any',
             })
         },
 
