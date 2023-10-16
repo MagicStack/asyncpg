@@ -28,7 +28,7 @@ classifiers = [
     "Topic :: Database :: Front-Ends",
 ]
 dependencies = [
-    'async_timeout>=4.0.3; python_version < "3.12.0"'
+    'async_timeout>=4.0.3; python_version < "3.13.0"'
 ]
 
 [project.urls]
@@ -37,7 +37,7 @@ github = "https://github.com/MagicStack/asyncpg"
 [project.optional-dependencies]
 test = [
     'flake8~=6.1',
-    'uvloop>=0.15.3; platform_system != "Windows" and python_version < "3.12.0"',
+    'uvloop>=0.15.3; platform_system != "Windows" and python_version < "3.13.0"',
 ]
 docs = [
     'Sphinx~=5.3.0',
@@ -50,7 +50,7 @@ requires = [
     "setuptools>=60",
     "wheel",
 
-    "Cython(>=0.29.24,<3.0.0)"
+    "Cython(>=0.29.24,<3.1.0)"
 ]
 build-backend = "setuptools.build_meta"
 
