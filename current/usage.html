@@ -36,7 +36,7 @@
             asyncpg
           </a>
               <div class="version">
-                0.28.0
+                0.29.0
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -52,6 +52,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#type-conversion">Type Conversion</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#custom-type-conversions">Custom Type Conversions</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#example-automatic-json-conversion">Example: automatic JSON conversion</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-complex-types">Example: complex types</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#example-automatic-conversion-of-postgis-types">Example: automatic conversion of PostGIS types</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#example-decoding-numeric-columns-as-floats">Example: decoding numeric columns as floats</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#example-decoding-hstore-values">Example: decoding hstore values</a></li>
@@ -150,92 +151,92 @@ more information.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">anyarray</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">anyenum</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">anyrange</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.Range" title="asyncpg.types.Range"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Range</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p></td>
+<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">anymultirange</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">list[</span></code><a class="reference internal" href="api/index.html#asyncpg.types.Range" title="asyncpg.types.Range"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Range</span></code></a> <code class="docutils literal notranslate"><span class="pre">]</span></code>,
-<code class="docutils literal notranslate"><span class="pre">list[</span></code><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a> <code class="docutils literal notranslate"><span class="pre">]</span></code> <a class="footnote-reference brackets" href="#f1" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a></p></td>
+<code class="docutils literal notranslate"><span class="pre">list[</span></code><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a> <code class="docutils literal notranslate"><span class="pre">]</span></code> <a class="footnote-reference brackets" href="#f1" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">record</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Record</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Mapping</span></code></a></p></td>
+<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Mapping</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">bit</span></code>, <code class="docutils literal notranslate"><span class="pre">varbit</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.BitString" title="asyncpg.types.BitString"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.BitString</span></code></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">box</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.Box" title="asyncpg.types.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Box</span></code></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">bytea</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">char</span></code>, <code class="docutils literal notranslate"><span class="pre">name</span></code>,
 <code class="docutils literal notranslate"><span class="pre">varchar</span></code>,
 <code class="docutils literal notranslate"><span class="pre">text</span></code>,
 <code class="docutils literal notranslate"><span class="pre">xml</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">cidr</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Network" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv4Network</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Network" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Network</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Network" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv4Network</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Network" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Network</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">inet</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Interface" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv4Interface</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Interface" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Interface</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Address" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv4Address</span></code></a>,
-<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Address" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Address</span></code></a> <a class="footnote-reference brackets" href="#f2" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Interface" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv4Interface</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Interface" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Interface</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Address" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv4Address</span></code></a>,
+<a class="reference external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Address" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ipaddress.IPv6Address</span></code></a> <a class="footnote-reference brackets" href="#f2" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">macaddr</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">circle</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.Circle" title="asyncpg.types.Circle"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Circle</span></code></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">date</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.date" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.date</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.date" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.date</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">time</span></code></p></td>
-<td><p>offset-naïve <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.time" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.time</span> </code></a></p></td>
+<td><p>offset-naïve <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.time" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.time</span> </code></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">time</span> <span class="pre">with</span>
 <span class="pre">time</span> <span class="pre">zone</span></code></p></td>
-<td><p>offset-aware <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.time" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.time</span> </code></a></p></td>
+<td><p>offset-aware <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.time" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.time</span> </code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">timestamp</span></code></p></td>
-<td><p>offset-naïve <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.datetime</span> </code></a></p></td>
+<td><p>offset-naïve <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.datetime</span> </code></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">timestamp</span> <span class="pre">with</span>
 <span class="pre">time</span> <span class="pre">zone</span></code></p></td>
-<td><p>offset-aware <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.datetime</span> </code></a></p></td>
+<td><p>offset-aware <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.datetime</span> </code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">interval</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.timedelta" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.timedelta</span> </code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.timedelta" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime.timedelta</span> </code></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">float</span></code>,
 <code class="docutils literal notranslate"><span class="pre">double</span> <span class="pre">precision</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> <a class="footnote-reference brackets" href="#f3" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> <a class="footnote-reference brackets" href="#f3" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">smallint</span></code>,
 <code class="docutils literal notranslate"><span class="pre">integer</span></code>,
 <code class="docutils literal notranslate"><span class="pre">bigint</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">numeric</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/decimal.html#decimal.Decimal" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Decimal</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/decimal.html#decimal.Decimal" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Decimal</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">json</span></code>, <code class="docutils literal notranslate"><span class="pre">jsonb</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">line</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.Line" title="asyncpg.types.Line"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Line</span></code></a></p></td>
@@ -244,7 +245,7 @@ more information.</p>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.LineSegment" title="asyncpg.types.LineSegment"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.LineSegment</span> </code></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">money</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">path</span></code></p></td>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.Path" title="asyncpg.types.Path"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Path</span></code></a></p></td>
@@ -256,10 +257,10 @@ more information.</p>
 <td><p><a class="reference internal" href="api/index.html#asyncpg.types.Polygon" title="asyncpg.types.Polygon"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Polygon</span></code></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">uuid</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/uuid.html#uuid.UUID" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">uuid.UUID</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/uuid.html#uuid.UUID" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">uuid.UUID</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tid</span></code></p></td>
-<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p></td>
+<td><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -292,7 +293,7 @@ and user-defined types using the <a class="reference internal" href="api/index.h
 <section id="example-automatic-json-conversion">
 <h3>Example: automatic JSON conversion<a class="headerlink" href="#example-automatic-json-conversion" title="Permalink to this heading"></a></h3>
 <p>The example below shows how to configure asyncpg to encode and decode
-JSON values using the <a class="reference external" href="https://docs.python.org/3/library/json.html#module-json" title="(in Python v3.11)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">json</span></code></a> module.</p>
+JSON values using the <a class="reference external" href="https://docs.python.org/3/library/json.html#module-json" title="(in Python v3.12)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">json</span></code></a> module.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">asyncio</span>
 <span class="kn">import</span> <span class="nn">asyncpg</span>
 <span class="kn">import</span> <span class="nn">json</span>
@@ -315,7 +316,43 @@ JSON values using the <a class="reference external" href="https://docs.python.or
     <span class="k">finally</span><span class="p">:</span>
         <span class="k">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
-<span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+<span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+<section id="example-complex-types">
+<h3>Example: complex types<a class="headerlink" href="#example-complex-types" title="Permalink to this heading"></a></h3>
+<p>The example below shows how to configure asyncpg to encode and decode
+Python <a class="reference external" href="https://docs.python.org/3/library/functions.html#complex" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">complex</span></code></a> values to a custom composite
+type in PostgreSQL.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">import</span> <span class="nn">asyncpg</span>
+
+
+<span class="k">async</span> <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">            CREATE TYPE mycomplex AS (</span>
+<span class="sd">                r float,</span>
+<span class="sd">                i float</span>
+<span class="sd">            );&#39;&#39;&#39;</span>
+        <span class="p">)</span>
+        <span class="k">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">set_type_codec</span><span class="p">(</span>
+            <span class="s1">&#39;complex&#39;</span><span class="p">,</span>
+            <span class="n">encoder</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">real</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">imag</span><span class="p">),</span>
+            <span class="n">decoder</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="nb">complex</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+            <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;tuple&#39;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">fetchval</span><span class="p">(</span><span class="s1">&#39;SELECT $1::mycomplex&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="mi">2</span><span class="n">j</span><span class="p">))</span>
+
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
 </pre></div>
 </div>
 </section>
@@ -342,7 +379,7 @@ will work.</p>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">geometry</span><span class="p">,</span> <span class="s1">&#39;__geo_interface__&#39;</span><span class="p">):</span>
                 <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{g}</span><span class="s1"> does not conform to &#39;</span>
                                 <span class="s1">&#39;the geo interface&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">g</span><span class="o">=</span><span class="n">geometry</span><span class="p">))</span>
-            <span class="n">shape</span> <span class="o">=</span> <span class="n">shapely</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">asShape</span><span class="p">(</span><span class="n">geometry</span><span class="p">)</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="n">shapely</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">geometry</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">shapely</span><span class="o">.</span><span class="n">wkb</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
 
         <span class="k">def</span> <span class="nf">decode_geometry</span><span class="p">(</span><span class="n">wkb</span><span class="p">):</span>
@@ -367,14 +404,14 @@ will work.</p>
     <span class="k">finally</span><span class="p">:</span>
         <span class="k">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
-<span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+<span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
 </pre></div>
 </div>
 </section>
 <section id="example-decoding-numeric-columns-as-floats">
 <h3>Example: decoding numeric columns as floats<a class="headerlink" href="#example-decoding-numeric-columns-as-floats" title="Permalink to this heading"></a></h3>
 <p>By default asyncpg decodes numeric columns as Python
-<a class="reference external" href="https://docs.python.org/3/library/decimal.html#decimal.Decimal" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Decimal</span></code></a> instances.  The example below
+<a class="reference external" href="https://docs.python.org/3/library/decimal.html#decimal.Decimal" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Decimal</span></code></a> instances.  The example below
 shows how to instruct asyncpg to use floats instead.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">asyncio</span>
 <span class="kn">import</span> <span class="nn">asyncpg</span>
@@ -471,20 +508,26 @@ Web service that computes the requested power of two.</p>
                 <span class="n">text</span><span class="o">=</span><span class="s2">&quot;2 ^ </span><span class="si">{}</span><span class="s2"> is </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">power</span><span class="p">,</span> <span class="n">result</span><span class="p">))</span>
 
 
-<span class="k">async</span> <span class="k">def</span> <span class="nf">init_app</span><span class="p">():</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">init_db</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize a connection pool.&quot;&quot;&quot;</span>
+     <span class="n">app</span><span class="p">[</span><span class="s1">&#39;pool&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">create_pool</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">,</span>
+                                             <span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
+     <span class="k">yield</span>
+     <span class="n">app</span><span class="p">[</span><span class="s1">&#39;pool&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">init_app</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the application server.&quot;&quot;&quot;</span>
     <span class="n">app</span> <span class="o">=</span> <span class="n">web</span><span class="o">.</span><span class="n">Application</span><span class="p">()</span>
-    <span class="c1"># Create a database connection pool</span>
-    <span class="n">app</span><span class="p">[</span><span class="s1">&#39;pool&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncpg</span><span class="o">.</span><span class="n">create_pool</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">,</span>
-                                            <span class="n">user</span><span class="o">=</span><span class="s1">&#39;postgres&#39;</span><span class="p">)</span>
+    <span class="c1"># Create a database context</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">cleanup_ctx</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">init_db</span><span class="p">)</span>
     <span class="c1"># Configure service routes</span>
     <span class="n">app</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;/{power:\d+}&#39;</span><span class="p">,</span> <span class="n">handle</span><span class="p">)</span>
     <span class="n">app</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">handle</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">app</span>
 
 
-<span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
-<span class="n">app</span> <span class="o">=</span> <span class="n">loop</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">init_app</span><span class="p">())</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">init_app</span><span class="p">()</span>
 <span class="n">web</span><span class="o">.</span><span class="n">run_app</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 </pre></div>
 </div>

@@ -33,7 +33,7 @@
             asyncpg
           </a>
               <div class="version">
-                0.28.0
+                0.29.0
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
@@ -91,7 +91,6 @@
 
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">compat</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">connection</span>
-<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">connect_utils</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">exceptions</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">protocol</span>
 
@@ -388,7 +387,6 @@
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span>
         <span class="s1">&#39;_queue&#39;</span><span class="p">,</span> <span class="s1">&#39;_loop&#39;</span><span class="p">,</span> <span class="s1">&#39;_minsize&#39;</span><span class="p">,</span> <span class="s1">&#39;_maxsize&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_init&#39;</span><span class="p">,</span> <span class="s1">&#39;_connect_args&#39;</span><span class="p">,</span> <span class="s1">&#39;_connect_kwargs&#39;</span><span class="p">,</span>
-        <span class="s1">&#39;_working_addr&#39;</span><span class="p">,</span> <span class="s1">&#39;_working_config&#39;</span><span class="p">,</span> <span class="s1">&#39;_working_params&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_holders&#39;</span><span class="p">,</span> <span class="s1">&#39;_initialized&#39;</span><span class="p">,</span> <span class="s1">&#39;_initializing&#39;</span><span class="p">,</span> <span class="s1">&#39;_closing&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_closed&#39;</span><span class="p">,</span> <span class="s1">&#39;_connection_class&#39;</span><span class="p">,</span> <span class="s1">&#39;_record_class&#39;</span><span class="p">,</span> <span class="s1">&#39;_generation&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_setup&#39;</span><span class="p">,</span> <span class="s1">&#39;_max_queries&#39;</span><span class="p">,</span> <span class="s1">&#39;_max_inactive_connection_lifetime&#39;</span>
@@ -454,10 +452,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_initializing</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_queue</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_working_addr</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_working_config</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_working_params</span> <span class="o">=</span> <span class="kc">None</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">_connection_class</span> <span class="o">=</span> <span class="n">connection_class</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_record_class</span> <span class="o">=</span> <span class="n">record_class</span>
 
@@ -507,9 +501,8 @@
             <span class="c1"># first few connections in the queue, therefore we want to walk</span>
             <span class="c1"># `self._holders` in reverse.</span>
 
-            <span class="c1"># Connect the first connection holder in the queue so that it</span>
-            <span class="c1"># can record `_working_addr` and `_working_opts`, which will</span>
-            <span class="c1"># speed up successive connection attempts.</span>
+            <span class="c1"># Connect the first connection holder in the queue so that</span>
+            <span class="c1"># any connection issues are visible early.</span>
             <span class="n">first_ch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_holders</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># type: PoolConnectionHolder</span>
             <span class="k">await</span> <span class="n">first_ch</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
 
@@ -580,37 +573,16 @@
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_connect_args</span> <span class="o">=</span> <span class="p">[</span><span class="n">dsn</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_connect_kwargs</span> <span class="o">=</span> <span class="n">connect_kwargs</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_working_addr</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_working_config</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_working_params</span> <span class="o">=</span> <span class="kc">None</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connect_kwargs</span> <span class="o">=</span> <span class="n">connect_kwargs</span></div>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_get_new_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_working_addr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="c1"># First connection attempt on this pool.</span>
-            <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
-                <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_connect_args</span><span class="p">,</span>
-                <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">,</span>
-                <span class="n">connection_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection_class</span><span class="p">,</span>
-                <span class="n">record_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_record_class</span><span class="p">,</span>
-                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_connect_kwargs</span><span class="p">)</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">_working_addr</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_addr</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_working_config</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_config</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_working_params</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_params</span>
-
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># We&#39;ve connected before and have a resolved address,</span>
-            <span class="c1"># and parsed options and config.</span>
-            <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="n">connect_utils</span><span class="o">.</span><span class="n">_connect_addr</span><span class="p">(</span>
-                <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">,</span>
-                <span class="n">addr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_working_addr</span><span class="p">,</span>
-                <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_working_params</span><span class="o">.</span><span class="n">connect_timeout</span><span class="p">,</span>
-                <span class="n">config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_working_config</span><span class="p">,</span>
-                <span class="n">params</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_working_params</span><span class="p">,</span>
-                <span class="n">connection_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection_class</span><span class="p">,</span>
-                <span class="n">record_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_record_class</span><span class="p">,</span>
-            <span class="p">)</span>
+        <span class="n">con</span> <span class="o">=</span> <span class="k">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+            <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_connect_args</span><span class="p">,</span>
+            <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">,</span>
+            <span class="n">connection_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection_class</span><span class="p">,</span>
+            <span class="n">record_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_record_class</span><span class="p">,</span>
+            <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_connect_kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
@@ -816,7 +788,8 @@
         <span class="n">force_quote</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">force_not_null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">force_null</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span>
+        <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">where</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy data to the specified table.</span>
 
@@ -845,7 +818,8 @@
                 <span class="n">force_quote</span><span class="o">=</span><span class="n">force_quote</span><span class="p">,</span>
                 <span class="n">force_not_null</span><span class="o">=</span><span class="n">force_not_null</span><span class="p">,</span>
                 <span class="n">force_null</span><span class="o">=</span><span class="n">force_null</span><span class="p">,</span>
-                <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span>
+                <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span><span class="p">,</span>
+                <span class="n">where</span><span class="o">=</span><span class="n">where</span>
             <span class="p">)</span></div>
 
 <div class="viewcode-block" id="Pool.copy_records_to_table"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.copy_records_to_table">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">copy_records_to_table</span><span class="p">(</span>
@@ -855,7 +829,8 @@
         <span class="n">records</span><span class="p">,</span>
         <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">schema_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">where</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy a list of records to the specified table using binary COPY.</span>
 
@@ -872,7 +847,8 @@
                 <span class="n">records</span><span class="o">=</span><span class="n">records</span><span class="p">,</span>
                 <span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">,</span>
                 <span class="n">schema_name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">,</span>
-                <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
+                <span class="n">where</span><span class="o">=</span><span class="n">where</span>
             <span class="p">)</span></div>
 
 <div class="viewcode-block" id="Pool.acquire"><a class="viewcode-back" href="../../api/index.html#asyncpg.pool.Pool.acquire">[docs]</a>    <span class="k">def</span> <span class="nf">acquire</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
