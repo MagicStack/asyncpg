@@ -98,7 +98,7 @@ record_dealloc(ApgRecordObject *o)
 
     Py_CLEAR(o->desc);
 
-    Py_TRASHCAN_SAFE_BEGIN(o)
+    Py_TRASHCAN_BEGIN(o, record_dealloc)
     if (len > 0) {
         i = len;
         while (--i >= 0) {
@@ -117,7 +117,7 @@ record_dealloc(ApgRecordObject *o)
     }
     Py_TYPE(o)->tp_free((PyObject *)o);
 done:
-    Py_TRASHCAN_SAFE_END(o)
+    Py_TRASHCAN_END
 }
 
 
