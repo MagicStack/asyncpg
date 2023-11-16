@@ -392,7 +392,7 @@ class Pool:
 
     async def _async__init__(self):
         if self._initialized:
-            return
+            return self
         if self._initializing:
             raise exceptions.InterfaceError(
                 'pool is being initialized in another task')
