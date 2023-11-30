@@ -56,6 +56,7 @@ _ConnectionParameters = collections.namedtuple(
         'direct_tls',
         'server_settings',
         'target_session_attrs',
+        'socket_callback',
     ])
 
 
@@ -261,7 +262,7 @@ def _dot_postgresql_path(filename) -> typing.Optional[pathlib.Path]:
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                                 password, passfile, database, ssl,
                                 direct_tls, server_settings,
-                                target_session_attrs):
+                                target_session_attrs, socket_callback):
     # `auth_hosts` is the version of host information for the purposes
     # of reading the pgpass file.
     auth_hosts = None
@@ -654,7 +655,8 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         user=user, password=password, database=database, ssl=ssl,
         sslmode=sslmode, direct_tls=direct_tls,
         server_settings=server_settings,
-        target_session_attrs=target_session_attrs)
+        target_session_attrs=target_session_attrs,
+        socket_callback=socket_callback)
 
     return addrs, params
 
@@ -665,7 +667,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
                              ssl, direct_tls, server_settings,
-                             target_session_attrs):
+                             target_session_attrs, socket_callback):
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
                      'max_cached_statement_lifetime',
@@ -694,7 +696,8 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
         password=password, passfile=passfile, ssl=ssl,
         direct_tls=direct_tls, database=database,
         server_settings=server_settings,
-        target_session_attrs=target_session_attrs)
+        target_session_attrs=target_session_attrs,
+        socket_callback=socket_callback)
 
     config = _ClientConfiguration(
         command_timeout=command_timeout,
@@ -862,6 +865,12 @@ async def __connect_addr(
         connector = loop.create_connection(
             proto_factory, *addr, ssl=params.ssl
         )
+
+    elif params.socket_callback:
+        # if socket factory callback is given, create socket and use
+        # for connection
+        sock = await params.socket_callback()
+        connector = loop.create_connection(proto_factory, sock=sock)
 
     elif params.ssl:
         connector = _create_ssl_connection(

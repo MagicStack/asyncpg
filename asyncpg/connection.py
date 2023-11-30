@@ -2007,7 +2007,8 @@ async def connect(dsn=None, *,
                   connection_class=Connection,
                   record_class=protocol.Record,
                   server_settings=None,
-                  target_session_attrs=None):
+                  target_session_attrs=None,
+                  socket_callback=None):
     r"""A coroutine to establish a connection to a PostgreSQL server.
 
     The connection parameters may be specified either as a connection
@@ -2344,7 +2345,8 @@ async def connect(dsn=None, *,
             statement_cache_size=statement_cache_size,
             max_cached_statement_lifetime=max_cached_statement_lifetime,
             max_cacheable_statement_size=max_cacheable_statement_size,
-            target_session_attrs=target_session_attrs
+            target_session_attrs=target_session_attrs,
+            socket_callback=socket_callback
         )
 
 
