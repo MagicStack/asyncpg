@@ -211,18 +211,28 @@ class PreparedStatement(connresource.ConnectionResource):
         return data[0]
 
     @connresource.guarded
-    async def executemany(self, args, *, timeout: float=None):
+    async def executemany(self, args, *, timeout: float=None,
+                          return_rows: bool=False):
         """Execute the statement for each sequence of arguments in *args*.
 
         :param args: An iterable containing sequences of arguments.
         :param float timeout: Optional timeout value in seconds.
-        :return None: This method discards the results of the operations.
+        :param bool return_rows:
+            If ``True``, the resulting rows of each command will be
+            returned as a list of :class:`~asyncpg.Record`
+            (defaults to ``False``).
+        :return:
+            None, or a list of :class:`~asyncpg.Record` instances
+            if `return_rows` is true.
 
         .. versionadded:: 0.22.0
+
+        .. versionchanged:: 0.30.0
+            Added `return_rows` keyword-only parameter.
         """
         return await self.__do_execute(
             lambda protocol: protocol.bind_execute_many(
-                self._state, args, '', timeout))
+                self._state, args, '', timeout, return_rows=return_rows))
 
     async def __do_execute(self, executor):
         protocol = self._connection._protocol

@@ -940,12 +940,12 @@ cdef class CoreProtocol:
         self._send_bind_message(portal_name, stmt_name, bind_data, limit)
 
     cdef bint _bind_execute_many(self, str portal_name, str stmt_name,
-                                 object bind_data):
+                                 object bind_data, bint return_rows):
         self._ensure_connected()
         self._set_state(PROTOCOL_BIND_EXECUTE_MANY)
 
-        self.result = None
-        self._discard_data = True
+        self.result = [] if return_rows else None
+        self._discard_data = not return_rows
         self._execute_iter = bind_data
         self._execute_portal_name = portal_name
         self._execute_stmt_name = stmt_name

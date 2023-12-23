@@ -538,7 +538,8 @@ class Pool:
         async with self.acquire() as con:
             return await con.execute(query, *args, timeout=timeout)
 
-    async def executemany(self, command: str, args, *, timeout: float=None):
+    async def executemany(self, command: str, args, *, timeout: float=None,
+                          return_rows: bool=False):
         """Execute an SQL *command* for each sequence of arguments in *args*.
 
         Pool performs this operation using one of its connections.  Other than
@@ -549,7 +550,8 @@ class Pool:
         .. versionadded:: 0.10.0
         """
         async with self.acquire() as con:
-            return await con.executemany(command, args, timeout=timeout)
+            return await con.executemany(
+                command, args, timeout=timeout, return_rows=return_rows)
 
     async def fetch(
         self,
