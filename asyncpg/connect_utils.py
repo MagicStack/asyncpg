@@ -714,6 +714,11 @@ class TLSUpgradeProto(asyncio.Protocol):
         self.ssl_is_advisory = ssl_is_advisory
 
     def data_received(self, data):
+        if self.on_data.done():
+            # Only expect to receive one byte here; ignore unsolicited further
+            # data.
+            return
+
         if data == b'S':
             self.on_data.set_result(True)
         elif (self.ssl_is_advisory and

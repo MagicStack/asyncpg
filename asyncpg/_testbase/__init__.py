@@ -13,6 +13,7 @@ import inspect
 import logging
 import os
 import re
+import socket
 import textwrap
 import time
 import traceback
@@ -525,3 +526,42 @@ class HotStandbyTestCase(ClusterTestCase):
             kwargs
         )
         return pg_connection.connect(**conn_spec, loop=cls.loop)
+
+
+class InstrumentedServer:
+    """
+    A socket server for testing.
+    It will write each item from `data`, and wait for the corresponding event
+    in `received_events` to notify that it was received before writing the next
+    item from `data`.
+    """
+    def __init__(self, data, received_events):
+        assert len(data) == len(received_events)
+        self._data = data
+        self._server = None
+        self._received_events = received_events
+
+    async def _handle_client(self, _reader, writer):
+        for datum, received_event in zip(self._data, self._received_events):
+            writer.write(datum)
+            await writer.drain()
+            await received_event.wait()
+
+        writer.close()
+        await writer.wait_closed()
+
+    async def start(self):
+        """Start the server."""
+        self._server = await asyncio.start_server(self._handle_client, 'localhost', 0)
+        assert self._server.sockets
+        sock = self._server.sockets[0]
+        # Account for IPv4 and IPv6
+        addr, port = sock.getsockname()[:2]
+        return {
+            'host': addr,
+            'port': port,
+        }
+
+    def stop(self):
+        """Stop the server."""
+        self._server.close()
