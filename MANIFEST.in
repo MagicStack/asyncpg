@@ -1,5 +1,6 @@
 recursive-include docs *.py *.rst Makefile *.css
 recursive-include examples *.py
 recursive-include tests *.py *.pem
-recursive-include asyncpg *.pyx *.pxd *.pxi *.py *.c *.h
+recursive-include asyncpg *.pyx *.pxd *.pxi *.py *.pyi *.c *.h
 include LICENSE README.rst Makefile performance.png .flake8
+include asyncpg/py.typed

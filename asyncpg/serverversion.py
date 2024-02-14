@@ -4,12 +4,14 @@
 # This module is part of asyncpg and is released under
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
+from __future__ import annotations
 
 import re
+import typing
 
 from .types import ServerVersion
 
-version_regex = re.compile(
+version_regex: typing.Final = re.compile(
     r"(Postgre[^\s]*)?\s*"
     r"(?P<major>[0-9]+)\.?"
     r"((?P<minor>[0-9]+)\.?)?"
@@ -19,7 +21,15 @@ version_regex = re.compile(
 )
 
 
-def split_server_version_string(version_string):
+class _VersionDict(typing.TypedDict):
+    major: int
+    minor: int | None
+    micro: int | None
+    releaselevel: str | None
+    serial: int | None
+
+
+def split_server_version_string(version_string: str) -> ServerVersion:
     version_match = version_regex.search(version_string)
 
     if version_match is None:
@@ -28,17 +38,17 @@ def split_server_version_string(version_string):
             f'version from "{version_string}"'
         )
 
-    version = version_match.groupdict()
+    version = typing.cast(_VersionDict, version_match.groupdict())
     for ver_key, ver_value in version.items():
         # Cast all possible versions parts to int
         try:
-            version[ver_key] = int(ver_value)
+            version[ver_key] = int(ver_value)  # type: ignore[literal-required, call-overload]  # noqa: E501
         except (TypeError, ValueError):
             pass
 
-    if version.get("major") < 10:
+    if version["major"] < 10:
         return ServerVersion(
-            version.get("major"),
+            version["major"],
             version.get("minor") or 0,
             version.get("micro") or 0,
             version.get("releaselevel") or "final",
@@ -52,7 +62,7 @@ def split_server_version_string(version_string):
     # want to keep that behaviour consistent, i.e not fail
     # a major version check due to a bugfix release.
     return ServerVersion(
-        version.get("major"),
+        version["major"],
         0,
         version.get("minor") or 0,
         version.get("releaselevel") or "final",

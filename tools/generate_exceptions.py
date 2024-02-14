@@ -13,7 +13,8 @@ import re
 import string
 import textwrap
 
-from asyncpg.exceptions import _base as apg_exc
+from asyncpg.exceptions import _postgres_message as _pgm_exc
+from asyncpg.exceptions import _base as _apg_exc
 
 
 _namemap = {
@@ -87,14 +88,15 @@ class {clsname}({base}):
 
     buf = '# GENERATED FROM postgresql/src/backend/utils/errcodes.txt\n' + \
           '# DO NOT MODIFY, use tools/generate_exceptions.py to update\n\n' + \
-          'from ._base import *  # NOQA\nfrom . import _base\n\n\n'
+          'from __future__ import annotations\n\n' + \
+          'import typing\nfrom ._base import *  # NOQA\nfrom . import _base\n\n\n'
 
     classes = []
     clsnames = set()
 
     def _add_class(clsname, base, sqlstate, docstring):
         if sqlstate:
-            sqlstate = "sqlstate = '{}'".format(sqlstate)
+            sqlstate = "sqlstate: typing.ClassVar[str] = '{}'".format(sqlstate)
         else:
             sqlstate = ''
 
@@ -150,10 +152,10 @@ class {clsname}({base}):
         else:
             base = section_class
 
-        existing = apg_exc.PostgresMessageMeta.get_message_class_for_sqlstate(
+        existing = _pgm_exc.PostgresMessageMeta.get_message_class_for_sqlstate(
             sqlstate)
 
-        if (existing and existing is not apg_exc.UnknownPostgresError and
+        if (existing and existing is not _apg_exc.UnknownPostgresError and
                 existing.__doc__):
             docstring = '"""{}"""\n\n    '.format(existing.__doc__)
         else:
@@ -164,7 +166,7 @@ class {clsname}({base}):
 
         subclasses = _subclassmap.get(sqlstate, [])
         for subclass in subclasses:
-            existing = getattr(apg_exc, subclass, None)
+            existing = getattr(_apg_exc, subclass, None)
             if existing and existing.__doc__:
                 docstring = '"""{}"""\n\n    '.format(existing.__doc__)
             else:
@@ -176,7 +178,7 @@ class {clsname}({base}):
     buf += '\n\n\n'.join(classes)
 
     _all = textwrap.wrap(', '.join('{!r}'.format(c) for c in sorted(clsnames)))
-    buf += '\n\n\n__all__ = (\n    {}\n)'.format(
+    buf += '\n\n\n__all__ = [\n    {}\n]'.format(
         '\n    '.join(_all))
 
     buf += '\n\n__all__ += _base.__all__'

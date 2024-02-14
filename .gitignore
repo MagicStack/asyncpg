@@ -34,3 +34,6 @@ docs/_build
 /.eggs
 /.vscode
 /.mypy_cache
+/.venv*
+/.tox
+/.vim

@@ -4,22 +4,26 @@
 # This module is part of asyncpg and is released under
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
+from __future__ import annotations
 
 import pathlib
 import platform
 import typing
 import sys
 
+if typing.TYPE_CHECKING:
+    import asyncio
 
-SYSTEM = platform.uname().system
+
+SYSTEM: typing.Final = platform.uname().system
 
 
-if SYSTEM == 'Windows':
+if sys.platform == 'win32':
     import ctypes.wintypes
 
     CSIDL_APPDATA = 0x001a
 
-    def get_pg_home_directory() -> typing.Optional[pathlib.Path]:
+    def get_pg_home_directory() -> pathlib.Path | None:
         # We cannot simply use expanduser() as that returns the user's
         # home directory, whereas Postgres stores its config in
         # %AppData% on Windows.
@@ -31,14 +35,14 @@ if SYSTEM == 'Windows':
             return pathlib.Path(buf.value) / 'postgresql'
 
 else:
-    def get_pg_home_directory() -> typing.Optional[pathlib.Path]:
+    def get_pg_home_directory() -> pathlib.Path | None:
         try:
             return pathlib.Path.home()
         except (RuntimeError, KeyError):
             return None
 
 
-async def wait_closed(stream):
+async def wait_closed(stream: asyncio.StreamWriter) -> None:
     # Not all asyncio versions have StreamWriter.wait_closed().
     if hasattr(stream, 'wait_closed'):
         try:
@@ -59,3 +63,40 @@ if sys.version_info < (3, 11):
     from ._asyncio_compat import timeout_ctx as timeout  # noqa: F401
 else:
     from asyncio import timeout as timeout  # noqa: F401
+
+if sys.version_info < (3, 9):
+    from typing import (
+        AsyncIterable as AsyncIterable,
+        Awaitable as Awaitable,
+        Callable as Callable,
+        Coroutine as Coroutine,
+        Deque as deque,
+        Generator as Generator,
+        Iterable as Iterable,
+        Iterator as Iterator,
+        List as list,
+        OrderedDict as OrderedDict,
+        Sequence as Sequence,
+        Sized as Sized,
+        Tuple as tuple,
+    )
+else:
+    from builtins import (  # noqa: F401
+        list as list,
+        tuple as tuple,
+    )
+    from collections import (  # noqa: F401
+        deque as deque,
+        OrderedDict as OrderedDict,
+    )
+    from collections.abc import (  # noqa: F401
+        AsyncIterable as AsyncIterable,
+        Awaitable as Awaitable,
+        Callable as Callable,
+        Coroutine as Coroutine,
+        Generator as Generator,
+        Iterable as Iterable,
+        Iterator as Iterator,
+        Sequence as Sequence,
+        Sized as Sized,
+    )

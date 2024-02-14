@@ -22,7 +22,7 @@ jobs:
         github_token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
         version_file: asyncpg/_version.py
         version_line_pattern: |
-          __version__\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
+          __version__(?:\s*:\s*typing\.Final)?\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
 
     - name: Stop if not approved
       if: steps.checkver.outputs.approved != 'true'
