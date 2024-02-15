@@ -49,37 +49,24 @@ _AsyncProtocolT = typing.TypeVar(
     '_AsyncProtocolT', bound='asyncio.protocols.Protocol'
 )
 _RecordT = typing.TypeVar('_RecordT', bound=protocol.Record)
-_ParsedSSLType = typing.Union[
-    ssl_module.SSLContext, typing.Literal[False]
-]
-_SSLStringValues = typing.Literal[
+
+_ParsedSSLType: compat.TypeAlias = (
+    'ssl_module.SSLContext | typing.Literal[False]'
+)
+_SSLStringValues: compat.TypeAlias = typing.Literal[
     'disable', 'prefer', 'allow', 'require', 'verify-ca', 'verify-full'
 ]
-_TPTupleType = compat.tuple[
-    asyncio.WriteTransport,
-    _AsyncProtocolT
-]
-AddrType = typing.Union[
-    compat.tuple[str, int],
-    str
-]
-HostType = typing.Union[compat.list[str], compat.tuple[str, ...], str]
-PasswordType = typing.Union[
-    str,
-    compat.Callable[[], str],
-    compat.Callable[[], compat.Awaitable[str]]
-]
-PortListType = typing.Union[
-    compat.list[typing.Union[int, str]],
-    compat.list[int],
-    compat.list[str],
-]
-PortType = typing.Union[
-    PortListType,
-    int,
-    str
-]
-SSLType = typing.Union[_ParsedSSLType, _SSLStringValues, bool]
+_TPTupleType: compat.TypeAlias = (
+    'tuple[asyncio.WriteTransport, _AsyncProtocolT]'
+)
+AddrType: compat.TypeAlias = 'tuple[str, int] | str'
+HostType: compat.TypeAlias = 'list[str] | tuple[str, ...] | str'
+PasswordType: compat.TypeAlias = (
+    'str | compat.Callable[[], str] | compat.Callable[[], compat.Awaitable[str]]'  # noqa: E501
+)
+PortListType: compat.TypeAlias = 'list[int | str] | list[int] | list[str]'
+PortType: compat.TypeAlias = 'PortListType | int | str'
+SSLType: compat.TypeAlias = '_ParsedSSLType | _SSLStringValues | bool'
 
 
 class SSLMode(enum.IntEnum):
@@ -880,11 +867,11 @@ async def _create_ssl_connection(
     *,
     loop: asyncio.AbstractEventLoop,
     ssl_context: ssl_module.SSLContext,
-    ssl_is_advisory: typing.Optional[bool] = False
+    ssl_is_advisory: bool | None = False
 ) -> _TPTupleType[typing.Any]:
 
     tr, pr = typing.cast(
-        compat.tuple[asyncio.WriteTransport, TLSUpgradeProto],
+        'tuple[asyncio.WriteTransport, TLSUpgradeProto]',
         await loop.create_connection(
             lambda: TLSUpgradeProto(
                 loop, host, port, ssl_context, ssl_is_advisory
@@ -1008,7 +995,7 @@ async def __connect_addr(
         # UNIX socket
         connector = typing.cast(
             compat.Coroutine[
-                typing.Any, None, _TPTupleType['protocol.Protocol[_RecordT]']
+                typing.Any, None, '_TPTupleType[protocol.Protocol[_RecordT]]'
             ],
             loop.create_unix_connection(proto_factory, addr)
         )
@@ -1018,7 +1005,7 @@ async def __connect_addr(
         # SSL connection
         connector = typing.cast(
             compat.Coroutine[
-                typing.Any, None, _TPTupleType['protocol.Protocol[_RecordT]']
+                typing.Any, None, '_TPTupleType[protocol.Protocol[_RecordT]]'
             ],
             loop.create_connection(proto_factory, *addr, ssl=params.ssl)
         )
@@ -1030,7 +1017,7 @@ async def __connect_addr(
     else:
         connector = typing.cast(
             compat.Coroutine[
-                typing.Any, None, _TPTupleType['protocol.Protocol[_RecordT]']
+                typing.Any, None, '_TPTupleType[protocol.Protocol[_RecordT]]'
             ],
             loop.create_connection(proto_factory, *addr)
         )
@@ -1237,7 +1224,7 @@ async def _cancel(
 
     if isinstance(addr, str):
         tr, pr = typing.cast(
-            _TPTupleType[_CancelProto],
+            '_TPTupleType[_CancelProto]',
             await loop.create_unix_connection(proto_factory, addr)
         )
     else:

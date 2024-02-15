@@ -57,18 +57,20 @@ _RecordT = typing.TypeVar('_RecordT', bound=protocol.Record)
 _OtherRecordT = typing.TypeVar('_OtherRecordT', bound=protocol.Record)
 _P = ParamSpec('_P')
 
-_WriterType = compat.Callable[
+_WriterType: compat.TypeAlias = compat.Callable[
     [bytes], compat.Coroutine[typing.Any, typing.Any, None]
 ]
-_OutputType = typing.Union[
-    'os.PathLike[typing.Any]', typing.BinaryIO, _WriterType
-]
-_CopyFormat = typing.Literal['text', 'csv', 'binary']
-_SourceType = typing.Union[
-    'os.PathLike[typing.Any]', typing.BinaryIO, compat.AsyncIterable[bytes]
-]
-_RecordsType = compat.list[_RecordT]
-_RecordsTupleType = compat.tuple[_RecordsType[_RecordT], bytes, bool]
+_OutputType: compat.TypeAlias = (
+    'os.PathLike[typing.Any] | typing.BinaryIO | _WriterType'
+)
+_CopyFormat: compat.TypeAlias = typing.Literal['text', 'csv', 'binary']
+_SourceType: compat.TypeAlias = (
+    'os.PathLike[typing.Any] | typing.BinaryIO | compat.AsyncIterable[bytes]'
+)
+_RecordsType: compat.TypeAlias = 'list[_RecordT]'
+_RecordsTupleType: compat.TypeAlias = (
+    'tuple[_RecordsType[_RecordT], bytes, bool]'
+)
 
 
 class Listener(typing.Protocol):
@@ -3104,7 +3106,7 @@ async def connect(
         )
 
 
-_StatementCacheKey = compat.tuple[str, 'type[_RecordT]', bool]
+_StatementCacheKey: compat.TypeAlias = 'tuple[str, type[_RecordT], bool]'
 
 
 class _StatementCacheEntry(typing.Generic[_RecordT]):

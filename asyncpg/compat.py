@@ -64,6 +64,14 @@ if sys.version_info < (3, 11):
 else:
     from asyncio import timeout as timeout  # noqa: F401
 
+if typing.TYPE_CHECKING:
+    if sys.version_info < (3, 10):
+        from typing_extensions import TypeAlias as TypeAlias
+    else:
+        from typing import TypeAlias as TypeAlias  # noqa: F401
+else:
+    TypeAlias = typing.NewType('TypeAlias', object)
+
 if sys.version_info < (3, 9):
     from typing import (
         AsyncIterable as AsyncIterable,
@@ -74,17 +82,11 @@ if sys.version_info < (3, 9):
         Generator as Generator,
         Iterable as Iterable,
         Iterator as Iterator,
-        List as list,
         OrderedDict as OrderedDict,
         Sequence as Sequence,
         Sized as Sized,
-        Tuple as tuple,
     )
 else:
-    from builtins import (  # noqa: F401
-        list as list,
-        tuple as tuple,
-    )
     from collections import (  # noqa: F401
         deque as deque,
         OrderedDict as OrderedDict,

@@ -24,15 +24,15 @@ import asyncpg
 from asyncpg import serverversion
 from asyncpg import exceptions
 
-if sys.version_info < (3, 12):
-    from typing_extensions import Unpack
-else:
-    from typing import Unpack
-
 if typing.TYPE_CHECKING:
     import _typeshed
     from . import types
     from . import connection
+
+    if sys.version_info < (3, 12):
+        from typing_extensions import Unpack
+    else:
+        from typing import Unpack
 
 
 class _ConnectionSpec(typing.TypedDict):
