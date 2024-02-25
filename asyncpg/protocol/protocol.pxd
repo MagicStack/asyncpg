@@ -31,7 +31,6 @@ cdef class BaseProtocol(CoreProtocol):
 
     cdef:
         object loop
-        object address
         ConnectionSettings settings
         object cancel_sent_waiter
         object cancel_waiter

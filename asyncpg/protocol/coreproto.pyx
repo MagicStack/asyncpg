@@ -6,14 +6,26 @@
 
 
 import hashlib
+import socket
 
 
 include "scram.pyx"
 
 
+cdef dict AUTH_METHOD_NAME = {
+    AUTH_REQUIRED_KERBEROS: 'kerberosv5',
+    AUTH_REQUIRED_PASSWORD: 'password',
+    AUTH_REQUIRED_PASSWORDMD5: 'md5',
+    AUTH_REQUIRED_GSS: 'gss',
+    AUTH_REQUIRED_SASL: 'scram-sha-256',
+    AUTH_REQUIRED_SSPI: 'sspi',
+}
+
+
 cdef class CoreProtocol:
 
-    def __init__(self, con_params):
+    def __init__(self, addr, con_params):
+        self.address = addr
         # type of `con_params` is `_ConnectionParameters`
         self.buffer = ReadBuffer()
         self.user = con_params.user
@@ -26,6 +38,8 @@ cdef class CoreProtocol:
         self.encoding = 'utf-8'
         # type of `scram` is `SCRAMAuthentcation`
         self.scram = None
+        # type of `gss_ctx` is `gssapi.SecurityContext`
+        self.gss_ctx = None
 
         self._reset_result()
 
@@ -619,9 +633,17 @@ cdef class CoreProtocol:
                     'could not verify server signature for '
                     'SCRAM authentciation: scram-sha-256',
                 )
+            self.scram = None
+
+        elif status == AUTH_REQUIRED_GSS:
+            self._auth_gss_init()
+            self.auth_msg = self._auth_gss_step(None)
+
+        elif status == AUTH_REQUIRED_GSS_CONTINUE:
+            server_response = self.buffer.consume_message()
+            self.auth_msg = self._auth_gss_step(server_response)
 
         elif status in (AUTH_REQUIRED_KERBEROS, AUTH_REQUIRED_SCMCRED,
-                        AUTH_REQUIRED_GSS, AUTH_REQUIRED_GSS_CONTINUE,
                         AUTH_REQUIRED_SSPI):
             self.result_type = RESULT_FAILED
             self.result = apg_exc.InterfaceError(
@@ -634,7 +656,8 @@ cdef class CoreProtocol:
                 'unsupported authentication method requested by the '
                 'server: {}'.format(status))
 
-        if status not in [AUTH_SASL_CONTINUE, AUTH_SASL_FINAL]:
+        if status not in [AUTH_SASL_CONTINUE, AUTH_SASL_FINAL,
+                          AUTH_REQUIRED_GSS_CONTINUE]:
             self.buffer.discard_message()
 
     cdef _auth_password_message_cleartext(self):
@@ -687,6 +710,39 @@ cdef class CoreProtocol:
         client_final_message = self.scram.create_client_final_message(
             self.password or '')
         msg.write_bytes(client_final_message)
+        msg.end_message()
+
+        return msg
+
+    cdef _auth_gss_init(self):
+        try:
+            import gssapi
+        except ModuleNotFoundError:
+            raise RuntimeError(
+                'gssapi module not found; please install asyncpg[gss] to use '
+                'asyncpg with Kerberos or GSSAPI authentication'
+            ) from None
+
+        service_name = self.con_params.krbsrvname or 'postgres'
+        # find the canonical name of the server host
+        if isinstance(self.address, str):
+            host = socket.gethostname()
+        else:
+            host = self.address[0]
+        host_cname = socket.gethostbyname_ex(host)[0].rstrip('.')
+        gss_name = gssapi.Name(f'{service_name}/{host_cname}')
+        self.gss_ctx = gssapi.SecurityContext(name=gss_name, usage='initiate')
+
+    cdef _auth_gss_step(self, bytes server_response):
+        cdef:
+            WriteBuffer msg
+
+        token = self.gss_ctx.step(server_response)
+        if not token:
+            self.gss_ctx = None
+            return None
+        msg = WriteBuffer.new_message(b'p')
+        msg.write_bytes(token)
         msg.end_message()
 
         return msg

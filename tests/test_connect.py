@@ -601,6 +601,46 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'krbsrvname',
+            'dsn': 'postgresql://user@host/db?krbsrvname=srv_qs',
+            'env': {
+                'PGKRBSRVNAME': 'srv_env',
+            },
+            'result': ([('host', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'krbsrvname': 'srv_qs',
+            })
+        },
+
+        {
+            'name': 'krbsrvname_2',
+            'dsn': 'postgresql://user@host/db?krbsrvname=srv_qs',
+            'krbsrvname': 'srv_kws',
+            'result': ([('host', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'krbsrvname': 'srv_kws',
+            })
+        },
+
+        {
+            'name': 'krbsrvname_3',
+            'dsn': 'postgresql://user@host/db',
+            'env': {
+                'PGKRBSRVNAME': 'srv_env',
+            },
+            'result': ([('host', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'krbsrvname': 'srv_env',
+            })
+        },
+
+        {
             'name': 'dsn_ipv6_multi_host',
             'dsn': 'postgresql://user@[2001:db8::1234%25eth0],[::1]/db',
             'result': ([('2001:db8::1234%eth0', 5432), ('::1', 5432)], {
@@ -883,6 +923,7 @@ class TestConnectParams(tb.TestCase):
         sslmode = testcase.get('ssl')
         server_settings = testcase.get('server_settings')
         target_session_attrs = testcase.get('target_session_attrs')
+        krbsrvname = testcase.get('krbsrvname')
 
         expected = testcase.get('result')
         expected_error = testcase.get('error')
@@ -907,7 +948,8 @@ class TestConnectParams(tb.TestCase):
                 passfile=passfile, database=database, ssl=sslmode,
                 direct_tls=False,
                 server_settings=server_settings,
-                target_session_attrs=target_session_attrs)
+                target_session_attrs=target_session_attrs,
+                krbsrvname=krbsrvname)
 
             params = {
                 k: v for k, v in params._asdict().items()

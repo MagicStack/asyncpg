@@ -51,16 +51,6 @@ cdef enum AuthenticationMessage:
     AUTH_SASL_FINAL = 12
 
 
-AUTH_METHOD_NAME = {
-    AUTH_REQUIRED_KERBEROS: 'kerberosv5',
-    AUTH_REQUIRED_PASSWORD: 'password',
-    AUTH_REQUIRED_PASSWORDMD5: 'md5',
-    AUTH_REQUIRED_GSS: 'gss',
-    AUTH_REQUIRED_SASL: 'scram-sha-256',
-    AUTH_REQUIRED_SSPI: 'sspi',
-}
-
-
 cdef enum ResultType:
     RESULT_OK = 1
     RESULT_FAILED = 2
@@ -96,10 +86,13 @@ cdef class CoreProtocol:
 
         object transport
 
+        object address
         # Instance of _ConnectionParameters
         object con_params
         # Instance of SCRAMAuthentication
         SCRAMAuthentication scram
+        # Instance of gssapi.SecurityContext
+        object gss_ctx
 
         readonly int32_t backend_pid
         readonly int32_t backend_secret
@@ -145,6 +138,8 @@ cdef class CoreProtocol:
     cdef _auth_password_message_md5(self, bytes salt)
     cdef _auth_password_message_sasl_initial(self, list sasl_auth_methods)
     cdef _auth_password_message_sasl_continue(self, bytes server_response)
+    cdef _auth_gss_init(self)
+    cdef _auth_gss_step(self, bytes server_response)
 
     cdef _write(self, buf)
     cdef _writelines(self, list buffers)
