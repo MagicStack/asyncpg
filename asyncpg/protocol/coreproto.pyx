@@ -719,17 +719,18 @@ cdef class CoreProtocol:
             import gssapi
         except ModuleNotFoundError:
             raise RuntimeError(
-                'gssapi module not found; please install asyncpg[gss] to use '
-                'asyncpg with Kerberos or GSSAPI authentication'
+                'gssapi module not found; please install asyncpg[gssapi] to '
+                'use asyncpg with Kerberos or GSSAPI authentication'
             ) from None
 
         service_name = self.con_params.krbsrvname or 'postgres'
         # find the canonical name of the server host
         if isinstance(self.address, str):
-            host = socket.gethostname()
-        else:
-            host = self.address[0]
-        host_cname = socket.gethostbyname_ex(host)[0].rstrip('.')
+            raise RuntimeError('GSSAPI authentication is only supported for '
+                               'TCP/IP connections')
+
+        host = self.address[0]
+        host_cname = socket.gethostbyname_ex(host)[0]
         gss_name = gssapi.Name(f'{service_name}/{host_cname}')
         self.gss_ctx = gssapi.SecurityContext(name=gss_name, usage='initiate')
 
