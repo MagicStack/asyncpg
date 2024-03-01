@@ -18,6 +18,12 @@ from . import exceptions
 from . import pool_connection_proxy
 from . import protocol
 
+# Imported for backward compatibility
+from .pool_connection_proxy import (  # noqa: F401
+    PoolConnectionProxy as PoolConnectionProxy,
+    PoolConnectionProxyMeta as PoolConnectionProxyMeta,
+)
+
 if typing.TYPE_CHECKING:
     import sys
 

@@ -17,7 +17,11 @@ if typing.TYPE_CHECKING:
     else:
         from typing import Self
 
-from ._postgres_message import PostgresMessage as PostgresMessage
+# PostgresMessageMeta imported for backward compatibility
+from ._postgres_message import (  # noqa: F401
+    PostgresMessage as PostgresMessage,
+    PostgresMessageMeta as PostgresMessageMeta,
+)
 
 __all__ = ['PostgresError', 'FatalPostgresError', 'UnknownPostgresError',
            'InterfaceError', 'InterfaceWarning', 'PostgresLogMessage',
