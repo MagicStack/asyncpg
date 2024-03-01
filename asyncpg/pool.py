@@ -4,94 +4,59 @@
 # This module is part of asyncpg and is released under
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
+from __future__ import annotations
 
 import asyncio
-import functools
-import inspect
 import logging
 import time
+import typing
 import warnings
 
 from . import compat
 from . import connection
 from . import exceptions
+from . import pool_connection_proxy
 from . import protocol
 
+# Imported for backward compatibility
+from .pool_connection_proxy import (  # noqa: F401
+    PoolConnectionProxy as PoolConnectionProxy,
+    PoolConnectionProxyMeta as PoolConnectionProxyMeta,
+)
 
-logger = logging.getLogger(__name__)
+if typing.TYPE_CHECKING:
+    import sys
 
+    if sys.version_info < (3, 11):
+        from typing_extensions import Self
+    else:
+        from typing import Self
 
-class PoolConnectionProxyMeta(type):
+    from . import connect_utils
 
-    def __new__(mcls, name, bases, dct, *, wrap=False):
-        if wrap:
-            for attrname in dir(connection.Connection):
-                if attrname.startswith('_') or attrname in dct:
-                    continue
+_ConnectionT = typing.TypeVar(
+    '_ConnectionT', bound=connection.Connection[typing.Any]
+)
+_RecordT = typing.TypeVar('_RecordT', bound=protocol.Record)
+_OtherRecordT = typing.TypeVar('_OtherRecordT', bound=protocol.Record)
 
-                meth = getattr(connection.Connection, attrname)
-                if not inspect.isfunction(meth):
-                    continue
-
-                wrapper = mcls._wrap_connection_method(attrname)
-                wrapper = functools.update_wrapper(wrapper, meth)
-                dct[attrname] = wrapper
-
-            if '__doc__' not in dct:
-                dct['__doc__'] = connection.Connection.__doc__
-
-        return super().__new__(mcls, name, bases, dct)
-
-    @staticmethod
-    def _wrap_connection_method(meth_name):
-        def call_con_method(self, *args, **kwargs):
-            # This method will be owned by PoolConnectionProxy class.
-            if self._con is None:
-                raise exceptions.InterfaceError(
-                    'cannot call Connection.{}(): '
-                    'connection has been released back to the pool'.format(
-                        meth_name))
-
-            meth = getattr(self._con.__class__, meth_name)
-            return meth(self._con, *args, **kwargs)
-
-        return call_con_method
+_logger = logging.getLogger(__name__)
 
 
-class PoolConnectionProxy(connection._ConnectionProxy,
-                          metaclass=PoolConnectionProxyMeta,
-                          wrap=True):
-
-    __slots__ = ('_con', '_holder')
-
-    def __init__(self, holder: 'PoolConnectionHolder',
-                 con: connection.Connection):
-        self._con = con
-        self._holder = holder
-        con._set_proxy(self)
-
-    def __getattr__(self, attr):
-        # Proxy all unresolved attributes to the wrapped Connection object.
-        return getattr(self._con, attr)
-
-    def _detach(self) -> connection.Connection:
-        if self._con is None:
-            return
-
-        con, self._con = self._con, None
-        con._set_proxy(None)
-        return con
-
-    def __repr__(self):
-        if self._con is None:
-            return '<{classname} [released] {id:#x}>'.format(
-                classname=self.__class__.__name__, id=id(self))
-        else:
-            return '<{classname} {con!r} {id:#x}>'.format(
-                classname=self.__class__.__name__, con=self._con, id=id(self))
+class _SetupCallback(typing.Protocol[_RecordT]):
+    async def __call__(
+        self,
+        __proxy: pool_connection_proxy.PoolConnectionProxy[_RecordT]
+    ) -> None:
+        ...
 
 
-class PoolConnectionHolder:
+class _InitCallback(typing.Protocol[_RecordT]):
+    async def __call__(self, __con: connection.Connection[_RecordT]) -> None:
+        ...
+
+
+class PoolConnectionHolder(typing.Generic[_RecordT]):
 
     __slots__ = ('_con', '_pool', '_loop', '_proxy',
                  '_max_queries', '_setup',
@@ -99,7 +64,25 @@ class PoolConnectionHolder:
                  '_inactive_callback', '_timeout',
                  '_generation')
 
-    def __init__(self, pool, *, max_queries, setup, max_inactive_time):
+    _con: connection.Connection[_RecordT] | None
+    _pool: Pool[_RecordT]
+    _proxy: pool_connection_proxy.PoolConnectionProxy[_RecordT] | None
+    _max_queries: int
+    _setup: _SetupCallback[_RecordT] | None
+    _max_inactive_time: float
+    _in_use: asyncio.Future[None] | None
+    _inactive_callback: asyncio.TimerHandle | None
+    _timeout: float | None
+    _generation: int | None
+
+    def __init__(
+        self,
+        pool: Pool[_RecordT],
+        *,
+        max_queries: int,
+        setup: _SetupCallback[_RecordT] | None,
+        max_inactive_time: float
+    ) -> None:
 
         self._pool = pool
         self._con = None
@@ -109,17 +92,17 @@ class PoolConnectionHolder:
         self._max_inactive_time = max_inactive_time
         self._setup = setup
         self._inactive_callback = None
-        self._in_use = None  # type: asyncio.Future
+        self._in_use = None
         self._timeout = None
         self._generation = None
 
-    def is_connected(self):
+    def is_connected(self) -> bool:
         return self._con is not None and not self._con.is_closed()
 
-    def is_idle(self):
+    def is_idle(self) -> bool:
         return not self._in_use
 
-    async def connect(self):
+    async def connect(self) -> None:
         if self._con is not None:
             raise exceptions.InternalClientError(
                 'PoolConnectionHolder.connect() called while another '
@@ -130,7 +113,9 @@ class PoolConnectionHolder:
         self._maybe_cancel_inactive_callback()
         self._setup_inactive_callback()
 
-    async def acquire(self) -> PoolConnectionProxy:
+    async def acquire(
+        self
+    ) -> pool_connection_proxy.PoolConnectionProxy[_RecordT]:
         if self._con is None or self._con.is_closed():
             self._con = None
             await self.connect()
@@ -142,9 +127,14 @@ class PoolConnectionHolder:
             self._con = None
             await self.connect()
 
+        if typing.TYPE_CHECKING:
+            assert self._con is not None
+
         self._maybe_cancel_inactive_callback()
 
-        self._proxy = proxy = PoolConnectionProxy(self, self._con)
+        self._proxy = proxy = pool_connection_proxy.PoolConnectionProxy(
+            self, self._con
+        )
 
         if self._setup is not None:
             try:
@@ -167,11 +157,14 @@ class PoolConnectionHolder:
 
         return proxy
 
-    async def release(self, timeout):
+    async def release(self, timeout: float | None) -> None:
         if self._in_use is None:
             raise exceptions.InternalClientError(
                 'PoolConnectionHolder.release() called on '
                 'a free connection holder')
+
+        if typing.TYPE_CHECKING:
+            assert self._con is not None
 
         if self._con.is_closed():
             # When closing, pool connections perform the necessary
@@ -225,25 +218,25 @@ class PoolConnectionHolder:
         # Rearm the connection inactivity timer.
         self._setup_inactive_callback()
 
-    async def wait_until_released(self):
+    async def wait_until_released(self) -> None:
         if self._in_use is None:
             return
         else:
             await self._in_use
 
-    async def close(self):
+    async def close(self) -> None:
         if self._con is not None:
             # Connection.close() will call _release_on_close() to
             # finish holder cleanup.
             await self._con.close()
 
-    def terminate(self):
+    def terminate(self) -> None:
         if self._con is not None:
             # Connection.terminate() will call _release_on_close() to
             # finish holder cleanup.
             self._con.terminate()
 
-    def _setup_inactive_callback(self):
+    def _setup_inactive_callback(self) -> None:
         if self._inactive_callback is not None:
             raise exceptions.InternalClientError(
                 'pool connection inactivity timer already exists')
@@ -252,12 +245,12 @@ class PoolConnectionHolder:
             self._inactive_callback = self._pool._loop.call_later(
                 self._max_inactive_time, self._deactivate_inactive_connection)
 
-    def _maybe_cancel_inactive_callback(self):
+    def _maybe_cancel_inactive_callback(self) -> None:
         if self._inactive_callback is not None:
             self._inactive_callback.cancel()
             self._inactive_callback = None
 
-    def _deactivate_inactive_connection(self):
+    def _deactivate_inactive_connection(self) -> None:
         if self._in_use is not None:
             raise exceptions.InternalClientError(
                 'attempting to deactivate an acquired connection')
@@ -271,12 +264,12 @@ class PoolConnectionHolder:
             # so terminate() above will not call the below.
             self._release_on_close()
 
-    def _release_on_close(self):
+    def _release_on_close(self) -> None:
         self._maybe_cancel_inactive_callback()
         self._release()
         self._con = None
 
-    def _release(self):
+    def _release(self) -> None:
         """Release this connection holder."""
         if self._in_use is None:
             # The holder is not checked out.
@@ -292,11 +285,14 @@ class PoolConnectionHolder:
             self._proxy._detach()
             self._proxy = None
 
+        if typing.TYPE_CHECKING:
+            assert self._pool._queue is not None
+
         # Put ourselves back to the pool queue.
         self._pool._queue.put_nowait(self)
 
 
-class Pool:
+class Pool(typing.Generic[_RecordT]):
     """A connection pool.
 
     Connection pool can be used to manage a set of connections to the database.
@@ -315,17 +311,42 @@ class Pool:
         '_setup', '_max_queries', '_max_inactive_connection_lifetime'
     )
 
-    def __init__(self, *connect_args,
-                 min_size,
-                 max_size,
-                 max_queries,
-                 max_inactive_connection_lifetime,
-                 setup,
-                 init,
-                 loop,
-                 connection_class,
-                 record_class,
-                 **connect_kwargs):
+    _queue: asyncio.LifoQueue[PoolConnectionHolder[_RecordT]] | None
+    _loop: asyncio.AbstractEventLoop
+    _minsize: int
+    _maxsize: int
+    _init: _InitCallback[_RecordT] | None
+    _connect_args: tuple[str | None] | tuple[()]
+    _connect_kwargs: dict[str, object]
+    _working_addr: typing.Tuple[str, int] | str
+    _working_config: connect_utils._ClientConfiguration | None
+    _working_params: connect_utils._ConnectionParameters | None
+    _holders: list[PoolConnectionHolder[_RecordT]]
+    _initialized: bool
+    _initializing: bool
+    _closing: bool
+    _closed: bool
+    _connection_class: type[connection.Connection[_RecordT]]
+    _record_class: type[_RecordT]
+    _generation: int
+    _setup: _SetupCallback[_RecordT] | None
+    _max_queries: int
+    _max_inactive_connection_lifetime: float
+
+    def __init__(
+        self,
+        *connect_args: str | None,
+        min_size: int,
+        max_size: int,
+        max_queries: int,
+        max_inactive_connection_lifetime: float,
+        setup: _SetupCallback[_RecordT] | None,
+        init: _InitCallback[_RecordT] | None,
+        loop: asyncio.AbstractEventLoop | None,
+        connection_class: type[_ConnectionT],
+        record_class: type[_RecordT],
+        **connect_kwargs: object
+    ):
 
         if len(connect_args) > 1:
             warnings.warn(
@@ -382,7 +403,9 @@ class Pool:
         self._closed = False
         self._generation = 0
         self._init = init
-        self._connect_args = connect_args
+        self._connect_args = (
+            () if not len(connect_args) else (connect_args[0],)
+        )
         self._connect_kwargs = connect_kwargs
 
         self._setup = setup
@@ -390,9 +413,9 @@ class Pool:
         self._max_inactive_connection_lifetime = \
             max_inactive_connection_lifetime
 
-    async def _async__init__(self):
+    async def _async__init__(self) -> Self | None:
         if self._initialized:
-            return
+            return None
         if self._initializing:
             raise exceptions.InterfaceError(
                 'pool is being initialized in another task')
@@ -406,7 +429,7 @@ class Pool:
             self._initializing = False
             self._initialized = True
 
-    async def _initialize(self):
+    async def _initialize(self) -> None:
         self._queue = asyncio.LifoQueue(maxsize=self._maxsize)
         for _ in range(self._maxsize):
             ch = PoolConnectionHolder(
@@ -426,11 +449,11 @@ class Pool:
 
             # Connect the first connection holder in the queue so that
             # any connection issues are visible early.
-            first_ch = self._holders[-1]  # type: PoolConnectionHolder
+            first_ch: PoolConnectionHolder[_RecordT] = self._holders[-1]
             await first_ch.connect()
 
             if self._minsize > 1:
-                connect_tasks = []
+                connect_tasks: list[compat.Awaitable[None]] = []
                 for i, ch in enumerate(reversed(self._holders[:-1])):
                     # `minsize - 1` because we already have first_ch
                     if i >= self._minsize - 1:
@@ -439,42 +462,44 @@ class Pool:
 
                 await asyncio.gather(*connect_tasks)
 
-    def is_closing(self):
+    def is_closing(self) -> bool:
         """Return ``True`` if the pool is closing or is closed.
 
         .. versionadded:: 0.28.0
         """
         return self._closed or self._closing
 
-    def get_size(self):
+    def get_size(self) -> int:
         """Return the current number of connections in this pool.
 
         .. versionadded:: 0.25.0
         """
         return sum(h.is_connected() for h in self._holders)
 
-    def get_min_size(self):
+    def get_min_size(self) -> int:
         """Return the minimum number of connections in this pool.
 
         .. versionadded:: 0.25.0
         """
         return self._minsize
 
-    def get_max_size(self):
+    def get_max_size(self) -> int:
         """Return the maximum allowed number of connections in this pool.
 
         .. versionadded:: 0.25.0
         """
         return self._maxsize
 
-    def get_idle_size(self):
+    def get_idle_size(self) -> int:
         """Return the current number of idle connections in this pool.
 
         .. versionadded:: 0.25.0
         """
         return sum(h.is_connected() and h.is_idle() for h in self._holders)
 
-    def set_connect_args(self, dsn=None, **connect_kwargs):
+    def set_connect_args(
+        self, dsn: str | None = None, **connect_kwargs: object
+    ) -> None:
         r"""Set the new connection arguments for this pool.
 
         The new connection arguments will be used for all subsequent
@@ -495,16 +520,16 @@ class Pool:
         .. versionadded:: 0.16.0
         """
 
-        self._connect_args = [dsn]
+        self._connect_args = (dsn,)
         self._connect_kwargs = connect_kwargs
 
-    async def _get_new_connection(self):
-        con = await connection.connect(
+    async def _get_new_connection(self) -> connection.Connection[_RecordT]:
+        con: connection.Connection[_RecordT] = await connection.connect(
             *self._connect_args,
             loop=self._loop,
             connection_class=self._connection_class,
             record_class=self._record_class,
-            **self._connect_kwargs,
+            **typing.cast(typing.Any, self._connect_kwargs),
         )
 
         if self._init is not None:
@@ -526,7 +551,9 @@ class Pool:
 
         return con
 
-    async def execute(self, query: str, *args, timeout: float=None) -> str:
+    async def execute(
+        self, query: str, *args: object, timeout: float | None = None
+    ) -> str:
         """Execute an SQL command (or commands).
 
         Pool performs this operation using one of its connections.  Other than
@@ -538,7 +565,13 @@ class Pool:
         async with self.acquire() as con:
             return await con.execute(query, *args, timeout=timeout)
 
-    async def executemany(self, command: str, args, *, timeout: float=None):
+    async def executemany(
+        self,
+        command: str,
+        args: compat.Iterable[compat.Sequence[object]],
+        *,
+        timeout: float | None = None,
+    ) -> None:
         """Execute an SQL *command* for each sequence of arguments in *args*.
 
         Pool performs this operation using one of its connections.  Other than
@@ -551,13 +584,43 @@ class Pool:
         async with self.acquire() as con:
             return await con.executemany(command, args, timeout=timeout)
 
+    @typing.overload
     async def fetch(
         self,
-        query,
-        *args,
-        timeout=None,
-        record_class=None
-    ) -> list:
+        query: str,
+        *args: object,
+        timeout: float | None = ...,
+        record_class: None = ...,
+    ) -> list[_RecordT]:
+        ...
+
+    @typing.overload
+    async def fetch(
+        self,
+        query: str,
+        *args: object,
+        timeout: float | None = ...,
+        record_class: type[_OtherRecordT],
+    ) -> list[_OtherRecordT]:
+        ...
+
+    @typing.overload
+    async def fetch(
+        self,
+        query: str,
+        *args: object,
+        timeout: float | None = ...,
+        record_class: type[_OtherRecordT] | None,
+    ) -> list[_RecordT] | list[_OtherRecordT]:
+        ...
+
+    async def fetch(
+        self,
+        query: str,
+        *args: object,
+        timeout: float | None = None,
+        record_class: type[_OtherRecordT] | None = None,
+    ) -> list[_RecordT] | list[_OtherRecordT]:
         """Run a query and return the results as a list of :class:`Record`.
 
         Pool performs this operation using one of its connections.  Other than
@@ -574,7 +637,13 @@ class Pool:
                 record_class=record_class
             )
 
-    async def fetchval(self, query, *args, column=0, timeout=None):
+    async def fetchval(
+        self,
+        query: str,
+        *args: object,
+        column: int = 0,
+        timeout: float | None = None,
+    ) -> typing.Any:
         """Run a query and return a value in the first row.
 
         Pool performs this operation using one of its connections.  Other than
@@ -588,7 +657,43 @@ class Pool:
             return await con.fetchval(
                 query, *args, column=column, timeout=timeout)
 
-    async def fetchrow(self, query, *args, timeout=None, record_class=None):
+    @typing.overload
+    async def fetchrow(
+        self,
+        query: str,
+        *args: object,
+        timeout: float | None = ...,
+        record_class: None = ...,
+    ) -> _RecordT | None:
+        ...
+
+    @typing.overload
+    async def fetchrow(
+        self,
+        query: str,
+        *args: object,
+        timeout: float | None = ...,
+        record_class: type[_OtherRecordT],
+    ) -> _OtherRecordT | None:
+        ...
+
+    @typing.overload
+    async def fetchrow(
+        self,
+        query: str,
+        *args: object,
+        timeout: float | None = ...,
+        record_class: type[_OtherRecordT] | None,
+    ) -> _RecordT | _OtherRecordT | None:
+        ...
+
+    async def fetchrow(
+        self,
+        query: str,
+        *args: object,
+        timeout: float | None = None,
+        record_class: type[_OtherRecordT] | None = None,
+    ) -> _RecordT | _OtherRecordT | None:
         """Run a query and return the first row.
 
         Pool performs this operation using one of its connections.  Other than
@@ -607,22 +712,22 @@ class Pool:
 
     async def copy_from_table(
         self,
-        table_name,
+        table_name: str,
         *,
-        output,
-        columns=None,
-        schema_name=None,
-        timeout=None,
-        format=None,
-        oids=None,
-        delimiter=None,
-        null=None,
-        header=None,
-        quote=None,
-        escape=None,
-        force_quote=None,
-        encoding=None
-    ):
+        output: connection._OutputType,
+        columns: compat.Iterable[str] | None = None,
+        schema_name: str | None = None,
+        timeout: float | None = None,
+        format: connection._CopyFormat | None = None,
+        oids: int | None = None,
+        delimiter: str | None = None,
+        null: str | None = None,
+        header: bool | None = None,
+        quote: str | None = None,
+        escape: str | None = None,
+        force_quote: bool | compat.Iterable[str] | None = None,
+        encoding: str | None = None,
+    ) -> str:
         """Copy table contents to a file or file-like object.
 
         Pool performs this operation using one of its connections.  Other than
@@ -652,20 +757,20 @@ class Pool:
 
     async def copy_from_query(
         self,
-        query,
-        *args,
-        output,
-        timeout=None,
-        format=None,
-        oids=None,
-        delimiter=None,
-        null=None,
-        header=None,
-        quote=None,
-        escape=None,
-        force_quote=None,
-        encoding=None
-    ):
+        query: str,
+        *args: object,
+        output: connection._OutputType,
+        timeout: float | None = None,
+        format: connection._CopyFormat | None = None,
+        oids: int | None = None,
+        delimiter: str | None = None,
+        null: str | None = None,
+        header: bool | None = None,
+        quote: str | None = None,
+        escape: str | None = None,
+        force_quote: bool | compat.Iterable[str] | None = None,
+        encoding: str | None = None,
+    ) -> str:
         """Copy the results of a query to a file or file-like object.
 
         Pool performs this operation using one of its connections.  Other than
@@ -694,26 +799,26 @@ class Pool:
 
     async def copy_to_table(
         self,
-        table_name,
+        table_name: str,
         *,
-        source,
-        columns=None,
-        schema_name=None,
-        timeout=None,
-        format=None,
-        oids=None,
-        freeze=None,
-        delimiter=None,
-        null=None,
-        header=None,
-        quote=None,
-        escape=None,
-        force_quote=None,
-        force_not_null=None,
-        force_null=None,
-        encoding=None,
-        where=None
-    ):
+        source: connection._SourceType,
+        columns: compat.Iterable[str] | None = None,
+        schema_name: str | None = None,
+        timeout: float | None = None,
+        format: connection._CopyFormat | None = None,
+        oids: int | None = None,
+        freeze: bool | None = None,
+        delimiter: str | None = None,
+        null: str | None = None,
+        header: bool | None = None,
+        quote: str | None = None,
+        escape: str | None = None,
+        force_quote: bool | compat.Iterable[str] | None = None,
+        force_not_null: bool | compat.Iterable[str] | None = None,
+        force_null: bool | compat.Iterable[str] | None = None,
+        encoding: str | None = None,
+        where: str | None = None,
+    ) -> str:
         """Copy data to the specified table.
 
         Pool performs this operation using one of its connections.  Other than
@@ -747,14 +852,16 @@ class Pool:
 
     async def copy_records_to_table(
         self,
-        table_name,
+        table_name: str,
         *,
-        records,
-        columns=None,
-        schema_name=None,
-        timeout=None,
-        where=None
-    ):
+        records: compat.Iterable[
+            compat.Sequence[object]
+        ] | compat.AsyncIterable[compat.Sequence[object]],
+        columns: compat.Iterable[str] | None = None,
+        schema_name: str | None = None,
+        timeout: float | None = None,
+        where: str | None = None,
+    ) -> str:
         """Copy a list of records to the specified table using binary COPY.
 
         Pool performs this operation using one of its connections.  Other than
@@ -774,7 +881,9 @@ class Pool:
                 where=where
             )
 
-    def acquire(self, *, timeout=None):
+    def acquire(
+        self, *, timeout: float | None = None
+    ) -> PoolAcquireContext[_RecordT]:
         """Acquire a database connection from the pool.
 
         :param float timeout: A timeout for acquiring a Connection.
@@ -799,11 +908,18 @@ class Pool:
         """
         return PoolAcquireContext(self, timeout)
 
-    async def _acquire(self, timeout):
-        async def _acquire_impl():
-            ch = await self._queue.get()  # type: PoolConnectionHolder
+    async def _acquire(
+        self, timeout: float | None
+    ) -> pool_connection_proxy.PoolConnectionProxy[_RecordT]:
+        async def _acquire_impl() -> pool_connection_proxy.PoolConnectionProxy[
+            _RecordT
+        ]:
+            if typing.TYPE_CHECKING:
+                assert self._queue is not None
+
+            ch: PoolConnectionHolder[_RecordT] = await self._queue.get()
             try:
-                proxy = await ch.acquire()  # type: PoolConnectionProxy
+                proxy = await ch.acquire()
             except (Exception, asyncio.CancelledError):
                 self._queue.put_nowait(ch)
                 raise
@@ -823,7 +939,12 @@ class Pool:
             return await compat.wait_for(
                 _acquire_impl(), timeout=timeout)
 
-    async def release(self, connection, *, timeout=None):
+    async def release(
+        self,
+        connection: pool_connection_proxy.PoolConnectionProxy[_RecordT],
+        *,
+        timeout: float | None = None,
+    ) -> None:
         """Release a database connection back to the pool.
 
         :param Connection connection:
@@ -836,8 +957,8 @@ class Pool:
         .. versionchanged:: 0.14.0
             Added the *timeout* parameter.
         """
-        if (type(connection) is not PoolConnectionProxy or
-                connection._holder._pool is not self):
+        if (type(connection) is not pool_connection_proxy.PoolConnectionProxy
+                or connection._holder._pool is not self):
             raise exceptions.InterfaceError(
                 'Pool.release() received invalid connection: '
                 '{connection!r} is not a member of this pool'.format(
@@ -861,7 +982,7 @@ class Pool:
         # pool properly.
         return await asyncio.shield(ch.release(timeout))
 
-    async def close(self):
+    async def close(self) -> None:
         """Attempt to gracefully close all connections in the pool.
 
         Wait until all pool connections are released, close them and
@@ -906,13 +1027,13 @@ class Pool:
             self._closed = True
             self._closing = False
 
-    def _warn_on_long_close(self):
-        logger.warning('Pool.close() is taking over 60 seconds to complete. '
-                       'Check if you have any unreleased connections left. '
-                       'Use asyncio.wait_for() to set a timeout for '
-                       'Pool.close().')
+    def _warn_on_long_close(self) -> None:
+        _logger.warning('Pool.close() is taking over 60 seconds to complete. '
+                        'Check if you have any unreleased connections left. '
+                        'Use asyncio.wait_for() to set a timeout for '
+                        'Pool.close().')
 
-    def terminate(self):
+    def terminate(self) -> None:
         """Terminate all connections in the pool."""
         if self._closed:
             return
@@ -921,7 +1042,7 @@ class Pool:
             ch.terminate()
         self._closed = True
 
-    async def expire_connections(self):
+    async def expire_connections(self) -> None:
         """Expire all currently open connections.
 
         Cause all currently open connections to get replaced on the
@@ -931,7 +1052,7 @@ class Pool:
         """
         self._generation += 1
 
-    def _check_init(self):
+    def _check_init(self) -> None:
         if not self._initialized:
             if self._initializing:
                 raise exceptions.InterfaceError(
@@ -942,67 +1063,142 @@ class Pool:
         if self._closed:
             raise exceptions.InterfaceError('pool is closed')
 
-    def _drop_statement_cache(self):
+    def _drop_statement_cache(self) -> None:
         # Drop statement cache for all connections in the pool.
         for ch in self._holders:
             if ch._con is not None:
                 ch._con._drop_local_statement_cache()
 
-    def _drop_type_cache(self):
+    def _drop_type_cache(self) -> None:
         # Drop type codec cache for all connections in the pool.
         for ch in self._holders:
             if ch._con is not None:
                 ch._con._drop_local_type_cache()
 
-    def __await__(self):
+    def __await__(self) -> compat.Generator[typing.Any, None, Self | None]:
         return self._async__init__().__await__()
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> Self:
         await self._async__init__()
         return self
 
-    async def __aexit__(self, *exc):
+    async def __aexit__(self, *exc: object) -> None:
         await self.close()
 
 
-class PoolAcquireContext:
+class PoolAcquireContext(typing.Generic[_RecordT]):
 
     __slots__ = ('timeout', 'connection', 'done', 'pool')
 
-    def __init__(self, pool, timeout):
+    timeout: float | None
+    connection: pool_connection_proxy.PoolConnectionProxy[_RecordT] | None
+    done: bool
+    pool: Pool[_RecordT]
+
+    def __init__(self, pool: Pool[_RecordT], timeout: float | None) -> None:
         self.pool = pool
         self.timeout = timeout
         self.connection = None
         self.done = False
 
-    async def __aenter__(self):
+    async def __aenter__(
+        self
+    ) -> pool_connection_proxy.PoolConnectionProxy[_RecordT]:
         if self.connection is not None or self.done:
             raise exceptions.InterfaceError('a connection is already acquired')
         self.connection = await self.pool._acquire(self.timeout)
         return self.connection
 
-    async def __aexit__(self, *exc):
+    async def __aexit__(self, *exc: object) -> None:
         self.done = True
         con = self.connection
         self.connection = None
+        if typing.TYPE_CHECKING:
+            assert con is not None
         await self.pool.release(con)
 
-    def __await__(self):
+    def __await__(self) -> compat.Generator[
+        typing.Any, None, pool_connection_proxy.PoolConnectionProxy[_RecordT]
+    ]:
         self.done = True
         return self.pool._acquire(self.timeout).__await__()
 
 
-def create_pool(dsn=None, *,
-                min_size=10,
-                max_size=10,
-                max_queries=50000,
-                max_inactive_connection_lifetime=300.0,
-                setup=None,
-                init=None,
-                loop=None,
-                connection_class=connection.Connection,
-                record_class=protocol.Record,
-                **connect_kwargs):
+@typing.overload
+def create_pool(
+    dsn: str | None = ...,
+    *,
+    min_size: int = ...,
+    max_size: int = ...,
+    max_queries: int = ...,
+    max_inactive_connection_lifetime: float = ...,
+    setup: _SetupCallback[_RecordT] | None = ...,
+    init: _InitCallback[_RecordT] | None = ...,
+    loop: asyncio.AbstractEventLoop | None = ...,
+    connection_class: type[connection.Connection[_RecordT]] = ...,
+    record_class: type[_RecordT],
+    host: connect_utils.HostType | None = ...,
+    port: connect_utils.PortType | None = ...,
+    user: str | None = ...,
+    password: connect_utils.PasswordType | None = ...,
+    passfile: str | None = ...,
+    database: str | None = ...,
+    timeout: float = ...,
+    statement_cache_size: int = ...,
+    max_cached_statement_lifetime: int = ...,
+    max_cacheable_statement_size: int = ...,
+    command_timeout: float | None = ...,
+    ssl: connect_utils.SSLType | None = ...,
+    server_settings: dict[str, str] | None = ...,
+) -> Pool[_RecordT]:
+    ...
+
+
+@typing.overload
+def create_pool(
+    dsn: str | None = ...,
+    *,
+    min_size: int = ...,
+    max_size: int = ...,
+    max_queries: int = ...,
+    max_inactive_connection_lifetime: float = ...,
+    setup: _SetupCallback[protocol.Record] | None = ...,
+    init: _InitCallback[protocol.Record] | None = ...,
+    loop: asyncio.AbstractEventLoop | None = ...,
+    connection_class: type[connection.Connection[protocol.Record]] = ...,
+    host: connect_utils.HostType | None = ...,
+    port: connect_utils.PortType | None = ...,
+    user: str | None = ...,
+    password: connect_utils.PasswordType | None = ...,
+    passfile: str | None = ...,
+    database: str | None = ...,
+    timeout: float = ...,
+    statement_cache_size: int = ...,
+    max_cached_statement_lifetime: int = ...,
+    max_cacheable_statement_size: int = ...,
+    command_timeout: float | None = ...,
+    ssl: connect_utils.SSLType | None = ...,
+    server_settings: dict[str, str] | None = ...,
+) -> Pool[protocol.Record]:
+    ...
+
+
+def create_pool(
+    dsn: str | None = None,
+    *,
+    min_size: int = 10,
+    max_size: int = 10,
+    max_queries: int = 50000,
+    max_inactive_connection_lifetime: float = 300.0,
+    setup: _SetupCallback[typing.Any] | None = None,
+    init: _InitCallback[typing.Any] | None = None,
+    loop: asyncio.AbstractEventLoop | None = None,
+    connection_class: type[
+        connection.Connection[typing.Any]
+    ] = connection.Connection,
+    record_class: type[protocol.Record] | type[_RecordT] = protocol.Record,
+    **connect_kwargs: typing.Any
+) -> Pool[typing.Any]:
     r"""Create a connection pool.
 
     Can be used either with an ``async with`` block:

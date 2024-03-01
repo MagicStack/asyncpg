@@ -4,6 +4,7 @@
 # This module is part of asyncpg and is released under
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
+from __future__ import annotations
 
 import asyncio
 import os
@@ -17,28 +18,46 @@ import sys
 import tempfile
 import textwrap
 import time
+import typing
 
 import asyncpg
 from asyncpg import serverversion
+from asyncpg import exceptions
+
+if typing.TYPE_CHECKING:
+    import _typeshed
+    from . import types
+    from . import connection
+
+    if sys.version_info < (3, 12):
+        from typing_extensions import Unpack
+    else:
+        from typing import Unpack
 
 
-_system = platform.uname().system
+class _ConnectionSpec(typing.TypedDict):
+    host: str
+    port: str
+
+
+_system: typing.Final = platform.uname().system
 
 if _system == 'Windows':
-    def platform_exe(name):
+    def platform_exe(name: str) -> str:
         if name.endswith('.exe'):
             return name
         return name + '.exe'
 else:
-    def platform_exe(name):
+    def platform_exe(name: str) -> str:
         return name
 
 
-def find_available_port():
+def find_available_port() -> int | None:
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         sock.bind(('127.0.0.1', 0))
-        return sock.getsockname()[1]
+        sock_name: tuple[str, int] = sock.getsockname()
+        return sock_name[1]
     except Exception:
         return None
     finally:
@@ -50,7 +69,18 @@ class ClusterError(Exception):
 
 
 class Cluster:
-    def __init__(self, data_dir, *, pg_config_path=None):
+    _data_dir: str
+    _pg_config_path: str | None
+    _pg_bin_dir: str | None
+    _pg_ctl: str | None
+    _daemon_pid: int | None
+    _daemon_process: subprocess.Popen[bytes] | None
+    _connection_addr: _ConnectionSpec | None
+    _connection_spec_override: _ConnectionSpec | None
+
+    def __init__(
+        self, data_dir: str, *, pg_config_path: str | None = None
+    ) -> None:
         self._data_dir = data_dir
         self._pg_config_path = pg_config_path
         self._pg_bin_dir = (
@@ -63,21 +93,21 @@ class Cluster:
         self._connection_addr = None
         self._connection_spec_override = None
 
-    def get_pg_version(self):
+    def get_pg_version(self) -> types.ServerVersion:
         return self._pg_version
 
-    def is_managed(self):
+    def is_managed(self) -> bool:
         return True
 
-    def get_data_dir(self):
+    def get_data_dir(self) -> str:
         return self._data_dir
 
-    def get_status(self):
+    def get_status(self) -> str:
         if self._pg_ctl is None:
             self._init_env()
 
         process = subprocess.run(
-            [self._pg_ctl, 'status', '-D', self._data_dir],
+            [typing.cast(str, self._pg_ctl), 'status', '-D', self._data_dir],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = process.stdout, process.stderr
 
@@ -96,15 +126,24 @@ class Cluster:
             return self._test_connection(timeout=0)
         else:
             raise ClusterError(
-                'pg_ctl status exited with status {:d}: {}'.format(
+                'pg_ctl status exited with status {:d}: {!r}'.format(
                     process.returncode, stderr))
 
-    async def connect(self, loop=None, **kwargs):
-        conn_info = self.get_connection_spec()
+    async def connect(
+        self,
+        loop: asyncio.AbstractEventLoop | None = None,
+        **kwargs: object
+    ) -> connection.Connection[typing.Any]:
+        conn_info = typing.cast(
+            'dict[str, typing.Any]', self.get_connection_spec()
+        )
         conn_info.update(kwargs)
-        return await asyncpg.connect(loop=loop, **conn_info)
+        return typing.cast(
+            'connection.Connection[typing.Any]',
+            await asyncpg.connect(loop=loop, **conn_info)
+        )
 
-    def init(self, **settings):
+    def init(self, **settings: str) -> str:
         """Initialize cluster."""
         if self.get_status() != 'not-initialized':
             raise ClusterError(
@@ -123,8 +162,12 @@ class Cluster:
             extra_args = []
 
         process = subprocess.run(
-            [self._pg_ctl, 'init', '-D', self._data_dir] + extra_args,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            [
+                typing.cast(str, self._pg_ctl), 'init', '-D', self._data_dir
+            ] + extra_args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT
+        )
 
         output = process.stdout
 
@@ -135,7 +178,13 @@ class Cluster:
 
         return output.decode()
 
-    def start(self, wait=60, *, server_settings={}, **opts):
+    def start(
+        self,
+        wait: int = 60,
+        *,
+        server_settings: dict[str, str] = {},
+        **opts: object
+    ) -> None:
         """Start the cluster."""
         status = self.get_status()
         if status == 'running':
@@ -178,17 +227,19 @@ class Cluster:
         for k, v in server_settings.items():
             extra_args.extend(['-c', '{}={}'.format(k, v)])
 
+        pg_ctl = typing.cast(str, self._pg_ctl)
+
         if _system == 'Windows':
             # On Windows we have to use pg_ctl as direct execution
             # of postgres daemon under an Administrative account
             # is not permitted and there is no easy way to drop
             # privileges.
             if os.getenv('ASYNCPG_DEBUG_SERVER'):
-                stdout = sys.stdout
+                stdout: int | typing.TextIO = sys.stdout
                 print(
                     'asyncpg.cluster: Running',
                     ' '.join([
-                        self._pg_ctl, 'start', '-D', self._data_dir,
+                        pg_ctl, 'start', '-D', self._data_dir,
                         '-o', ' '.join(extra_args)
                     ]),
                     file=sys.stderr,
@@ -197,7 +248,7 @@ class Cluster:
                 stdout = subprocess.DEVNULL
 
             process = subprocess.run(
-                [self._pg_ctl, 'start', '-D', self._data_dir,
+                [pg_ctl, 'start', '-D', self._data_dir,
                  '-o', ' '.join(extra_args)],
                 stdout=stdout, stderr=subprocess.STDOUT)
 
@@ -224,14 +275,14 @@ class Cluster:
 
         self._test_connection(timeout=wait)
 
-    def reload(self):
+    def reload(self) -> None:
         """Reload server configuration."""
         status = self.get_status()
         if status != 'running':
             raise ClusterError('cannot reload: cluster is not running')
 
         process = subprocess.run(
-            [self._pg_ctl, 'reload', '-D', self._data_dir],
+            [typing.cast(str, self._pg_ctl), 'reload', '-D', self._data_dir],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         stderr = process.stderr
@@ -241,11 +292,21 @@ class Cluster:
                 'pg_ctl stop exited with status {:d}: {}'.format(
                     process.returncode, stderr.decode()))
 
-    def stop(self, wait=60):
+    def stop(self, wait: int = 60) -> None:
         process = subprocess.run(
-            [self._pg_ctl, 'stop', '-D', self._data_dir, '-t', str(wait),
-             '-m', 'fast'],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            [
+                typing.cast(str, self._pg_ctl),
+                'stop',
+                '-D',
+                self._data_dir,
+                '-t',
+                str(wait),
+                '-m',
+                'fast'
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
 
         stderr = process.stderr
 
@@ -258,14 +319,14 @@ class Cluster:
                 self._daemon_process.returncode is None):
             self._daemon_process.kill()
 
-    def destroy(self):
+    def destroy(self) -> None:
         status = self.get_status()
         if status == 'stopped' or status == 'not-initialized':
             shutil.rmtree(self._data_dir)
         else:
             raise ClusterError('cannot destroy {} cluster'.format(status))
 
-    def _get_connection_spec(self):
+    def _get_connection_spec(self) -> _ConnectionSpec | None:
         if self._connection_addr is None:
             self._connection_addr = self._connection_addr_from_pidfile()
 
@@ -277,17 +338,26 @@ class Cluster:
             else:
                 return self._connection_addr
 
-    def get_connection_spec(self):
+        return None
+
+    def get_connection_spec(self) -> _ConnectionSpec:
         status = self.get_status()
         if status != 'running':
             raise ClusterError('cluster is not running')
 
-        return self._get_connection_spec()
+        spec = self._get_connection_spec()
 
-    def override_connection_spec(self, **kwargs):
-        self._connection_spec_override = kwargs
+        if spec is None:
+            raise ClusterError('cannot determine server connection address')
 
-    def reset_wal(self, *, oid=None, xid=None):
+        return spec
+
+    def override_connection_spec(self, **kwargs: str) -> None:
+        self._connection_spec_override = typing.cast(_ConnectionSpec, kwargs)
+
+    def reset_wal(
+        self, *, oid: int | None = None, xid: int | None = None
+    ) -> None:
         status = self.get_status()
         if status == 'not-initialized':
             raise ClusterError(
@@ -297,7 +367,7 @@ class Cluster:
             raise ClusterError(
                 'cannot modify WAL status: cluster is running')
 
-        opts = []
+        opts: list[str] = []
         if oid is not None:
             opts.extend(['-o', str(oid)])
         if xid is not None:
@@ -323,7 +393,7 @@ class Cluster:
                 'pg_resetwal exited with status {:d}: {}'.format(
                     process.returncode, stderr.decode()))
 
-    def reset_hba(self):
+    def reset_hba(self) -> None:
         """Remove all records from pg_hba.conf."""
         status = self.get_status()
         if status == 'not-initialized':
@@ -339,8 +409,16 @@ class Cluster:
             raise ClusterError(
                 'cannot modify HBA records: {}'.format(e)) from e
 
-    def add_hba_entry(self, *, type='host', database, user, address=None,
-                      auth_method, auth_options=None):
+    def add_hba_entry(
+        self,
+        *,
+        type: str = 'host',
+        database: str,
+        user: str,
+        address: str | None = None,
+        auth_method: str,
+        auth_options: dict[str, str] | None = None,
+    ) -> None:
         """Add a record to pg_hba.conf."""
         status = self.get_status()
         if status == 'not-initialized':
@@ -365,7 +443,7 @@ class Cluster:
 
         if auth_options is not None:
             record += ' ' + ' '.join(
-                '{}={}'.format(k, v) for k, v in auth_options)
+                '{}={}'.format(k, v) for k, v in auth_options.items())
 
         try:
             with open(pg_hba, 'a') as f:
@@ -374,7 +452,7 @@ class Cluster:
             raise ClusterError(
                 'cannot modify HBA records: {}'.format(e)) from e
 
-    def trust_local_connections(self):
+    def trust_local_connections(self) -> None:
         self.reset_hba()
 
         if _system != 'Windows':
@@ -390,7 +468,7 @@ class Cluster:
         if status == 'running':
             self.reload()
 
-    def trust_local_replication_by(self, user):
+    def trust_local_replication_by(self, user: str) -> None:
         if _system != 'Windows':
             self.add_hba_entry(type='local', database='replication',
                                user=user, auth_method='trust')
@@ -404,7 +482,7 @@ class Cluster:
         if status == 'running':
             self.reload()
 
-    def _init_env(self):
+    def _init_env(self) -> None:
         if not self._pg_bin_dir:
             pg_config = self._find_pg_config(self._pg_config_path)
             pg_config_data = self._run_pg_config(pg_config)
@@ -418,7 +496,7 @@ class Cluster:
         self._postgres = self._find_pg_binary('postgres')
         self._pg_version = self._get_pg_version()
 
-    def _connection_addr_from_pidfile(self):
+    def _connection_addr_from_pidfile(self) -> _ConnectionSpec | None:
         pidfile = os.path.join(self._data_dir, 'postmaster.pid')
 
         try:
@@ -464,7 +542,7 @@ class Cluster:
             'port': portnum
         }
 
-    def _test_connection(self, timeout=60):
+    def _test_connection(self, timeout: int = 60) -> str:
         self._connection_addr = None
 
         loop = asyncio.new_event_loop()
@@ -478,17 +556,24 @@ class Cluster:
                         continue
 
                 try:
-                    con = loop.run_until_complete(
-                        asyncpg.connect(database='postgres',
-                                        user='postgres',
-                                        timeout=5, loop=loop,
-                                        **self._connection_addr))
+                    con: connection.Connection[
+                        typing.Any
+                    ] = loop.run_until_complete(
+                        asyncpg.connect(
+                            database='postgres',
+                            user='postgres',
+                            timeout=5, loop=loop,
+                            **typing.cast(
+                                _ConnectionSpec, self._connection_addr
+                            )
+                        )
+                    )
                 except (OSError, asyncio.TimeoutError,
-                        asyncpg.CannotConnectNowError,
-                        asyncpg.PostgresConnectionError):
+                        exceptions.CannotConnectNowError,
+                        exceptions.PostgresConnectionError):
                     time.sleep(1)
                     continue
-                except asyncpg.PostgresError:
+                except exceptions.PostgresError:
                     # Any other error other than ServerNotReadyError or
                     # ConnectionError is interpreted to indicate the server is
                     # up.
@@ -501,16 +586,19 @@ class Cluster:
 
         return 'running'
 
-    def _run_pg_config(self, pg_config_path):
+    def _run_pg_config(self, pg_config_path: str) -> dict[str, str]:
         process = subprocess.run(
             pg_config_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = process.stdout, process.stderr
 
         if process.returncode != 0:
-            raise ClusterError('pg_config exited with status {:d}: {}'.format(
-                process.returncode, stderr))
+            raise ClusterError(
+                'pg_config exited with status {:d}: {!r}'.format(
+                    process.returncode, stderr
+                )
+            )
         else:
-            config = {}
+            config: dict[str, str] = {}
 
             for line in stdout.splitlines():
                 k, eq, v = line.decode('utf-8').partition('=')
@@ -519,7 +607,7 @@ class Cluster:
 
             return config
 
-    def _find_pg_config(self, pg_config_path):
+    def _find_pg_config(self, pg_config_path: str | None) -> str:
         if pg_config_path is None:
             pg_install = (
                 os.environ.get('PGINSTALLATION')
@@ -529,7 +617,9 @@ class Cluster:
                 pg_config_path = platform_exe(
                     os.path.join(pg_install, 'pg_config'))
             else:
-                pathenv = os.environ.get('PATH').split(os.pathsep)
+                pathenv = typing.cast(
+                    str, os.environ.get('PATH')
+                ).split(os.pathsep)
                 for path in pathenv:
                     pg_config_path = platform_exe(
                         os.path.join(path, 'pg_config'))
@@ -547,8 +637,10 @@ class Cluster:
 
         return pg_config_path
 
-    def _find_pg_binary(self, binary):
-        bpath = platform_exe(os.path.join(self._pg_bin_dir, binary))
+    def _find_pg_binary(self, binary: str) -> str:
+        bpath = platform_exe(
+            os.path.join(typing.cast(str, self._pg_bin_dir), binary)
+        )
 
         if not os.path.isfile(bpath):
             raise ClusterError(
@@ -557,7 +649,7 @@ class Cluster:
 
         return bpath
 
-    def _get_pg_version(self):
+    def _get_pg_version(self) -> types.ServerVersion:
         process = subprocess.run(
             [self._postgres, '--version'],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -565,7 +657,7 @@ class Cluster:
 
         if process.returncode != 0:
             raise ClusterError(
-                'postgres --version exited with status {:d}: {}'.format(
+                'postgres --version exited with status {:d}: {!r}'.format(
                     process.returncode, stderr))
 
         version_string = stdout.decode('utf-8').strip(' \n')
@@ -580,9 +672,14 @@ class Cluster:
 
 
 class TempCluster(Cluster):
-    def __init__(self, *,
-                 data_dir_suffix=None, data_dir_prefix=None,
-                 data_dir_parent=None, pg_config_path=None):
+    def __init__(
+        self,
+        *,
+        data_dir_suffix: str | None = None,
+        data_dir_prefix: str | None = None,
+        data_dir_parent: _typeshed.StrPath | None = None,
+        pg_config_path: str | None = None,
+    ) -> None:
         self._data_dir = tempfile.mkdtemp(suffix=data_dir_suffix,
                                           prefix=data_dir_prefix,
                                           dir=data_dir_parent)
@@ -590,10 +687,16 @@ class TempCluster(Cluster):
 
 
 class HotStandbyCluster(TempCluster):
-    def __init__(self, *,
-                 master, replication_user,
-                 data_dir_suffix=None, data_dir_prefix=None,
-                 data_dir_parent=None, pg_config_path=None):
+    def __init__(
+        self,
+        *,
+        master: _ConnectionSpec,
+        replication_user: str,
+        data_dir_suffix: str | None = None,
+        data_dir_prefix: str | None = None,
+        data_dir_parent: _typeshed.StrPath | None = None,
+        pg_config_path: str | None = None,
+    ) -> None:
         self._master = master
         self._repl_user = replication_user
         super().__init__(
@@ -602,11 +705,11 @@ class HotStandbyCluster(TempCluster):
             data_dir_parent=data_dir_parent,
             pg_config_path=pg_config_path)
 
-    def _init_env(self):
+    def _init_env(self) -> None:
         super()._init_env()
         self._pg_basebackup = self._find_pg_binary('pg_basebackup')
 
-    def init(self, **settings):
+    def init(self, **settings: str) -> str:
         """Initialize cluster."""
         if self.get_status() != 'not-initialized':
             raise ClusterError(
@@ -641,7 +744,13 @@ class HotStandbyCluster(TempCluster):
 
         return output.decode()
 
-    def start(self, wait=60, *, server_settings={}, **opts):
+    def start(
+        self,
+        wait: int = 60,
+        *,
+        server_settings: dict[str, str] = {},
+        **opts: object
+    ) -> None:
         if self._pg_version >= (12, 0):
             server_settings = server_settings.copy()
             server_settings['primary_conninfo'] = (
@@ -656,33 +765,43 @@ class HotStandbyCluster(TempCluster):
 
 
 class RunningCluster(Cluster):
-    def __init__(self, **kwargs):
+    conn_spec: _ConnectionSpec
+
+    def __init__(self, **kwargs: Unpack[_ConnectionSpec]) -> None:
         self.conn_spec = kwargs
 
-    def is_managed(self):
+    def is_managed(self) -> bool:
         return False
 
-    def get_connection_spec(self):
-        return dict(self.conn_spec)
+    def get_connection_spec(self) -> _ConnectionSpec:
+        return typing.cast(_ConnectionSpec, dict(self.conn_spec))
 
-    def get_status(self):
+    def get_status(self) -> str:
         return 'running'
 
-    def init(self, **settings):
-        pass
+    def init(self, **settings: str) -> str:  # type: ignore[empty-body]
+        ...
 
-    def start(self, wait=60, **settings):
-        pass
+    def start(self, wait: int = 60, **settings: object) -> None:
+        ...
 
-    def stop(self, wait=60):
-        pass
+    def stop(self, wait: int = 60) -> None:
+        ...
 
-    def destroy(self):
-        pass
+    def destroy(self) -> None:
+        ...
 
-    def reset_hba(self):
+    def reset_hba(self) -> None:
         raise ClusterError('cannot modify HBA records of unmanaged cluster')
 
-    def add_hba_entry(self, *, type='host', database, user, address=None,
-                      auth_method, auth_options=None):
+    def add_hba_entry(
+        self,
+        *,
+        type: str = 'host',
+        database: str,
+        user: str,
+        address: str | None = None,
+        auth_method: str,
+        auth_options: dict[str, str] | None = None,
+    ) -> None:
         raise ClusterError('cannot modify HBA records of unmanaged cluster')

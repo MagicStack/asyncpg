@@ -4,12 +4,14 @@
 # This module is part of asyncpg and is released under
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
+from __future__ import annotations
 
 import asyncio
 import asyncpg
 import collections
 import collections.abc
 import contextlib
+import dataclasses
 import functools
 import itertools
 import inspect
@@ -32,15 +34,116 @@ from . import serverversion
 from . import transaction
 from . import utils
 
+if sys.version_info < (3, 10):
+    from typing_extensions import ParamSpec
+else:
+    from typing import ParamSpec
+
+if typing.TYPE_CHECKING:
+    import io
+
+    if sys.version_info < (3, 11):
+        from typing_extensions import Self
+    else:
+        from typing import Self
+
+    from .protocol import protocol as _cprotocol
+    from .exceptions import _postgres_message
+    from . import pool_connection_proxy as _pool
+    from . import types
+
+_ConnectionT = typing.TypeVar('_ConnectionT', bound='Connection[typing.Any]')
+_RecordT = typing.TypeVar('_RecordT', bound=protocol.Record)
+_OtherRecordT = typing.TypeVar('_OtherRecordT', bound=protocol.Record)
+_P = ParamSpec('_P')
+
+_WriterType: compat.TypeAlias = compat.Callable[
+    [bytes], compat.Coroutine[typing.Any, typing.Any, None]
+]
+_OutputType: compat.TypeAlias = (
+    'os.PathLike[typing.Any] | typing.BinaryIO | _WriterType'
+)
+_CopyFormat: compat.TypeAlias = typing.Literal['text', 'csv', 'binary']
+_SourceType: compat.TypeAlias = (
+    'os.PathLike[typing.Any] | typing.BinaryIO | compat.AsyncIterable[bytes]'
+)
+_RecordsType: compat.TypeAlias = 'list[_RecordT]'
+_RecordsTupleType: compat.TypeAlias = (
+    'tuple[_RecordsType[_RecordT], bytes, bool]'
+)
+
+
+class Listener(typing.Protocol):
+    def __call__(
+        self,
+        con_ref: Connection[
+            typing.Any
+        ] | _pool.PoolConnectionProxy[typing.Any],
+        pid: int,
+        channel: str,
+        payload: object,
+        /,
+    ) -> compat.Coroutine[typing.Any, typing.Any, None] | None:
+        ...
+
+
+class LogListener(typing.Protocol):
+    def __call__(
+        self,
+        con_ref: Connection[
+            typing.Any
+        ] | _pool.PoolConnectionProxy[typing.Any],
+        message: _postgres_message.PostgresMessage,
+        /,
+    ) -> compat.Coroutine[typing.Any, typing.Any, None] | None:
+        ...
+
+
+class TerminationListener(typing.Protocol):
+    def __call__(
+        self,
+        con_ref: Connection[
+            typing.Any
+        ] | _pool.PoolConnectionProxy[typing.Any],
+        /,
+    ) -> compat.Coroutine[typing.Any, typing.Any, None] | None:
+        ...
+
+
+class QueryLogger(typing.Protocol):
+    def __call__(
+        self, record: LoggedQuery, /
+    ) -> compat.Coroutine[typing.Any, typing.Any, None] | None:
+        ...
+
+
+class Executor(typing.Protocol[_RecordT]):
+    def __call__(
+        self,
+        statement: _cprotocol.PreparedStatementState[_RecordT],
+        timeout: float | None,
+        /
+    ) -> typing.Any:
+        ...
+
+
+class OnRemove(typing.Protocol[_RecordT]):
+    def __call__(
+        self,
+        statement: _cprotocol.PreparedStatementState[_RecordT],
+        /
+    ) -> None:
+        ...
+
 
 class ConnectionMeta(type):
 
-    def __instancecheck__(cls, instance):
+    def __instancecheck__(cls, instance: object) -> bool:
         mro = type(instance).__mro__
         return Connection in mro or _ConnectionProxy in mro
 
 
-class Connection(metaclass=ConnectionMeta):
+class Connection(typing.Generic[_RecordT], metaclass=ConnectionMeta):
     """A representation of a database session.
 
     Connections are created by calling :func:`~asyncpg.connection.connect`.
@@ -56,10 +159,66 @@ class Connection(metaclass=ConnectionMeta):
                  '_log_listeners', '_termination_listeners', '_cancellations',
                  '_source_traceback', '_query_loggers', '__weakref__')
 
-    def __init__(self, protocol, transport, loop,
-                 addr,
-                 config: connect_utils._ClientConfiguration,
-                 params: connect_utils._ConnectionParameters):
+    _protocol: _cprotocol.BaseProtocol[_RecordT]
+    _transport: object
+    _loop: asyncio.AbstractEventLoop
+    _top_xact: transaction.Transaction | None
+    _aborted: bool
+    _pool_release_ctr: int
+    _stmt_cache: _StatementCache
+    _stmts_to_close: set[_cprotocol.PreparedStatementState[typing.Any]]
+    _stmt_cache_enabled: bool
+    _listeners: dict[
+        str,
+        set[
+            _Callback[
+                [
+                    Connection[typing.Any] |
+                    _pool.PoolConnectionProxy[typing.Any],
+                    int,
+                    str,
+                    object
+                ]
+            ]
+        ]
+    ]
+    _server_version: types.ServerVersion
+    _server_caps: ServerCapabilities
+    _intro_query: str
+    _reset_query: str | None
+    _proxy: _pool.PoolConnectionProxy[typing.Any] | None
+    _stmt_exclusive_section: _Atomic
+    _config: connect_utils._ClientConfiguration
+    _params: connect_utils._ConnectionParameters
+    _addr: connect_utils.AddrType
+    _log_listeners: set[
+        _Callback[
+            [
+                Connection[typing.Any] | _pool.PoolConnectionProxy[typing.Any],
+                _postgres_message.PostgresMessage,
+            ]
+        ]
+    ]
+    _termination_listeners: set[
+        _Callback[
+            [
+                Connection[typing.Any] | _pool.PoolConnectionProxy[typing.Any],
+            ]
+        ]
+    ]
+    _cancellations: set[asyncio.Task[typing.Any]]
+    _source_traceback: str | None
+    _query_loggers: set[_Callback[[LoggedQuery]]]
+
+    def __init__(
+        self,
+        protocol: _cprotocol.BaseProtocol[_RecordT],
+        transport: object,
+        loop: asyncio.AbstractEventLoop,
+        addr: tuple[str, int] | str,
+        config: connect_utils._ClientConfiguration,
+        params: connect_utils._ConnectionParameters,
+    ) -> None:
         self._protocol = protocol
         self._transport = transport
         self._loop = loop
@@ -120,7 +279,7 @@ class Connection(metaclass=ConnectionMeta):
         else:
             self._source_traceback = None
 
-    def __del__(self):
+    def __del__(self) -> None:
         if not self.is_closed() and self._protocol is not None:
             if self._source_traceback:
                 msg = "unclosed connection {!r}; created at:\n {}".format(
@@ -136,7 +295,7 @@ class Connection(metaclass=ConnectionMeta):
             if not self._loop.is_closed():
                 self.terminate()
 
-    async def add_listener(self, channel, callback):
+    async def add_listener(self, channel: str, callback: Listener) -> None:
         """Add a listener for Postgres notifications.
 
         :param str channel: Channel to listen on.
@@ -158,7 +317,7 @@ class Connection(metaclass=ConnectionMeta):
             self._listeners[channel] = set()
         self._listeners[channel].add(_Callback.from_callable(callback))
 
-    async def remove_listener(self, channel, callback):
+    async def remove_listener(self, channel: str, callback: Listener) -> None:
         """Remove a listening callback on the specified channel."""
         if self.is_closed():
             return
@@ -172,7 +331,7 @@ class Connection(metaclass=ConnectionMeta):
             del self._listeners[channel]
             await self.fetch('UNLISTEN {}'.format(utils._quote_ident(channel)))
 
-    def add_log_listener(self, callback):
+    def add_log_listener(self, callback: LogListener) -> None:
         """Add a listener for Postgres log messages.
 
         It will be called when asyncronous NoticeResponse is received
@@ -194,14 +353,14 @@ class Connection(metaclass=ConnectionMeta):
             raise exceptions.InterfaceError('connection is closed')
         self._log_listeners.add(_Callback.from_callable(callback))
 
-    def remove_log_listener(self, callback):
+    def remove_log_listener(self, callback: LogListener) -> None:
         """Remove a listening callback for log messages.
 
         .. versionadded:: 0.12.0
         """
         self._log_listeners.discard(_Callback.from_callable(callback))
 
-    def add_termination_listener(self, callback):
+    def add_termination_listener(self, callback: TerminationListener) -> None:
         """Add a listener that will be called when the connection is closed.
 
         :param callable callback:
@@ -215,7 +374,9 @@ class Connection(metaclass=ConnectionMeta):
         """
         self._termination_listeners.add(_Callback.from_callable(callback))
 
-    def remove_termination_listener(self, callback):
+    def remove_termination_listener(
+        self, callback: TerminationListener
+    ) -> None:
         """Remove a listening callback for connection termination.
 
         :param callable callback:
@@ -226,7 +387,7 @@ class Connection(metaclass=ConnectionMeta):
         """
         self._termination_listeners.discard(_Callback.from_callable(callback))
 
-    def add_query_logger(self, callback):
+    def add_query_logger(self, callback: QueryLogger) -> None:
         """Add a logger that will be called when queries are executed.
 
         :param callable callback:
@@ -239,7 +400,7 @@ class Connection(metaclass=ConnectionMeta):
         """
         self._query_loggers.add(_Callback.from_callable(callback))
 
-    def remove_query_logger(self, callback):
+    def remove_query_logger(self, callback: QueryLogger) -> None:
         """Remove a query logger callback.
 
         :param callable callback:
@@ -250,11 +411,11 @@ class Connection(metaclass=ConnectionMeta):
         """
         self._query_loggers.discard(_Callback.from_callable(callback))
 
-    def get_server_pid(self):
+    def get_server_pid(self) -> int:
         """Return the PID of the Postgres server the connection is bound to."""
         return self._protocol.get_server_pid()
 
-    def get_server_version(self):
+    def get_server_version(self) -> types.ServerVersion:
         """Return the version of the connected PostgreSQL server.
 
         The returned value is a named tuple similar to that in
@@ -270,15 +431,20 @@ class Connection(metaclass=ConnectionMeta):
         """
         return self._server_version
 
-    def get_settings(self):
+    def get_settings(self) -> _cprotocol.ConnectionSettings:
         """Return connection settings.
 
         :return: :class:`~asyncpg.ConnectionSettings`.
         """
         return self._protocol.get_settings()
 
-    def transaction(self, *, isolation=None, readonly=False,
-                    deferrable=False):
+    def transaction(
+        self,
+        *,
+        isolation: transaction.IsolationLevels | None = None,
+        readonly: bool = False,
+        deferrable: bool = False,
+    ) -> transaction.Transaction:
         """Create a :class:`~transaction.Transaction` object.
 
         Refer to `PostgreSQL documentation`_ on the meaning of transaction
@@ -303,7 +469,7 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
         return transaction.Transaction(self, isolation, readonly, deferrable)
 
-    def is_in_transaction(self):
+    def is_in_transaction(self) -> bool:
         """Return True if Connection is currently inside a transaction.
 
         :return bool: True if inside transaction, False otherwise.
@@ -312,7 +478,9 @@ class Connection(metaclass=ConnectionMeta):
         """
         return self._protocol.is_in_transaction()
 
-    async def execute(self, query: str, *args, timeout: float=None) -> str:
+    async def execute(
+        self, query: str, *args: object, timeout: float | None = None
+    ) -> str:
         """Execute an SQL command (or commands).
 
         This method can execute many SQL commands at once, when no arguments
@@ -359,7 +527,13 @@ class Connection(metaclass=ConnectionMeta):
         )
         return status.decode()
 
-    async def executemany(self, command: str, args, *, timeout: float=None):
+    async def executemany(
+        self,
+        command: str,
+        args: compat.Iterable[compat.Sequence[object]],
+        *,
+        timeout: float | None = None,
+    ) -> None:
         """Execute an SQL *command* for each sequence of arguments in *args*.
 
         Example:
@@ -390,16 +564,42 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
         return await self._executemany(command, args, timeout)
 
+    @typing.overload
     async def _get_statement(
         self,
-        query,
-        timeout,
+        query: str,
+        timeout: float | None,
         *,
-        named=False,
-        use_cache=True,
-        ignore_custom_codec=False,
-        record_class=None
-    ):
+        named: bool | str = ...,
+        use_cache: bool = ...,
+        ignore_custom_codec: bool = ...,
+        record_class: None = ...,
+    ) -> _cprotocol.PreparedStatementState[_RecordT]:
+        ...
+
+    @typing.overload
+    async def _get_statement(
+        self,
+        query: str,
+        timeout: float | None,
+        *,
+        named: bool | str = ...,
+        use_cache: bool = ...,
+        ignore_custom_codec: bool = ...,
+        record_class: type[_OtherRecordT],
+    ) -> _cprotocol.PreparedStatementState[_OtherRecordT]:
+        ...
+
+    async def _get_statement(
+        self,
+        query: str,
+        timeout: float | None,
+        *,
+        named: bool | str = False,
+        use_cache: bool = True,
+        ignore_custom_codec: bool = False,
+        record_class: type[typing.Any] | None = None
+    ) -> _cprotocol.PreparedStatementState[typing.Any]:
         if record_class is None:
             record_class = self._protocol.get_record_class()
         else:
@@ -492,7 +692,11 @@ class Connection(metaclass=ConnectionMeta):
 
         return statement
 
-    async def _introspect_types(self, typeoids, timeout):
+    async def _introspect_types(
+        self,
+        typeoids: compat.Iterable[int],
+        timeout: float | None
+    ) -> tuple[typing.Any, _cprotocol.PreparedStatementState[_RecordT]]:
         if self._server_caps.jit:
             try:
                 cfgrow, _ = await self.__execute(
@@ -534,7 +738,7 @@ class Connection(metaclass=ConnectionMeta):
 
         return result
 
-    async def _introspect_type(self, typename, schema):
+    async def _introspect_type(self, typename: str, schema: str) -> typing.Any:
         if (
             schema == 'pg_catalog'
             and typename.lower() in protocol.BUILTIN_TYPE_NAME_MAP
@@ -562,14 +766,47 @@ class Connection(metaclass=ConnectionMeta):
 
         return rows[0]
 
+    @typing.overload
     def cursor(
         self,
-        query,
-        *args,
-        prefetch=None,
-        timeout=None,
-        record_class=None
-    ):
+        query: str,
+        *args: object,
+        prefetch: int | None = ...,
+        timeout: float | None = ...,
+        record_class: None = ...,
+    ) -> cursor.CursorFactory[_RecordT]:
+        ...
+
+    @typing.overload
+    def cursor(
+        self,
+        query: str,
+        *args: object,
+        prefetch: int | None = ...,
+        timeout: float | None = ...,
+        record_class: type[_OtherRecordT],
+    ) -> cursor.CursorFactory[_OtherRecordT]:
+        ...
+
+    @typing.overload
+    def cursor(
+        self,
+        query: str,
+        *args: object,
+        prefetch: int | None = ...,
+        timeout: float | None = ...,
+        record_class: type[_OtherRecordT] | None,
+    ) -> cursor.CursorFactory[_RecordT] | cursor.CursorFactory[_OtherRecordT]:
+        ...
+
+    def cursor(
+        self,
+        query: str,
+        *args: object,
+        prefetch: int | None = None,
+        timeout: float | None = None,
+        record_class: type[_OtherRecordT] | None = None,
+    ) -> cursor.CursorFactory[typing.Any]:
         """Return a *cursor factory* for the specified query.
 
         :param args:
@@ -601,13 +838,52 @@ class Connection(metaclass=ConnectionMeta):
             record_class,
         )
 
+    @typing.overload
     async def prepare(
         self,
-        query,
+        query: str,
         *,
-        name=None,
-        timeout=None,
-        record_class=None,
+        name: str | None = ...,
+        timeout: float | None = ...,
+        record_class: None = ...,
+    ) -> prepared_stmt.PreparedStatement[_RecordT]:
+        ...
+
+    @typing.overload
+    async def prepare(
+        self,
+        query: str,
+        *,
+        name: str | None = ...,
+        timeout: float | None = ...,
+        record_class: type[_OtherRecordT],
+    ) -> prepared_stmt.PreparedStatement[_OtherRecordT]:
+        ...
+
+    @typing.overload
+    async def prepare(
+        self,
+        query: str,
+        *,
+        name: str | None = ...,
+        timeout: float | None = ...,
+        record_class: type[_OtherRecordT] | None,
+    ) -> (
+        prepared_stmt.PreparedStatement[_RecordT]
+        | prepared_stmt.PreparedStatement[_OtherRecordT]
+    ):
+        ...
+
+    async def prepare(
+        self,
+        query: str,
+        *,
+        name: str | None = None,
+        timeout: float | None = None,
+        record_class: type[_OtherRecordT] | None = None,
+    ) -> (
+        prepared_stmt.PreparedStatement[_RecordT]
+        | prepared_stmt.PreparedStatement[_OtherRecordT]
     ):
         """Create a *prepared statement* for the specified query.
 
@@ -641,32 +917,108 @@ class Connection(metaclass=ConnectionMeta):
             record_class=record_class,
         )
 
+    @typing.overload
     async def _prepare(
         self,
-        query,
+        query: str,
         *,
-        name=None,
-        timeout=None,
-        use_cache: bool=False,
-        record_class=None
+        name: str | None = ...,
+        timeout: float | None = ...,
+        use_cache: bool = ...,
+        record_class: None = ...,
+    ) -> prepared_stmt.PreparedStatement[_RecordT]:
+        ...
+
+    @typing.overload
+    async def _prepare(
+        self,
+        query: str,
+        *,
+        name: str | None = ...,
+        timeout: float | None = ...,
+        use_cache: bool = ...,
+        record_class: type[_OtherRecordT],
+    ) -> prepared_stmt.PreparedStatement[_OtherRecordT]:
+        ...
+
+    @typing.overload
+    async def _prepare(
+        self,
+        query: str,
+        *,
+        name: str | None = ...,
+        timeout: float | None = ...,
+        use_cache: bool = ...,
+        record_class: type[_OtherRecordT] | None,
+    ) -> (
+        prepared_stmt.PreparedStatement[_RecordT]
+        | prepared_stmt.PreparedStatement[_OtherRecordT]
+    ):
+        ...
+
+    async def _prepare(
+        self,
+        query: str,
+        *,
+        name: str | None = None,
+        timeout: float | None = None,
+        use_cache: bool = False,
+        record_class: type[_OtherRecordT] | None = None
+    ) -> (
+        prepared_stmt.PreparedStatement[_RecordT]
+        | prepared_stmt.PreparedStatement[_OtherRecordT]
     ):
         self._check_open()
+
+        named: bool | str = True if name is None else name
         stmt = await self._get_statement(
             query,
             timeout,
-            named=True if name is None else name,
+            named=named,
             use_cache=use_cache,
             record_class=record_class,
         )
-        return prepared_stmt.PreparedStatement(self, query, stmt)
+        return prepared_stmt.PreparedStatement(self, query, typing.cast(
+            '_cprotocol.PreparedStatementState[typing.Any]', stmt
+        ))
+
+    @typing.overload
+    async def fetch(
+        self,
+        query: str,
+        *args: object,
+        timeout: float | None = ...,
+        record_class: None = ...,
+    ) -> list[_RecordT]:
+        ...
+
+    @typing.overload
+    async def fetch(
+        self,
+        query: str,
+        *args: object,
+        timeout: float | None = ...,
+        record_class: type[_OtherRecordT],
+    ) -> list[_OtherRecordT]:
+        ...
+
+    @typing.overload
+    async def fetch(
+        self,
+        query: str,
+        *args: object,
+        timeout: float | None = ...,
+        record_class: type[_OtherRecordT] | None,
+    ) -> list[_RecordT] | list[_OtherRecordT]:
+        ...
 
     async def fetch(
         self,
-        query,
-        *args,
-        timeout=None,
-        record_class=None
-    ) -> list:
+        query: str,
+        *args: object,
+        timeout: float | None = None,
+        record_class: type[_OtherRecordT] | None = None
+    ) -> list[_RecordT] | list[_OtherRecordT]:
         """Run a query and return the results as a list of :class:`Record`.
 
         :param str query:
@@ -696,7 +1048,13 @@ class Connection(metaclass=ConnectionMeta):
             record_class=record_class,
         )
 
-    async def fetchval(self, query, *args, column=0, timeout=None):
+    async def fetchval(
+        self,
+        query: str,
+        *args: object,
+        column: int = 0,
+        timeout: float | None = None,
+    ) -> typing.Any:
         """Run a query and return a value in the first row.
 
         :param str query: Query text.
@@ -717,13 +1075,43 @@ class Connection(metaclass=ConnectionMeta):
             return None
         return data[0][column]
 
+    @typing.overload
     async def fetchrow(
         self,
-        query,
-        *args,
-        timeout=None,
-        record_class=None
-    ):
+        query: str,
+        *args: object,
+        timeout: float | None = ...,
+        record_class: None = ...,
+    ) -> _RecordT | None:
+        ...
+
+    @typing.overload
+    async def fetchrow(
+        self,
+        query: str,
+        *args: object,
+        timeout: float | None = ...,
+        record_class: type[_OtherRecordT],
+    ) -> _OtherRecordT | None:
+        ...
+
+    @typing.overload
+    async def fetchrow(
+        self,
+        query: str,
+        *args: object,
+        timeout: float | None = ...,
+        record_class: type[_OtherRecordT] | None,
+    ) -> _RecordT | _OtherRecordT | None:
+        ...
+
+    async def fetchrow(
+        self,
+        query: str,
+        *args: object,
+        timeout: float | None = None,
+        record_class: type[_OtherRecordT] | None = None
+    ) -> _RecordT | _OtherRecordT | None:
         """Run a query and return the first row.
 
         :param str query:
@@ -757,11 +1145,24 @@ class Connection(metaclass=ConnectionMeta):
             return None
         return data[0]
 
-    async def copy_from_table(self, table_name, *, output,
-                              columns=None, schema_name=None, timeout=None,
-                              format=None, oids=None, delimiter=None,
-                              null=None, header=None, quote=None,
-                              escape=None, force_quote=None, encoding=None):
+    async def copy_from_table(
+        self,
+        table_name: str,
+        *,
+        output: _OutputType,
+        columns: compat.Iterable[str] | None = None,
+        schema_name: str | None = None,
+        timeout: float | None = None,
+        format: _CopyFormat | None = None,
+        oids: int | None = None,
+        delimiter: str | None = None,
+        null: str | None = None,
+        header: bool | None = None,
+        quote: str | None = None,
+        escape: str | None = None,
+        force_quote: bool | compat.Iterable[str] | None = None,
+        encoding: str | None = None,
+    ) -> str:
         """Copy table contents to a file or file-like object.
 
         :param str table_name:
@@ -829,11 +1230,22 @@ class Connection(metaclass=ConnectionMeta):
 
         return await self._copy_out(copy_stmt, output, timeout)
 
-    async def copy_from_query(self, query, *args, output,
-                              timeout=None, format=None, oids=None,
-                              delimiter=None, null=None, header=None,
-                              quote=None, escape=None, force_quote=None,
-                              encoding=None):
+    async def copy_from_query(
+        self,
+        query: str,
+        *args: object,
+        output: _OutputType,
+        timeout: float | None = None,
+        format: _CopyFormat | None = None,
+        oids: int | None = None,
+        delimiter: str | None = None,
+        null: str | None = None,
+        header: bool | None = None,
+        quote: str | None = None,
+        escape: str | None = None,
+        force_quote: bool | compat.Iterable[str] | None = None,
+        encoding: str | None = None,
+    ) -> str:
         """Copy the results of a query to a file or file-like object.
 
         :param str query:
@@ -891,13 +1303,28 @@ class Connection(metaclass=ConnectionMeta):
 
         return await self._copy_out(copy_stmt, output, timeout)
 
-    async def copy_to_table(self, table_name, *, source,
-                            columns=None, schema_name=None, timeout=None,
-                            format=None, oids=None, freeze=None,
-                            delimiter=None, null=None, header=None,
-                            quote=None, escape=None, force_quote=None,
-                            force_not_null=None, force_null=None,
-                            encoding=None, where=None):
+    async def copy_to_table(
+        self,
+        table_name: str,
+        *,
+        source: _SourceType,
+        columns: compat.Iterable[str] | None = None,
+        schema_name: str | None = None,
+        timeout: float | None = None,
+        format: _CopyFormat | None = None,
+        oids: int | None = None,
+        freeze: bool | None = None,
+        delimiter: str | None = None,
+        null: str | None = None,
+        header: bool | None = None,
+        quote: str | None = None,
+        escape: str | None = None,
+        force_quote: bool | compat.Iterable[str] | None = None,
+        force_not_null: bool | compat.Iterable[str] | None = None,
+        force_null: bool | compat.Iterable[str] | None = None,
+        encoding: str | None = None,
+        where: str | None = None,
+    ) -> str:
         """Copy data to the specified table.
 
         :param str table_name:
@@ -979,9 +1406,18 @@ class Connection(metaclass=ConnectionMeta):
 
         return await self._copy_in(copy_stmt, source, timeout)
 
-    async def copy_records_to_table(self, table_name, *, records,
-                                    columns=None, schema_name=None,
-                                    timeout=None, where=None):
+    async def copy_records_to_table(
+        self,
+        table_name: str,
+        *,
+        records: compat.Iterable[
+            compat.Sequence[object]
+        ] | compat.AsyncIterable[compat.Sequence[object]],
+        columns: compat.Iterable[str] | None = None,
+        schema_name: str | None = None,
+        timeout: float | None = None,
+        where: str | None = None,
+    ) -> str:
         """Copy a list of records to the specified table using binary COPY.
 
         :param str table_name:
@@ -1081,7 +1517,7 @@ class Connection(metaclass=ConnectionMeta):
         return await self._protocol.copy_in(
             copy_stmt, None, None, records, intro_ps._state, timeout)
 
-    def _format_copy_where(self, where):
+    def _format_copy_where(self, where: str | None) -> str:
         if where and not self._server_caps.sql_copy_from_where:
             raise exceptions.UnsupportedServerFeatureError(
                 'the `where` parameter requires PostgreSQL 12 or later')
@@ -1093,13 +1529,25 @@ class Connection(metaclass=ConnectionMeta):
 
         return where_clause
 
-    def _format_copy_opts(self, *, format=None, oids=None, freeze=None,
-                          delimiter=None, null=None, header=None, quote=None,
-                          escape=None, force_quote=None, force_not_null=None,
-                          force_null=None, encoding=None):
+    def _format_copy_opts(
+        self,
+        *,
+        format: _CopyFormat | None = None,
+        oids: int | None = None,
+        freeze: bool | None = None,
+        delimiter: str | None = None,
+        null: str | None = None,
+        header: bool | None = None,
+        quote: str | None = None,
+        escape: str | None = None,
+        force_quote: bool | compat.Iterable[str] | None = None,
+        force_not_null: bool | compat.Iterable[str] | None = None,
+        force_null: bool | compat.Iterable[str] | None = None,
+        encoding: str | None = None
+    ) -> str:
         kwargs = dict(locals())
         kwargs.pop('self')
-        opts = []
+        opts: list[str] = []
 
         if force_quote is not None and isinstance(force_quote, bool):
             kwargs.pop('force_quote')
@@ -1122,24 +1570,31 @@ class Connection(metaclass=ConnectionMeta):
         else:
             return ''
 
-    async def _copy_out(self, copy_stmt, output, timeout):
+    async def _copy_out(
+        self, copy_stmt: str, output: _OutputType, timeout: float | None
+    ) -> str:
         try:
-            path = os.fspath(output)
+            path: str | bytes | None = typing.cast(
+                'str | bytes', os.fspath(typing.cast(typing.Any, output))
+            )
         except TypeError:
             # output is not a path-like object
             path = None
 
-        writer = None
+        writer: _WriterType | None = None
         opened_by_us = False
         run_in_executor = self._loop.run_in_executor
 
         if path is not None:
             # a path
-            f = await run_in_executor(None, open, path, 'wb')
+            f = typing.cast(
+                'io.BufferedWriter',
+                await run_in_executor(None, open, path, 'wb')
+            )
             opened_by_us = True
         elif hasattr(output, 'write'):
             # file-like
-            f = output
+            f = typing.cast('io.BufferedWriter', output)
         elif callable(output):
             # assuming calling output returns an awaitable.
             writer = output
@@ -1151,7 +1606,7 @@ class Connection(metaclass=ConnectionMeta):
             )
 
         if writer is None:
-            async def _writer(data):
+            async def _writer(data: bytes) -> None:
                 await run_in_executor(None, f.write, data)
             writer = _writer
 
@@ -1161,14 +1616,18 @@ class Connection(metaclass=ConnectionMeta):
             if opened_by_us:
                 f.close()
 
-    async def _copy_in(self, copy_stmt, source, timeout):
+    async def _copy_in(
+        self, copy_stmt: str, source: _SourceType, timeout: float | None
+    ) -> str:
         try:
-            path = os.fspath(source)
+            path: str | bytes | None = typing.cast(
+                'str | bytes', os.fspath(typing.cast(typing.Any, source))
+            )
         except TypeError:
             # source is not a path-like object
             path = None
 
-        f = None
+        f: typing.BinaryIO | None = None
         reader = None
         data = None
         opened_by_us = False
@@ -1176,11 +1635,14 @@ class Connection(metaclass=ConnectionMeta):
 
         if path is not None:
             # a path
-            f = await run_in_executor(None, open, path, 'rb')
+            f = typing.cast(
+                'io.BufferedWriter',
+                await run_in_executor(None, open, path, 'rb')
+            )
             opened_by_us = True
         elif hasattr(source, 'read'):
             # file-like
-            f = source
+            f = typing.cast('io.BufferedWriter', source)
         elif isinstance(source, collections.abc.AsyncIterable):
             # assuming calling output returns an awaitable.
             # copy_in() is designed to handle very large amounts of data, and
@@ -1194,11 +1656,13 @@ class Connection(metaclass=ConnectionMeta):
         if f is not None:
             # Copying from a file-like object.
             class _Reader:
-                def __aiter__(self):
+                def __aiter__(self) -> Self:
                     return self
 
-                async def __anext__(self):
-                    data = await run_in_executor(None, f.read, 524288)
+                async def __anext__(self) -> bytes:
+                    data = await run_in_executor(
+                        None, typing.cast(typing.BinaryIO, f).read, 524288
+                    )
                     if len(data) == 0:
                         raise StopAsyncIteration
                     else:
@@ -1211,11 +1675,20 @@ class Connection(metaclass=ConnectionMeta):
                 copy_stmt, reader, data, None, None, timeout)
         finally:
             if opened_by_us:
-                await run_in_executor(None, f.close)
+                await run_in_executor(
+                    None,
+                    typing.cast(typing.BinaryIO, f).close
+                )
 
-    async def set_type_codec(self, typename, *,
-                             schema='public', encoder, decoder,
-                             format='text'):
+    async def set_type_codec(
+        self,
+        typename: str,
+        *,
+        schema: str = 'public',
+        encoder: compat.Callable[[typing.Any], typing.Any],
+        decoder: compat.Callable[[typing.Any], typing.Any],
+        format: str = 'text',
+    ) -> None:
         """Set an encoder/decoder pair for the specified data type.
 
         :param typename:
@@ -1337,7 +1810,7 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
         settings = self._protocol.get_settings()
         typeinfo = await self._introspect_type(typename, schema)
-        full_typeinfos = []
+        full_typeinfos: list[object] = []
         if introspection.is_scalar_type(typeinfo):
             kind = 'scalar'
         elif introspection.is_composite_type(typeinfo):
@@ -1375,7 +1848,9 @@ class Connection(metaclass=ConnectionMeta):
         # Statement cache is no longer valid due to codec changes.
         self._drop_local_statement_cache()
 
-    async def reset_type_codec(self, typename, *, schema='public'):
+    async def reset_type_codec(
+        self, typename: str, *, schema: str = 'public'
+    ) -> None:
         """Reset *typename* codec to the default implementation.
 
         :param typename:
@@ -1395,9 +1870,14 @@ class Connection(metaclass=ConnectionMeta):
         # Statement cache is no longer valid due to codec changes.
         self._drop_local_statement_cache()
 
-    async def set_builtin_type_codec(self, typename, *,
-                                     schema='public', codec_name,
-                                     format=None):
+    async def set_builtin_type_codec(
+        self,
+        typename: str,
+        *,
+        schema: str = 'public',
+        codec_name: str,
+        format: str | None = None,
+    ) -> None:
         """Set a builtin codec for the specified scalar data type.
 
         This method has two uses.  The first is to register a builtin
@@ -1445,7 +1925,7 @@ class Connection(metaclass=ConnectionMeta):
         # Statement cache is no longer valid due to codec changes.
         self._drop_local_statement_cache()
 
-    def is_closed(self):
+    def is_closed(self) -> bool:
         """Return ``True`` if the connection is closed, ``False`` otherwise.
 
         :return bool: ``True`` if the connection is closed, ``False``
@@ -1453,7 +1933,7 @@ class Connection(metaclass=ConnectionMeta):
         """
         return self._aborted or not self._protocol.is_connected()
 
-    async def close(self, *, timeout=None):
+    async def close(self, *, timeout: float | None = None) -> None:
         """Close the connection gracefully.
 
         :param float timeout:
@@ -1472,13 +1952,13 @@ class Connection(metaclass=ConnectionMeta):
         finally:
             self._cleanup()
 
-    def terminate(self):
+    def terminate(self) -> None:
         """Terminate the connection without waiting for pending data."""
         if not self.is_closed():
             self._abort()
         self._cleanup()
 
-    async def reset(self, *, timeout=None):
+    async def reset(self, *, timeout: float | None = None) -> None:
         self._check_open()
         self._listeners.clear()
         self._log_listeners.clear()
@@ -1499,13 +1979,13 @@ class Connection(metaclass=ConnectionMeta):
         if reset_query:
             await self.execute(reset_query, timeout=timeout)
 
-    def _abort(self):
+    def _abort(self) -> None:
         # Put the connection into the aborted state.
         self._aborted = True
         self._protocol.abort()
-        self._protocol = None
+        self._protocol = None   # type: ignore[assignment]
 
-    def _cleanup(self):
+    def _cleanup(self) -> None:
         self._call_termination_listeners()
         # Free the resources associated with this connection.
         # This must be called when a connection is terminated.
@@ -1521,7 +2001,7 @@ class Connection(metaclass=ConnectionMeta):
         self._query_loggers.clear()
         self._clean_tasks()
 
-    def _clean_tasks(self):
+    def _clean_tasks(self) -> None:
         # Wrap-up any remaining tasks associated with this connection.
         if self._cancellations:
             for fut in self._cancellations:
@@ -1529,16 +2009,16 @@ class Connection(metaclass=ConnectionMeta):
                     fut.cancel()
             self._cancellations.clear()
 
-    def _check_open(self):
+    def _check_open(self) -> None:
         if self.is_closed():
             raise exceptions.InterfaceError('connection is closed')
 
-    def _get_unique_id(self, prefix):
+    def _get_unique_id(self, prefix: str) -> str:
         global _uid
         _uid += 1
         return '__asyncpg_{}_{:x}__'.format(prefix, _uid)
 
-    def _mark_stmts_as_closed(self):
+    def _mark_stmts_as_closed(self) -> None:
         for stmt in self._stmt_cache.iter_statements():
             stmt.mark_closed()
 
@@ -1548,7 +2028,9 @@ class Connection(metaclass=ConnectionMeta):
         self._stmt_cache.clear()
         self._stmts_to_close.clear()
 
-    def _maybe_gc_stmt(self, stmt):
+    def _maybe_gc_stmt(
+        self, stmt: _cprotocol.PreparedStatementState[typing.Any]
+    ) -> None:
         if (
             stmt.refs == 0
             and stmt.name
@@ -1567,7 +2049,7 @@ class Connection(metaclass=ConnectionMeta):
             stmt.mark_closed()
             self._stmts_to_close.add(stmt)
 
-    async def _cleanup_stmts(self):
+    async def _cleanup_stmts(self) -> None:
         # Called whenever we create a new prepared statement in
         # `Connection._get_statement()` and `_stmts_to_close` is
         # not empty.
@@ -1578,7 +2060,7 @@ class Connection(metaclass=ConnectionMeta):
             # so we ignore the timeout.
             await self._protocol.close_statement(stmt, protocol.NO_TIMEOUT)
 
-    async def _cancel(self, waiter):
+    async def _cancel(self, waiter: asyncio.Future[None]) -> None:
         try:
             # Open new connection to the server
             await connect_utils._cancel(
@@ -1602,15 +2084,18 @@ class Connection(metaclass=ConnectionMeta):
             if not waiter.done():
                 waiter.set_exception(ex)
         finally:
-            self._cancellations.discard(
-                asyncio.current_task(self._loop))
+            current_task = asyncio.current_task(self._loop)
+            if current_task is not None:
+                self._cancellations.discard(current_task)
             if not waiter.done():
                 waiter.set_result(None)
 
-    def _cancel_current_command(self, waiter):
+    def _cancel_current_command(self, waiter: asyncio.Future[None]) -> None:
         self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
 
-    def _process_log_message(self, fields, last_query):
+    def _process_log_message(
+        self, fields: dict[str, str], last_query: str
+    ) -> None:
         if not self._log_listeners:
             return
 
@@ -1618,38 +2103,31 @@ class Connection(metaclass=ConnectionMeta):
 
         con_ref = self._unwrap()
         for cb in self._log_listeners:
-            if cb.is_async:
-                self._loop.create_task(cb.cb(con_ref, message))
-            else:
-                self._loop.call_soon(cb.cb, con_ref, message)
+            cb.invoke(self._loop, con_ref, message)
 
-    def _call_termination_listeners(self):
+    def _call_termination_listeners(self) -> None:
         if not self._termination_listeners:
             return
 
         con_ref = self._unwrap()
         for cb in self._termination_listeners:
-            if cb.is_async:
-                self._loop.create_task(cb.cb(con_ref))
-            else:
-                self._loop.call_soon(cb.cb, con_ref)
+            cb.invoke(self._loop, con_ref)
 
         self._termination_listeners.clear()
 
-    def _process_notification(self, pid, channel, payload):
+    def _process_notification(
+        self, pid: int, channel: str, payload: typing.Any
+    ) -> None:
         if channel not in self._listeners:
             return
 
         con_ref = self._unwrap()
         for cb in self._listeners[channel]:
-            if cb.is_async:
-                self._loop.create_task(cb.cb(con_ref, pid, channel, payload))
-            else:
-                self._loop.call_soon(cb.cb, con_ref, pid, channel, payload)
+            cb.invoke(self._loop, con_ref, pid, channel, payload)
 
-    def _unwrap(self):
+    def _unwrap(self) -> Self | _pool.PoolConnectionProxy[typing.Any]:
         if self._proxy is None:
-            con_ref = self
+            con_ref: Self | _pool.PoolConnectionProxy[typing.Any] = self
         else:
             # `_proxy` is not None when the connection is a member
             # of a connection pool.  Which means that the user is working
@@ -1658,13 +2136,13 @@ class Connection(metaclass=ConnectionMeta):
             con_ref = self._proxy
         return con_ref
 
-    def _get_reset_query(self):
+    def _get_reset_query(self) -> str:
         if self._reset_query is not None:
             return self._reset_query
 
         caps = self._server_caps
 
-        _reset_query = []
+        _reset_query: list[str] = []
         if caps.advisory_locks:
             _reset_query.append('SELECT pg_advisory_unlock_all();')
         if caps.sql_close_all:
@@ -1674,12 +2152,11 @@ class Connection(metaclass=ConnectionMeta):
         if caps.sql_reset:
             _reset_query.append('RESET ALL;')
 
-        _reset_query = '\n'.join(_reset_query)
-        self._reset_query = _reset_query
+        self._reset_query = '\n'.join(_reset_query)
 
-        return _reset_query
+        return self._reset_query
 
-    def _set_proxy(self, proxy):
+    def _set_proxy(self, proxy: _pool.PoolConnectionProxy[typing.Any]) -> None:
         if self._proxy is not None and proxy is not None:
             # Should not happen unless there is a bug in `Pool`.
             raise exceptions.InterfaceError(
@@ -1687,7 +2164,9 @@ class Connection(metaclass=ConnectionMeta):
 
         self._proxy = proxy
 
-    def _check_listeners(self, listeners, listener_type):
+    def _check_listeners(
+        self, listeners: compat.Sized, listener_type: str
+    ) -> None:
         if listeners:
             count = len(listeners)
 
@@ -1699,7 +2178,7 @@ class Connection(metaclass=ConnectionMeta):
 
             warnings.warn(w)
 
-    def _on_release(self, stacklevel=1):
+    def _on_release(self, stacklevel: int = 1) -> None:
         # Invalidate external references to the connection.
         self._pool_release_ctr += 1
         # Called when the connection is about to be released to the pool.
@@ -1710,10 +2189,10 @@ class Connection(metaclass=ConnectionMeta):
         self._check_listeners(
             self._log_listeners, 'log')
 
-    def _drop_local_statement_cache(self):
+    def _drop_local_statement_cache(self) -> None:
         self._stmt_cache.clear()
 
-    def _drop_global_statement_cache(self):
+    def _drop_global_statement_cache(self) -> None:
         if self._proxy is not None:
             # This connection is a member of a pool, so we delegate
             # the cache drop to the pool.
@@ -1722,10 +2201,10 @@ class Connection(metaclass=ConnectionMeta):
         else:
             self._drop_local_statement_cache()
 
-    def _drop_local_type_cache(self):
+    def _drop_local_type_cache(self) -> None:
         self._protocol.get_settings().clear_type_cache()
 
-    def _drop_global_type_cache(self):
+    def _drop_global_type_cache(self) -> None:
         if self._proxy is not None:
             # This connection is a member of a pool, so we delegate
             # the cache drop to the pool.
@@ -1734,7 +2213,7 @@ class Connection(metaclass=ConnectionMeta):
         else:
             self._drop_local_type_cache()
 
-    async def reload_schema_state(self):
+    async def reload_schema_state(self) -> None:
         """Indicate that the database schema information must be reloaded.
 
         For performance reasons, asyncpg caches certain aspects of the
@@ -1779,17 +2258,101 @@ class Connection(metaclass=ConnectionMeta):
         self._drop_global_type_cache()
         self._drop_global_statement_cache()
 
+    @typing.overload
     async def _execute(
         self,
-        query,
-        args,
-        limit,
-        timeout,
+        query: str,
+        args: compat.Sequence[object],
+        limit: int,
+        timeout: float | None,
         *,
-        return_status=False,
-        ignore_custom_codec=False,
-        record_class=None
-    ):
+        return_status: typing.Literal[False] = ...,
+        ignore_custom_codec: bool = ...,
+        record_class: None = ...
+    ) -> _RecordsType[_RecordT]:
+        ...
+
+    @typing.overload
+    async def _execute(
+        self,
+        query: str,
+        args: compat.Sequence[object],
+        limit: int,
+        timeout: float | None,
+        *,
+        return_status: typing.Literal[False] = ...,
+        ignore_custom_codec: bool = ...,
+        record_class: type[_OtherRecordT]
+    ) -> _RecordsType[_OtherRecordT]:
+        ...
+
+    @typing.overload
+    async def _execute(
+        self,
+        query: str,
+        args: compat.Sequence[object],
+        limit: int,
+        timeout: float | None,
+        *,
+        return_status: typing.Literal[False] = ...,
+        ignore_custom_codec: bool = ...,
+        record_class: type[_OtherRecordT] | None
+    ) -> _RecordsType[_RecordT] | _RecordsType[_OtherRecordT]:
+        ...
+
+    @typing.overload
+    async def _execute(
+        self,
+        query: str,
+        args: compat.Sequence[object],
+        limit: int,
+        timeout: float | None,
+        *,
+        return_status: typing.Literal[True],
+        ignore_custom_codec: bool = ...,
+        record_class: None = ...
+    ) -> _RecordsTupleType[_RecordT]:
+        ...
+
+    @typing.overload
+    async def _execute(
+        self,
+        query: str,
+        args: compat.Sequence[object],
+        limit: int,
+        timeout: float | None,
+        *,
+        return_status: typing.Literal[True],
+        ignore_custom_codec: bool = ...,
+        record_class: type[_OtherRecordT]
+    ) -> _RecordsTupleType[_OtherRecordT]:
+        ...
+
+    @typing.overload
+    async def _execute(
+        self,
+        query: str,
+        args: compat.Sequence[object],
+        limit: int,
+        timeout: float | None,
+        *,
+        return_status: typing.Literal[True],
+        ignore_custom_codec: bool = ...,
+        record_class: type[_OtherRecordT] | None
+    ) -> _RecordsTupleType[_RecordT] | _RecordsTupleType[_OtherRecordT]:
+        ...
+
+    async def _execute(
+        self,
+        query: str,
+        args: compat.Sequence[object],
+        limit: int,
+        timeout: float | None,
+        *,
+        return_status: bool = False,
+        ignore_custom_codec: bool = False,
+        record_class: type[_OtherRecordT] | None = None
+    ) -> _RecordsType[typing.Any] | _RecordsTupleType[typing.Any]:
         with self._stmt_exclusive_section:
             result, _ = await self.__execute(
                 query,
@@ -1803,7 +2366,7 @@ class Connection(metaclass=ConnectionMeta):
         return result
 
     @contextlib.contextmanager
-    def query_logger(self, callback):
+    def query_logger(self, callback: QueryLogger) -> compat.Iterator[None]:
         """Context manager that adds `callback` to the list of query loggers,
         and removes it upon exit.
 
@@ -1834,7 +2397,9 @@ class Connection(metaclass=ConnectionMeta):
         self.remove_query_logger(callback)
 
     @contextlib.contextmanager
-    def _time_and_log(self, query, args, timeout):
+    def _time_and_log(
+        self, query: str, args: typing.Any, timeout: float | None
+    ) -> compat.Iterator[None]:
         start = time.monotonic()
         exception = None
         try:
@@ -1854,23 +2419,127 @@ class Connection(metaclass=ConnectionMeta):
                 conn_params=self._params,
             )
             for cb in self._query_loggers:
-                if cb.is_async:
-                    self._loop.create_task(cb.cb(record))
-                else:
-                    self._loop.call_soon(cb.cb, record)
+                cb.invoke(self._loop, record)
+
+    @typing.overload
+    async def __execute(
+        self,
+        query: str,
+        args: compat.Sequence[object],
+        limit: int,
+        timeout: float | None,
+        *,
+        return_status: typing.Literal[False] = ...,
+        ignore_custom_codec: bool = ...,
+        record_class: None = ...
+    ) -> tuple[
+        _RecordsType[_RecordT], _cprotocol.PreparedStatementState[_RecordT]
+    ]:
+        ...
+
+    @typing.overload
+    async def __execute(
+        self,
+        query: str,
+        args: compat.Sequence[object],
+        limit: int,
+        timeout: float | None,
+        *,
+        return_status: typing.Literal[False] = ...,
+        ignore_custom_codec: bool = ...,
+        record_class: type[_OtherRecordT]
+    ) -> tuple[
+        _RecordsType[_OtherRecordT],
+        _cprotocol.PreparedStatementState[_OtherRecordT]
+    ]:
+        ...
+
+    @typing.overload
+    async def __execute(
+        self,
+        query: str,
+        args: compat.Sequence[object],
+        limit: int,
+        timeout: float | None,
+        *,
+        return_status: typing.Literal[True],
+        ignore_custom_codec: bool = ...,
+        record_class: None = ...
+    ) -> tuple[
+        _RecordsTupleType[_RecordT],
+        _cprotocol.PreparedStatementState[_RecordT]
+    ]:
+        ...
+
+    @typing.overload
+    async def __execute(
+        self,
+        query: str,
+        args: compat.Sequence[object],
+        limit: int,
+        timeout: float | None,
+        *,
+        return_status: typing.Literal[True],
+        ignore_custom_codec: bool = ...,
+        record_class: type[_OtherRecordT]
+    ) -> tuple[
+        _RecordsTupleType[_OtherRecordT],
+        _cprotocol.PreparedStatementState[_OtherRecordT]
+    ]:
+        ...
+
+    @typing.overload
+    async def __execute(
+        self,
+        query: str,
+        args: compat.Sequence[object],
+        limit: int,
+        timeout: float | None,
+        *,
+        return_status: bool,
+        ignore_custom_codec: bool = ...,
+        record_class: type[_OtherRecordT] | None
+    ) -> tuple[
+        _RecordsTupleType[_RecordT],
+        _cprotocol.PreparedStatementState[_RecordT]
+    ] | tuple[
+        _RecordsType[_RecordT],
+        _cprotocol.PreparedStatementState[_RecordT]
+    ] | tuple[
+        _RecordsTupleType[_OtherRecordT],
+        _cprotocol.PreparedStatementState[_OtherRecordT]
+    ] | tuple[
+        _RecordsType[_OtherRecordT],
+        _cprotocol.PreparedStatementState[_OtherRecordT]
+    ]:
+        ...
 
     async def __execute(
         self,
-        query,
-        args,
-        limit,
-        timeout,
+        query: str,
+        args: compat.Sequence[object],
+        limit: int,
+        timeout: float | None,
         *,
-        return_status=False,
-        ignore_custom_codec=False,
-        record_class=None
-    ):
-        executor = lambda stmt, timeout: self._protocol.bind_execute(
+        return_status: bool = False,
+        ignore_custom_codec: bool = False,
+        record_class: type[_OtherRecordT] | None = None
+    ) -> tuple[
+        _RecordsTupleType[_RecordT],
+        _cprotocol.PreparedStatementState[_RecordT]
+    ] | tuple[
+        _RecordsType[_RecordT],
+        _cprotocol.PreparedStatementState[_RecordT]
+    ] | tuple[
+        _RecordsTupleType[_OtherRecordT],
+        _cprotocol.PreparedStatementState[_OtherRecordT]
+    ] | tuple[
+        _RecordsType[_OtherRecordT],
+        _cprotocol.PreparedStatementState[_OtherRecordT]
+    ]:
+        executor: Executor[
+            _OtherRecordT
+        ] = lambda stmt, timeout: self._protocol.bind_execute(
             state=stmt,
             args=args,
             portal_name='',
@@ -1898,8 +2567,15 @@ class Connection(metaclass=ConnectionMeta):
             )
         return result, stmt
 
-    async def _executemany(self, query, args, timeout):
-        executor = lambda stmt, timeout: self._protocol.bind_execute_many(
+    async def _executemany(
+        self,
+        query: str,
+        args: compat.Iterable[compat.Sequence[object]],
+        timeout: float | None,
+    ) -> None:
+        executor: Executor[
+            _RecordT
+        ] = lambda stmt, timeout: self._protocol.bind_execute_many(
             state=stmt,
             args=args,
             portal_name='',
@@ -1908,19 +2584,20 @@ class Connection(metaclass=ConnectionMeta):
         timeout = self._protocol._get_timeout(timeout)
         with self._stmt_exclusive_section:
             with self._time_and_log(query, args, timeout):
+                result: None
                 result, _ = await self._do_execute(query, executor, timeout)
         return result
 
     async def _do_execute(
         self,
-        query,
-        executor,
-        timeout,
-        retry=True,
+        query: str,
+        executor: Executor[typing.Any],
+        timeout: float | None,
+        retry: bool = True,
         *,
-        ignore_custom_codec=False,
-        record_class=None
-    ):
+        ignore_custom_codec: bool = False,
+        record_class: type[_OtherRecordT] | None = None,
+    ) -> tuple[typing.Any, _cprotocol.PreparedStatementState[typing.Any]]:
         if timeout is None:
             stmt = await self._get_statement(
                 query,
@@ -1948,7 +2625,7 @@ class Connection(metaclass=ConnectionMeta):
                     result = await executor(stmt, timeout)
                 finally:
                     after = time.monotonic()
-                    timeout -= after - before
+                    timeout -= after - before  # pyright: ignore [reportPossiblyUnboundVariable]  # noqa: E501
 
         except exceptions.OutdatedSchemaCacheError:
             # This exception is raised when we detect a difference between
@@ -1992,22 +2669,103 @@ class Connection(metaclass=ConnectionMeta):
         return result, stmt
 
 
-async def connect(dsn=None, *,
-                  host=None, port=None,
-                  user=None, password=None, passfile=None,
-                  database=None,
-                  loop=None,
-                  timeout=60,
-                  statement_cache_size=100,
-                  max_cached_statement_lifetime=300,
-                  max_cacheable_statement_size=1024 * 15,
-                  command_timeout=None,
-                  ssl=None,
-                  direct_tls=False,
-                  connection_class=Connection,
-                  record_class=protocol.Record,
-                  server_settings=None,
-                  target_session_attrs=None):
+@typing.overload
+async def connect(
+    dsn: str | None = ...,
+    *,
+    host: connect_utils.HostType | None = ...,
+    port: connect_utils.PortType | None = ...,
+    user: str | None = ...,
+    password: connect_utils.PasswordType | None = ...,
+    passfile: str | None = ...,
+    database: str | None = ...,
+    loop: asyncio.AbstractEventLoop | None = ...,
+    timeout: float = ...,
+    statement_cache_size: int = ...,
+    max_cached_statement_lifetime: int = ...,
+    max_cacheable_statement_size: int = ...,
+    command_timeout: float | None = ...,
+    ssl: connect_utils.SSLType | None = ...,
+    direct_tls: bool = ...,
+    record_class: type[_RecordT],
+    server_settings: dict[str, str] | None = ...,
+    target_session_attrs: connect_utils.SessionAttribute | None = ...,
+) -> Connection[_RecordT]:
+    ...
+
+
+@typing.overload
+async def connect(
+    dsn: str | None = ...,
+    *,
+    host: connect_utils.HostType | None = ...,
+    port: connect_utils.PortType | None = ...,
+    user: str | None = ...,
+    password: connect_utils.PasswordType | None = ...,
+    passfile: str | None = ...,
+    database: str | None = ...,
+    loop: asyncio.AbstractEventLoop | None = ...,
+    timeout: float = ...,
+    statement_cache_size: int = ...,
+    max_cached_statement_lifetime: int = ...,
+    max_cacheable_statement_size: int = ...,
+    command_timeout: float | None = ...,
+    ssl: connect_utils.SSLType | None = ...,
+    direct_tls: bool = ...,
+    connection_class: type[_ConnectionT],
+    record_class: type[_RecordT] = ...,
+    server_settings: dict[str, str] | None = ...,
+    target_session_attrs: connect_utils.SessionAttribute | None = ...,
+) -> _ConnectionT:
+    ...
+
+
+@typing.overload
+async def connect(
+    dsn: str | None = ...,
+    *,
+    host: connect_utils.HostType | None = ...,
+    port: connect_utils.PortType | None = ...,
+    user: str | None = ...,
+    password: connect_utils.PasswordType | None = ...,
+    passfile: str | None = ...,
+    database: str | None = ...,
+    loop: asyncio.AbstractEventLoop | None = ...,
+    timeout: float = ...,
+    statement_cache_size: int = ...,
+    max_cached_statement_lifetime: int = ...,
+    max_cacheable_statement_size: int = ...,
+    command_timeout: float | None = ...,
+    ssl: connect_utils.SSLType | None = ...,
+    direct_tls: bool = ...,
+    server_settings: dict[str, str] | None = ...,
+    target_session_attrs: connect_utils.SessionAttribute | None = ...,
+) -> Connection[protocol.Record]:
+    ...
+
+
+async def connect(
+    dsn: str | None = None,
+    *,
+    host: connect_utils.HostType | None = None,
+    port: connect_utils.PortType | None = None,
+    user: str | None = None,
+    password: connect_utils.PasswordType | None = None,
+    passfile: str | None = None,
+    database: str | None = None,
+    loop: asyncio.AbstractEventLoop | None = None,
+    timeout: float = 60,
+    statement_cache_size: int = 100,
+    max_cached_statement_lifetime: int = 300,
+    max_cacheable_statement_size: int = 1024 * 15,
+    command_timeout: float | None = None,
+    ssl: connect_utils.SSLType | None = None,
+    direct_tls: bool = False,
+    connection_class: type[_ConnectionT] = typing.cast(typing.Any, Connection),
+    record_class: type[_RecordT] = typing.cast(typing.Any, protocol.Record),
+    server_settings: dict[str, str] | None = None,
+    target_session_attrs: connect_utils.SessionAttribute | None = None,
+) -> Connection[typing.Any]:
     r"""A coroutine to establish a connection to a PostgreSQL server.
 
     The connection parameters may be specified either as a connection
@@ -2348,11 +3106,24 @@ async def connect(dsn=None, *,
         )
 
 
-class _StatementCacheEntry:
+_StatementCacheKey: compat.TypeAlias = 'tuple[str, type[_RecordT], bool]'
+
+
+class _StatementCacheEntry(typing.Generic[_RecordT]):
 
     __slots__ = ('_query', '_statement', '_cache', '_cleanup_cb')
 
-    def __init__(self, cache, query, statement):
+    _query: _StatementCacheKey[_RecordT]
+    _statement: _cprotocol.PreparedStatementState[_RecordT]
+    _cache: _StatementCache
+    _cleanup_cb: asyncio.TimerHandle | None
+
+    def __init__(
+        self,
+        cache: _StatementCache,
+        query: _StatementCacheKey[_RecordT],
+        statement: _cprotocol.PreparedStatementState[_RecordT]
+    ) -> None:
         self._cache = cache
         self._query = query
         self._statement = statement
@@ -2364,7 +3135,23 @@ class _StatementCache:
     __slots__ = ('_loop', '_entries', '_max_size', '_on_remove',
                  '_max_lifetime')
 
-    def __init__(self, *, loop, max_size, on_remove, max_lifetime):
+    _loop: asyncio.AbstractEventLoop
+    _entries: compat.OrderedDict[
+        _StatementCacheKey[typing.Any],
+        _StatementCacheEntry[typing.Any]
+    ]
+    _max_size: int
+    _on_remove: OnRemove[typing.Any]
+    _max_lifetime: float
+
+    def __init__(
+        self,
+        *,
+        loop: asyncio.AbstractEventLoop,
+        max_size: int,
+        on_remove: OnRemove[typing.Any],
+        max_lifetime: float
+    ) -> None:
         self._loop = loop
         self._max_size = max_size
         self._on_remove = on_remove
@@ -2389,21 +3176,21 @@ class _StatementCache:
         # beginning of it.
         self._entries = collections.OrderedDict()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._entries)
 
-    def get_max_size(self):
+    def get_max_size(self) -> int:
         return self._max_size
 
-    def set_max_size(self, new_size):
+    def set_max_size(self, new_size: int) -> None:
         assert new_size >= 0
         self._max_size = new_size
         self._maybe_cleanup()
 
-    def get_max_lifetime(self):
+    def get_max_lifetime(self) -> float:
         return self._max_lifetime
 
-    def set_max_lifetime(self, new_lifetime):
+    def set_max_lifetime(self, new_lifetime: float) -> None:
         assert new_lifetime >= 0
         self._max_lifetime = new_lifetime
         for entry in self._entries.values():
@@ -2411,14 +3198,16 @@ class _StatementCache:
             # and setup a new one if necessary.
             self._set_entry_timeout(entry)
 
-    def get(self, query, *, promote=True):
+    def get(
+        self, query: _StatementCacheKey[_RecordT], *, promote: bool = True
+    ) -> _cprotocol.PreparedStatementState[_RecordT] | None:
         if not self._max_size:
             # The cache is disabled.
-            return
+            return None
 
-        entry = self._entries.get(query)  # type: _StatementCacheEntry
+        entry: _StatementCacheEntry[_RecordT] | None = self._entries.get(query)
         if entry is None:
-            return
+            return None
 
         if entry._statement.closed:
             # Happens in unittests when we call `stmt._state.mark_closed()`
@@ -2426,7 +3215,7 @@ class _StatementCache:
             # cache error.
             self._entries.pop(query)
             self._clear_entry_callback(entry)
-            return
+            return None
 
         if promote:
             # `promote` is `False` when `get()` is called by `has()`.
@@ -2434,10 +3223,14 @@ class _StatementCache:
 
         return entry._statement
 
-    def has(self, query):
+    def has(self, query: _StatementCacheKey[_RecordT]) -> bool:
         return self.get(query, promote=False) is not None
 
-    def put(self, query, statement):
+    def put(
+        self,
+        query: _StatementCacheKey[_RecordT],
+        statement: _cprotocol.PreparedStatementState[_RecordT],
+    ) -> None:
         if not self._max_size:
             # The cache is disabled.
             return
@@ -2448,10 +3241,12 @@ class _StatementCache:
         # if necessary.
         self._maybe_cleanup()
 
-    def iter_statements(self):
+    def iter_statements(
+        self
+    ) -> compat.Iterator[_cprotocol.PreparedStatementState[typing.Any]]:
         return (e._statement for e in self._entries.values())
 
-    def clear(self):
+    def clear(self) -> None:
         # Store entries for later.
         entries = tuple(self._entries.values())
 
@@ -2464,7 +3259,9 @@ class _StatementCache:
             self._clear_entry_callback(entry)
             self._on_remove(entry._statement)
 
-    def _set_entry_timeout(self, entry):
+    def _set_entry_timeout(
+        self, entry: _StatementCacheEntry[typing.Any]
+    ) -> None:
         # Clear the existing timeout.
         self._clear_entry_callback(entry)
 
@@ -2473,23 +3270,31 @@ class _StatementCache:
             entry._cleanup_cb = self._loop.call_later(
                 self._max_lifetime, self._on_entry_expired, entry)
 
-    def _new_entry(self, query, statement):
+    def _new_entry(
+        self,
+        query: _StatementCacheKey[_RecordT],
+        statement: _cprotocol.PreparedStatementState[_RecordT],
+    ) -> _StatementCacheEntry[_RecordT]:
         entry = _StatementCacheEntry(self, query, statement)
         self._set_entry_timeout(entry)
         return entry
 
-    def _on_entry_expired(self, entry):
+    def _on_entry_expired(
+        self, entry: _StatementCacheEntry[typing.Any]
+    ) -> None:
         # `call_later` callback, called when an entry stayed longer
         # than `self._max_lifetime`.
         if self._entries.get(entry._query) is entry:
             self._entries.pop(entry._query)
             self._on_remove(entry._statement)
 
-    def _clear_entry_callback(self, entry):
+    def _clear_entry_callback(
+        self, entry: _StatementCacheEntry[typing.Any]
+    ) -> None:
         if entry._cleanup_cb is not None:
             entry._cleanup_cb.cancel()
 
-    def _maybe_cleanup(self):
+    def _maybe_cleanup(self) -> None:
         # Delete cache entries until the size of the cache is `max_size`.
         while len(self._entries) > self._max_size:
             old_query, old_entry = self._entries.popitem(last=False)
@@ -2500,13 +3305,35 @@ class _StatementCache:
             self._on_remove(old_entry._statement)
 
 
-class _Callback(typing.NamedTuple):
+_CallbackType = compat.Callable[
+    _P,
+    'compat.Coroutine[typing.Any, typing.Any, None] | None'
+]
 
-    cb: typing.Callable[..., None]
+
+@dataclasses.dataclass(frozen=True)
+class _Callback(typing.Generic[_P]):
+    __slots__ = ('cb', 'is_async')
+
+    cb: _CallbackType[_P]
     is_async: bool
 
+    def invoke(
+        self,
+        loop: asyncio.AbstractEventLoop,
+        /,
+        *args: _P.args,
+        **kwargs: _P.kwargs,
+    ) -> None:
+        if self.is_async:
+            loop.create_task(
+                typing.cast(typing.Any, self.cb(*args, **kwargs))
+            )
+        else:
+            loop.call_soon(lambda: self.cb(*args, **kwargs))
+
     @classmethod
-    def from_callable(cls, cb: typing.Callable[..., None]) -> '_Callback':
+    def from_callable(cls, cb: _CallbackType[_P]) -> Self:
         if inspect.iscoroutinefunction(cb):
             is_async = True
         elif callable(cb):
@@ -2523,39 +3350,52 @@ class _Callback(typing.NamedTuple):
 class _Atomic:
     __slots__ = ('_acquired',)
 
-    def __init__(self):
+    _acquired: int
+
+    def __init__(self) -> None:
         self._acquired = 0
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         if self._acquired:
             raise exceptions.InterfaceError(
                 'cannot perform operation: another operation is in progress')
         self._acquired = 1
 
-    def __exit__(self, t, e, tb):
+    def __exit__(self, t: object, e: object, tb: object) -> None:
         self._acquired = 0
 
 
-class _ConnectionProxy:
+class _ConnectionProxy(typing.Generic[_RecordT]):
     # Base class to enable `isinstance(Connection)` check.
     __slots__ = ()
 
 
-LoggedQuery = collections.namedtuple(
-    'LoggedQuery',
-    ['query', 'args', 'timeout', 'elapsed', 'exception', 'conn_addr',
-     'conn_params'])
-LoggedQuery.__doc__ = 'Log record of an executed query.'
+class LoggedQuery(typing.NamedTuple):
+    '''Log record of an executed query.'''
+    query: str
+    args: typing.Any
+    timeout: float | None
+    elapsed: float
+    exception: BaseException | None
+    conn_addr: tuple[str, int] | str
+    conn_params: connect_utils._ConnectionParameters
 
 
-ServerCapabilities = collections.namedtuple(
-    'ServerCapabilities',
-    ['advisory_locks', 'notifications', 'plpgsql', 'sql_reset',
-     'sql_close_all', 'sql_copy_from_where', 'jit'])
-ServerCapabilities.__doc__ = 'PostgreSQL server capabilities.'
+class ServerCapabilities(typing.NamedTuple):
+    '''PostgreSQL server capabilities.'''
+    advisory_locks: bool
+    notifications: bool
+    plpgsql: bool
+    sql_reset: bool
+    sql_close_all: bool
+    sql_copy_from_where: bool
+    jit: bool
 
 
-def _detect_server_capabilities(server_version, connection_settings):
+def _detect_server_capabilities(
+    server_version: types.ServerVersion,
+    connection_settings: _cprotocol.ConnectionSettings,
+) -> ServerCapabilities:
     if hasattr(connection_settings, 'padb_revision'):
         # Amazon Redshift detected.
         advisory_locks = False
@@ -2604,18 +3444,18 @@ def _detect_server_capabilities(server_version, connection_settings):
     )
 
 
-def _extract_stack(limit=10):
+def _extract_stack(limit: int = 10) -> str:
     """Replacement for traceback.extract_stack() that only does the
     necessary work for asyncio debug mode.
     """
     frame = sys._getframe().f_back
     try:
-        stack = traceback.StackSummary.extract(
+        stack: list[traceback.FrameSummary] = traceback.StackSummary.extract(
             traceback.walk_stack(frame), lookup_lines=False)
     finally:
         del frame
 
-    apg_path = asyncpg.__path__[0]
+    apg_path = list(asyncpg.__path__)[0]
     i = 0
     while i < len(stack) and stack[i][0].startswith(apg_path):
         i += 1
@@ -2625,7 +3465,7 @@ def _extract_stack(limit=10):
     return ''.join(traceback.format_list(stack))
 
 
-def _check_record_class(record_class):
+def _check_record_class(record_class: type[typing.Any]) -> None:
     if record_class is protocol.Record:
         pass
     elif (
@@ -2646,7 +3486,10 @@ def _check_record_class(record_class):
         )
 
 
-def _weak_maybe_gc_stmt(weak_ref, stmt):
+def _weak_maybe_gc_stmt(
+    weak_ref: weakref.ref[Connection[typing.Any]],
+    stmt: _cprotocol.PreparedStatementState[typing.Any],
+) -> None:
     self = weak_ref()
     if self is not None:
         self._maybe_gc_stmt(stmt)

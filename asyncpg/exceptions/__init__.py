@@ -1,88 +1,91 @@
 # GENERATED FROM postgresql/src/backend/utils/errcodes.txt
 # DO NOT MODIFY, use tools/generate_exceptions.py to update
 
+from __future__ import annotations
+
+import typing
 from ._base import *  # NOQA
 from . import _base
 
 
 class PostgresWarning(_base.PostgresLogMessage, Warning):
-    sqlstate = '01000'
+    sqlstate: typing.ClassVar[str] = '01000'
 
 
 class DynamicResultSetsReturned(PostgresWarning):
-    sqlstate = '0100C'
+    sqlstate: typing.ClassVar[str] = '0100C'
 
 
 class ImplicitZeroBitPadding(PostgresWarning):
-    sqlstate = '01008'
+    sqlstate: typing.ClassVar[str] = '01008'
 
 
 class NullValueEliminatedInSetFunction(PostgresWarning):
-    sqlstate = '01003'
+    sqlstate: typing.ClassVar[str] = '01003'
 
 
 class PrivilegeNotGranted(PostgresWarning):
-    sqlstate = '01007'
+    sqlstate: typing.ClassVar[str] = '01007'
 
 
 class PrivilegeNotRevoked(PostgresWarning):
-    sqlstate = '01006'
+    sqlstate: typing.ClassVar[str] = '01006'
 
 
 class StringDataRightTruncation(PostgresWarning):
-    sqlstate = '01004'
+    sqlstate: typing.ClassVar[str] = '01004'
 
 
 class DeprecatedFeature(PostgresWarning):
-    sqlstate = '01P01'
+    sqlstate: typing.ClassVar[str] = '01P01'
 
 
 class NoData(PostgresWarning):
-    sqlstate = '02000'
+    sqlstate: typing.ClassVar[str] = '02000'
 
 
 class NoAdditionalDynamicResultSetsReturned(NoData):
-    sqlstate = '02001'
+    sqlstate: typing.ClassVar[str] = '02001'
 
 
 class SQLStatementNotYetCompleteError(_base.PostgresError):
-    sqlstate = '03000'
+    sqlstate: typing.ClassVar[str] = '03000'
 
 
 class PostgresConnectionError(_base.PostgresError):
-    sqlstate = '08000'
+    sqlstate: typing.ClassVar[str] = '08000'
 
 
 class ConnectionDoesNotExistError(PostgresConnectionError):
-    sqlstate = '08003'
+    sqlstate: typing.ClassVar[str] = '08003'
 
 
 class ConnectionFailureError(PostgresConnectionError):
-    sqlstate = '08006'
+    sqlstate: typing.ClassVar[str] = '08006'
 
 
 class ClientCannotConnectError(PostgresConnectionError):
-    sqlstate = '08001'
+    sqlstate: typing.ClassVar[str] = '08001'
 
 
 class ConnectionRejectionError(PostgresConnectionError):
-    sqlstate = '08004'
+    sqlstate: typing.ClassVar[str] = '08004'
 
 
 class TransactionResolutionUnknownError(PostgresConnectionError):
-    sqlstate = '08007'
+    sqlstate: typing.ClassVar[str] = '08007'
 
 
 class ProtocolViolationError(PostgresConnectionError):
-    sqlstate = '08P01'
+    sqlstate: typing.ClassVar[str] = '08P01'
 
 
 class TriggeredActionError(_base.PostgresError):
-    sqlstate = '09000'
+    sqlstate: typing.ClassVar[str] = '09000'
 
 
 class FeatureNotSupportedError(_base.PostgresError):
-    sqlstate = '0A000'
+    sqlstate: typing.ClassVar[str] = '0A000'
 
 
 class InvalidCachedStatementError(FeatureNotSupportedError):
@@ -90,969 +93,969 @@ class InvalidCachedStatementError(FeatureNotSupportedError):
 
 
 class InvalidTransactionInitiationError(_base.PostgresError):
-    sqlstate = '0B000'
+    sqlstate: typing.ClassVar[str] = '0B000'
 
 
 class LocatorError(_base.PostgresError):
-    sqlstate = '0F000'
+    sqlstate: typing.ClassVar[str] = '0F000'
 
 
 class InvalidLocatorSpecificationError(LocatorError):
-    sqlstate = '0F001'
+    sqlstate: typing.ClassVar[str] = '0F001'
 
 
 class InvalidGrantorError(_base.PostgresError):
-    sqlstate = '0L000'
+    sqlstate: typing.ClassVar[str] = '0L000'
 
 
 class InvalidGrantOperationError(InvalidGrantorError):
-    sqlstate = '0LP01'
+    sqlstate: typing.ClassVar[str] = '0LP01'
 
 
 class InvalidRoleSpecificationError(_base.PostgresError):
-    sqlstate = '0P000'
+    sqlstate: typing.ClassVar[str] = '0P000'
 
 
 class DiagnosticsError(_base.PostgresError):
-    sqlstate = '0Z000'
+    sqlstate: typing.ClassVar[str] = '0Z000'
 
 
 class StackedDiagnosticsAccessedWithoutActiveHandlerError(DiagnosticsError):
-    sqlstate = '0Z002'
+    sqlstate: typing.ClassVar[str] = '0Z002'
 
 
 class CaseNotFoundError(_base.PostgresError):
-    sqlstate = '20000'
+    sqlstate: typing.ClassVar[str] = '20000'
 
 
 class CardinalityViolationError(_base.PostgresError):
-    sqlstate = '21000'
+    sqlstate: typing.ClassVar[str] = '21000'
 
 
 class DataError(_base.PostgresError):
-    sqlstate = '22000'
+    sqlstate: typing.ClassVar[str] = '22000'
 
 
 class ArraySubscriptError(DataError):
-    sqlstate = '2202E'
+    sqlstate: typing.ClassVar[str] = '2202E'
 
 
 class CharacterNotInRepertoireError(DataError):
-    sqlstate = '22021'
+    sqlstate: typing.ClassVar[str] = '22021'
 
 
 class DatetimeFieldOverflowError(DataError):
-    sqlstate = '22008'
+    sqlstate: typing.ClassVar[str] = '22008'
 
 
 class DivisionByZeroError(DataError):
-    sqlstate = '22012'
+    sqlstate: typing.ClassVar[str] = '22012'
 
 
 class ErrorInAssignmentError(DataError):
-    sqlstate = '22005'
+    sqlstate: typing.ClassVar[str] = '22005'
 
 
 class EscapeCharacterConflictError(DataError):
-    sqlstate = '2200B'
+    sqlstate: typing.ClassVar[str] = '2200B'
 
 
 class IndicatorOverflowError(DataError):
-    sqlstate = '22022'
+    sqlstate: typing.ClassVar[str] = '22022'
 
 
 class IntervalFieldOverflowError(DataError):
-    sqlstate = '22015'
+    sqlstate: typing.ClassVar[str] = '22015'
 
 
 class InvalidArgumentForLogarithmError(DataError):
-    sqlstate = '2201E'
+    sqlstate: typing.ClassVar[str] = '2201E'
 
 
 class InvalidArgumentForNtileFunctionError(DataError):
-    sqlstate = '22014'
+    sqlstate: typing.ClassVar[str] = '22014'
 
 
 class InvalidArgumentForNthValueFunctionError(DataError):
-    sqlstate = '22016'
+    sqlstate: typing.ClassVar[str] = '22016'
 
 
 class InvalidArgumentForPowerFunctionError(DataError):
-    sqlstate = '2201F'
+    sqlstate: typing.ClassVar[str] = '2201F'
 
 
 class InvalidArgumentForWidthBucketFunctionError(DataError):
-    sqlstate = '2201G'
+    sqlstate: typing.ClassVar[str] = '2201G'
 
 
 class InvalidCharacterValueForCastError(DataError):
-    sqlstate = '22018'
+    sqlstate: typing.ClassVar[str] = '22018'
 
 
 class InvalidDatetimeFormatError(DataError):
-    sqlstate = '22007'
+    sqlstate: typing.ClassVar[str] = '22007'
 
 
 class InvalidEscapeCharacterError(DataError):
-    sqlstate = '22019'
+    sqlstate: typing.ClassVar[str] = '22019'
 
 
 class InvalidEscapeOctetError(DataError):
-    sqlstate = '2200D'
+    sqlstate: typing.ClassVar[str] = '2200D'
 
 
 class InvalidEscapeSequenceError(DataError):
-    sqlstate = '22025'
+    sqlstate: typing.ClassVar[str] = '22025'
 
 
 class NonstandardUseOfEscapeCharacterError(DataError):
-    sqlstate = '22P06'
+    sqlstate: typing.ClassVar[str] = '22P06'
 
 
 class InvalidIndicatorParameterValueError(DataError):
-    sqlstate = '22010'
+    sqlstate: typing.ClassVar[str] = '22010'
 
 
 class InvalidParameterValueError(DataError):
-    sqlstate = '22023'
+    sqlstate: typing.ClassVar[str] = '22023'
 
 
 class InvalidPrecedingOrFollowingSizeError(DataError):
-    sqlstate = '22013'
+    sqlstate: typing.ClassVar[str] = '22013'
 
 
 class InvalidRegularExpressionError(DataError):
-    sqlstate = '2201B'
+    sqlstate: typing.ClassVar[str] = '2201B'
 
 
 class InvalidRowCountInLimitClauseError(DataError):
-    sqlstate = '2201W'
+    sqlstate: typing.ClassVar[str] = '2201W'
 
 
 class InvalidRowCountInResultOffsetClauseError(DataError):
-    sqlstate = '2201X'
+    sqlstate: typing.ClassVar[str] = '2201X'
 
 
 class InvalidTablesampleArgumentError(DataError):
-    sqlstate = '2202H'
+    sqlstate: typing.ClassVar[str] = '2202H'
 
 
 class InvalidTablesampleRepeatError(DataError):
-    sqlstate = '2202G'
+    sqlstate: typing.ClassVar[str] = '2202G'
 
 
 class InvalidTimeZoneDisplacementValueError(DataError):
-    sqlstate = '22009'
+    sqlstate: typing.ClassVar[str] = '22009'
 
 
 class InvalidUseOfEscapeCharacterError(DataError):
-    sqlstate = '2200C'
+    sqlstate: typing.ClassVar[str] = '2200C'
 
 
 class MostSpecificTypeMismatchError(DataError):
-    sqlstate = '2200G'
+    sqlstate: typing.ClassVar[str] = '2200G'
 
 
 class NullValueNotAllowedError(DataError):
-    sqlstate = '22004'
+    sqlstate: typing.ClassVar[str] = '22004'
 
 
 class NullValueNoIndicatorParameterError(DataError):
-    sqlstate = '22002'
+    sqlstate: typing.ClassVar[str] = '22002'
 
 
 class NumericValueOutOfRangeError(DataError):
-    sqlstate = '22003'
+    sqlstate: typing.ClassVar[str] = '22003'
 
 
 class SequenceGeneratorLimitExceededError(DataError):
-    sqlstate = '2200H'
+    sqlstate: typing.ClassVar[str] = '2200H'
 
 
 class StringDataLengthMismatchError(DataError):
-    sqlstate = '22026'
+    sqlstate: typing.ClassVar[str] = '22026'
 
 
 class StringDataRightTruncationError(DataError):
-    sqlstate = '22001'
+    sqlstate: typing.ClassVar[str] = '22001'
 
 
 class SubstringError(DataError):
-    sqlstate = '22011'
+    sqlstate: typing.ClassVar[str] = '22011'
 
 
 class TrimError(DataError):
-    sqlstate = '22027'
+    sqlstate: typing.ClassVar[str] = '22027'
 
 
 class UnterminatedCStringError(DataError):
-    sqlstate = '22024'
+    sqlstate: typing.ClassVar[str] = '22024'
 
 
 class ZeroLengthCharacterStringError(DataError):
-    sqlstate = '2200F'
+    sqlstate: typing.ClassVar[str] = '2200F'
 
 
 class PostgresFloatingPointError(DataError):
-    sqlstate = '22P01'
+    sqlstate: typing.ClassVar[str] = '22P01'
 
 
 class InvalidTextRepresentationError(DataError):
-    sqlstate = '22P02'
+    sqlstate: typing.ClassVar[str] = '22P02'
 
 
 class InvalidBinaryRepresentationError(DataError):
-    sqlstate = '22P03'
+    sqlstate: typing.ClassVar[str] = '22P03'
 
 
 class BadCopyFileFormatError(DataError):
-    sqlstate = '22P04'
+    sqlstate: typing.ClassVar[str] = '22P04'
 
 
 class UntranslatableCharacterError(DataError):
-    sqlstate = '22P05'
+    sqlstate: typing.ClassVar[str] = '22P05'
 
 
 class NotAnXmlDocumentError(DataError):
-    sqlstate = '2200L'
+    sqlstate: typing.ClassVar[str] = '2200L'
 
 
 class InvalidXmlDocumentError(DataError):
-    sqlstate = '2200M'
+    sqlstate: typing.ClassVar[str] = '2200M'
 
 
 class InvalidXmlContentError(DataError):
-    sqlstate = '2200N'
+    sqlstate: typing.ClassVar[str] = '2200N'
 
 
 class InvalidXmlCommentError(DataError):
-    sqlstate = '2200S'
+    sqlstate: typing.ClassVar[str] = '2200S'
 
 
 class InvalidXmlProcessingInstructionError(DataError):
-    sqlstate = '2200T'
+    sqlstate: typing.ClassVar[str] = '2200T'
 
 
 class DuplicateJsonObjectKeyValueError(DataError):
-    sqlstate = '22030'
+    sqlstate: typing.ClassVar[str] = '22030'
 
 
 class InvalidArgumentForSQLJsonDatetimeFunctionError(DataError):
-    sqlstate = '22031'
+    sqlstate: typing.ClassVar[str] = '22031'
 
 
 class InvalidJsonTextError(DataError):
-    sqlstate = '22032'
+    sqlstate: typing.ClassVar[str] = '22032'
 
 
 class InvalidSQLJsonSubscriptError(DataError):
-    sqlstate = '22033'
+    sqlstate: typing.ClassVar[str] = '22033'
 
 
 class MoreThanOneSQLJsonItemError(DataError):
-    sqlstate = '22034'
+    sqlstate: typing.ClassVar[str] = '22034'
 
 
 class NoSQLJsonItemError(DataError):
-    sqlstate = '22035'
+    sqlstate: typing.ClassVar[str] = '22035'
 
 
 class NonNumericSQLJsonItemError(DataError):
-    sqlstate = '22036'
+    sqlstate: typing.ClassVar[str] = '22036'
 
 
 class NonUniqueKeysInAJsonObjectError(DataError):
-    sqlstate = '22037'
+    sqlstate: typing.ClassVar[str] = '22037'
 
 
 class SingletonSQLJsonItemRequiredError(DataError):
-    sqlstate = '22038'
+    sqlstate: typing.ClassVar[str] = '22038'
 
 
 class SQLJsonArrayNotFoundError(DataError):
-    sqlstate = '22039'
+    sqlstate: typing.ClassVar[str] = '22039'
 
 
 class SQLJsonMemberNotFoundError(DataError):
-    sqlstate = '2203A'
+    sqlstate: typing.ClassVar[str] = '2203A'
 
 
 class SQLJsonNumberNotFoundError(DataError):
-    sqlstate = '2203B'
+    sqlstate: typing.ClassVar[str] = '2203B'
 
 
 class SQLJsonObjectNotFoundError(DataError):
-    sqlstate = '2203C'
+    sqlstate: typing.ClassVar[str] = '2203C'
 
 
 class TooManyJsonArrayElementsError(DataError):
-    sqlstate = '2203D'
+    sqlstate: typing.ClassVar[str] = '2203D'
 
 
 class TooManyJsonObjectMembersError(DataError):
-    sqlstate = '2203E'
+    sqlstate: typing.ClassVar[str] = '2203E'
 
 
 class SQLJsonScalarRequiredError(DataError):
-    sqlstate = '2203F'
+    sqlstate: typing.ClassVar[str] = '2203F'
 
 
 class SQLJsonItemCannotBeCastToTargetTypeError(DataError):
-    sqlstate = '2203G'
+    sqlstate: typing.ClassVar[str] = '2203G'
 
 
 class IntegrityConstraintViolationError(_base.PostgresError):
-    sqlstate = '23000'
+    sqlstate: typing.ClassVar[str] = '23000'
 
 
 class RestrictViolationError(IntegrityConstraintViolationError):
-    sqlstate = '23001'
+    sqlstate: typing.ClassVar[str] = '23001'
 
 
 class NotNullViolationError(IntegrityConstraintViolationError):
-    sqlstate = '23502'
+    sqlstate: typing.ClassVar[str] = '23502'
 
 
 class ForeignKeyViolationError(IntegrityConstraintViolationError):
-    sqlstate = '23503'
+    sqlstate: typing.ClassVar[str] = '23503'
 
 
 class UniqueViolationError(IntegrityConstraintViolationError):
-    sqlstate = '23505'
+    sqlstate: typing.ClassVar[str] = '23505'
 
 
 class CheckViolationError(IntegrityConstraintViolationError):
-    sqlstate = '23514'
+    sqlstate: typing.ClassVar[str] = '23514'
 
 
 class ExclusionViolationError(IntegrityConstraintViolationError):
-    sqlstate = '23P01'
+    sqlstate: typing.ClassVar[str] = '23P01'
 
 
 class InvalidCursorStateError(_base.PostgresError):
-    sqlstate = '24000'
+    sqlstate: typing.ClassVar[str] = '24000'
 
 
 class InvalidTransactionStateError(_base.PostgresError):
-    sqlstate = '25000'
+    sqlstate: typing.ClassVar[str] = '25000'
 
 
 class ActiveSQLTransactionError(InvalidTransactionStateError):
-    sqlstate = '25001'
+    sqlstate: typing.ClassVar[str] = '25001'
 
 
 class BranchTransactionAlreadyActiveError(InvalidTransactionStateError):
-    sqlstate = '25002'
+    sqlstate: typing.ClassVar[str] = '25002'
 
 
 class HeldCursorRequiresSameIsolationLevelError(InvalidTransactionStateError):
-    sqlstate = '25008'
+    sqlstate: typing.ClassVar[str] = '25008'
 
 
 class InappropriateAccessModeForBranchTransactionError(
         InvalidTransactionStateError):
-    sqlstate = '25003'
+    sqlstate: typing.ClassVar[str] = '25003'
 
 
 class InappropriateIsolationLevelForBranchTransactionError(
         InvalidTransactionStateError):
-    sqlstate = '25004'
+    sqlstate: typing.ClassVar[str] = '25004'
 
 
 class NoActiveSQLTransactionForBranchTransactionError(
         InvalidTransactionStateError):
-    sqlstate = '25005'
+    sqlstate: typing.ClassVar[str] = '25005'
 
 
 class ReadOnlySQLTransactionError(InvalidTransactionStateError):
-    sqlstate = '25006'
+    sqlstate: typing.ClassVar[str] = '25006'
 
 
 class SchemaAndDataStatementMixingNotSupportedError(
         InvalidTransactionStateError):
-    sqlstate = '25007'
+    sqlstate: typing.ClassVar[str] = '25007'
 
 
 class NoActiveSQLTransactionError(InvalidTransactionStateError):
-    sqlstate = '25P01'
+    sqlstate: typing.ClassVar[str] = '25P01'
 
 
 class InFailedSQLTransactionError(InvalidTransactionStateError):
-    sqlstate = '25P02'
+    sqlstate: typing.ClassVar[str] = '25P02'
 
 
 class IdleInTransactionSessionTimeoutError(InvalidTransactionStateError):
-    sqlstate = '25P03'
+    sqlstate: typing.ClassVar[str] = '25P03'
 
 
 class InvalidSQLStatementNameError(_base.PostgresError):
-    sqlstate = '26000'
+    sqlstate: typing.ClassVar[str] = '26000'
 
 
 class TriggeredDataChangeViolationError(_base.PostgresError):
-    sqlstate = '27000'
+    sqlstate: typing.ClassVar[str] = '27000'
 
 
 class InvalidAuthorizationSpecificationError(_base.PostgresError):
-    sqlstate = '28000'
+    sqlstate: typing.ClassVar[str] = '28000'
 
 
 class InvalidPasswordError(InvalidAuthorizationSpecificationError):
-    sqlstate = '28P01'
+    sqlstate: typing.ClassVar[str] = '28P01'
 
 
 class DependentPrivilegeDescriptorsStillExistError(_base.PostgresError):
-    sqlstate = '2B000'
+    sqlstate: typing.ClassVar[str] = '2B000'
 
 
 class DependentObjectsStillExistError(
         DependentPrivilegeDescriptorsStillExistError):
-    sqlstate = '2BP01'
+    sqlstate: typing.ClassVar[str] = '2BP01'
 
 
 class InvalidTransactionTerminationError(_base.PostgresError):
-    sqlstate = '2D000'
+    sqlstate: typing.ClassVar[str] = '2D000'
 
 
 class SQLRoutineError(_base.PostgresError):
-    sqlstate = '2F000'
+    sqlstate: typing.ClassVar[str] = '2F000'
 
 
 class FunctionExecutedNoReturnStatementError(SQLRoutineError):
-    sqlstate = '2F005'
+    sqlstate: typing.ClassVar[str] = '2F005'
 
 
 class ModifyingSQLDataNotPermittedError(SQLRoutineError):
-    sqlstate = '2F002'
+    sqlstate: typing.ClassVar[str] = '2F002'
 
 
 class ProhibitedSQLStatementAttemptedError(SQLRoutineError):
-    sqlstate = '2F003'
+    sqlstate: typing.ClassVar[str] = '2F003'
 
 
 class ReadingSQLDataNotPermittedError(SQLRoutineError):
-    sqlstate = '2F004'
+    sqlstate: typing.ClassVar[str] = '2F004'
 
 
 class InvalidCursorNameError(_base.PostgresError):
-    sqlstate = '34000'
+    sqlstate: typing.ClassVar[str] = '34000'
 
 
 class ExternalRoutineError(_base.PostgresError):
-    sqlstate = '38000'
+    sqlstate: typing.ClassVar[str] = '38000'
 
 
 class ContainingSQLNotPermittedError(ExternalRoutineError):
-    sqlstate = '38001'
+    sqlstate: typing.ClassVar[str] = '38001'
 
 
 class ModifyingExternalRoutineSQLDataNotPermittedError(ExternalRoutineError):
-    sqlstate = '38002'
+    sqlstate: typing.ClassVar[str] = '38002'
 
 
 class ProhibitedExternalRoutineSQLStatementAttemptedError(
         ExternalRoutineError):
-    sqlstate = '38003'
+    sqlstate: typing.ClassVar[str] = '38003'
 
 
 class ReadingExternalRoutineSQLDataNotPermittedError(ExternalRoutineError):
-    sqlstate = '38004'
+    sqlstate: typing.ClassVar[str] = '38004'
 
 
 class ExternalRoutineInvocationError(_base.PostgresError):
-    sqlstate = '39000'
+    sqlstate: typing.ClassVar[str] = '39000'
 
 
 class InvalidSqlstateReturnedError(ExternalRoutineInvocationError):
-    sqlstate = '39001'
+    sqlstate: typing.ClassVar[str] = '39001'
 
 
 class NullValueInExternalRoutineNotAllowedError(
         ExternalRoutineInvocationError):
-    sqlstate = '39004'
+    sqlstate: typing.ClassVar[str] = '39004'
 
 
 class TriggerProtocolViolatedError(ExternalRoutineInvocationError):
-    sqlstate = '39P01'
+    sqlstate: typing.ClassVar[str] = '39P01'
 
 
 class SrfProtocolViolatedError(ExternalRoutineInvocationError):
-    sqlstate = '39P02'
+    sqlstate: typing.ClassVar[str] = '39P02'
 
 
 class EventTriggerProtocolViolatedError(ExternalRoutineInvocationError):
-    sqlstate = '39P03'
+    sqlstate: typing.ClassVar[str] = '39P03'
 
 
 class SavepointError(_base.PostgresError):
-    sqlstate = '3B000'
+    sqlstate: typing.ClassVar[str] = '3B000'
 
 
 class InvalidSavepointSpecificationError(SavepointError):
-    sqlstate = '3B001'
+    sqlstate: typing.ClassVar[str] = '3B001'
 
 
 class InvalidCatalogNameError(_base.PostgresError):
-    sqlstate = '3D000'
+    sqlstate: typing.ClassVar[str] = '3D000'
 
 
 class InvalidSchemaNameError(_base.PostgresError):
-    sqlstate = '3F000'
+    sqlstate: typing.ClassVar[str] = '3F000'
 
 
 class TransactionRollbackError(_base.PostgresError):
-    sqlstate = '40000'
+    sqlstate: typing.ClassVar[str] = '40000'
 
 
 class TransactionIntegrityConstraintViolationError(TransactionRollbackError):
-    sqlstate = '40002'
+    sqlstate: typing.ClassVar[str] = '40002'
 
 
 class SerializationError(TransactionRollbackError):
-    sqlstate = '40001'
+    sqlstate: typing.ClassVar[str] = '40001'
 
 
 class StatementCompletionUnknownError(TransactionRollbackError):
-    sqlstate = '40003'
+    sqlstate: typing.ClassVar[str] = '40003'
 
 
 class DeadlockDetectedError(TransactionRollbackError):
-    sqlstate = '40P01'
+    sqlstate: typing.ClassVar[str] = '40P01'
 
 
 class SyntaxOrAccessError(_base.PostgresError):
-    sqlstate = '42000'
+    sqlstate: typing.ClassVar[str] = '42000'
 
 
 class PostgresSyntaxError(SyntaxOrAccessError):
-    sqlstate = '42601'
+    sqlstate: typing.ClassVar[str] = '42601'
 
 
 class InsufficientPrivilegeError(SyntaxOrAccessError):
-    sqlstate = '42501'
+    sqlstate: typing.ClassVar[str] = '42501'
 
 
 class CannotCoerceError(SyntaxOrAccessError):
-    sqlstate = '42846'
+    sqlstate: typing.ClassVar[str] = '42846'
 
 
 class GroupingError(SyntaxOrAccessError):
-    sqlstate = '42803'
+    sqlstate: typing.ClassVar[str] = '42803'
 
 
 class WindowingError(SyntaxOrAccessError):
-    sqlstate = '42P20'
+    sqlstate: typing.ClassVar[str] = '42P20'
 
 
 class InvalidRecursionError(SyntaxOrAccessError):
-    sqlstate = '42P19'
+    sqlstate: typing.ClassVar[str] = '42P19'
 
 
 class InvalidForeignKeyError(SyntaxOrAccessError):
-    sqlstate = '42830'
+    sqlstate: typing.ClassVar[str] = '42830'
 
 
 class InvalidNameError(SyntaxOrAccessError):
-    sqlstate = '42602'
+    sqlstate: typing.ClassVar[str] = '42602'
 
 
 class NameTooLongError(SyntaxOrAccessError):
-    sqlstate = '42622'
+    sqlstate: typing.ClassVar[str] = '42622'
 
 
 class ReservedNameError(SyntaxOrAccessError):
-    sqlstate = '42939'
+    sqlstate: typing.ClassVar[str] = '42939'
 
 
 class DatatypeMismatchError(SyntaxOrAccessError):
-    sqlstate = '42804'
+    sqlstate: typing.ClassVar[str] = '42804'
 
 
 class IndeterminateDatatypeError(SyntaxOrAccessError):
-    sqlstate = '42P18'
+    sqlstate: typing.ClassVar[str] = '42P18'
 
 
 class CollationMismatchError(SyntaxOrAccessError):
-    sqlstate = '42P21'
+    sqlstate: typing.ClassVar[str] = '42P21'
 
 
 class IndeterminateCollationError(SyntaxOrAccessError):
-    sqlstate = '42P22'
+    sqlstate: typing.ClassVar[str] = '42P22'
 
 
 class WrongObjectTypeError(SyntaxOrAccessError):
-    sqlstate = '42809'
+    sqlstate: typing.ClassVar[str] = '42809'
 
 
 class GeneratedAlwaysError(SyntaxOrAccessError):
-    sqlstate = '428C9'
+    sqlstate: typing.ClassVar[str] = '428C9'
 
 
 class UndefinedColumnError(SyntaxOrAccessError):
-    sqlstate = '42703'
+    sqlstate: typing.ClassVar[str] = '42703'
 
 
 class UndefinedFunctionError(SyntaxOrAccessError):
-    sqlstate = '42883'
+    sqlstate: typing.ClassVar[str] = '42883'
 
 
 class UndefinedTableError(SyntaxOrAccessError):
-    sqlstate = '42P01'
+    sqlstate: typing.ClassVar[str] = '42P01'
 
 
 class UndefinedParameterError(SyntaxOrAccessError):
-    sqlstate = '42P02'
+    sqlstate: typing.ClassVar[str] = '42P02'
 
 
 class UndefinedObjectError(SyntaxOrAccessError):
-    sqlstate = '42704'
+    sqlstate: typing.ClassVar[str] = '42704'
 
 
 class DuplicateColumnError(SyntaxOrAccessError):
-    sqlstate = '42701'
+    sqlstate: typing.ClassVar[str] = '42701'
 
 
 class DuplicateCursorError(SyntaxOrAccessError):
-    sqlstate = '42P03'
+    sqlstate: typing.ClassVar[str] = '42P03'
 
 
 class DuplicateDatabaseError(SyntaxOrAccessError):
-    sqlstate = '42P04'
+    sqlstate: typing.ClassVar[str] = '42P04'
 
 
 class DuplicateFunctionError(SyntaxOrAccessError):
-    sqlstate = '42723'
+    sqlstate: typing.ClassVar[str] = '42723'
 
 
 class DuplicatePreparedStatementError(SyntaxOrAccessError):
-    sqlstate = '42P05'
+    sqlstate: typing.ClassVar[str] = '42P05'
 
 
 class DuplicateSchemaError(SyntaxOrAccessError):
-    sqlstate = '42P06'
+    sqlstate: typing.ClassVar[str] = '42P06'
 
 
 class DuplicateTableError(SyntaxOrAccessError):
-    sqlstate = '42P07'
+    sqlstate: typing.ClassVar[str] = '42P07'
 
 
 class DuplicateAliasError(SyntaxOrAccessError):
-    sqlstate = '42712'
+    sqlstate: typing.ClassVar[str] = '42712'
 
 
 class DuplicateObjectError(SyntaxOrAccessError):
-    sqlstate = '42710'
+    sqlstate: typing.ClassVar[str] = '42710'
 
 
 class AmbiguousColumnError(SyntaxOrAccessError):
-    sqlstate = '42702'
+    sqlstate: typing.ClassVar[str] = '42702'
 
 
 class AmbiguousFunctionError(SyntaxOrAccessError):
-    sqlstate = '42725'
+    sqlstate: typing.ClassVar[str] = '42725'
 
 
 class AmbiguousParameterError(SyntaxOrAccessError):
-    sqlstate = '42P08'
+    sqlstate: typing.ClassVar[str] = '42P08'
 
 
 class AmbiguousAliasError(SyntaxOrAccessError):
-    sqlstate = '42P09'
+    sqlstate: typing.ClassVar[str] = '42P09'
 
 
 class InvalidColumnReferenceError(SyntaxOrAccessError):
-    sqlstate = '42P10'
+    sqlstate: typing.ClassVar[str] = '42P10'
 
 
 class InvalidColumnDefinitionError(SyntaxOrAccessError):
-    sqlstate = '42611'
+    sqlstate: typing.ClassVar[str] = '42611'
 
 
 class InvalidCursorDefinitionError(SyntaxOrAccessError):
-    sqlstate = '42P11'
+    sqlstate: typing.ClassVar[str] = '42P11'
 
 
 class InvalidDatabaseDefinitionError(SyntaxOrAccessError):
-    sqlstate = '42P12'
+    sqlstate: typing.ClassVar[str] = '42P12'
 
 
 class InvalidFunctionDefinitionError(SyntaxOrAccessError):
-    sqlstate = '42P13'
+    sqlstate: typing.ClassVar[str] = '42P13'
 
 
 class InvalidPreparedStatementDefinitionError(SyntaxOrAccessError):
-    sqlstate = '42P14'
+    sqlstate: typing.ClassVar[str] = '42P14'
 
 
 class InvalidSchemaDefinitionError(SyntaxOrAccessError):
-    sqlstate = '42P15'
+    sqlstate: typing.ClassVar[str] = '42P15'
 
 
 class InvalidTableDefinitionError(SyntaxOrAccessError):
-    sqlstate = '42P16'
+    sqlstate: typing.ClassVar[str] = '42P16'
 
 
 class InvalidObjectDefinitionError(SyntaxOrAccessError):
-    sqlstate = '42P17'
+    sqlstate: typing.ClassVar[str] = '42P17'
 
 
 class WithCheckOptionViolationError(_base.PostgresError):
-    sqlstate = '44000'
+    sqlstate: typing.ClassVar[str] = '44000'
 
 
 class InsufficientResourcesError(_base.PostgresError):
-    sqlstate = '53000'
+    sqlstate: typing.ClassVar[str] = '53000'
 
 
 class DiskFullError(InsufficientResourcesError):
-    sqlstate = '53100'
+    sqlstate: typing.ClassVar[str] = '53100'
 
 
 class OutOfMemoryError(InsufficientResourcesError):
-    sqlstate = '53200'
+    sqlstate: typing.ClassVar[str] = '53200'
 
 
 class TooManyConnectionsError(InsufficientResourcesError):
-    sqlstate = '53300'
+    sqlstate: typing.ClassVar[str] = '53300'
 
 
 class ConfigurationLimitExceededError(InsufficientResourcesError):
-    sqlstate = '53400'
+    sqlstate: typing.ClassVar[str] = '53400'
 
 
 class ProgramLimitExceededError(_base.PostgresError):
-    sqlstate = '54000'
+    sqlstate: typing.ClassVar[str] = '54000'
 
 
 class StatementTooComplexError(ProgramLimitExceededError):
-    sqlstate = '54001'
+    sqlstate: typing.ClassVar[str] = '54001'
 
 
 class TooManyColumnsError(ProgramLimitExceededError):
-    sqlstate = '54011'
+    sqlstate: typing.ClassVar[str] = '54011'
 
 
 class TooManyArgumentsError(ProgramLimitExceededError):
-    sqlstate = '54023'
+    sqlstate: typing.ClassVar[str] = '54023'
 
 
 class ObjectNotInPrerequisiteStateError(_base.PostgresError):
-    sqlstate = '55000'
+    sqlstate: typing.ClassVar[str] = '55000'
 
 
 class ObjectInUseError(ObjectNotInPrerequisiteStateError):
-    sqlstate = '55006'
+    sqlstate: typing.ClassVar[str] = '55006'
 
 
 class CantChangeRuntimeParamError(ObjectNotInPrerequisiteStateError):
-    sqlstate = '55P02'
+    sqlstate: typing.ClassVar[str] = '55P02'
 
 
 class LockNotAvailableError(ObjectNotInPrerequisiteStateError):
-    sqlstate = '55P03'
+    sqlstate: typing.ClassVar[str] = '55P03'
 
 
 class UnsafeNewEnumValueUsageError(ObjectNotInPrerequisiteStateError):
-    sqlstate = '55P04'
+    sqlstate: typing.ClassVar[str] = '55P04'
 
 
 class OperatorInterventionError(_base.PostgresError):
-    sqlstate = '57000'
+    sqlstate: typing.ClassVar[str] = '57000'
 
 
 class QueryCanceledError(OperatorInterventionError):
-    sqlstate = '57014'
+    sqlstate: typing.ClassVar[str] = '57014'
 
 
 class AdminShutdownError(OperatorInterventionError):
-    sqlstate = '57P01'
+    sqlstate: typing.ClassVar[str] = '57P01'
 
 
 class CrashShutdownError(OperatorInterventionError):
-    sqlstate = '57P02'
+    sqlstate: typing.ClassVar[str] = '57P02'
 
 
 class CannotConnectNowError(OperatorInterventionError):
-    sqlstate = '57P03'
+    sqlstate: typing.ClassVar[str] = '57P03'
 
 
 class DatabaseDroppedError(OperatorInterventionError):
-    sqlstate = '57P04'
+    sqlstate: typing.ClassVar[str] = '57P04'
 
 
 class IdleSessionTimeoutError(OperatorInterventionError):
-    sqlstate = '57P05'
+    sqlstate: typing.ClassVar[str] = '57P05'
 
 
 class PostgresSystemError(_base.PostgresError):
-    sqlstate = '58000'
+    sqlstate: typing.ClassVar[str] = '58000'
 
 
 class PostgresIOError(PostgresSystemError):
-    sqlstate = '58030'
+    sqlstate: typing.ClassVar[str] = '58030'
 
 
 class UndefinedFileError(PostgresSystemError):
-    sqlstate = '58P01'
+    sqlstate: typing.ClassVar[str] = '58P01'
 
 
 class DuplicateFileError(PostgresSystemError):
-    sqlstate = '58P02'
+    sqlstate: typing.ClassVar[str] = '58P02'
 
 
 class SnapshotTooOldError(_base.PostgresError):
-    sqlstate = '72000'
+    sqlstate: typing.ClassVar[str] = '72000'
 
 
 class ConfigFileError(_base.PostgresError):
-    sqlstate = 'F0000'
+    sqlstate: typing.ClassVar[str] = 'F0000'
 
 
 class LockFileExistsError(ConfigFileError):
-    sqlstate = 'F0001'
+    sqlstate: typing.ClassVar[str] = 'F0001'
 
 
 class FDWError(_base.PostgresError):
-    sqlstate = 'HV000'
+    sqlstate: typing.ClassVar[str] = 'HV000'
 
 
 class FDWColumnNameNotFoundError(FDWError):
-    sqlstate = 'HV005'
+    sqlstate: typing.ClassVar[str] = 'HV005'
 
 
 class FDWDynamicParameterValueNeededError(FDWError):
-    sqlstate = 'HV002'
+    sqlstate: typing.ClassVar[str] = 'HV002'
 
 
 class FDWFunctionSequenceError(FDWError):
-    sqlstate = 'HV010'
+    sqlstate: typing.ClassVar[str] = 'HV010'
 
 
 class FDWInconsistentDescriptorInformationError(FDWError):
-    sqlstate = 'HV021'
+    sqlstate: typing.ClassVar[str] = 'HV021'
 
 
 class FDWInvalidAttributeValueError(FDWError):
-    sqlstate = 'HV024'
+    sqlstate: typing.ClassVar[str] = 'HV024'
 
 
 class FDWInvalidColumnNameError(FDWError):
-    sqlstate = 'HV007'
+    sqlstate: typing.ClassVar[str] = 'HV007'
 
 
 class FDWInvalidColumnNumberError(FDWError):
-    sqlstate = 'HV008'
+    sqlstate: typing.ClassVar[str] = 'HV008'
 
 
 class FDWInvalidDataTypeError(FDWError):
-    sqlstate = 'HV004'
+    sqlstate: typing.ClassVar[str] = 'HV004'
 
 
 class FDWInvalidDataTypeDescriptorsError(FDWError):
-    sqlstate = 'HV006'
+    sqlstate: typing.ClassVar[str] = 'HV006'
 
 
 class FDWInvalidDescriptorFieldIdentifierError(FDWError):
-    sqlstate = 'HV091'
+    sqlstate: typing.ClassVar[str] = 'HV091'
 
 
 class FDWInvalidHandleError(FDWError):
-    sqlstate = 'HV00B'
+    sqlstate: typing.ClassVar[str] = 'HV00B'
 
 
 class FDWInvalidOptionIndexError(FDWError):
-    sqlstate = 'HV00C'
+    sqlstate: typing.ClassVar[str] = 'HV00C'
 
 
 class FDWInvalidOptionNameError(FDWError):
-    sqlstate = 'HV00D'
+    sqlstate: typing.ClassVar[str] = 'HV00D'
 
 
 class FDWInvalidStringLengthOrBufferLengthError(FDWError):
-    sqlstate = 'HV090'
+    sqlstate: typing.ClassVar[str] = 'HV090'
 
 
 class FDWInvalidStringFormatError(FDWError):
-    sqlstate = 'HV00A'
+    sqlstate: typing.ClassVar[str] = 'HV00A'
 
 
 class FDWInvalidUseOfNullPointerError(FDWError):
-    sqlstate = 'HV009'
+    sqlstate: typing.ClassVar[str] = 'HV009'
 
 
 class FDWTooManyHandlesError(FDWError):
-    sqlstate = 'HV014'
+    sqlstate: typing.ClassVar[str] = 'HV014'
 
 
 class FDWOutOfMemoryError(FDWError):
-    sqlstate = 'HV001'
+    sqlstate: typing.ClassVar[str] = 'HV001'
 
 
 class FDWNoSchemasError(FDWError):
-    sqlstate = 'HV00P'
+    sqlstate: typing.ClassVar[str] = 'HV00P'
 
 
 class FDWOptionNameNotFoundError(FDWError):
-    sqlstate = 'HV00J'
+    sqlstate: typing.ClassVar[str] = 'HV00J'
 
 
 class FDWReplyHandleError(FDWError):
-    sqlstate = 'HV00K'
+    sqlstate: typing.ClassVar[str] = 'HV00K'
 
 
 class FDWSchemaNotFoundError(FDWError):
-    sqlstate = 'HV00Q'
+    sqlstate: typing.ClassVar[str] = 'HV00Q'
 
 
 class FDWTableNotFoundError(FDWError):
-    sqlstate = 'HV00R'
+    sqlstate: typing.ClassVar[str] = 'HV00R'
 
 
 class FDWUnableToCreateExecutionError(FDWError):
-    sqlstate = 'HV00L'
+    sqlstate: typing.ClassVar[str] = 'HV00L'
 
 
 class FDWUnableToCreateReplyError(FDWError):
-    sqlstate = 'HV00M'
+    sqlstate: typing.ClassVar[str] = 'HV00M'
 
 
 class FDWUnableToEstablishConnectionError(FDWError):
-    sqlstate = 'HV00N'
+    sqlstate: typing.ClassVar[str] = 'HV00N'
 
 
 class PLPGSQLError(_base.PostgresError):
-    sqlstate = 'P0000'
+    sqlstate: typing.ClassVar[str] = 'P0000'
 
 
 class RaiseError(PLPGSQLError):
-    sqlstate = 'P0001'
+    sqlstate: typing.ClassVar[str] = 'P0001'
 
 
 class NoDataFoundError(PLPGSQLError):
-    sqlstate = 'P0002'
+    sqlstate: typing.ClassVar[str] = 'P0002'
 
 
 class TooManyRowsError(PLPGSQLError):
-    sqlstate = 'P0003'
+    sqlstate: typing.ClassVar[str] = 'P0003'
 
 
 class AssertError(PLPGSQLError):
-    sqlstate = 'P0004'
+    sqlstate: typing.ClassVar[str] = 'P0004'
 
 
 class InternalServerError(_base.PostgresError):
-    sqlstate = 'XX000'
+    sqlstate: typing.ClassVar[str] = 'XX000'
 
 
 class DataCorruptedError(InternalServerError):
-    sqlstate = 'XX001'
+    sqlstate: typing.ClassVar[str] = 'XX001'
 
 
 class IndexCorruptedError(InternalServerError):
-    sqlstate = 'XX002'
+    sqlstate: typing.ClassVar[str] = 'XX002'
 
 
-__all__ = (
+__all__ = [
     'ActiveSQLTransactionError', 'AdminShutdownError',
     'AmbiguousAliasError', 'AmbiguousColumnError',
     'AmbiguousFunctionError', 'AmbiguousParameterError',
@@ -1193,6 +1196,6 @@ __all__ = (
     'UnterminatedCStringError', 'UntranslatableCharacterError',
     'WindowingError', 'WithCheckOptionViolationError',
     'WrongObjectTypeError', 'ZeroLengthCharacterStringError'
-)
+]
 
 __all__ += _base.__all__

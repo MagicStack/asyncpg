@@ -4,20 +4,52 @@
 # This module is part of asyncpg and is released under
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
+from __future__ import annotations
 
 import json
+import typing
 
 from . import connresource
 from . import cursor
 from . import exceptions
 
+if typing.TYPE_CHECKING:
+    from .protocol import protocol as _cprotocol
+    from . import compat
+    from . import connection as _connection
+    from . import types
 
-class PreparedStatement(connresource.ConnectionResource):
+
+_RecordT = typing.TypeVar('_RecordT', bound='_cprotocol.Record')
+_T = typing.TypeVar('_T')
+_T_co = typing.TypeVar('_T_co', covariant=True)
+
+
+class _Executor(typing.Protocol[_T_co]):
+    def __call__(
+        self, __protocol: _cprotocol.BaseProtocol[typing.Any]
+    ) -> compat.Awaitable[_T_co]:
+        ...
+
+
+class PreparedStatement(
+    connresource.ConnectionResource,
+    typing.Generic[_RecordT]
+):
     """A representation of a prepared statement."""
 
     __slots__ = ('_state', '_query', '_last_status')
 
-    def __init__(self, connection, query, state):
+    _state: _cprotocol.PreparedStatementState[_RecordT]
+    _query: str
+    _last_status: bytes | None
+
+    def __init__(
+        self,
+        connection: _connection.Connection[typing.Any],
+        query: str,
+        state: _cprotocol.PreparedStatementState[_RecordT],
+    ) -> None:
         super().__init__(connection)
         self._state = state
         self._query = query
@@ -44,7 +76,7 @@ class PreparedStatement(connresource.ConnectionResource):
         return self._query
 
     @connresource.guarded
-    def get_statusmsg(self) -> str:
+    def get_statusmsg(self) -> str | None:
         """Return the status of the executed command.
 
         Example::
@@ -58,7 +90,7 @@ class PreparedStatement(connresource.ConnectionResource):
         return self._last_status.decode()
 
     @connresource.guarded
-    def get_parameters(self):
+    def get_parameters(self) -> tuple[types.Type, ...]:
         """Return a description of statement parameters types.
 
         :return: A tuple of :class:`asyncpg.types.Type`.
@@ -75,7 +107,7 @@ class PreparedStatement(connresource.ConnectionResource):
         return self._state._get_parameters()
 
     @connresource.guarded
-    def get_attributes(self):
+    def get_attributes(self) -> tuple[types.Attribute, ...]:
         """Return a description of relation attributes (columns).
 
         :return: A tuple of :class:`asyncpg.types.Attribute`.
@@ -100,8 +132,8 @@ class PreparedStatement(connresource.ConnectionResource):
         return self._state._get_attributes()
 
     @connresource.guarded
-    def cursor(self, *args, prefetch=None,
-               timeout=None) -> cursor.CursorFactory:
+    def cursor(self, *args: object, prefetch: int | None = None,
+               timeout: float | None = None) -> cursor.CursorFactory[_RecordT]:
         """Return a *cursor factory* for the prepared statement.
 
         :param args: Query arguments.
@@ -122,7 +154,9 @@ class PreparedStatement(connresource.ConnectionResource):
         )
 
     @connresource.guarded
-    async def explain(self, *args, analyze=False):
+    async def explain(
+        self, *args: object, analyze: bool = False
+    ) -> typing.Any:
         """Return the execution plan of the statement.
 
         :param args: Query arguments.
@@ -164,7 +198,9 @@ class PreparedStatement(connresource.ConnectionResource):
         return json.loads(data)
 
     @connresource.guarded
-    async def fetch(self, *args, timeout=None):
+    async def fetch(
+        self, *args: object, timeout: float | None = None
+    ) -> list[_RecordT]:
         r"""Execute the statement and return a list of :class:`Record` objects.
 
         :param str query: Query text
@@ -177,7 +213,9 @@ class PreparedStatement(connresource.ConnectionResource):
         return data
 
     @connresource.guarded
-    async def fetchval(self, *args, column=0, timeout=None):
+    async def fetchval(
+        self, *args: object, column: int = 0, timeout: float | None = None
+    ) -> typing.Any:
         """Execute the statement and return a value in the first row.
 
         :param args: Query arguments.
@@ -196,7 +234,9 @@ class PreparedStatement(connresource.ConnectionResource):
         return data[0][column]
 
     @connresource.guarded
-    async def fetchrow(self, *args, timeout=None):
+    async def fetchrow(
+        self, *args: object, timeout: float | None = None
+    ) -> _RecordT | None:
         """Execute the statement and return the first row.
 
         :param str query: Query text
@@ -211,7 +251,12 @@ class PreparedStatement(connresource.ConnectionResource):
         return data[0]
 
     @connresource.guarded
-    async def executemany(self, args, *, timeout: float=None):
+    async def executemany(
+        self,
+        args: compat.Iterable[compat.Sequence[object]],
+        *,
+        timeout: float | None = None
+    ) -> None:
         """Execute the statement for each sequence of arguments in *args*.
 
         :param args: An iterable containing sequences of arguments.
@@ -224,7 +269,7 @@ class PreparedStatement(connresource.ConnectionResource):
             lambda protocol: protocol.bind_execute_many(
                 self._state, args, '', timeout))
 
-    async def __do_execute(self, executor):
+    async def __do_execute(self, executor: _Executor[_T]) -> _T:
         protocol = self._connection._protocol
         try:
             return await executor(protocol)
@@ -237,23 +282,28 @@ class PreparedStatement(connresource.ConnectionResource):
             self._state.mark_closed()
             raise
 
-    async def __bind_execute(self, args, limit, timeout):
-        data, status, _ = await self.__do_execute(
-            lambda protocol: protocol.bind_execute(
-                self._state, args, '', limit, True, timeout))
+    async def __bind_execute(
+        self, args: compat.Sequence[object], limit: int, timeout: float | None
+    ) -> list[_RecordT]:
+        executor: _Executor[
+            tuple[list[_RecordT], bytes, bool]
+        ] = lambda protocol: protocol.bind_execute(
+            self._state, args, '', limit, True, timeout
+        )
+        data, status, _ = await self.__do_execute(executor)
         self._last_status = status
         return data
 
-    def _check_open(self, meth_name):
+    def _check_open(self, meth_name: str) -> None:
         if self._state.closed:
             raise exceptions.InterfaceError(
                 'cannot call PreparedStmt.{}(): '
                 'the prepared statement is closed'.format(meth_name))
 
-    def _check_conn_validity(self, meth_name):
+    def _check_conn_validity(self, meth_name: str) -> None:
         self._check_open(meth_name)
         super()._check_conn_validity(meth_name)
 
-    def __del__(self):
+    def __del__(self) -> None:
         self._state.detach()
         self._connection._maybe_gc_stmt(self._state)

@@ -4,9 +4,9 @@
 # This module is part of asyncpg and is released under
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
+from __future__ import annotations
 
 import asyncio
-import collections
 import enum
 import functools
 import getpass
@@ -29,6 +29,45 @@ from . import compat
 from . import exceptions
 from . import protocol
 
+if typing.TYPE_CHECKING:
+    if sys.version_info < (3, 11):
+        from typing_extensions import Self
+    else:
+        from typing import Self
+
+    from . import connection
+
+_ConnectionT = typing.TypeVar(
+    '_ConnectionT',
+    bound='connection.Connection[typing.Any]'
+)
+_ProtocolT = typing.TypeVar(
+    '_ProtocolT',
+    bound='protocol.Protocol[typing.Any]'
+)
+_AsyncProtocolT = typing.TypeVar(
+    '_AsyncProtocolT', bound='asyncio.protocols.Protocol'
+)
+_RecordT = typing.TypeVar('_RecordT', bound=protocol.Record)
+
+_ParsedSSLType: compat.TypeAlias = (
+    'ssl_module.SSLContext | typing.Literal[False]'
+)
+_SSLStringValues: compat.TypeAlias = typing.Literal[
+    'disable', 'prefer', 'allow', 'require', 'verify-ca', 'verify-full'
+]
+_TPTupleType: compat.TypeAlias = (
+    'tuple[asyncio.WriteTransport, _AsyncProtocolT]'
+)
+AddrType: compat.TypeAlias = 'tuple[str, int] | str'
+HostType: compat.TypeAlias = 'list[str] | tuple[str, ...] | str'
+PasswordType: compat.TypeAlias = (
+    'str | compat.Callable[[], str] | compat.Callable[[], compat.Awaitable[str]]'  # noqa: E501
+)
+PortListType: compat.TypeAlias = 'list[int | str] | list[int] | list[str]'
+PortType: compat.TypeAlias = 'PortListType | int | str'
+SSLType: compat.TypeAlias = '_ParsedSSLType | _SSLStringValues | bool'
+
 
 class SSLMode(enum.IntEnum):
     disable = 0
@@ -39,48 +78,40 @@ class SSLMode(enum.IntEnum):
     verify_full = 5
 
     @classmethod
-    def parse(cls, sslmode):
+    def parse(cls, sslmode: str | Self) -> Self:
         if isinstance(sslmode, cls):
             return sslmode
-        return getattr(cls, sslmode.replace('-', '_'))
+        return typing.cast(
+            'Self',
+            getattr(cls, typing.cast(str, sslmode).replace('-', '_'))
+        )
 
 
-_ConnectionParameters = collections.namedtuple(
-    'ConnectionParameters',
-    [
-        'user',
-        'password',
-        'database',
-        'ssl',
-        'sslmode',
-        'direct_tls',
-        'server_settings',
-        'target_session_attrs',
-    ])
+class _ConnectionParameters(typing.NamedTuple):
+    user: str
+    password: PasswordType | None
+    database: str
+    ssl: _ParsedSSLType | None
+    sslmode: SSLMode | None
+    direct_tls: bool
+    server_settings: dict[str, str] | None
+    target_session_attrs: SessionAttribute
 
 
-_ClientConfiguration = collections.namedtuple(
-    'ConnectionConfiguration',
-    [
-        'command_timeout',
-        'statement_cache_size',
-        'max_cached_statement_lifetime',
-        'max_cacheable_statement_size',
-    ])
+class _ClientConfiguration(typing.NamedTuple):
+    command_timeout: float | None
+    statement_cache_size: int
+    max_cached_statement_lifetime: int
+    max_cacheable_statement_size: int
 
 
-_system = platform.uname().system
+_system: typing.Final = platform.uname().system
+PGPASSFILE: typing.Final = (
+    'pgpass.conf' if _system == 'Windows' else '.pgpass'
+)
 
 
-if _system == 'Windows':
-    PGPASSFILE = 'pgpass.conf'
-else:
-    PGPASSFILE = '.pgpass'
-
-
-def _read_password_file(passfile: pathlib.Path) \
-        -> typing.List[typing.Tuple[str, ...]]:
-
+def _read_password_file(passfile: pathlib.Path) -> list[tuple[str, ...]]:
     passtab = []
 
     try:
@@ -122,11 +153,13 @@ def _read_password_file(passfile: pathlib.Path) \
 
 
 def _read_password_from_pgpass(
-        *, passfile: typing.Optional[pathlib.Path],
-        hosts: typing.List[str],
-        ports: typing.List[int],
-        database: str,
-        user: str):
+    *,
+    passfile: pathlib.Path,
+    hosts: compat.Iterable[str],
+    ports: list[int],
+    database: str,
+    user: str
+) -> str | None:
     """Parse the pgpass file and return the matching password.
 
     :return:
@@ -158,7 +191,7 @@ def _read_password_from_pgpass(
     return None
 
 
-def _validate_port_spec(hosts, port):
+def _validate_port_spec(hosts: compat.Sized, port: PortType) -> list[int]:
     if isinstance(port, list):
         # If there is a list of ports, its length must
         # match that of the host list.
@@ -166,42 +199,49 @@ def _validate_port_spec(hosts, port):
             raise exceptions.ClientConfigurationError(
                 'could not match {} port numbers to {} hosts'.format(
                     len(port), len(hosts)))
+        return [int(p) for p in port]
     else:
-        port = [port for _ in range(len(hosts))]
-
-    return port
+        return [int(port) for _ in range(len(hosts))]
 
 
-def _parse_hostlist(hostlist, port, *, unquote=False):
+def _parse_hostlist(
+    hostlist: str,
+    port: PortType | None,
+    *,
+    unquote: bool = False
+) -> tuple[list[str], PortListType]:
     if ',' in hostlist:
         # A comma-separated list of host addresses.
         hostspecs = hostlist.split(',')
     else:
         hostspecs = [hostlist]
 
-    hosts = []
-    hostlist_ports = []
+    hosts: list[str] = []
+    hostlist_ports: list[int] = []
+    ports: list[int] | None = None
 
     if not port:
         portspec = os.environ.get('PGPORT')
         if portspec:
             if ',' in portspec:
-                default_port = [int(p) for p in portspec.split(',')]
+                temp_port: list[int] | int = [
+                    int(p) for p in portspec.split(',')
+                ]
             else:
-                default_port = int(portspec)
+                temp_port = int(portspec)
         else:
-            default_port = 5432
+            temp_port = 5432
 
-        default_port = _validate_port_spec(hostspecs, default_port)
+        default_port = _validate_port_spec(hostspecs, temp_port)
 
     else:
-        port = _validate_port_spec(hostspecs, port)
+        ports = _validate_port_spec(hostspecs, port)
 
     for i, hostspec in enumerate(hostspecs):
         if hostspec[0] == '/':
             # Unix socket
             addr = hostspec
-            hostspec_port = ''
+            hostspec_port: str = ''
         elif hostspec[0] == '[':
             # IPv6 address
             m = re.match(r'(?:\[([^\]]+)\])(?::([0-9]+))?', hostspec)
@@ -230,13 +270,13 @@ def _parse_hostlist(hostlist, port, *, unquote=False):
             else:
                 hostlist_ports.append(default_port[i])
 
-    if not port:
-        port = hostlist_ports
+    if not ports:
+        ports = hostlist_ports
 
-    return hosts, port
+    return hosts, ports
 
 
-def _parse_tls_version(tls_version):
+def _parse_tls_version(tls_version: str) -> ssl_module.TLSVersion:
     if tls_version.startswith('SSL'):
         raise exceptions.ClientConfigurationError(
             f"Unsupported TLS version: {tls_version}"
@@ -249,7 +289,7 @@ def _parse_tls_version(tls_version):
         )
 
 
-def _dot_postgresql_path(filename) -> typing.Optional[pathlib.Path]:
+def _dot_postgresql_path(filename: str) -> pathlib.Path | None:
     try:
         homedir = pathlib.Path.home()
     except (RuntimeError, KeyError):
@@ -258,15 +298,34 @@ def _dot_postgresql_path(filename) -> typing.Optional[pathlib.Path]:
     return (homedir / '.postgresql' / filename).resolve()
 
 
-def _parse_connect_dsn_and_args(*, dsn, host, port, user,
-                                password, passfile, database, ssl,
-                                direct_tls, server_settings,
-                                target_session_attrs):
+def _parse_connect_dsn_and_args(
+    *,
+    dsn: str | None,
+    host: HostType | None,
+    port: PortType | None,
+    user: str | None,
+    password: str | None,
+    passfile: str | None,
+    database: str | None,
+    ssl: SSLType | None,
+    direct_tls: bool,
+    server_settings: dict[str, str] | None,
+    target_session_attrs: SessionAttribute | None,
+) -> tuple[list[tuple[str, int] | str], _ConnectionParameters]:
     # `auth_hosts` is the version of host information for the purposes
     # of reading the pgpass file.
-    auth_hosts = None
-    sslcert = sslkey = sslrootcert = sslcrl = sslpassword = None
+    auth_hosts: list[str] | tuple[str, ...] | None = None
+    sslcert: str | pathlib.Path | None = None
+    sslkey: str | pathlib.Path | None = None
+    sslrootcert: str | pathlib.Path | None = None
+    sslcrl: str | pathlib.Path | None = None
+    sslpassword = None
     ssl_min_protocol_version = ssl_max_protocol_version = None
+    ssl_val: SSLType | str | None = ssl
+    ssl_parsed: _ParsedSSLType | None = None
+    target_session_attrs_val: (
+        SessionAttribute | str | None
+    ) = target_session_attrs
 
     if dsn:
         parsed = urllib.parse.urlparse(dsn)
@@ -306,10 +365,12 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             password = urllib.parse.unquote(dsn_password)
 
         if parsed.query:
-            query = urllib.parse.parse_qs(parsed.query, strict_parsing=True)
-            for key, val in query.items():
-                if isinstance(val, list):
-                    query[key] = val[-1]
+            query: dict[str, str] = {
+                key: val[-1] if isinstance(val, list) else val
+                for key, val in urllib.parse.parse_qs(
+                    parsed.query, strict_parsing=True
+                ).items()
+            }
 
             if 'port' in query:
                 val = query.pop('port')
@@ -348,8 +409,8 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
             if 'sslmode' in query:
                 val = query.pop('sslmode')
-                if ssl is None:
-                    ssl = val
+                if ssl_val is None:
+                    ssl_val = val
 
             if 'sslcert' in query:
                 sslcert = query.pop('sslcert')
@@ -380,8 +441,8 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 dsn_target_session_attrs = query.pop(
                     'target_session_attrs'
                 )
-                if target_session_attrs is None:
-                    target_session_attrs = dsn_target_session_attrs
+                if target_session_attrs_val is None:
+                    target_session_attrs_val = dsn_target_session_attrs
 
             if query:
                 if server_settings is None:
@@ -425,7 +486,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     else:
         port = int(port)
 
-    port = _validate_port_spec(host, port)
+    validated_ports = _validate_port_spec(host, port)
 
     if user is None:
         user = os.getenv('PGUSER')
@@ -456,21 +517,21 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         if passfile is None:
             homedir = compat.get_pg_home_directory()
             if homedir:
-                passfile = homedir / PGPASSFILE
+                passfile_path: pathlib.Path | None = homedir / PGPASSFILE
             else:
-                passfile = None
+                passfile_path = None
         else:
-            passfile = pathlib.Path(passfile)
+            passfile_path = pathlib.Path(passfile)
 
-        if passfile is not None:
+        if passfile_path is not None:
             password = _read_password_from_pgpass(
-                hosts=auth_hosts, ports=port,
+                hosts=auth_hosts, ports=validated_ports,
                 database=database, user=user,
-                passfile=passfile)
+                passfile=passfile_path)
 
-    addrs = []
+    addrs: list[AddrType] = []
     have_tcp_addrs = False
-    for h, p in zip(host, port):
+    for h, p in zip(host, validated_ports):
         if h.startswith('/'):
             # UNIX socket name
             if '.s.PGSQL.' not in h:
@@ -485,15 +546,15 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         raise exceptions.InternalClientError(
             'could not determine the database address to connect to')
 
-    if ssl is None:
-        ssl = os.getenv('PGSSLMODE')
+    if ssl_val is None:
+        ssl_val = os.getenv('PGSSLMODE')
 
-    if ssl is None and have_tcp_addrs:
-        ssl = 'prefer'
+    if ssl_val is None and have_tcp_addrs:
+        ssl_val = 'prefer'
 
-    if isinstance(ssl, (str, SSLMode)):
+    if isinstance(ssl_val, (str, SSLMode)):
         try:
-            sslmode = SSLMode.parse(ssl)
+            sslmode = SSLMode.parse(ssl_val)
         except AttributeError:
             modes = ', '.join(m.name.replace('_', '-') for m in SSLMode)
             raise exceptions.ClientConfigurationError(
@@ -501,23 +562,25 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
         # docs at https://www.postgresql.org/docs/10/static/libpq-connect.html
         if sslmode < SSLMode.allow:
-            ssl = False
+            ssl_parsed = False
         else:
-            ssl = ssl_module.SSLContext(ssl_module.PROTOCOL_TLS_CLIENT)
-            ssl.check_hostname = sslmode >= SSLMode.verify_full
+            ssl_parsed = ssl_module.SSLContext(ssl_module.PROTOCOL_TLS_CLIENT)
+            ssl_parsed.check_hostname = sslmode >= SSLMode.verify_full
             if sslmode < SSLMode.require:
-                ssl.verify_mode = ssl_module.CERT_NONE
+                ssl_parsed.verify_mode = ssl_module.CERT_NONE
             else:
                 if sslrootcert is None:
                     sslrootcert = os.getenv('PGSSLROOTCERT')
                 if sslrootcert:
-                    ssl.load_verify_locations(cafile=sslrootcert)
-                    ssl.verify_mode = ssl_module.CERT_REQUIRED
+                    ssl_parsed.load_verify_locations(cafile=sslrootcert)
+                    ssl_parsed.verify_mode = ssl_module.CERT_REQUIRED
                 else:
                     try:
                         sslrootcert = _dot_postgresql_path('root.crt')
                         if sslrootcert is not None:
-                            ssl.load_verify_locations(cafile=sslrootcert)
+                            ssl_parsed.load_verify_locations(
+                                cafile=sslrootcert
+                            )
                         else:
                             raise exceptions.ClientConfigurationError(
                                 'cannot determine location of user '
@@ -548,29 +611,31 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                                 detail=detail,
                             )
                         elif sslmode == SSLMode.require:
-                            ssl.verify_mode = ssl_module.CERT_NONE
+                            ssl_parsed.verify_mode = ssl_module.CERT_NONE
                         else:
                             assert False, 'unreachable'
                     else:
-                        ssl.verify_mode = ssl_module.CERT_REQUIRED
+                        ssl_parsed.verify_mode = ssl_module.CERT_REQUIRED
 
                 if sslcrl is None:
                     sslcrl = os.getenv('PGSSLCRL')
                 if sslcrl:
-                    ssl.load_verify_locations(cafile=sslcrl)
-                    ssl.verify_flags |= ssl_module.VERIFY_CRL_CHECK_CHAIN
+                    ssl_parsed.load_verify_locations(cafile=sslcrl)
+                    ssl_parsed.verify_flags |= (
+                        ssl_module.VERIFY_CRL_CHECK_CHAIN
+                    )
                 else:
                     sslcrl = _dot_postgresql_path('root.crl')
                     if sslcrl is not None:
                         try:
-                            ssl.load_verify_locations(cafile=sslcrl)
+                            ssl_parsed.load_verify_locations(cafile=sslcrl)
                         except (
                             FileNotFoundError,
                             NotADirectoryError,
                         ):
                             pass
                         else:
-                            ssl.verify_flags |= \
+                            ssl_parsed.verify_flags |= \
                                 ssl_module.VERIFY_CRL_CHECK_CHAIN
 
             if sslkey is None:
@@ -584,14 +649,14 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             if sslcert is None:
                 sslcert = os.getenv('PGSSLCERT')
             if sslcert:
-                ssl.load_cert_chain(
+                ssl_parsed.load_cert_chain(
                     sslcert, keyfile=sslkey, password=lambda: sslpassword
                 )
             else:
                 sslcert = _dot_postgresql_path('postgresql.crt')
                 if sslcert is not None:
                     try:
-                        ssl.load_cert_chain(
+                        ssl_parsed.load_cert_chain(
                             sslcert,
                             keyfile=sslkey,
                             password=lambda: sslpassword
@@ -603,28 +668,29 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             if hasattr(ssl, 'keylog_filename'):
                 keylogfile = os.environ.get('SSLKEYLOGFILE')
                 if keylogfile and not sys.flags.ignore_environment:
-                    ssl.keylog_filename = keylogfile
+                    ssl_parsed.keylog_filename = keylogfile
 
             if ssl_min_protocol_version is None:
                 ssl_min_protocol_version = os.getenv('PGSSLMINPROTOCOLVERSION')
             if ssl_min_protocol_version:
-                ssl.minimum_version = _parse_tls_version(
+                ssl_parsed.minimum_version = _parse_tls_version(
                     ssl_min_protocol_version
                 )
             else:
-                ssl.minimum_version = _parse_tls_version('TLSv1.2')
+                ssl_parsed.minimum_version = _parse_tls_version('TLSv1.2')
 
             if ssl_max_protocol_version is None:
                 ssl_max_protocol_version = os.getenv('PGSSLMAXPROTOCOLVERSION')
             if ssl_max_protocol_version:
-                ssl.maximum_version = _parse_tls_version(
+                ssl_parsed.maximum_version = _parse_tls_version(
                     ssl_max_protocol_version
                 )
 
-    elif ssl is True:
-        ssl = ssl_module.create_default_context()
+    elif ssl_val is True:
+        ssl_parsed = ssl_module.create_default_context()
         sslmode = SSLMode.verify_full
     else:
+        ssl_parsed = ssl_val
         sslmode = SSLMode.disable
 
     if server_settings is not None and (
@@ -635,23 +701,23 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             'server_settings is expected to be None or '
             'a Dict[str, str]')
 
-    if target_session_attrs is None:
-        target_session_attrs = os.getenv(
+    if target_session_attrs_val is None:
+        target_session_attrs_val = os.getenv(
             "PGTARGETSESSIONATTRS", SessionAttribute.any
         )
     try:
-        target_session_attrs = SessionAttribute(target_session_attrs)
+        target_session_attrs = SessionAttribute(target_session_attrs_val)
     except ValueError:
         raise exceptions.ClientConfigurationError(
             "target_session_attrs is expected to be one of "
             "{!r}"
             ", got {!r}".format(
-                SessionAttribute.__members__.values, target_session_attrs
+                SessionAttribute.__members__.values, target_session_attrs_val
             )
         ) from None
 
     params = _ConnectionParameters(
-        user=user, password=password, database=database, ssl=ssl,
+        user=user, password=password, database=database, ssl=ssl_parsed,
         sslmode=sslmode, direct_tls=direct_tls,
         server_settings=server_settings,
         target_session_attrs=target_session_attrs)
@@ -659,13 +725,26 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     return addrs, params
 
 
-def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
-                             database, command_timeout,
-                             statement_cache_size,
-                             max_cached_statement_lifetime,
-                             max_cacheable_statement_size,
-                             ssl, direct_tls, server_settings,
-                             target_session_attrs):
+def _parse_connect_arguments(
+    *,
+    dsn: str | None,
+    host: HostType | None,
+    port: PortType | None,
+    user: str | None,
+    password: str | None,
+    passfile: str | None,
+    database: str | None,
+    command_timeout: float | typing.SupportsFloat | None,
+    statement_cache_size: int,
+    max_cached_statement_lifetime: int,
+    max_cacheable_statement_size: int,
+    ssl: SSLType | None,
+    direct_tls: bool,
+    server_settings: dict[str, str] | None,
+    target_session_attrs: SessionAttribute,
+) -> tuple[
+    list[tuple[str, int] | str], _ConnectionParameters, _ClientConfiguration
+]:
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
                      'max_cached_statement_lifetime',
@@ -706,14 +785,27 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
 
 
 class TLSUpgradeProto(asyncio.Protocol):
-    def __init__(self, loop, host, port, ssl_context, ssl_is_advisory):
+    on_data: asyncio.Future[bool]
+    host: str
+    port: int
+    ssl_context: ssl_module.SSLContext
+    ssl_is_advisory: bool | None
+
+    def __init__(
+        self,
+        loop: asyncio.AbstractEventLoop | None,
+        host: str,
+        port: int,
+        ssl_context: ssl_module.SSLContext,
+        ssl_is_advisory: bool | None
+    ) -> None:
         self.on_data = _create_future(loop)
         self.host = host
         self.port = port
         self.ssl_context = ssl_context
         self.ssl_is_advisory = ssl_is_advisory
 
-    def data_received(self, data):
+    def data_received(self, data: bytes) -> None:
         if data == b'S':
             self.on_data.set_result(True)
         elif (self.ssl_is_advisory and
@@ -731,20 +823,63 @@ class TLSUpgradeProto(asyncio.Protocol):
                     'rejected SSL upgrade'.format(
                         host=self.host, port=self.port)))
 
-    def connection_lost(self, exc):
+    def connection_lost(self, exc: Exception | None) -> None:
         if not self.on_data.done():
             if exc is None:
                 exc = ConnectionError('unexpected connection_lost() call')
             self.on_data.set_exception(exc)
 
 
-async def _create_ssl_connection(protocol_factory, host, port, *,
-                                 loop, ssl_context, ssl_is_advisory=False):
+@typing.overload
+async def _create_ssl_connection(
+    protocol_factory: compat.Callable[[], _ProtocolT],
+    host: str,
+    port: int,
+    *,
+    loop: asyncio.AbstractEventLoop,
+    ssl_context: ssl_module.SSLContext,
+    ssl_is_advisory: bool | None = False
+) -> _TPTupleType[_ProtocolT]:
+    ...
 
-    tr, pr = await loop.create_connection(
-        lambda: TLSUpgradeProto(loop, host, port,
-                                ssl_context, ssl_is_advisory),
-        host, port)
+
+@typing.overload
+async def _create_ssl_connection(
+    protocol_factory: compat.Callable[[], '_CancelProto'],
+    host: str,
+    port: int,
+    *,
+    loop: asyncio.AbstractEventLoop,
+    ssl_context: ssl_module.SSLContext,
+    ssl_is_advisory: bool | None = False
+) -> _TPTupleType['_CancelProto']:
+    ...
+
+
+async def _create_ssl_connection(
+    protocol_factory: compat.Callable[
+        [], _ProtocolT
+    ] | compat.Callable[
+        [], '_CancelProto'
+    ],
+    host: str,
+    port: int,
+    *,
+    loop: asyncio.AbstractEventLoop,
+    ssl_context: ssl_module.SSLContext,
+    ssl_is_advisory: bool | None = False
+) -> _TPTupleType[typing.Any]:
+
+    tr, pr = typing.cast(
+        'tuple[asyncio.WriteTransport, TLSUpgradeProto]',
+        await loop.create_connection(
+            lambda: TLSUpgradeProto(
+                loop, host, port, ssl_context, ssl_is_advisory
+            ),
+            host,
+            port
+        )
+    )
 
     tr.write(struct.pack('!ll', 8, 80877103))  # SSLRequest message.
 
@@ -757,8 +892,12 @@ async def _create_ssl_connection(protocol_factory, host, port, *,
     if hasattr(loop, 'start_tls'):
         if do_ssl_upgrade:
             try:
-                new_tr = await loop.start_tls(
-                    tr, pr, ssl_context, server_hostname=host)
+                new_tr = typing.cast(
+                    asyncio.WriteTransport,
+                    await loop.start_tls(
+                        tr, pr, ssl_context, server_hostname=host
+                    )
+                )
             except (Exception, asyncio.CancelledError):
                 tr.close()
                 raise
@@ -795,13 +934,13 @@ async def _create_ssl_connection(protocol_factory, host, port, *,
 
 async def _connect_addr(
     *,
-    addr,
-    loop,
-    params,
-    config,
-    connection_class,
-    record_class
-):
+    addr: AddrType,
+    loop: asyncio.AbstractEventLoop,
+    params: _ConnectionParameters,
+    config: _ClientConfiguration,
+    connection_class: type[_ConnectionT],
+    record_class: type[_RecordT]
+) -> _ConnectionT:
     assert loop is not None
 
     params_input = params
@@ -810,7 +949,7 @@ async def _connect_addr(
         if inspect.isawaitable(password):
             password = await password
 
-        params = params._replace(password=password)
+        params = params._replace(password=typing.cast(str, password))
     args = (addr, loop, config, connection_class, record_class, params_input)
 
     # prepare the params (which attempt has ssl) for the 2 attempts
@@ -838,15 +977,15 @@ class _RetryConnectSignal(Exception):
 
 
 async def __connect_addr(
-    params,
-    retry,
-    addr,
-    loop,
-    config,
-    connection_class,
-    record_class,
-    params_input,
-):
+    params: _ConnectionParameters,
+    retry: bool,
+    addr: AddrType,
+    loop: asyncio.AbstractEventLoop,
+    config: _ClientConfiguration,
+    connection_class: type[_ConnectionT],
+    record_class: type[_RecordT],
+    params_input: _ConnectionParameters,
+) -> _ConnectionT:
     connected = _create_future(loop)
 
     proto_factory = lambda: protocol.Protocol(
@@ -854,13 +993,21 @@ async def __connect_addr(
 
     if isinstance(addr, str):
         # UNIX socket
-        connector = loop.create_unix_connection(proto_factory, addr)
+        connector = typing.cast(
+            compat.Coroutine[
+                typing.Any, None, '_TPTupleType[protocol.Protocol[_RecordT]]'
+            ],
+            loop.create_unix_connection(proto_factory, addr)
+        )
 
     elif params.ssl and params.direct_tls:
         # if ssl and direct_tls are given, skip STARTTLS and perform direct
         # SSL connection
-        connector = loop.create_connection(
-            proto_factory, *addr, ssl=params.ssl
+        connector = typing.cast(
+            compat.Coroutine[
+                typing.Any, None, '_TPTupleType[protocol.Protocol[_RecordT]]'
+            ],
+            loop.create_connection(proto_factory, *addr, ssl=params.ssl)
         )
 
     elif params.ssl:
@@ -868,7 +1015,12 @@ async def __connect_addr(
             proto_factory, *addr, loop=loop, ssl_context=params.ssl,
             ssl_is_advisory=params.sslmode == SSLMode.prefer)
     else:
-        connector = loop.create_connection(proto_factory, *addr)
+        connector = typing.cast(
+            compat.Coroutine[
+                typing.Any, None, '_TPTupleType[protocol.Protocol[_RecordT]]'
+            ],
+            loop.create_connection(proto_factory, *addr)
+        )
 
     tr, pr = await connector
 
@@ -921,18 +1073,24 @@ class SessionAttribute(str, enum.Enum):
     read_only = "read-only"
 
 
-def _accept_in_hot_standby(should_be_in_hot_standby: bool):
+def _accept_in_hot_standby(should_be_in_hot_standby: bool) -> compat.Callable[
+    [connection.Connection[typing.Any]], compat.Awaitable[bool]
+]:
     """
     If the server didn't report "in_hot_standby" at startup, we must determine
     the state by checking "SELECT pg_catalog.pg_is_in_recovery()".
     If the server allows a connection and states it is in recovery it must
     be a replica/standby server.
     """
-    async def can_be_used(connection):
+    async def can_be_used(
+        connection: connection.Connection[typing.Any]
+    ) -> bool:
         settings = connection.get_settings()
-        hot_standby_status = getattr(settings, 'in_hot_standby', None)
+        hot_standby_status: str | None = getattr(
+            settings, 'in_hot_standby', None
+        )
         if hot_standby_status is not None:
-            is_in_hot_standby = hot_standby_status == 'on'
+            is_in_hot_standby: bool = hot_standby_status == 'on'
         else:
             is_in_hot_standby = await connection.fetchval(
                 "SELECT pg_catalog.pg_is_in_recovery()"
@@ -942,11 +1100,15 @@ def _accept_in_hot_standby(should_be_in_hot_standby: bool):
     return can_be_used
 
 
-def _accept_read_only(should_be_read_only: bool):
+def _accept_read_only(should_be_read_only: bool) -> compat.Callable[
+    [connection.Connection[typing.Any]], compat.Awaitable[bool]
+]:
     """
     Verify the server has not set default_transaction_read_only=True
     """
-    async def can_be_used(connection):
+    async def can_be_used(
+        connection: connection.Connection[typing.Any]
+    ) -> bool:
         settings = connection.get_settings()
         is_readonly = getattr(settings, 'default_transaction_read_only', 'off')
 
@@ -957,11 +1119,19 @@ def _accept_read_only(should_be_read_only: bool):
     return can_be_used
 
 
-async def _accept_any(_):
+async def _accept_any(_: connection.Connection[typing.Any]) -> bool:
     return True
 
 
-target_attrs_check = {
+target_attrs_check: typing.Final[
+    dict[
+        SessionAttribute,
+        compat.Callable[
+            [connection.Connection[typing.Any]],
+            compat.Awaitable[bool]
+        ]
+    ]
+] = {
     SessionAttribute.any: _accept_any,
     SessionAttribute.primary: _accept_in_hot_standby(False),
     SessionAttribute.standby: _accept_in_hot_standby(True),
@@ -971,21 +1141,30 @@ target_attrs_check = {
 }
 
 
-async def _can_use_connection(connection, attr: SessionAttribute):
+async def _can_use_connection(
+    connection: connection.Connection[typing.Any],
+    attr: SessionAttribute
+) -> bool:
     can_use = target_attrs_check[attr]
     return await can_use(connection)
 
 
-async def _connect(*, loop, connection_class, record_class, **kwargs):
+async def _connect(
+    *,
+    loop: asyncio.AbstractEventLoop | None,
+    connection_class: type[_ConnectionT],
+    record_class: type[_RecordT],
+    **kwargs: typing.Any
+) -> _ConnectionT:
     if loop is None:
         loop = asyncio.get_event_loop()
 
     addrs, params, config = _parse_connect_arguments(**kwargs)
     target_attr = params.target_session_attrs
 
-    candidates = []
+    candidates: list[_ConnectionT] = []
     chosen_connection = None
-    last_error = None
+    last_error: BaseException | None = None
     for addr in addrs:
         try:
             conn = await _connect_addr(
@@ -1020,32 +1199,44 @@ async def _connect(*, loop, connection_class, record_class, **kwargs):
     )
 
 
-async def _cancel(*, loop, addr, params: _ConnectionParameters,
-                  backend_pid, backend_secret):
+class _CancelProto(asyncio.Protocol):
 
-    class CancelProto(asyncio.Protocol):
+    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+        self.on_disconnect = _create_future(loop)
+        self.is_ssl = False
 
-        def __init__(self):
-            self.on_disconnect = _create_future(loop)
-            self.is_ssl = False
+    def connection_lost(self, exc: Exception | None) -> None:
+        if not self.on_disconnect.done():
+            self.on_disconnect.set_result(True)
 
-        def connection_lost(self, exc):
-            if not self.on_disconnect.done():
-                self.on_disconnect.set_result(True)
+
+async def _cancel(
+    *,
+    loop: asyncio.AbstractEventLoop,
+    addr: AddrType,
+    params: _ConnectionParameters,
+    backend_pid: int,
+    backend_secret: str
+) -> None:
+    proto_factory: compat.Callable[
+        [], _CancelProto
+    ] = lambda: _CancelProto(loop)
 
     if isinstance(addr, str):
-        tr, pr = await loop.create_unix_connection(CancelProto, addr)
+        tr, pr = typing.cast(
+            '_TPTupleType[_CancelProto]',
+            await loop.create_unix_connection(proto_factory, addr)
+        )
     else:
         if params.ssl and params.sslmode != SSLMode.allow:
             tr, pr = await _create_ssl_connection(
-                CancelProto,
+                proto_factory,
                 *addr,
                 loop=loop,
                 ssl_context=params.ssl,
                 ssl_is_advisory=params.sslmode == SSLMode.prefer)
         else:
-            tr, pr = await loop.create_connection(
-                CancelProto, *addr)
+            tr, pr = await loop.create_connection(proto_factory, *addr)
             _set_nodelay(_get_socket(tr))
 
     # Pack a CancelRequest message
@@ -1058,7 +1249,7 @@ async def _cancel(*, loop, addr, params: _ConnectionParameters,
         tr.close()
 
 
-def _get_socket(transport):
+def _get_socket(transport: asyncio.BaseTransport) -> typing.Any:
     sock = transport.get_extra_info('socket')
     if sock is None:
         # Shouldn't happen with any asyncio-complaint event loop.
@@ -1067,14 +1258,16 @@ def _get_socket(transport):
     return sock
 
 
-def _set_nodelay(sock):
+def _set_nodelay(sock: typing.Any) -> None:
     if not hasattr(socket, 'AF_UNIX') or sock.family != socket.AF_UNIX:
         sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
 
-def _create_future(loop):
+def _create_future(
+    loop: asyncio.AbstractEventLoop | None
+) -> asyncio.Future[typing.Any]:
     try:
-        create_future = loop.create_future
+        create_future = loop.create_future  # type: ignore[union-attr]
     except AttributeError:
         return asyncio.Future(loop=loop)
     else:
