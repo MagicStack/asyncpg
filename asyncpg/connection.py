@@ -2007,7 +2007,8 @@ async def connect(dsn=None, *,
                   connection_class=Connection,
                   record_class=protocol.Record,
                   server_settings=None,
-                  target_session_attrs=None):
+                  target_session_attrs=None,
+                  krbsrvname=None):
     r"""A coroutine to establish a connection to a PostgreSQL server.
 
     The connection parameters may be specified either as a connection
@@ -2235,6 +2236,10 @@ async def connect(dsn=None, *,
         or the value of the ``PGTARGETSESSIONATTRS`` environment variable,
         or ``"any"`` if neither is specified.
 
+    :param str krbsrvname:
+        Kerberos service name to use when authenticating with GSSAPI. This
+        must match the server configuration. Defaults to 'postgres'.
+
     :return: A :class:`~asyncpg.connection.Connection` instance.
 
     Example:
@@ -2303,6 +2308,9 @@ async def connect(dsn=None, *,
     .. versionchanged:: 0.28.0
        Added the *target_session_attrs* parameter.
 
+    .. versionchanged:: 0.30.0
+       Added the *krbsrvname* parameter.
+
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
         https://docs.python.org/3/library/ssl.html#ssl.create_default_context
@@ -2344,7 +2352,8 @@ async def connect(dsn=None, *,
             statement_cache_size=statement_cache_size,
             max_cached_statement_lifetime=max_cached_statement_lifetime,
             max_cacheable_statement_size=max_cacheable_statement_size,
-            target_session_attrs=target_session_attrs
+            target_session_attrs=target_session_attrs,
+            krbsrvname=krbsrvname,
         )
 
 

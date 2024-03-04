@@ -130,29 +130,21 @@ class TestSettings(tb.ConnectedTestCase):
 CORRECT_PASSWORD = 'correct\u1680password'
 
 
-class TestAuthentication(tb.ConnectedTestCase):
+class BaseTestAuthentication(tb.ConnectedTestCase):
+    USERS = []
+
     def setUp(self):
         super().setUp()
 
         if not self.cluster.is_managed():
             self.skipTest('unmanaged cluster')
 
-        methods = [
-            ('trust', None),
-            ('reject', None),
-            ('scram-sha-256', CORRECT_PASSWORD),
-            ('md5', CORRECT_PASSWORD),
-            ('password', CORRECT_PASSWORD),
-        ]
-
         self.cluster.reset_hba()
 
         create_script = []
-        for method, password in methods:
+        for username, method, password in self.USERS:
             if method == 'scram-sha-256' and self.server_version.major < 10:
                 continue
-
-            username = method.replace('-', '_')
 
             # if this is a SCRAM password, we need to set the encryption method
             # to "scram-sha-256" in order to properly hash the password
@@ -162,7 +154,7 @@ class TestAuthentication(tb.ConnectedTestCase):
                 )
 
             create_script.append(
-                'CREATE ROLE {}_user WITH LOGIN{};'.format(
+                'CREATE ROLE "{}" WITH LOGIN{};'.format(
                     username,
                     f' PASSWORD E{(password or "")!r}'
                 )
@@ -175,20 +167,20 @@ class TestAuthentication(tb.ConnectedTestCase):
                     "SET password_encryption = 'md5';"
                 )
 
-            if _system != 'Windows':
+            if _system != 'Windows' and method != 'gss':
                 self.cluster.add_hba_entry(
                     type='local',
-                    database='postgres', user='{}_user'.format(username),
+                    database='postgres', user=username,
                     auth_method=method)
 
             self.cluster.add_hba_entry(
                 type='host', address=ipaddress.ip_network('127.0.0.0/24'),
-                database='postgres', user='{}_user'.format(username),
+                database='postgres', user=username,
                 auth_method=method)
 
             self.cluster.add_hba_entry(
                 type='host', address=ipaddress.ip_network('::1/128'),
-                database='postgres', user='{}_user'.format(username),
+                database='postgres', user=username,
                 auth_method=method)
 
         # Put hba changes into effect
@@ -201,27 +193,27 @@ class TestAuthentication(tb.ConnectedTestCase):
         # Reset cluster's pg_hba.conf since we've meddled with it
         self.cluster.trust_local_connections()
 
-        methods = [
-            'trust',
-            'reject',
-            'scram-sha-256',
-            'md5',
-            'password',
-        ]
-
         drop_script = []
-        for method in methods:
+        for username, method, _ in self.USERS:
             if method == 'scram-sha-256' and self.server_version.major < 10:
                 continue
 
-            username = method.replace('-', '_')
-
-            drop_script.append('DROP ROLE {}_user;'.format(username))
+            drop_script.append('DROP ROLE "{}";'.format(username))
 
         drop_script = '\n'.join(drop_script)
         self.loop.run_until_complete(self.con.execute(drop_script))
 
         super().tearDown()
+
+
+class TestAuthentication(BaseTestAuthentication):
+    USERS = [
+        ('trust_user', 'trust', None),
+        ('reject_user', 'reject', None),
+        ('scram_sha_256_user', 'scram-sha-256', CORRECT_PASSWORD),
+        ('md5_user', 'md5', CORRECT_PASSWORD),
+        ('password_user', 'password', CORRECT_PASSWORD),
+    ]
 
     async def _try_connect(self, **kwargs):
         # On Windows the server sometimes just closes
@@ -386,6 +378,62 @@ class TestAuthentication(tb.ConnectedTestCase):
             ".*no md5.*",
         ):
             await self.connect(user='md5_user', password=CORRECT_PASSWORD)
+
+
+class TestGssAuthentication(BaseTestAuthentication):
+    @classmethod
+    def setUpClass(cls):
+        try:
+            from k5test.realm import K5Realm
+        except ModuleNotFoundError:
+            raise unittest.SkipTest('k5test not installed')
+
+        cls.realm = K5Realm()
+        cls.addClassCleanup(cls.realm.stop)
+        # Setup environment before starting the cluster.
+        patch = unittest.mock.patch.dict(os.environ, cls.realm.env)
+        patch.start()
+        cls.addClassCleanup(patch.stop)
+        # Add credentials.
+        cls.realm.addprinc('postgres/localhost')
+        cls.realm.extract_keytab('postgres/localhost', cls.realm.keytab)
+
+        cls.USERS = [(cls.realm.user_princ, 'gss', None)]
+        super().setUpClass()
+
+        cls.cluster.override_connection_spec(host='localhost')
+
+    @classmethod
+    def get_server_settings(cls):
+        settings = super().get_server_settings()
+        settings['krb_server_keyfile'] = f'FILE:{cls.realm.keytab}'
+        return settings
+
+    @classmethod
+    def setup_cluster(cls):
+        cls.cluster = cls.new_cluster(pg_cluster.TempCluster)
+        cls.start_cluster(
+            cls.cluster, server_settings=cls.get_server_settings())
+
+    async def test_auth_gssapi(self):
+        conn = await self.connect(user=self.realm.user_princ)
+        await conn.close()
+
+        # Service name mismatch.
+        with self.assertRaisesRegex(
+            exceptions.InternalClientError,
+            'Server .* not found'
+        ):
+            await self.connect(user=self.realm.user_princ, krbsrvname='wrong')
+
+        # Credentials mismatch.
+        self.realm.addprinc('wrong_user', 'password')
+        self.realm.kinit('wrong_user', 'password')
+        with self.assertRaisesRegex(
+            exceptions.InvalidAuthorizationSpecificationError,
+            'GSSAPI authentication failed for user'
+        ):
+            await self.connect(user=self.realm.user_princ)
 
 
 class TestConnectParams(tb.TestCase):
@@ -597,6 +645,46 @@ class TestConnectParams(tb.TestCase):
                 'database': 'db',
                 'user': 'user',
                 'target_session_attrs': 'read-only',
+            })
+        },
+
+        {
+            'name': 'krbsrvname',
+            'dsn': 'postgresql://user@host/db?krbsrvname=srv_qs',
+            'env': {
+                'PGKRBSRVNAME': 'srv_env',
+            },
+            'result': ([('host', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'krbsrvname': 'srv_qs',
+            })
+        },
+
+        {
+            'name': 'krbsrvname_2',
+            'dsn': 'postgresql://user@host/db?krbsrvname=srv_qs',
+            'krbsrvname': 'srv_kws',
+            'result': ([('host', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'krbsrvname': 'srv_kws',
+            })
+        },
+
+        {
+            'name': 'krbsrvname_3',
+            'dsn': 'postgresql://user@host/db',
+            'env': {
+                'PGKRBSRVNAME': 'srv_env',
+            },
+            'result': ([('host', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'krbsrvname': 'srv_env',
             })
         },
 
@@ -883,6 +971,7 @@ class TestConnectParams(tb.TestCase):
         sslmode = testcase.get('ssl')
         server_settings = testcase.get('server_settings')
         target_session_attrs = testcase.get('target_session_attrs')
+        krbsrvname = testcase.get('krbsrvname')
 
         expected = testcase.get('result')
         expected_error = testcase.get('error')
@@ -907,7 +996,8 @@ class TestConnectParams(tb.TestCase):
                 passfile=passfile, database=database, ssl=sslmode,
                 direct_tls=False,
                 server_settings=server_settings,
-                target_session_attrs=target_session_attrs)
+                target_session_attrs=target_session_attrs,
+                krbsrvname=krbsrvname)
 
             params = {
                 k: v for k, v in params._asdict().items()

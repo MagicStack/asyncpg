@@ -75,7 +75,7 @@ NO_TIMEOUT = object()
 cdef class BaseProtocol(CoreProtocol):
     def __init__(self, addr, connected_fut, con_params, record_class: type, loop):
         # type of `con_params` is `_ConnectionParameters`
-        CoreProtocol.__init__(self, con_params)
+        CoreProtocol.__init__(self, addr, con_params)
 
         self.loop = loop
         self.transport = None
@@ -83,8 +83,7 @@ cdef class BaseProtocol(CoreProtocol):
         self.cancel_waiter = None
         self.cancel_sent_waiter = None
 
-        self.address = addr
-        self.settings = ConnectionSettings((self.address, con_params.database))
+        self.settings = ConnectionSettings((addr, con_params.database))
         self.record_class = record_class
 
         self.statement = None
