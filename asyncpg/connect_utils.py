@@ -57,6 +57,7 @@ _ConnectionParameters = collections.namedtuple(
         'server_settings',
         'target_session_attrs',
         'krbsrvname',
+        'gsslib',
     ])
 
 
@@ -262,7 +263,7 @@ def _dot_postgresql_path(filename) -> typing.Optional[pathlib.Path]:
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                                 password, passfile, database, ssl,
                                 direct_tls, server_settings,
-                                target_session_attrs, krbsrvname):
+                                target_session_attrs, krbsrvname, gsslib):
     # `auth_hosts` is the version of host information for the purposes
     # of reading the pgpass file.
     auth_hosts = None
@@ -388,6 +389,11 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 val = query.pop('krbsrvname')
                 if krbsrvname is None:
                     krbsrvname = val
+
+            if 'gsslib' in query:
+                val = query.pop('gsslib')
+                if gsslib is None:
+                    gsslib = val
 
             if query:
                 if server_settings is None:
@@ -659,12 +665,21 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     if krbsrvname is None:
         krbsrvname = os.getenv('PGKRBSRVNAME')
 
+    if gsslib is None:
+        gsslib = os.getenv('PGGSSLIB')
+        if gsslib is None:
+            gsslib = 'sspi' if _system == 'Windows' else 'gssapi'
+    if gsslib not in {'gssapi', 'sspi'}:
+        raise exceptions.ClientConfigurationError(
+            "gsslib parameter must be either 'gssapi' or 'sspi'"
+            ", got {!r}".format(gsslib))
+
     params = _ConnectionParameters(
         user=user, password=password, database=database, ssl=ssl,
         sslmode=sslmode, direct_tls=direct_tls,
         server_settings=server_settings,
         target_session_attrs=target_session_attrs,
-        krbsrvname=krbsrvname)
+        krbsrvname=krbsrvname, gsslib=gsslib)
 
     return addrs, params
 
@@ -675,7 +690,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
                              ssl, direct_tls, server_settings,
-                             target_session_attrs, krbsrvname):
+                             target_session_attrs, krbsrvname, gsslib):
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
                      'max_cached_statement_lifetime',
@@ -705,7 +720,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
         direct_tls=direct_tls, database=database,
         server_settings=server_settings,
         target_session_attrs=target_session_attrs,
-        krbsrvname=krbsrvname)
+        krbsrvname=krbsrvname, gsslib=gsslib)
 
     config = _ClientConfiguration(
         command_timeout=command_timeout,
