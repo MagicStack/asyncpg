@@ -10,4 +10,8 @@
 # supported platforms, publish the packages on PyPI, merge the PR
 # to the target branch, create a Git tag pointing to the commit.
 
-__version__ = '0.30.0.dev0'
+from __future__ import annotations
+
+import typing
+
+__version__: typing.Final = '0.30.0.dev0'

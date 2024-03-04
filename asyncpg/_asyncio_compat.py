@@ -4,18 +4,25 @@
 #
 # SPDX-License-Identifier: PSF-2.0
 
+from __future__ import annotations
 
 import asyncio
 import functools
 import sys
+import typing
+
+if typing.TYPE_CHECKING:
+    from . import compat
 
 if sys.version_info < (3, 11):
     from async_timeout import timeout as timeout_ctx
 else:
     from asyncio import timeout as timeout_ctx
 
+_T = typing.TypeVar('_T')
 
-async def wait_for(fut, timeout):
+
+async def wait_for(fut: compat.Awaitable[_T], timeout: float | None) -> _T:
     """Wait for the single Future or coroutine to complete, with timeout.
 
     Coroutine will be wrapped in Task.
@@ -65,7 +72,7 @@ async def wait_for(fut, timeout):
         return await fut
 
 
-async def _cancel_and_wait(fut):
+async def _cancel_and_wait(fut: asyncio.Future[_T]) -> None:
     """Cancel the *fut* future or task and wait until it completes."""
 
     loop = asyncio.get_running_loop()
@@ -82,6 +89,6 @@ async def _cancel_and_wait(fut):
         fut.remove_done_callback(cb)
 
 
-def _release_waiter(waiter, *args):
+def _release_waiter(waiter: asyncio.Future[typing.Any], *args: object) -> None:
     if not waiter.done():
         waiter.set_result(None)
