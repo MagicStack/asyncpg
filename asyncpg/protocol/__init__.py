@@ -6,4 +6,6 @@
 
 # flake8: NOQA
 
+from __future__ import annotations
+
 from .protocol import Protocol, Record, NO_TIMEOUT, BUILTIN_TYPE_NAME_MAP
