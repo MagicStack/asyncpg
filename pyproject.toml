@@ -35,7 +35,7 @@ dependencies = [
 github = "https://github.com/MagicStack/asyncpg"
 
 [project.optional-dependencies]
-gssapi = [
+gssauth = [
     'gssapi; platform_system != "Windows"',
     'sspilib; platform_system == "Windows"',
 ]

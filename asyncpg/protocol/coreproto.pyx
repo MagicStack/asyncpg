@@ -724,7 +724,7 @@ cdef class CoreProtocol:
             import gssapi
         except ModuleNotFoundError:
             raise apg_exc.InterfaceError(
-                'gssapi module not found; please install asyncpg[gssapi] to '
+                'gssapi module not found; please install asyncpg[gssauth] to '
                 'use asyncpg with Kerberos/GSSAPI/SSPI authentication'
             ) from None
 
@@ -736,7 +736,7 @@ cdef class CoreProtocol:
             import sspilib
         except ModuleNotFoundError:
             raise apg_exc.InterfaceError(
-                'sspilib module not found; please install asyncpg[gssapi] to '
+                'sspilib module not found; please install asyncpg[gssauth] to '
                 'use asyncpg with Kerberos/GSSAPI/SSPI authentication'
             ) from None
 
