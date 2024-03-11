@@ -534,7 +534,7 @@ class Connection(metaclass=ConnectionMeta):
 
         return result
 
-    async def _introspect_type(self, typename, schema):
+    async def _introspect_type(self, typename, schema, *, name=None):
         if (
             schema == 'pg_catalog'
             and typename.lower() in protocol.BUILTIN_TYPE_NAME_MAP
@@ -546,6 +546,7 @@ class Connection(metaclass=ConnectionMeta):
                 limit=0,
                 timeout=None,
                 ignore_custom_codec=True,
+                name=name,
             )
         else:
             rows = await self._execute(
@@ -554,6 +555,7 @@ class Connection(metaclass=ConnectionMeta):
                 limit=1,
                 timeout=None,
                 ignore_custom_codec=True,
+                name=name,
             )
 
         if not rows:
@@ -1215,7 +1217,7 @@ class Connection(metaclass=ConnectionMeta):
 
     async def set_type_codec(self, typename, *,
                              schema='public', encoder, decoder,
-                             format='text'):
+                             format='text', name=None):
         """Set an encoder/decoder pair for the specified data type.
 
         :param typename:
@@ -1336,7 +1338,7 @@ class Connection(metaclass=ConnectionMeta):
         """
         self._check_open()
         settings = self._protocol.get_settings()
-        typeinfo = await self._introspect_type(typename, schema)
+        typeinfo = await self._introspect_type(typename, schema, name)
         full_typeinfos = []
         if introspection.is_scalar_type(typeinfo):
             kind = 'scalar'
@@ -1788,7 +1790,8 @@ class Connection(metaclass=ConnectionMeta):
         *,
         return_status=False,
         ignore_custom_codec=False,
-        record_class=None
+        record_class=None,
+        name=None,
     ):
         with self._stmt_exclusive_section:
             result, _ = await self.__execute(
@@ -1799,6 +1802,7 @@ class Connection(metaclass=ConnectionMeta):
                 return_status=return_status,
                 record_class=record_class,
                 ignore_custom_codec=ignore_custom_codec,
+                name=name,
             )
         return result
 
@@ -1868,7 +1872,8 @@ class Connection(metaclass=ConnectionMeta):
         *,
         return_status=False,
         ignore_custom_codec=False,
-        record_class=None
+        record_class=None,
+        name=None,
     ):
         executor = lambda stmt, timeout: self._protocol.bind_execute(
             state=stmt,
@@ -1887,6 +1892,7 @@ class Connection(metaclass=ConnectionMeta):
                     timeout,
                     record_class=record_class,
                     ignore_custom_codec=ignore_custom_codec,
+                    name=name,
                 )
         else:
             result, stmt = await self._do_execute(
@@ -1895,6 +1901,7 @@ class Connection(metaclass=ConnectionMeta):
                 timeout,
                 record_class=record_class,
                 ignore_custom_codec=ignore_custom_codec,
+                name=name,
             )
         return result, stmt
 
@@ -1919,7 +1926,8 @@ class Connection(metaclass=ConnectionMeta):
         retry=True,
         *,
         ignore_custom_codec=False,
-        record_class=None
+        record_class=None,
+        name=None,
     ):
         if timeout is None:
             stmt = await self._get_statement(
@@ -1927,6 +1935,7 @@ class Connection(metaclass=ConnectionMeta):
                 None,
                 record_class=record_class,
                 ignore_custom_codec=ignore_custom_codec,
+                named=True if name is None else name,
             )
         else:
             before = time.monotonic()
@@ -1935,6 +1944,7 @@ class Connection(metaclass=ConnectionMeta):
                 timeout,
                 record_class=record_class,
                 ignore_custom_codec=ignore_custom_codec,
+                named=True if name is None else name,
             )
             after = time.monotonic()
             timeout -= after - before
