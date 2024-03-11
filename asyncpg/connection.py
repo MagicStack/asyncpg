@@ -359,7 +359,8 @@ class Connection(metaclass=ConnectionMeta):
         )
         return status.decode()
 
-    async def executemany(self, command: str, args, *, timeout: float=None):
+    async def executemany(self, command: str, args, *, timeout: float=None,
+                          return_rows: bool=False):
         """Execute an SQL *command* for each sequence of arguments in *args*.
 
         Example:
@@ -373,7 +374,13 @@ class Connection(metaclass=ConnectionMeta):
         :param command: Command to execute.
         :param args: An iterable containing sequences of arguments.
         :param float timeout: Optional timeout value in seconds.
-        :return None: This method discards the results of the operations.
+        :param bool return_rows:
+            If ``True``, the resulting rows of each command will be
+            returned as a list of :class:`~asyncpg.Record`
+            (defaults to ``False``).
+        :return:
+            None, or a list of :class:`~asyncpg.Record` instances
+            if `return_rows` is true.
 
         .. versionadded:: 0.7.0
 
@@ -386,9 +393,13 @@ class Connection(metaclass=ConnectionMeta):
            to prior versions, where the effect of already-processed iterations
            would remain in place when an error has occurred, unless
            ``executemany()`` was called in a transaction.
+
+        .. versionchanged:: 0.30.0
+           Added `return_rows` keyword-only parameter.
         """
         self._check_open()
-        return await self._executemany(command, args, timeout)
+        return await self._executemany(
+            command, args, timeout, return_rows=return_rows)
 
     async def _get_statement(
         self,
@@ -1898,12 +1909,13 @@ class Connection(metaclass=ConnectionMeta):
             )
         return result, stmt
 
-    async def _executemany(self, query, args, timeout):
+    async def _executemany(self, query, args, timeout, return_rows):
         executor = lambda stmt, timeout: self._protocol.bind_execute_many(
             state=stmt,
             args=args,
             portal_name='',
             timeout=timeout,
+            return_rows=return_rows,
         )
         timeout = self._protocol._get_timeout(timeout)
         with self._stmt_exclusive_section:

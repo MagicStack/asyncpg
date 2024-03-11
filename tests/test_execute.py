@@ -139,6 +139,45 @@ class TestExecuteMany(tb.ConnectedTestCase):
             ('a', 1), ('b', 2), ('c', 3), ('d', 4)
         ])
 
+    async def test_executemany_returning(self):
+        result = await self.con.executemany('''
+            INSERT INTO exmany VALUES($1, $2) RETURNING a, b
+        ''', [
+            ('a', 1), ('b', 2), ('c', 3), ('d', 4)
+        ], return_rows=True)
+        self.assertEqual(result, [
+            ('a', 1), ('b', 2), ('c', 3), ('d', 4)
+        ])
+        result = await self.con.fetch('''
+            SELECT * FROM exmany
+        ''')
+        self.assertEqual(result, [
+            ('a', 1), ('b', 2), ('c', 3), ('d', 4)
+        ])
+
+        # Empty set
+        await self.con.executemany('''
+            INSERT INTO exmany VALUES($1, $2) RETURNING a, b
+        ''', (), return_rows=True)
+        result = await self.con.fetch('''
+            SELECT * FROM exmany
+        ''')
+        self.assertEqual(result, [
+            ('a', 1), ('b', 2), ('c', 3), ('d', 4)
+        ])
+
+        # Without "RETURNING"
+        result = await self.con.executemany('''
+            INSERT INTO exmany VALUES($1, $2)
+        ''', [('e', 5), ('f', 6)], return_rows=True)
+        self.assertEqual(result, [])
+        result = await self.con.fetch('''
+            SELECT * FROM exmany
+        ''')
+        self.assertEqual(result, [
+            ('a', 1), ('b', 2), ('c', 3), ('d', 4), ('e', 5), ('f', 6)
+        ])
+
     async def test_executemany_bad_input(self):
         with self.assertRaisesRegex(
             exceptions.DataError,
@@ -288,11 +327,13 @@ class TestExecuteMany(tb.ConnectedTestCase):
 
     async def test_executemany_prepare(self):
         stmt = await self.con.prepare('''
-            INSERT INTO exmany VALUES($1, $2)
+            INSERT INTO exmany VALUES($1, $2) RETURNING a, b
         ''')
         result = await stmt.executemany([
             ('a', 1), ('b', 2), ('c', 3), ('d', 4)
         ])
+        # While the query contains a "RETURNING" clause, by default
+        # `executemany` does not return anything
         self.assertIsNone(result)
         result = await self.con.fetch('''
             SELECT * FROM exmany
@@ -307,4 +348,14 @@ class TestExecuteMany(tb.ConnectedTestCase):
         ''')
         self.assertEqual(result, [
             ('a', 1), ('b', 2), ('c', 3), ('d', 4)
+        ])
+        # Now with `return_rows=True`, we should retrieve the tuples
+        # from the "RETURNING" clause.
+        result = await stmt.executemany([('e', 5), ('f', 6)], return_rows=True)
+        self.assertEqual(result, [('e', 5), ('f', 6)])
+        result = await self.con.fetch('''
+            SELECT * FROM exmany
+        ''')
+        self.assertEqual(result, [
+            ('a', 1), ('b', 2), ('c', 3), ('d', 4), ('e', 5), ('f', 6)
         ])
