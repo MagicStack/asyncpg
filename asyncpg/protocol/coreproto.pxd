@@ -91,7 +91,7 @@ cdef class CoreProtocol:
         object con_params
         # Instance of SCRAMAuthentication
         SCRAMAuthentication scram
-        # Instance of gssapi.SecurityContext
+        # Instance of gssapi.SecurityContext or sspilib.SecurityContext
         object gss_ctx
 
         readonly int32_t backend_pid
@@ -138,7 +138,9 @@ cdef class CoreProtocol:
     cdef _auth_password_message_md5(self, bytes salt)
     cdef _auth_password_message_sasl_initial(self, list sasl_auth_methods)
     cdef _auth_password_message_sasl_continue(self, bytes server_response)
-    cdef _auth_gss_init(self)
+    cdef _auth_gss_init_gssapi(self)
+    cdef _auth_gss_init_sspi(self, bint negotiate)
+    cdef _auth_gss_get_spn(self)
     cdef _auth_gss_step(self, bytes server_response)
 
     cdef _write(self, buf)

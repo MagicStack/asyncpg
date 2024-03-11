@@ -13,6 +13,7 @@ import os
 import pathlib
 import platform
 import shutil
+import socket
 import ssl
 import stat
 import tempfile
@@ -44,6 +45,13 @@ CLIENT_CA_CERT_FILE = os.path.join(CERTS, 'client_ca.cert.pem')
 CLIENT_SSL_CERT_FILE = os.path.join(CERTS, 'client.cert.pem')
 CLIENT_SSL_KEY_FILE = os.path.join(CERTS, 'client.key.pem')
 CLIENT_SSL_PROTECTED_KEY_FILE = os.path.join(CERTS, 'client.key.protected.pem')
+
+if _system == 'Windows':
+    DEFAULT_GSSLIB = 'sspi'
+    OTHER_GSSLIB = 'gssapi'
+else:
+    DEFAULT_GSSLIB = 'gssapi'
+    OTHER_GSSLIB = 'sspi'
 
 
 @contextlib.contextmanager
@@ -398,7 +406,10 @@ class TestGssAuthentication(BaseTestAuthentication):
         cls.realm.addprinc('postgres/localhost')
         cls.realm.extract_keytab('postgres/localhost', cls.realm.keytab)
 
-        cls.USERS = [(cls.realm.user_princ, 'gss', None)]
+        cls.USERS = [
+            (cls.realm.user_princ, 'gss', None),
+            (f'wrong-{cls.realm.user_princ}', 'gss', None),
+        ]
         super().setUpClass()
 
         cls.cluster.override_connection_spec(host='localhost')
@@ -427,13 +438,34 @@ class TestGssAuthentication(BaseTestAuthentication):
             await self.connect(user=self.realm.user_princ, krbsrvname='wrong')
 
         # Credentials mismatch.
-        self.realm.addprinc('wrong_user', 'password')
-        self.realm.kinit('wrong_user', 'password')
         with self.assertRaisesRegex(
             exceptions.InvalidAuthorizationSpecificationError,
             'GSSAPI authentication failed for user'
         ):
-            await self.connect(user=self.realm.user_princ)
+            await self.connect(user=f'wrong-{self.realm.user_princ}')
+
+
+@unittest.skipIf(_system != 'Windows', 'SSPI is only available on Windows')
+class TestSspiAuthentication(BaseTestAuthentication):
+    @classmethod
+    def setUpClass(cls):
+        cls.username = f'{os.getlogin()}@{socket.gethostname()}'
+        cls.USERS = [
+            (cls.username, 'sspi', None),
+            (f'wrong-{cls.username}', 'sspi', None),
+        ]
+        super().setUpClass()
+
+    async def test_auth_sspi(self):
+        conn = await self.connect(user=self.username)
+        await conn.close()
+
+        # Credentials mismatch.
+        with self.assertRaisesRegex(
+            exceptions.InvalidAuthorizationSpecificationError,
+            'SSPI authentication failed for user'
+        ):
+            await self.connect(user=f'wrong-{self.username}')
 
 
 class TestConnectParams(tb.TestCase):
@@ -666,6 +698,9 @@ class TestConnectParams(tb.TestCase):
             'name': 'krbsrvname_2',
             'dsn': 'postgresql://user@host/db?krbsrvname=srv_qs',
             'krbsrvname': 'srv_kws',
+            'env': {
+                'PGKRBSRVNAME': 'srv_env',
+            },
             'result': ([('host', 5432)], {
                 'database': 'db',
                 'user': 'user',
@@ -686,6 +721,69 @@ class TestConnectParams(tb.TestCase):
                 'target_session_attrs': 'any',
                 'krbsrvname': 'srv_env',
             })
+        },
+
+        {
+            'name': 'gsslib',
+            'dsn': f'postgresql://user@host/db?gsslib={OTHER_GSSLIB}',
+            'env': {
+                'PGGSSLIB': 'ignored',
+            },
+            'result': ([('host', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'gsslib': OTHER_GSSLIB,
+            })
+        },
+
+        {
+            'name': 'gsslib_2',
+            'dsn': 'postgresql://user@host/db?gsslib=ignored',
+            'gsslib': OTHER_GSSLIB,
+            'env': {
+                'PGGSSLIB': 'ignored',
+            },
+            'result': ([('host', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'gsslib': OTHER_GSSLIB,
+            })
+        },
+
+        {
+            'name': 'gsslib_3',
+            'dsn': 'postgresql://user@host/db',
+            'env': {
+                'PGGSSLIB': OTHER_GSSLIB,
+            },
+            'result': ([('host', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'gsslib': OTHER_GSSLIB,
+            })
+        },
+
+        {
+            'name': 'gsslib_4',
+            'dsn': 'postgresql://user@host/db',
+            'result': ([('host', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'gsslib': DEFAULT_GSSLIB,
+            })
+        },
+
+        {
+            'name': 'gsslib_5',
+            'dsn': 'postgresql://user@host/db?gsslib=invalid',
+            'error': (
+                exceptions.ClientConfigurationError,
+                "gsslib parameter must be either 'gssapi' or 'sspi'"
+            ),
         },
 
         {
@@ -972,6 +1070,7 @@ class TestConnectParams(tb.TestCase):
         server_settings = testcase.get('server_settings')
         target_session_attrs = testcase.get('target_session_attrs')
         krbsrvname = testcase.get('krbsrvname')
+        gsslib = testcase.get('gsslib')
 
         expected = testcase.get('result')
         expected_error = testcase.get('error')
@@ -997,7 +1096,7 @@ class TestConnectParams(tb.TestCase):
                 direct_tls=False,
                 server_settings=server_settings,
                 target_session_attrs=target_session_attrs,
-                krbsrvname=krbsrvname)
+                krbsrvname=krbsrvname, gsslib=gsslib)
 
             params = {
                 k: v for k, v in params._asdict().items()
@@ -1019,6 +1118,10 @@ class TestConnectParams(tb.TestCase):
                 # Avoid the hassle of specifying direct_tls
                 # unless explicitly tested for
                 params.pop('direct_tls', False)
+            if 'gsslib' not in expected[1]:
+                # Avoid the hassle of specifying gsslib
+                # unless explicitly tested for
+                params.pop('gsslib', None)
 
             self.assertEqual(expected, result, 'Testcase: {}'.format(testcase))
 

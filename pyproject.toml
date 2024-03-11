@@ -35,8 +35,9 @@ dependencies = [
 github = "https://github.com/MagicStack/asyncpg"
 
 [project.optional-dependencies]
-gssapi = [
-    'gssapi',
+gssauth = [
+    'gssapi; platform_system != "Windows"',
+    'sspilib; platform_system == "Windows"',
 ]
 test = [
     'flake8~=6.1',
@@ -44,6 +45,7 @@ test = [
     'uvloop>=0.15.3; platform_system != "Windows" and python_version < "3.12.0"',
     'gssapi; platform_system == "Linux"',
     'k5test; platform_system == "Linux"',
+    'sspilib; platform_system == "Windows"',
     'mypy~=1.8.0',
 ]
 docs = [
