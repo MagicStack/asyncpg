@@ -88,8 +88,7 @@ Basic Usage
         )
         await conn.close()
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run())
+    asyncio.run(run())
 
 
 License
