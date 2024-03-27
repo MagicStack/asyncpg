@@ -4,6 +4,7 @@
 # This module is part of asyncpg and is released under
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
+from __future__ import annotations
 
 from .connection import connect, Connection  # NOQA
 from .exceptions import *  # NOQA
@@ -14,6 +15,10 @@ from .types import *  # NOQA
 
 from ._version import __version__  # NOQA
 
+from . import exceptions
 
-__all__ = ('connect', 'create_pool', 'Pool', 'Record', 'Connection')
+
+__all__: tuple[str, ...] = (
+    'connect', 'create_pool', 'Pool', 'Record', 'Connection'
+)
 __all__ += exceptions.__all__ # NOQA

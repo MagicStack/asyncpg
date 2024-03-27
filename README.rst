@@ -58,10 +58,17 @@ This enables asyncpg to have easy-to-use support for:
 Installation
 ------------
 
-asyncpg is available on PyPI and has no dependencies.
-Use pip to install::
+asyncpg is available on PyPI.  When not using GSSAPI/SSPI authentication it
+has no dependencies.  Use pip to install::
 
     $ pip install asyncpg
+
+If you need GSSAPI/SSPI authentication, use::
+
+    $ pip install 'asyncpg[gssauth]'
+
+For more details, please `see the documentation
+<https://magicstack.github.io/asyncpg/current/installation.html>`_.
 
 
 Basic Usage

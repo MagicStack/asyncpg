@@ -62,6 +62,7 @@ jobs:
     - name: Install Python Deps
       if: steps.release.outputs.version == 0
       run: |
+        .github/workflows/install-krb5.sh
         python -m pip install -U pip setuptools wheel
         python -m pip install -e .[test]
 
@@ -122,6 +123,7 @@ jobs:
     - name: Install Python Deps
       if: steps.release.outputs.version == 0
       run: |
+        .github/workflows/install-krb5.sh
         python -m pip install -U pip setuptools wheel
         python -m pip install -e .[test]
 

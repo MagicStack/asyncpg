@@ -14,7 +14,7 @@ def find_root():
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-class TestFlake8(unittest.TestCase):
+class TestCodeQuality(unittest.TestCase):
 
     def test_flake8(self):
         try:
@@ -38,3 +38,34 @@ class TestFlake8(unittest.TestCase):
             output = ex.output.decode()
             raise AssertionError(
                 'flake8 validation failed:\n{}'.format(output)) from None
+
+    def test_mypy(self):
+        try:
+            import mypy  # NoQA
+        except ImportError:
+            raise unittest.SkipTest('mypy module is missing')
+
+        root_path = find_root()
+        config_path = os.path.join(root_path, 'pyproject.toml')
+        if not os.path.exists(config_path):
+            raise RuntimeError('could not locate mypy.ini file')
+
+        try:
+            subprocess.run(
+                [
+                    sys.executable,
+                    '-m',
+                    'mypy',
+                    '--config-file',
+                    config_path,
+                    'asyncpg'
+                ],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                cwd=root_path
+            )
+        except subprocess.CalledProcessError as ex:
+            output = ex.output.decode()
+            raise AssertionError(
+                'mypy validation failed:\n{}'.format(output)) from None
