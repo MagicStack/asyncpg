@@ -68,6 +68,7 @@ _ClientConfiguration = collections.namedtuple(
         'statement_cache_size',
         'max_cached_statement_lifetime',
         'max_cacheable_statement_size',
+        'get_reset_query',
     ])
 
 
@@ -690,7 +691,8 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
                              ssl, direct_tls, server_settings,
-                             target_session_attrs, krbsrvname, gsslib):
+                             target_session_attrs, krbsrvname, gsslib,
+                             get_reset_query):
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
                      'max_cached_statement_lifetime',
@@ -726,7 +728,9 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
         command_timeout=command_timeout,
         statement_cache_size=statement_cache_size,
         max_cached_statement_lifetime=max_cached_statement_lifetime,
-        max_cacheable_statement_size=max_cacheable_statement_size,)
+        max_cacheable_statement_size=max_cacheable_statement_size,
+        get_reset_query=get_reset_query,
+    )
 
     return addrs, params, config
 
