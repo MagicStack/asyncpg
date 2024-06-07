@@ -565,7 +565,7 @@ class TestConnectParams(tb.TestCase):
 
         {
             'name': 'dsn_bad_characters_maybe',
-            'dsn': 'postgres://eoapi:a2Vw%3Ayk%3D%29CdSis%5Bfek%5DtW%3D/o@eoapi-primary.default.svc:5432/eoapi',
+            'dsn': 'postgres://eoapi:a2Vw%3Ayk%3D%29CdSis%5Bfek%5DtW%3D%2Fo@eoapi-primary.default.svc:5432/eoapi',
             'result': ([('eoapi-primary.default.svc', 5432)], {
                 'user': 'eoapi',
                 'password': 'a2Vw:yk=)CdSis[fek]tW=/o',
