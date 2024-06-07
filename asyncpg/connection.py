@@ -2034,7 +2034,7 @@ async def connect(dsn=None, *,
         .. note::
 
            The URI must be *valid*, which means that all components must
-           be properly quoted with :py:func:`urllib.parse.quote`, and
+           be properly quoted with :py:func:`urllib.parse.quote_plus`, and
            any literal IPv6 addresses must be enclosed in square brackets.
            For example:
 
