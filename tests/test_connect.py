@@ -563,6 +563,26 @@ class TestConnectParams(tb.TestCase):
                 'target_session_attrs': 'any'})
         },
 
+        #postgresql://eoapi:a2Vw%3Ayk=%29CdSis%5Bfek%5DtW=%2Fo@eoapi-primary.default.svc:5432/eoapi
+        {
+            'name': 'dsn_bad_characters_maybe',
+            'env': {
+                'PGUSER': 'eoapi',
+                'PGDATABASE': 'eoapi',
+                'PGPASSWORD': 'a2Vw:yk=)CdSis[fek]tW=/o',
+                'PGHOST': 'eoapi-primary.default.svc',
+                'PGPORT': '5432',
+            },
+
+            'dsn': 'postgres://eoapi:"a2Vw:yk=)CdSis[fek]tW=/o"@eoapi-primary.default.svc:5432/eoapi',
+
+            'result': ([('eoapi-primary.default.svc', 5432)], {
+                'user': 'eoapi',
+                'password': 'a2Vw:yk=)CdSis[fek]tW=/o',
+                'database': 'eoapi',
+                'ssl': True})
+        },
+
         {
             'name': 'params_override_env_and_dsn_ssl_prefer',
             'env': {
