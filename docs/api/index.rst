@@ -36,14 +36,13 @@ a need to run the same query again.
 .. code-block:: pycon
 
    >>> import asyncpg, asyncio
-   >>> loop = asyncio.get_event_loop()
    >>> async def run():
    ...     conn = await asyncpg.connect()
    ...     stmt = await conn.prepare('''SELECT 2 ^ $1''')
    ...     print(await stmt.fetchval(10))
    ...     print(await stmt.fetchval(20))
    ...
-   >>> loop.run_until_complete(run())
+   >>> asyncio.run(run())
    1024.0
    1048576.0
 
