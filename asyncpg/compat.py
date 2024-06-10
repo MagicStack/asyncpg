@@ -53,6 +53,13 @@ async def wait_closed(stream: asyncio.StreamWriter) -> None:
 
 
 if sys.version_info < (3, 12):
+    def markcoroutinefunction(c):  # type: ignore
+        pass
+else:
+    from inspect import markcoroutinefunction  # noqa: F401
+
+
+if sys.version_info < (3, 12):
     from ._asyncio_compat import wait_for as wait_for  # noqa: F401
 else:
     from asyncio import wait_for as wait_for  # noqa: F401
