@@ -443,7 +443,7 @@ Web service that computes the requested power of two.
          app['pool'] = await asyncpg.create_pool(database='postgres',
                                                  user='postgres')
          yield
-         app['pool'].close()
+         await app['pool'].close()
 
  
     def init_app():
