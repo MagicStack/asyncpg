@@ -191,6 +191,12 @@ class Connection:
                 return_when=asyncio.FIRST_COMPLETED)
 
         finally:
+            if self.proxy_to_backend_task is not None:
+                self.proxy_to_backend_task.cancel()
+
+            if self.proxy_from_backend_task is not None:
+                self.proxy_from_backend_task.cancel()
+
             # Asyncio fails to properly remove the readers and writers
             # when the task doing recv() or send() is cancelled, so
             # we must remove the readers and writers manually before

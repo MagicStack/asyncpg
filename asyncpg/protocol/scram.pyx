@@ -9,17 +9,10 @@ import base64
 import hashlib
 import hmac
 import re
+import secrets
 import stringprep
 import unicodedata
 
-
-# try to import the secrets library from Python 3.6+ for the
-# cryptographic token generator for generating nonces as part of SCRAM
-# Otherwise fall back on os.urandom
-try:
-    from secrets import token_bytes as generate_token_bytes
-except ImportError:
-    from os import urandom as generate_token_bytes
 
 @cython.final
 cdef class SCRAMAuthentication:
@@ -163,12 +156,12 @@ cdef class SCRAMAuthentication:
         if not self.server_nonce.startswith(self.client_nonce):
             raise Exception("invalid nonce")
         try:
-            self.password_salt = re.search(b's=([^,]+),',
+            self.password_salt = re.search(b',s=([^,]+),',
                 self.server_first_message).group(1)
         except IndexError:
             raise Exception("could not get salt")
         try:
-            self.password_iterations = int(re.search(b'i=(\d+),?',
+            self.password_iterations = int(re.search(b',i=(\d+),?',
                 self.server_first_message).group(1))
         except (IndexError, TypeError, ValueError):
             raise Exception("could not get iterations")
@@ -198,7 +191,7 @@ cdef class SCRAMAuthentication:
         cdef:
             bytes token
 
-        token = generate_token_bytes(num_bytes)
+        token = secrets.token_bytes(num_bytes)
 
         return base64.b64encode(token)
 

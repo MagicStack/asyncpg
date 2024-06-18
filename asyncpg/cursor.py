@@ -7,7 +7,6 @@
 
 import collections
 
-from . import compat
 from . import connresource
 from . import exceptions
 
@@ -48,7 +47,6 @@ class CursorFactory(connresource.ConnectionResource):
         if state is not None:
             state.attach()
 
-    @compat.aiter_compat
     @connresource.guarded
     def __aiter__(self):
         prefetch = 50 if self._prefetch is None else self._prefetch
@@ -160,6 +158,17 @@ class BaseCursor(connresource.ConnectionResource):
             self._state, self._portal_name, n, True, timeout)
         return buffer
 
+    async def _close_portal(self, timeout):
+        self._check_ready()
+
+        if not self._portal_name:
+            raise exceptions.InterfaceError(
+                'cursor does not have an open portal')
+
+        protocol = self._connection._protocol
+        await protocol.close_portal(self._portal_name, timeout)
+        self._portal_name = None
+
     def __repr__(self):
         attrs = []
         if self._exhausted:
@@ -206,7 +215,6 @@ class CursorIterator(BaseCursor):
         self._prefetch = prefetch
         self._timeout = timeout
 
-    @compat.aiter_compat
     @connresource.guarded
     def __aiter__(self):
         return self
@@ -222,13 +230,16 @@ class CursorIterator(BaseCursor):
             )
             self._state.attach()
 
-        if not self._portal_name:
+        if not self._portal_name and not self._exhausted:
             buffer = await self._bind_exec(self._prefetch, self._timeout)
             self._buffer.extend(buffer)
 
         if not self._buffer and not self._exhausted:
             buffer = await self._exec(self._prefetch, self._timeout)
             self._buffer.extend(buffer)
+
+        if self._portal_name and self._exhausted:
+            await self._close_portal(self._timeout)
 
         if self._buffer:
             return self._buffer.popleft()

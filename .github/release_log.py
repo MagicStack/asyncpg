@@ -45,10 +45,7 @@ def main():
 
         print(f'* {first_line}')
         print(f'  (by {username} in {sha}', end='')
-        if issue_num:
-            print(f' for #{issue_num})')
-        else:
-            print(')')
+        print(')')
         print()
 
 

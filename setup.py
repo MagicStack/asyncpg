@@ -7,8 +7,8 @@
 
 import sys
 
-if sys.version_info < (3, 5):
-    raise RuntimeError('asyncpg requires Python 3.5 or greater')
+if sys.version_info < (3, 8):
+    raise RuntimeError('asyncpg requires Python 3.8 or greater')
 
 import os
 import os.path
@@ -25,35 +25,7 @@ from setuptools.command import sdist as setuptools_sdist
 from setuptools.command import build_ext as setuptools_build_ext
 
 
-CYTHON_DEPENDENCY = 'Cython(>=0.29.20,<0.30.0)'
-
-# Minimal dependencies required to test asyncpg.
-TEST_DEPENDENCIES = [
-    # pycodestyle is a dependency of flake8, but it must be frozen because
-    # their combination breaks too often
-    # (example breakage: https://gitlab.com/pycqa/flake8/issues/427)
-    'pycodestyle~=2.5.0',
-    'flake8~=3.7.9',
-    'uvloop~=0.14.0;platform_system!="Windows"',
-]
-
-# Dependencies required to build documentation.
-DOC_DEPENDENCIES = [
-    'Sphinx~=1.7.3',
-    'sphinxcontrib-asyncio~=0.2.0',
-    'sphinx_rtd_theme~=0.2.4',
-]
-
-EXTRA_DEPENDENCIES = {
-    'docs': DOC_DEPENDENCIES,
-    'test': TEST_DEPENDENCIES,
-    # Dependencies required to develop asyncpg.
-    'dev': [
-        CYTHON_DEPENDENCY,
-        'pytest>=3.6.0',
-    ] + DOC_DEPENDENCIES + TEST_DEPENDENCIES
-}
-
+CYTHON_DEPENDENCY = 'Cython(>=0.29.24,<0.30.0)'
 
 CFLAGS = ['-O2']
 LDFLAGS = []
@@ -71,7 +43,7 @@ with open(str(_ROOT / 'README.rst')) as f:
 
 with open(str(_ROOT / 'asyncpg' / '_version.py')) as f:
     for line in f:
-        if line.startswith('__version__ ='):
+        if line.startswith('__version__: typing.Final ='):
             _, _, version = line.partition('=')
             VERSION = version.strip(" \n'\"")
             break
@@ -174,6 +146,18 @@ class build_ext(setuptools_build_ext.build_ext):
         if getattr(self, '_initialized', False):
             return
 
+        if not self.cython_always:
+            self.cython_always = bool(os.environ.get(
+                "ASYNCPG_BUILD_CYTHON_ALWAYS"))
+
+        if self.cython_annotate is None:
+            self.cython_annotate = os.environ.get(
+                "ASYNCPG_BUILD_CYTHON_ANNOTATE")
+
+        if self.cython_directives is None:
+            self.cython_directives = os.environ.get(
+                "ASYNCPG_BUILD_CYTHON_DIRECTIVES")
+
         need_cythonize = self.cython_always
         cfiles = {}
 
@@ -239,44 +223,16 @@ class build_ext(setuptools_build_ext.build_ext):
 
 setup_requires = []
 
-if (not (_ROOT / 'asyncpg' / 'protocol' / 'protocol.c').exists() or
-        '--cython-always' in sys.argv):
+if (
+    not (_ROOT / 'asyncpg' / 'protocol' / 'protocol.c').exists()
+    or os.environ.get("ASYNCPG_BUILD_CYTHON_ALWAYS")
+):
     # No Cython output, require Cython to build.
     setup_requires.append(CYTHON_DEPENDENCY)
 
 
 setuptools.setup(
-    name='asyncpg',
     version=VERSION,
-    description='An asyncio PostgreSQL driver',
-    long_description=readme,
-    classifiers=[
-        'Development Status :: 5 - Production/Stable',
-        'Framework :: AsyncIO',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: Apache Software License',
-        'Operating System :: POSIX',
-        'Operating System :: MacOS :: MacOS X',
-        'Operating System :: Microsoft :: Windows',
-        'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: Implementation :: CPython',
-        'Topic :: Database :: Front-Ends',
-    ],
-    platforms=['macOS', 'POSIX', 'Windows'],
-    python_requires='>=3.5.0',
-    zip_safe=False,
-    author='MagicStack Inc',
-    author_email='hello@magic.io',
-    url='https://github.com/MagicStack/asyncpg',
-    license='Apache License, Version 2.0',
-    packages=['asyncpg'],
-    provides=['asyncpg'],
-    include_package_data=True,
     ext_modules=[
         setuptools.extension.Extension(
             "asyncpg.pgproto.pgproto",
@@ -292,9 +248,6 @@ setuptools.setup(
             extra_compile_args=CFLAGS,
             extra_link_args=LDFLAGS),
     ],
-    install_requires=['typing-extensions>=3.7.4.3;python_version<"3.8"'],
     cmdclass={'build_ext': build_ext, 'build_py': build_py, 'sdist': sdist},
-    test_suite='tests.suite',
-    extras_require=EXTRA_DEPENDENCIES,
     setup_requires=setup_requires,
 )

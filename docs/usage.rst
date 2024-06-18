@@ -73,7 +73,12 @@ The table below shows the correspondence between PostgreSQL and Python types.
 +----------------------+-----------------------------------------------------+
 | ``anyenum``          | :class:`str <python:str>`                           |
 +----------------------+-----------------------------------------------------+
-| ``anyrange``         | :class:`asyncpg.Range <asyncpg.types.Range>`        |
+| ``anyrange``         | :class:`asyncpg.Range <asyncpg.types.Range>`,       |
+|                      | :class:`tuple <python:tuple>`                       |
++----------------------+-----------------------------------------------------+
+| ``anymultirange``    | ``list[``:class:`asyncpg.Range\                     |
+|                      | <asyncpg.types.Range>` ``]``,                       |
+|                      | ``list[``:class:`tuple <python:tuple>` ``]`` [#f1]_ |
 +----------------------+-----------------------------------------------------+
 | ``record``           | :class:`asyncpg.Record`,                            |
 |                      | :class:`tuple <python:tuple>`,                      |
@@ -104,7 +109,7 @@ The table below shows the correspondence between PostgreSQL and Python types.
 |                      | :class:`ipaddress.IPv4Address\                      |
 |                      | <python:ipaddress.IPv4Address>`,                    |
 |                      | :class:`ipaddress.IPv6Address\                      |
-|                      | <python:ipaddress.IPv6Address>` [#f1]_              |
+|                      | <python:ipaddress.IPv6Address>` [#f2]_              |
 +----------------------+-----------------------------------------------------+
 | ``macaddr``          | :class:`str <python:str>`                           |
 +----------------------+-----------------------------------------------------+
@@ -127,7 +132,7 @@ The table below shows the correspondence between PostgreSQL and Python types.
 | ``interval``         | :class:`datetime.timedelta \                        |
 |                      | <python:datetime.timedelta>`                        |
 +----------------------+-----------------------------------------------------+
-| ``float``,           | :class:`float <python:float>` [#f2]_                |
+| ``float``,           | :class:`float <python:float>` [#f3]_                |
 | ``double precision`` |                                                     |
 +----------------------+-----------------------------------------------------+
 | ``smallint``,        | :class:`int <python:int>`                           |
@@ -158,10 +163,12 @@ The table below shows the correspondence between PostgreSQL and Python types.
 
 All other types are encoded and decoded as text by default.
 
-.. [#f1] Prior to version 0.20.0, asyncpg erroneously treated ``inet`` values
+.. [#f1] Since version 0.25.0
+
+.. [#f2] Prior to version 0.20.0, asyncpg erroneously treated ``inet`` values
          with prefix as ``IPvXNetwork`` instead of ``IPvXInterface``.
 
-.. [#f2] Inexact single-precision ``float`` values may have a different
+.. [#f3] Inexact single-precision ``float`` values may have a different
          representation when decoded into a Python float.  This is inherent
          to the implementation of limited-precision floating point types.
          If you need the decimal representation to match, cast the expression
@@ -209,7 +216,46 @@ JSON values using the :mod:`json <python:json>` module.
         finally:
             await conn.close()
 
-    asyncio.get_event_loop().run_until_complete(main())
+    asyncio.run(main())
+
+
+Example: complex types
+~~~~~~~~~~~~~~~~~~~~~~
+
+The example below shows how to configure asyncpg to encode and decode
+Python :class:`complex <python:complex>` values to a custom composite
+type in PostgreSQL.
+
+.. code-block:: python
+
+    import asyncio
+    import asyncpg
+
+
+    async def main():
+        conn = await asyncpg.connect()
+
+        try:
+            await conn.execute(
+                '''
+                CREATE TYPE mycomplex AS (
+                    r float,
+                    i float
+                );'''
+            )
+            await conn.set_type_codec(
+                'complex',
+                encoder=lambda x: (x.real, x.imag),
+                decoder=lambda t: complex(t[0], t[1]),
+                format='tuple',
+            )
+
+            res = await conn.fetchval('SELECT $1::mycomplex', (1+2j))
+
+        finally:
+            await conn.close()
+
+    asyncio.run(main())
 
 
 Example: automatic conversion of PostGIS types
@@ -242,7 +288,7 @@ will work.
                 if not hasattr(geometry, '__geo_interface__'):
                     raise TypeError('{g} does not conform to '
                                     'the geo interface'.format(g=geometry))
-                shape = shapely.geometry.asShape(geometry)
+                shape = shapely.geometry.shape(geometry)
                 return shapely.wkb.dumps(shape)
 
             def decode_geometry(wkb):
@@ -267,7 +313,7 @@ will work.
         finally:
             await conn.close()
 
-    asyncio.get_event_loop().run_until_complete(main())
+    asyncio.run(main())
 
 
 Example: decoding numeric columns as floats
@@ -392,20 +438,26 @@ Web service that computes the requested power of two.
                     text="2 ^ {} is {}".format(power, result))
 
 
-    async def init_app():
+    async def init_db(app):
+        """Initialize a connection pool."""
+         app['pool'] = await asyncpg.create_pool(database='postgres',
+                                                 user='postgres')
+         yield
+         app['pool'].close()
+
+ 
+    def init_app():
         """Initialize the application server."""
         app = web.Application()
-        # Create a database connection pool
-        app['pool'] = await asyncpg.create_pool(database='postgres',
-                                                user='postgres')
+        # Create a database context
+        app.cleanup_ctx.append(init_db)
         # Configure service routes
         app.router.add_route('GET', '/{power:\d+}', handle)
         app.router.add_route('GET', '/', handle)
         return app
 
 
-    loop = asyncio.get_event_loop()
-    app = loop.run_until_complete(init_app())
+    app = init_app()
     web.run_app(app)
 
 See :ref:`asyncpg-api-pool` API documentation for more information.

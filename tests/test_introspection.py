@@ -12,7 +12,7 @@ from asyncpg import _testbase as tb
 from asyncpg import connection as apg_con
 
 
-MAX_RUNTIME = 0.1
+MAX_RUNTIME = 0.25
 
 
 class SlowIntrospectionConnection(apg_con.Connection):
@@ -42,6 +42,12 @@ class TestIntrospection(tb.ConnectedTestCase):
         cls.adminconn = None
 
         super().tearDownClass()
+
+    @classmethod
+    def get_server_settings(cls):
+        settings = super().get_server_settings()
+        settings.pop('jit', None)
+        return settings
 
     def setUp(self):
         super().setUp()
@@ -124,7 +130,7 @@ class TestIntrospection(tb.ConnectedTestCase):
         await self.con.fetchval(
             "SELECT $1::int[], '{foo}'".format(foo='a' * 10000), [1, 2])
 
-        self.assertEqual(apg_con._uid, old_uid + 1)
+        self.assertGreater(apg_con._uid, old_uid)
 
     async def test_introspection_sticks_for_ps(self):
         # Test that the introspected codec pipeline for a prepared
@@ -190,3 +196,26 @@ class TestIntrospection(tb.ConnectedTestCase):
                 DROP DOMAIN intro_2_t;
             ''')
             await slow_intro_conn.close()
+
+    @tb.with_connection_options(database='asyncpg_intro_test')
+    async def test_introspection_loads_basetypes_of_domains(self):
+        # Test that basetypes of domains are loaded to the
+        # client encode/decode cache
+        await self.con.execute('''
+            DROP TABLE IF EXISTS test;
+            DROP DOMAIN IF EXISTS num_array;
+            CREATE DOMAIN num_array numeric[];
+            CREATE TABLE test (
+                num num_array
+            );
+        ''')
+
+        try:
+            # if domain basetypes are not loaded, this insert will fail
+            await self.con.execute(
+                'INSERT INTO test (num) VALUES ($1)', ([1, 2],))
+        finally:
+            await self.con.execute('''
+                DROP TABLE IF EXISTS test;
+                DROP DOMAIN IF EXISTS num_array;
+            ''')

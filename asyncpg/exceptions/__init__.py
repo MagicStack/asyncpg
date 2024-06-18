@@ -337,6 +337,10 @@ class DuplicateJsonObjectKeyValueError(DataError):
     sqlstate = '22030'
 
 
+class InvalidArgumentForSQLJsonDatetimeFunctionError(DataError):
+    sqlstate = '22031'
+
+
 class InvalidJsonTextError(DataError):
     sqlstate = '22032'
 
@@ -391,6 +395,10 @@ class TooManyJsonObjectMembersError(DataError):
 
 class SQLJsonScalarRequiredError(DataError):
     sqlstate = '2203F'
+
+
+class SQLJsonItemCannotBeCastToTargetTypeError(DataError):
+    sqlstate = '2203G'
 
 
 class IntegrityConstraintViolationError(_base.PostgresError):
@@ -872,6 +880,10 @@ class DatabaseDroppedError(OperatorInterventionError):
     sqlstate = '57P04'
 
 
+class IdleSessionTimeoutError(OperatorInterventionError):
+    sqlstate = '57P05'
+
+
 class PostgresSystemError(_base.PostgresError):
     sqlstate = '58000'
 
@@ -1040,7 +1052,7 @@ class IndexCorruptedError(InternalServerError):
     sqlstate = 'XX002'
 
 
-__all__ = _base.__all__ + (
+__all__ = (
     'ActiveSQLTransactionError', 'AdminShutdownError',
     'AmbiguousAliasError', 'AmbiguousColumnError',
     'AmbiguousFunctionError', 'AmbiguousParameterError',
@@ -1086,8 +1098,8 @@ __all__ = _base.__all__ + (
     'ForeignKeyViolationError', 'FunctionExecutedNoReturnStatementError',
     'GeneratedAlwaysError', 'GroupingError',
     'HeldCursorRequiresSameIsolationLevelError',
-    'IdleInTransactionSessionTimeoutError', 'ImplicitZeroBitPadding',
-    'InFailedSQLTransactionError',
+    'IdleInTransactionSessionTimeoutError', 'IdleSessionTimeoutError',
+    'ImplicitZeroBitPadding', 'InFailedSQLTransactionError',
     'InappropriateAccessModeForBranchTransactionError',
     'InappropriateIsolationLevelForBranchTransactionError',
     'IndeterminateCollationError', 'IndeterminateDatatypeError',
@@ -1098,6 +1110,7 @@ __all__ = _base.__all__ + (
     'InvalidArgumentForNthValueFunctionError',
     'InvalidArgumentForNtileFunctionError',
     'InvalidArgumentForPowerFunctionError',
+    'InvalidArgumentForSQLJsonDatetimeFunctionError',
     'InvalidArgumentForWidthBucketFunctionError',
     'InvalidAuthorizationSpecificationError',
     'InvalidBinaryRepresentationError', 'InvalidCachedStatementError',
@@ -1154,6 +1167,7 @@ __all__ = _base.__all__ + (
     'ReadingExternalRoutineSQLDataNotPermittedError',
     'ReadingSQLDataNotPermittedError', 'ReservedNameError',
     'RestrictViolationError', 'SQLJsonArrayNotFoundError',
+    'SQLJsonItemCannotBeCastToTargetTypeError',
     'SQLJsonMemberNotFoundError', 'SQLJsonNumberNotFoundError',
     'SQLJsonObjectNotFoundError', 'SQLJsonScalarRequiredError',
     'SQLRoutineError', 'SQLStatementNotYetCompleteError',
@@ -1180,3 +1194,5 @@ __all__ = _base.__all__ + (
     'WindowingError', 'WithCheckOptionViolationError',
     'WrongObjectTypeError', 'ZeroLengthCharacterStringError'
 )
+
+__all__ += _base.__all__

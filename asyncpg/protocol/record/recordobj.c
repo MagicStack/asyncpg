@@ -63,7 +63,7 @@ ApgRecord_New(PyTypeObject *type, PyObject *desc, Py_ssize_t size)
             return PyErr_NoMemory();
         }
         o = (ApgRecordObject *)type->tp_alloc(type, size);
-        if (!_ApgObject_GC_IS_TRACKED(o)) {
+        if (!_ApgObject_GC_IS_TRACKED((PyObject *)o)) {
             PyErr_SetString(
                 PyExc_TypeError,
                 "record subclass is not tracked by GC"
@@ -451,16 +451,31 @@ record_subscript(ApgRecordObject* o, PyObject* item)
 }
 
 
+static const char *
+get_typename(PyTypeObject *type)
+{
+    assert(type->tp_name != NULL);
+    const char *s = strrchr(type->tp_name, '.');
+    if (s == NULL) {
+        s = type->tp_name;
+    }
+    else {
+        s++;
+    }
+    return s;
+}
+
+
 static PyObject *
 record_repr(ApgRecordObject *v)
 {
     Py_ssize_t i, n;
-    PyObject *keys_iter;
+    PyObject *keys_iter, *type_prefix;
     _PyUnicodeWriter writer;
 
     n = Py_SIZE(v);
     if (n == 0) {
-        return PyUnicode_FromString("<Record>");
+        return PyUnicode_FromFormat("<%s>", get_typename(Py_TYPE(v)));
     }
 
     keys_iter = PyObject_GetIter(v->desc->keys);
@@ -471,16 +486,22 @@ record_repr(ApgRecordObject *v)
     i = Py_ReprEnter((PyObject *)v);
     if (i != 0) {
         Py_DECREF(keys_iter);
-        return i > 0 ? PyUnicode_FromString("<Record ...>") : NULL;
+        if (i > 0) {
+            return PyUnicode_FromFormat("<%s ...>", get_typename(Py_TYPE(v)));
+        }
+        return NULL;
     }
 
     _PyUnicodeWriter_Init(&writer);
     writer.overallocate = 1;
     writer.min_length = 12; /* <Record a=1> */
 
-    if (_PyUnicodeWriter_WriteASCIIString(&writer, "<Record ", 8) < 0) {
+    type_prefix = PyUnicode_FromFormat("<%s ", get_typename(Py_TYPE(v)));
+    if (_PyUnicodeWriter_WriteStr(&writer, type_prefix) < 0) {
+        Py_DECREF(type_prefix);
         goto error;
     }
+    Py_DECREF(type_prefix);
 
     for (i = 0; i < n; ++i) {
         PyObject *key;

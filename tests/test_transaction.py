@@ -188,6 +188,7 @@ class TestTransaction(tb.ConnectedTestCase):
         isolation_levels = {
             None: default_isolation,
             'read_committed': 'read committed',
+            'read_uncommitted': 'read uncommitted',
             'repeatable_read': 'repeatable read',
             'serializable': 'serializable',
         }
@@ -214,6 +215,7 @@ class TestTransaction(tb.ConnectedTestCase):
         set_sql = 'SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL '
         isolation_levels = {
             'read_committed': 'read committed',
+            'read_uncommitted': 'read uncommitted',
             'repeatable_read': 'repeatable read',
             'serializable': 'serializable',
         }

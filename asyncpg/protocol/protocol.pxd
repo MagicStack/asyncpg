@@ -31,7 +31,6 @@ cdef class BaseProtocol(CoreProtocol):
 
     cdef:
         object loop
-        object address
         ConnectionSettings settings
         object cancel_sent_waiter
         object cancel_waiter
@@ -39,8 +38,6 @@ cdef class BaseProtocol(CoreProtocol):
         bint return_extra
         object create_future
         object timeout_handle
-        object timeout_callback
-        object completed_callback
         object conref
         type record_class
         bint is_reading

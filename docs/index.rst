@@ -1,5 +1,6 @@
-.. image:: https://travis-ci.org/MagicStack/asyncpg.svg?branch=master
-    :target: https://travis-ci.org/MagicStack/asyncpg
+.. image:: https://github.com/MagicStack/asyncpg/workflows/Tests/badge.svg
+   :target: https://github.com/MagicStack/asyncpg/actions?query=workflow%3ATests+branch%3Amaster
+   :alt: GitHub Actions status
 
 .. image:: https://img.shields.io/pypi/status/asyncpg.svg?maxAge=2592000?style=plastic
     :target: https://pypi.python.org/pypi/asyncpg
@@ -14,8 +15,9 @@ PostgreSQL and Python/asyncio.  asyncpg is an efficient, clean implementation
 of PostgreSQL server binary protocol for use with Python's ``asyncio``
 framework.
 
-**asyncpg** requires Python 3.5 or later and is supported for PostgreSQL
-versions 9.5 to 13.
+**asyncpg** requires Python 3.8 or later and is supported for PostgreSQL
+versions 9.5 to 16.  Older PostgreSQL versions or other databases implementing
+the PostgreSQL protocol *may* work, but are not being actively tested.
 
 Contents
 --------

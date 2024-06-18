@@ -14,7 +14,6 @@ import warnings
 
 from . import compat
 from . import connection
-from . import connect_utils
 from . import exceptions
 from . import protocol
 
@@ -42,10 +41,6 @@ class PoolConnectionProxyMeta(type):
                 dct['__doc__'] = connection.Connection.__doc__
 
         return super().__new__(mcls, name, bases, dct)
-
-    def __init__(cls, name, bases, dct, *, wrap=False):
-        # Needed for Python 3.5 to handle `wrap` class keyword argument.
-        super().__init__(name, bases, dct)
 
     @staticmethod
     def _wrap_connection_method(meth_name):
@@ -117,6 +112,12 @@ class PoolConnectionHolder:
         self._in_use = None  # type: asyncio.Future
         self._timeout = None
         self._generation = None
+
+    def is_connected(self):
+        return self._con is not None and not self._con.is_closed()
+
+    def is_idle(self):
+        return not self._in_use
 
     async def connect(self):
         if self._con is not None:
@@ -309,7 +310,6 @@ class Pool:
     __slots__ = (
         '_queue', '_loop', '_minsize', '_maxsize',
         '_init', '_connect_args', '_connect_kwargs',
-        '_working_addr', '_working_config', '_working_params',
         '_holders', '_initialized', '_initializing', '_closing',
         '_closed', '_connection_class', '_record_class', '_generation',
         '_setup', '_max_queries', '_max_inactive_connection_lifetime'
@@ -375,10 +375,6 @@ class Pool:
         self._initializing = False
         self._queue = None
 
-        self._working_addr = None
-        self._working_config = None
-        self._working_params = None
-
         self._connection_class = connection_class
         self._record_class = record_class
 
@@ -428,9 +424,8 @@ class Pool:
             # first few connections in the queue, therefore we want to walk
             # `self._holders` in reverse.
 
-            # Connect the first connection holder in the queue so that it
-            # can record `_working_addr` and `_working_opts`, which will
-            # speed up successive connection attempts.
+            # Connect the first connection holder in the queue so that
+            # any connection issues are visible early.
             first_ch = self._holders[-1]  # type: PoolConnectionHolder
             await first_ch.connect()
 
@@ -443,6 +438,41 @@ class Pool:
                     connect_tasks.append(ch.connect())
 
                 await asyncio.gather(*connect_tasks)
+
+    def is_closing(self):
+        """Return ``True`` if the pool is closing or is closed.
+
+        .. versionadded:: 0.28.0
+        """
+        return self._closed or self._closing
+
+    def get_size(self):
+        """Return the current number of connections in this pool.
+
+        .. versionadded:: 0.25.0
+        """
+        return sum(h.is_connected() for h in self._holders)
+
+    def get_min_size(self):
+        """Return the minimum number of connections in this pool.
+
+        .. versionadded:: 0.25.0
+        """
+        return self._minsize
+
+    def get_max_size(self):
+        """Return the maximum allowed number of connections in this pool.
+
+        .. versionadded:: 0.25.0
+        """
+        return self._maxsize
+
+    def get_idle_size(self):
+        """Return the current number of idle connections in this pool.
+
+        .. versionadded:: 0.25.0
+        """
+        return sum(h.is_connected() and h.is_idle() for h in self._holders)
 
     def set_connect_args(self, dsn=None, **connect_kwargs):
         r"""Set the new connection arguments for this pool.
@@ -467,36 +497,15 @@ class Pool:
 
         self._connect_args = [dsn]
         self._connect_kwargs = connect_kwargs
-        self._working_addr = None
-        self._working_config = None
-        self._working_params = None
 
     async def _get_new_connection(self):
-        if self._working_addr is None:
-            # First connection attempt on this pool.
-            con = await connection.connect(
-                *self._connect_args,
-                loop=self._loop,
-                connection_class=self._connection_class,
-                record_class=self._record_class,
-                **self._connect_kwargs)
-
-            self._working_addr = con._addr
-            self._working_config = con._config
-            self._working_params = con._params
-
-        else:
-            # We've connected before and have a resolved address,
-            # and parsed options and config.
-            con = await connect_utils._connect_addr(
-                loop=self._loop,
-                addr=self._working_addr,
-                timeout=self._working_params.connect_timeout,
-                config=self._working_config,
-                params=self._working_params,
-                connection_class=self._connection_class,
-                record_class=self._record_class,
-            )
+        con = await connection.connect(
+            *self._connect_args,
+            loop=self._loop,
+            connection_class=self._connection_class,
+            record_class=self._record_class,
+            **self._connect_kwargs,
+        )
 
         if self._init is not None:
             try:
@@ -522,7 +531,7 @@ class Pool:
 
         Pool performs this operation using one of its connections.  Other than
         that, it behaves identically to
-        :meth:`Connection.execute() <connection.Connection.execute>`.
+        :meth:`Connection.execute() <asyncpg.connection.Connection.execute>`.
 
         .. versionadded:: 0.10.0
         """
@@ -534,31 +543,44 @@ class Pool:
 
         Pool performs this operation using one of its connections.  Other than
         that, it behaves identically to
-        :meth:`Connection.executemany() <connection.Connection.executemany>`.
+        :meth:`Connection.executemany()
+        <asyncpg.connection.Connection.executemany>`.
 
         .. versionadded:: 0.10.0
         """
         async with self.acquire() as con:
             return await con.executemany(command, args, timeout=timeout)
 
-    async def fetch(self, query, *args, timeout=None) -> list:
+    async def fetch(
+        self,
+        query,
+        *args,
+        timeout=None,
+        record_class=None
+    ) -> list:
         """Run a query and return the results as a list of :class:`Record`.
 
         Pool performs this operation using one of its connections.  Other than
         that, it behaves identically to
-        :meth:`Connection.fetch() <connection.Connection.fetch>`.
+        :meth:`Connection.fetch() <asyncpg.connection.Connection.fetch>`.
 
         .. versionadded:: 0.10.0
         """
         async with self.acquire() as con:
-            return await con.fetch(query, *args, timeout=timeout)
+            return await con.fetch(
+                query,
+                *args,
+                timeout=timeout,
+                record_class=record_class
+            )
 
     async def fetchval(self, query, *args, column=0, timeout=None):
         """Run a query and return a value in the first row.
 
         Pool performs this operation using one of its connections.  Other than
         that, it behaves identically to
-        :meth:`Connection.fetchval() <connection.Connection.fetchval>`.
+        :meth:`Connection.fetchval()
+        <asyncpg.connection.Connection.fetchval>`.
 
         .. versionadded:: 0.10.0
         """
@@ -566,17 +588,191 @@ class Pool:
             return await con.fetchval(
                 query, *args, column=column, timeout=timeout)
 
-    async def fetchrow(self, query, *args, timeout=None):
+    async def fetchrow(self, query, *args, timeout=None, record_class=None):
         """Run a query and return the first row.
 
         Pool performs this operation using one of its connections.  Other than
         that, it behaves identically to
-        :meth:`Connection.fetchrow() <connection.Connection.fetchrow>`.
+        :meth:`Connection.fetchrow() <asyncpg.connection.Connection.fetchrow>`.
 
         .. versionadded:: 0.10.0
         """
         async with self.acquire() as con:
-            return await con.fetchrow(query, *args, timeout=timeout)
+            return await con.fetchrow(
+                query,
+                *args,
+                timeout=timeout,
+                record_class=record_class
+            )
+
+    async def copy_from_table(
+        self,
+        table_name,
+        *,
+        output,
+        columns=None,
+        schema_name=None,
+        timeout=None,
+        format=None,
+        oids=None,
+        delimiter=None,
+        null=None,
+        header=None,
+        quote=None,
+        escape=None,
+        force_quote=None,
+        encoding=None
+    ):
+        """Copy table contents to a file or file-like object.
+
+        Pool performs this operation using one of its connections.  Other than
+        that, it behaves identically to
+        :meth:`Connection.copy_from_table()
+        <asyncpg.connection.Connection.copy_from_table>`.
+
+        .. versionadded:: 0.24.0
+        """
+        async with self.acquire() as con:
+            return await con.copy_from_table(
+                table_name,
+                output=output,
+                columns=columns,
+                schema_name=schema_name,
+                timeout=timeout,
+                format=format,
+                oids=oids,
+                delimiter=delimiter,
+                null=null,
+                header=header,
+                quote=quote,
+                escape=escape,
+                force_quote=force_quote,
+                encoding=encoding
+            )
+
+    async def copy_from_query(
+        self,
+        query,
+        *args,
+        output,
+        timeout=None,
+        format=None,
+        oids=None,
+        delimiter=None,
+        null=None,
+        header=None,
+        quote=None,
+        escape=None,
+        force_quote=None,
+        encoding=None
+    ):
+        """Copy the results of a query to a file or file-like object.
+
+        Pool performs this operation using one of its connections.  Other than
+        that, it behaves identically to
+        :meth:`Connection.copy_from_query()
+        <asyncpg.connection.Connection.copy_from_query>`.
+
+        .. versionadded:: 0.24.0
+        """
+        async with self.acquire() as con:
+            return await con.copy_from_query(
+                query,
+                *args,
+                output=output,
+                timeout=timeout,
+                format=format,
+                oids=oids,
+                delimiter=delimiter,
+                null=null,
+                header=header,
+                quote=quote,
+                escape=escape,
+                force_quote=force_quote,
+                encoding=encoding
+            )
+
+    async def copy_to_table(
+        self,
+        table_name,
+        *,
+        source,
+        columns=None,
+        schema_name=None,
+        timeout=None,
+        format=None,
+        oids=None,
+        freeze=None,
+        delimiter=None,
+        null=None,
+        header=None,
+        quote=None,
+        escape=None,
+        force_quote=None,
+        force_not_null=None,
+        force_null=None,
+        encoding=None,
+        where=None
+    ):
+        """Copy data to the specified table.
+
+        Pool performs this operation using one of its connections.  Other than
+        that, it behaves identically to
+        :meth:`Connection.copy_to_table()
+        <asyncpg.connection.Connection.copy_to_table>`.
+
+        .. versionadded:: 0.24.0
+        """
+        async with self.acquire() as con:
+            return await con.copy_to_table(
+                table_name,
+                source=source,
+                columns=columns,
+                schema_name=schema_name,
+                timeout=timeout,
+                format=format,
+                oids=oids,
+                freeze=freeze,
+                delimiter=delimiter,
+                null=null,
+                header=header,
+                quote=quote,
+                escape=escape,
+                force_quote=force_quote,
+                force_not_null=force_not_null,
+                force_null=force_null,
+                encoding=encoding,
+                where=where
+            )
+
+    async def copy_records_to_table(
+        self,
+        table_name,
+        *,
+        records,
+        columns=None,
+        schema_name=None,
+        timeout=None,
+        where=None
+    ):
+        """Copy a list of records to the specified table using binary COPY.
+
+        Pool performs this operation using one of its connections.  Other than
+        that, it behaves identically to
+        :meth:`Connection.copy_records_to_table()
+        <asyncpg.connection.Connection.copy_records_to_table>`.
+
+        .. versionadded:: 0.24.0
+        """
+        async with self.acquire() as con:
+            return await con.copy_records_to_table(
+                table_name,
+                records=records,
+                columns=columns,
+                schema_name=schema_name,
+                timeout=timeout,
+                where=where
+            )
 
     def acquire(self, *, timeout=None):
         """Acquire a database connection from the pool.
@@ -844,12 +1040,12 @@ def create_pool(dsn=None, *,
 
     .. warning::
         Prepared statements and cursors returned by
-        :meth:`Connection.prepare() <connection.Connection.prepare>` and
-        :meth:`Connection.cursor() <connection.Connection.cursor>` become
-        invalid once the connection is released.  Likewise, all notification
-        and log listeners are removed, and ``asyncpg`` will issue a warning
-        if there are any listener callbacks registered on a connection that
-        is being released to the pool.
+        :meth:`Connection.prepare() <asyncpg.connection.Connection.prepare>`
+        and :meth:`Connection.cursor() <asyncpg.connection.Connection.cursor>`
+        become invalid once the connection is released.  Likewise, all
+        notification and log listeners are removed, and ``asyncpg`` will
+        issue a warning if there are any listener callbacks registered on a
+        connection that is being released to the pool.
 
     :param str dsn:
         Connection arguments specified using as a single string in
@@ -915,10 +1111,11 @@ def create_pool(dsn=None, *,
     .. versionchanged:: 0.13.0
        An :exc:`~asyncpg.exceptions.InterfaceWarning` will be produced
        if there are any active listeners (added via
-       :meth:`Connection.add_listener() <connection.Connection.add_listener>`
+       :meth:`Connection.add_listener()
+       <asyncpg.connection.Connection.add_listener>`
        or :meth:`Connection.add_log_listener()
-       <connection.Connection.add_log_listener>`) present on the connection
-       at the moment of its release to the pool.
+       <asyncpg.connection.Connection.add_log_listener>`) present on the
+       connection at the moment of its release to the pool.
 
     .. versionchanged:: 0.22.0
        Added the *record_class* parameter.

@@ -12,8 +12,10 @@ import textwrap
 
 __all__ = ('PostgresError', 'FatalPostgresError', 'UnknownPostgresError',
            'InterfaceError', 'InterfaceWarning', 'PostgresLogMessage',
+           'ClientConfigurationError',
            'InternalClientError', 'OutdatedSchemaCacheError', 'ProtocolError',
-           'UnsupportedClientFeatureError')
+           'UnsupportedClientFeatureError', 'TargetServerAttributeNotMatched',
+           'UnsupportedServerFeatureError')
 
 
 def _is_asyncpg_class(cls):
@@ -220,12 +222,20 @@ class InterfaceError(InterfaceMessage, Exception):
         )
 
 
+class ClientConfigurationError(InterfaceError, ValueError):
+    """An error caused by improper client configuration."""
+
+
 class DataError(InterfaceError, ValueError):
     """An error caused by invalid query input."""
 
 
 class UnsupportedClientFeatureError(InterfaceError):
     """Requested feature is unsupported by asyncpg."""
+
+
+class UnsupportedServerFeatureError(InterfaceError):
+    """Requested feature is unsupported by PostgreSQL server."""
 
 
 class InterfaceWarning(InterfaceMessage, UserWarning):
@@ -242,6 +252,10 @@ class InternalClientError(Exception):
 
 class ProtocolError(InternalClientError):
     """Unexpected condition in the handling of PostgreSQL protocol input."""
+
+
+class TargetServerAttributeNotMatched(InternalClientError):
+    """Could not find a host that satisfies the target attribute requirement"""
 
 
 class OutdatedSchemaCacheError(InternalClientError):

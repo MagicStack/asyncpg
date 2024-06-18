@@ -4,20 +4,35 @@
 Installation
 ============
 
-**asyncpg** has no external dependencies and the recommended way to
-install it is to use **pip**:
+**asyncpg** has no external dependencies when not using GSSAPI/SSPI
+authentication.  The recommended way to install it is to use **pip**:
 
 .. code-block:: bash
 
     $ pip install asyncpg
 
+If you need GSSAPI/SSPI authentication, the recommended way is to use
 
-.. note::
+.. code-block:: bash
 
-   It is recommended to use **pip** version **8.1** or later to take
-   advantage of the precompiled wheel packages.  Older versions of pip
-   will ignore the wheel packages and install asyncpg from the source
-   package.  In that case a working C compiler is required.
+    $ pip install 'asyncpg[gssauth]'
+
+This installs SSPI support on Windows and GSSAPI support on non-Windows
+platforms.  SSPI and GSSAPI interoperate as clients and servers: an SSPI
+client can authenticate to a GSSAPI server and vice versa.
+
+On Linux installing GSSAPI requires a working C compiler and Kerberos 5
+development files.  The latter can be obtained by installing **libkrb5-dev**
+package on Debian/Ubuntu or **krb5-devel** on RHEL/Fedora.  (This is needed
+because PyPI does not have Linux wheels for **gssapi**. See `here for the
+details <https://github.com/pythongssapi/python-gssapi/issues/200#issuecomment-1032934269>`_.)
+
+It is also possible to use GSSAPI on Windows:
+
+  * `pip install gssapi`
+  * Install `Kerberos for Windows <https://web.mit.edu/kerberos/dist/>`_.
+  * Set the ``gsslib`` parameter or the ``PGGSSLIB`` environment variable to
+    `gssapi` when connecting.
 
 
 Building from source

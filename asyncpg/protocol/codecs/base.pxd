@@ -23,12 +23,13 @@ ctypedef object (*codec_decode_func)(Codec codec,
 
 
 cdef enum CodecType:
-    CODEC_UNDEFINED = 0
-    CODEC_C         = 1
-    CODEC_PY        = 2
-    CODEC_ARRAY     = 3
-    CODEC_COMPOSITE = 4
-    CODEC_RANGE     = 5
+    CODEC_UNDEFINED  = 0
+    CODEC_C          = 1
+    CODEC_PY         = 2
+    CODEC_ARRAY      = 3
+    CODEC_COMPOSITE  = 4
+    CODEC_RANGE      = 5
+    CODEC_MULTIRANGE = 6
 
 
 cdef enum ServerDataFormat:
@@ -56,6 +57,7 @@ cdef class Codec:
 
         encode_func     c_encoder
         decode_func     c_decoder
+        Codec           base_codec
 
         object          py_encoder
         object          py_decoder
@@ -78,6 +80,7 @@ cdef class Codec:
               CodecType type, ServerDataFormat format,
               ClientExchangeFormat xformat,
               encode_func c_encoder, decode_func c_decoder,
+              Codec base_codec,
               object py_encoder, object py_decoder,
               Codec element_codec, tuple element_type_oids,
               object element_names, list element_codecs,
@@ -95,6 +98,9 @@ cdef class Codec:
     cdef encode_range(self, ConnectionSettings settings, WriteBuffer buf,
                       object obj)
 
+    cdef encode_multirange(self, ConnectionSettings settings, WriteBuffer buf,
+                           object obj)
+
     cdef encode_composite(self, ConnectionSettings settings, WriteBuffer buf,
                           object obj)
 
@@ -108,6 +114,8 @@ cdef class Codec:
     cdef decode_array_text(self, ConnectionSettings settings, FRBuffer *buf)
 
     cdef decode_range(self, ConnectionSettings settings, FRBuffer *buf)
+
+    cdef decode_multirange(self, ConnectionSettings settings, FRBuffer *buf)
 
     cdef decode_composite(self, ConnectionSettings settings, FRBuffer *buf)
 
@@ -140,6 +148,12 @@ cdef class Codec:
                                Codec element_codec)
 
     @staticmethod
+    cdef Codec new_multirange_codec(uint32_t oid,
+                                    str name,
+                                    str schema,
+                                    Codec element_codec)
+
+    @staticmethod
     cdef Codec new_composite_codec(uint32_t oid,
                                    str name,
                                    str schema,
@@ -157,6 +171,7 @@ cdef class Codec:
                                 object decoder,
                                 encode_func c_encoder,
                                 decode_func c_decoder,
+                                Codec base_codec,
                                 ServerDataFormat format,
                                 ClientExchangeFormat xformat)
 

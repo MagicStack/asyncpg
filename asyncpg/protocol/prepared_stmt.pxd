@@ -10,6 +10,7 @@ cdef class PreparedStatementState:
         readonly str name
         readonly str query
         readonly bint closed
+        readonly bint prepared
         readonly int refs
         readonly type record_class
         readonly bint ignore_custom_codec
@@ -29,7 +30,7 @@ cdef class PreparedStatementState:
         bint         have_text_cols
         tuple        rows_codecs
 
-    cdef _encode_bind_msg(self, args)
+    cdef _encode_bind_msg(self, args, int seqno = ?)
     cpdef _init_codecs(self)
     cdef _ensure_rows_decoder(self)
     cdef _ensure_args_encoder(self)

@@ -19,9 +19,15 @@ class TransactionState(enum.Enum):
     FAILED = 4
 
 
-ISOLATION_LEVELS = {'read_committed', 'serializable', 'repeatable_read'}
+ISOLATION_LEVELS = {
+    'read_committed',
+    'read_uncommitted',
+    'serializable',
+    'repeatable_read',
+}
 ISOLATION_LEVELS_BY_VALUE = {
     'read committed': 'read_committed',
+    'read uncommitted': 'read_uncommitted',
     'serializable': 'serializable',
     'repeatable read': 'repeatable_read',
 }
@@ -124,6 +130,8 @@ class Transaction(connresource.ConnectionResource):
             query = 'BEGIN'
             if self._isolation == 'read_committed':
                 query += ' ISOLATION LEVEL READ COMMITTED'
+            elif self._isolation == 'read_uncommitted':
+                query += ' ISOLATION LEVEL READ UNCOMMITTED'
             elif self._isolation == 'repeatable_read':
                 query += ' ISOLATION LEVEL REPEATABLE READ'
             elif self._isolation == 'serializable':

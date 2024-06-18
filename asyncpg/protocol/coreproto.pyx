@@ -5,15 +5,27 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-from hashlib import md5 as hashlib_md5  # for MD5 authentication
+import hashlib
+import socket
 
 
 include "scram.pyx"
 
 
+cdef dict AUTH_METHOD_NAME = {
+    AUTH_REQUIRED_KERBEROS: 'kerberosv5',
+    AUTH_REQUIRED_PASSWORD: 'password',
+    AUTH_REQUIRED_PASSWORDMD5: 'md5',
+    AUTH_REQUIRED_GSS: 'gss',
+    AUTH_REQUIRED_SASL: 'scram-sha-256',
+    AUTH_REQUIRED_SSPI: 'sspi',
+}
+
+
 cdef class CoreProtocol:
 
-    def __init__(self, con_params):
+    def __init__(self, addr, con_params):
+        self.address = addr
         # type of `con_params` is `_ConnectionParameters`
         self.buffer = ReadBuffer()
         self.user = con_params.user
@@ -26,6 +38,9 @@ cdef class CoreProtocol:
         self.encoding = 'utf-8'
         # type of `scram` is `SCRAMAuthentcation`
         self.scram = None
+        # type of `gss_ctx` is `gssapi.SecurityContext` or
+        # `sspilib.SecurityContext`
+        self.gss_ctx = None
 
         self._reset_result()
 
@@ -150,15 +165,28 @@ cdef class CoreProtocol:
     cdef _process__auth(self, char mtype):
         if mtype == b'R':
             # Authentication...
-            self._parse_msg_authentication()
-            if self.result_type != RESULT_OK:
+            try:
+                self._parse_msg_authentication()
+            except Exception as ex:
+                # Exception in authentication parsing code
+                # is usually either malformed authentication data
+                # or missing support for cryptographic primitives
+                # in the hashlib module.
+                self.result_type = RESULT_FAILED
+                self.result = apg_exc.InternalClientError(
+                    f"unexpected error while performing authentication: {ex}")
+                self.result.__cause__ = ex
                 self.con_status = CONNECTION_BAD
                 self._push_result()
+            else:
+                if self.result_type != RESULT_OK:
+                    self.con_status = CONNECTION_BAD
+                    self._push_result()
 
-            elif self.auth_msg is not None:
-                # Server wants us to send auth data, so do that.
-                self._write(self.auth_msg)
-                self.auth_msg = None
+                elif self.auth_msg is not None:
+                    # Server wants us to send auth data, so do that.
+                    self._write(self.auth_msg)
+                    self.auth_msg = None
 
         elif mtype == b'K':
             # BackendKeyData
@@ -224,6 +252,10 @@ cdef class CoreProtocol:
             # ErrorResponse
             self._parse_msg_error_response(True)
 
+        elif mtype == b'1':
+            # ParseComplete, in case `_bind_execute()` is reparsing
+            self.buffer.discard_message()
+
         elif mtype == b'2':
             # BindComplete
             self.buffer.discard_message()
@@ -255,6 +287,10 @@ cdef class CoreProtocol:
         elif mtype == b'E':
             # ErrorResponse
             self._parse_msg_error_response(True)
+
+        elif mtype == b'1':
+            # ParseComplete, in case `_bind_execute_many()` is reparsing
+            self.buffer.discard_message()
 
         elif mtype == b'2':
             # BindComplete
@@ -598,22 +634,35 @@ cdef class CoreProtocol:
                     'could not verify server signature for '
                     'SCRAM authentciation: scram-sha-256',
                 )
+            self.scram = None
 
-        elif status in (AUTH_REQUIRED_KERBEROS, AUTH_REQUIRED_SCMCRED,
-                        AUTH_REQUIRED_GSS, AUTH_REQUIRED_GSS_CONTINUE,
-                        AUTH_REQUIRED_SSPI):
-            self.result_type = RESULT_FAILED
-            self.result = apg_exc.InterfaceError(
-                'unsupported authentication method requested by the '
-                'server: {!r}'.format(AUTH_METHOD_NAME[status]))
+        elif status in (AUTH_REQUIRED_GSS, AUTH_REQUIRED_SSPI):
+            # AUTH_REQUIRED_SSPI is the same as AUTH_REQUIRED_GSS, except that
+            # it uses protocol negotiation with SSPI clients. Both methods use
+            # AUTH_REQUIRED_GSS_CONTINUE for subsequent authentication steps.
+            if self.gss_ctx is not None:
+                self.result_type = RESULT_FAILED
+                self.result = apg_exc.InterfaceError(
+                    'duplicate GSSAPI/SSPI authentication request')
+            else:
+                if self.con_params.gsslib == 'gssapi':
+                    self._auth_gss_init_gssapi()
+                else:
+                    self._auth_gss_init_sspi(status == AUTH_REQUIRED_SSPI)
+                self.auth_msg = self._auth_gss_step(None)
+
+        elif status == AUTH_REQUIRED_GSS_CONTINUE:
+            server_response = self.buffer.consume_message()
+            self.auth_msg = self._auth_gss_step(server_response)
 
         else:
             self.result_type = RESULT_FAILED
             self.result = apg_exc.InterfaceError(
                 'unsupported authentication method requested by the '
-                'server: {}'.format(status))
+                'server: {!r}'.format(AUTH_METHOD_NAME.get(status, status)))
 
-        if status not in [AUTH_SASL_CONTINUE, AUTH_SASL_FINAL]:
+        if status not in (AUTH_SASL_CONTINUE, AUTH_SASL_FINAL,
+                          AUTH_REQUIRED_GSS_CONTINUE):
             self.buffer.discard_message()
 
     cdef _auth_password_message_cleartext(self):
@@ -621,7 +670,7 @@ cdef class CoreProtocol:
             WriteBuffer msg
 
         msg = WriteBuffer.new_message(b'p')
-        msg.write_bytestring(self.password.encode('ascii'))
+        msg.write_bytestring(self.password.encode(self.encoding))
         msg.end_message()
 
         return msg
@@ -633,11 +682,11 @@ cdef class CoreProtocol:
         msg = WriteBuffer.new_message(b'p')
 
         # 'md5' + md5(md5(password + username) + salt))
-        userpass = ((self.password or '') + (self.user or '')).encode('ascii')
-        hash = hashlib_md5(hashlib_md5(userpass).hexdigest().\
-                encode('ascii') + salt).hexdigest().encode('ascii')
+        userpass = (self.password or '') + (self.user or '')
+        md5_1 = hashlib.md5(userpass.encode(self.encoding)).hexdigest()
+        md5_2 = hashlib.md5(md5_1.encode('ascii') + salt).hexdigest()
 
-        msg.write_bytestring(b'md5' + hash)
+        msg.write_bytestring(b'md5' + md5_2.encode('ascii'))
         msg.end_message()
 
         return msg
@@ -666,6 +715,58 @@ cdef class CoreProtocol:
         client_final_message = self.scram.create_client_final_message(
             self.password or '')
         msg.write_bytes(client_final_message)
+        msg.end_message()
+
+        return msg
+
+    cdef _auth_gss_init_gssapi(self):
+        try:
+            import gssapi
+        except ModuleNotFoundError:
+            raise apg_exc.InterfaceError(
+                'gssapi module not found; please install asyncpg[gssauth] to '
+                'use asyncpg with Kerberos/GSSAPI/SSPI authentication'
+            ) from None
+
+        self.gss_ctx = gssapi.SecurityContext(
+            name=gssapi.Name(self._auth_gss_get_spn()), usage='initiate')
+
+    cdef _auth_gss_init_sspi(self, bint negotiate):
+        try:
+            import sspilib
+        except ModuleNotFoundError:
+            raise apg_exc.InterfaceError(
+                'sspilib module not found; please install asyncpg[gssauth] to '
+                'use asyncpg with Kerberos/GSSAPI/SSPI authentication'
+            ) from None
+
+        self.gss_ctx = sspilib.ClientSecurityContext(
+            target_name=self._auth_gss_get_spn(),
+            credential=sspilib.UserCredential(
+                protocol='Negotiate' if negotiate else 'Kerberos'))
+
+    cdef _auth_gss_get_spn(self):
+        service_name = self.con_params.krbsrvname or 'postgres'
+        # find the canonical name of the server host
+        if isinstance(self.address, str):
+            raise apg_exc.InternalClientError(
+                'GSSAPI/SSPI authentication is only supported for TCP/IP '
+                'connections')
+
+        host = self.address[0]
+        host_cname = socket.gethostbyname_ex(host)[0]
+        return f'{service_name}/{host_cname}'
+
+    cdef _auth_gss_step(self, bytes server_response):
+        cdef:
+            WriteBuffer msg
+
+        token = self.gss_ctx.step(server_response)
+        if not token:
+            self.gss_ctx = None
+            return None
+        msg = WriteBuffer.new_message(b'p')
+        msg.write_bytes(token)
         msg.end_message()
 
         return msg
@@ -861,7 +962,15 @@ cdef class CoreProtocol:
         outbuf.write_buffer(buf)
         self._write(outbuf)
 
-    cdef _prepare(self, str stmt_name, str query):
+    cdef _send_parse_message(self, str stmt_name, str query):
+        cdef:
+            WriteBuffer msg
+
+        self._ensure_connected()
+        msg = self._build_parse_message(stmt_name, query)
+        self._write(msg)
+
+    cdef _prepare_and_describe(self, str stmt_name, str query):
         cdef:
             WriteBuffer packet
             WriteBuffer buf

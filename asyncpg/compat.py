@@ -4,60 +4,25 @@
 # This module is part of asyncpg and is released under
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
+from __future__ import annotations
 
-import asyncio
-import functools
-import os
 import pathlib
 import platform
+import typing
 import sys
 
+if typing.TYPE_CHECKING:
+    import asyncio
 
-PY_36 = sys.version_info >= (3, 6)
-PY_37 = sys.version_info >= (3, 7)
-SYSTEM = platform.uname().system
-
-
-if sys.version_info < (3, 5, 2):
-    def aiter_compat(func):
-        @functools.wraps(func)
-        async def wrapper(self):
-            return func(self)
-        return wrapper
-else:
-    def aiter_compat(func):
-        return func
+SYSTEM: typing.Final = platform.uname().system
 
 
-if PY_36:
-    fspath = os.fspath
-else:
-    def fspath(path):
-        fsp = getattr(path, '__fspath__', None)
-        if fsp is not None and callable(fsp):
-            path = fsp()
-            if not isinstance(path, (str, bytes)):
-                raise TypeError(
-                    'expected {}() to return str or bytes, not {}'.format(
-                        fsp.__qualname__, type(path).__name__
-                    ))
-            return path
-        elif isinstance(path, (str, bytes)):
-            return path
-        else:
-            raise TypeError(
-                'expected str, bytes or path-like object, not {}'.format(
-                    type(path).__name__
-                )
-            )
-
-
-if SYSTEM == 'Windows':
+if sys.platform == 'win32':
     import ctypes.wintypes
 
-    CSIDL_APPDATA = 0x001a
+    CSIDL_APPDATA: typing.Final = 0x001a
 
-    def get_pg_home_directory() -> pathlib.Path:
+    def get_pg_home_directory() -> pathlib.Path | None:
         # We cannot simply use expanduser() as that returns the user's
         # home directory, whereas Postgres stores its config in
         # %AppData% on Windows.
@@ -69,19 +34,14 @@ if SYSTEM == 'Windows':
             return pathlib.Path(buf.value) / 'postgresql'
 
 else:
-    def get_pg_home_directory() -> pathlib.Path:
-        return pathlib.Path.home()
+    def get_pg_home_directory() -> pathlib.Path | None:
+        try:
+            return pathlib.Path.home()
+        except (RuntimeError, KeyError):
+            return None
 
 
-if PY_37:
-    def current_asyncio_task(loop):
-        return asyncio.current_task(loop)
-else:
-    def current_asyncio_task(loop):
-        return asyncio.Task.current_task(loop)
-
-
-async def wait_closed(stream):
+async def wait_closed(stream: asyncio.StreamWriter) -> None:
     # Not all asyncio versions have StreamWriter.wait_closed().
     if hasattr(stream, 'wait_closed'):
         try:
@@ -92,17 +52,22 @@ async def wait_closed(stream):
             pass
 
 
-# Workaround for https://bugs.python.org/issue37658
-async def wait_for(fut, timeout):
-    if timeout is None:
-        return await fut
+if sys.version_info < (3, 12):
+    from ._asyncio_compat import wait_for as wait_for  # noqa: F401
+else:
+    from asyncio import wait_for as wait_for  # noqa: F401
 
-    fut = asyncio.ensure_future(fut)
 
-    try:
-        return await asyncio.wait_for(fut, timeout)
-    except asyncio.CancelledError:
-        if fut.done():
-            return fut.result()
-        else:
-            raise
+if sys.version_info < (3, 11):
+    from ._asyncio_compat import timeout_ctx as timeout  # noqa: F401
+else:
+    from asyncio import timeout as timeout  # noqa: F401
+
+if sys.version_info < (3, 9):
+    from typing import (  # noqa: F401
+        Awaitable as Awaitable,
+    )
+else:
+    from collections.abc import (  # noqa: F401
+        Awaitable as Awaitable,
+    )

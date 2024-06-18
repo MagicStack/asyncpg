@@ -13,7 +13,7 @@ cimport cpython
 import asyncio
 import builtins
 import codecs
-import collections
+import collections.abc
 import socket
 import time
 import weakref
@@ -38,7 +38,7 @@ from asyncpg.protocol cimport record
 
 from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, \
                          int32_t, uint32_t, int64_t, uint64_t, \
-                         UINT32_MAX
+                         INT32_MAX, UINT32_MAX
 
 from asyncpg.exceptions import _base as apg_exc_base
 from asyncpg import compat
@@ -75,7 +75,7 @@ NO_TIMEOUT = object()
 cdef class BaseProtocol(CoreProtocol):
     def __init__(self, addr, connected_fut, con_params, record_class: type, loop):
         # type of `con_params` is `_ConnectionParameters`
-        CoreProtocol.__init__(self, con_params)
+        CoreProtocol.__init__(self, addr, con_params)
 
         self.loop = loop
         self.transport = None
@@ -83,8 +83,7 @@ cdef class BaseProtocol(CoreProtocol):
         self.cancel_waiter = None
         self.cancel_sent_waiter = None
 
-        self.address = addr
-        self.settings = ConnectionSettings((self.address, con_params.database))
+        self.settings = ConnectionSettings((addr, con_params.database))
         self.record_class = record_class
 
         self.statement = None
@@ -98,8 +97,6 @@ cdef class BaseProtocol(CoreProtocol):
         self.writing_allowed.set()
 
         self.timeout_handle = None
-        self.timeout_callback = self._on_timeout
-        self.completed_callback = self._on_waiter_completed
 
         self.queries_count = 0
 
@@ -155,7 +152,7 @@ cdef class BaseProtocol(CoreProtocol):
 
         waiter = self._new_waiter(timeout)
         try:
-            self._prepare(stmt_name, query)  # network op
+            self._prepare_and_describe(stmt_name, query)  # network op
             self.last_query = query
             if state is None:
                 state = PreparedStatementState(
@@ -168,10 +165,15 @@ cdef class BaseProtocol(CoreProtocol):
             return await waiter
 
     @cython.iterable_coroutine
-    async def bind_execute(self, PreparedStatementState state, args,
-                           str portal_name, int limit, return_extra,
-                           timeout):
-
+    async def bind_execute(
+        self,
+        state: PreparedStatementState,
+        args,
+        portal_name: str,
+        limit: int,
+        return_extra: bool,
+        timeout,
+    ):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
         if self.cancel_sent_waiter is not None:
@@ -184,6 +186,9 @@ cdef class BaseProtocol(CoreProtocol):
 
         waiter = self._new_waiter(timeout)
         try:
+            if not state.prepared:
+                self._send_parse_message(state.name, state.query)
+
             self._bind_execute(
                 portal_name,
                 state.name,
@@ -201,9 +206,13 @@ cdef class BaseProtocol(CoreProtocol):
             return await waiter
 
     @cython.iterable_coroutine
-    async def bind_execute_many(self, PreparedStatementState state, args,
-                                str portal_name, timeout):
-
+    async def bind_execute_many(
+        self,
+        state: PreparedStatementState,
+        args,
+        portal_name: str,
+        timeout,
+    ):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
         if self.cancel_sent_waiter is not None:
@@ -217,11 +226,14 @@ cdef class BaseProtocol(CoreProtocol):
         # Make sure the argument sequence is encoded lazily with
         # this generator expression to keep the memory pressure under
         # control.
-        data_gen = (state._encode_bind_msg(b) for b in args)
+        data_gen = (state._encode_bind_msg(b, i) for i, b in enumerate(args))
         arg_bufs = iter(data_gen)
 
         waiter = self._new_waiter(timeout)
         try:
+            if not state.prepared:
+                self._send_parse_message(state.name, state.query)
+
             more = self._bind_execute_many(
                 portal_name,
                 state.name,
@@ -234,7 +246,7 @@ cdef class BaseProtocol(CoreProtocol):
 
             while more:
                 with timer:
-                    await asyncio.wait_for(
+                    await compat.wait_for(
                         self.writing_allowed.wait(),
                         timeout=timer.get_remaining_budget())
                     # On Windows the above event somehow won't allow context
@@ -313,6 +325,29 @@ cdef class BaseProtocol(CoreProtocol):
             return await waiter
 
     @cython.iterable_coroutine
+    async def close_portal(self, str portal_name, timeout):
+
+        if self.cancel_waiter is not None:
+            await self.cancel_waiter
+        if self.cancel_sent_waiter is not None:
+            await self.cancel_sent_waiter
+            self.cancel_sent_waiter = None
+
+        self._check_state()
+        timeout = self._get_timeout_impl(timeout)
+
+        waiter = self._new_waiter(timeout)
+        try:
+            self._close(
+                portal_name,
+                True)  # network op
+        except Exception as ex:
+            waiter.set_exception(ex)
+            self._coreproto_error()
+        finally:
+            return await waiter
+
+    @cython.iterable_coroutine
     async def query(self, query, timeout):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
@@ -368,7 +403,7 @@ cdef class BaseProtocol(CoreProtocol):
                 if buffer:
                     try:
                         with timer:
-                            await asyncio.wait_for(
+                            await compat.wait_for(
                                 sink(buffer),
                                 timeout=timer.get_remaining_budget())
                     except (Exception, asyncio.CancelledError) as ex:
@@ -438,23 +473,44 @@ cdef class BaseProtocol(CoreProtocol):
                             'no binary format encoder for '
                             'type {} (OID {})'.format(codec.name, codec.oid))
 
-                for row in records:
-                    # Tuple header
-                    wbuf.write_int16(<int16_t>num_cols)
-                    # Tuple data
-                    for i in range(num_cols):
-                        item = row[i]
-                        if item is None:
-                            wbuf.write_int32(-1)
-                        else:
-                            codec = <Codec>cpython.PyTuple_GET_ITEM(codecs, i)
-                            codec.encode(settings, wbuf, item)
+                if isinstance(records, collections.abc.AsyncIterable):
+                    async for row in records:
+                        # Tuple header
+                        wbuf.write_int16(<int16_t>num_cols)
+                        # Tuple data
+                        for i in range(num_cols):
+                            item = row[i]
+                            if item is None:
+                                wbuf.write_int32(-1)
+                            else:
+                                codec = <Codec>cpython.PyTuple_GET_ITEM(
+                                    codecs, i)
+                                codec.encode(settings, wbuf, item)
 
-                    if wbuf.len() >= _COPY_BUFFER_SIZE:
-                        with timer:
-                            await self.writing_allowed.wait()
-                        self._write_copy_data_msg(wbuf)
-                        wbuf = WriteBuffer.new()
+                        if wbuf.len() >= _COPY_BUFFER_SIZE:
+                            with timer:
+                                await self.writing_allowed.wait()
+                            self._write_copy_data_msg(wbuf)
+                            wbuf = WriteBuffer.new()
+                else:
+                    for row in records:
+                        # Tuple header
+                        wbuf.write_int16(<int16_t>num_cols)
+                        # Tuple data
+                        for i in range(num_cols):
+                            item = row[i]
+                            if item is None:
+                                wbuf.write_int32(-1)
+                            else:
+                                codec = <Codec>cpython.PyTuple_GET_ITEM(
+                                    codecs, i)
+                                codec.encode(settings, wbuf, item)
+
+                        if wbuf.len() >= _COPY_BUFFER_SIZE:
+                            with timer:
+                                await self.writing_allowed.wait()
+                            self._write_copy_data_msg(wbuf)
+                            wbuf = WriteBuffer.new()
 
                 # End of binary copy.
                 wbuf.write_int16(-1)
@@ -475,7 +531,7 @@ cdef class BaseProtocol(CoreProtocol):
                         with timer:
                             await self.writing_allowed.wait()
                         with timer:
-                            chunk = await asyncio.wait_for(
+                            chunk = await compat.wait_for(
                                 iterator.__anext__(),
                                 timeout=timer.get_remaining_budget())
                         self._write_copy_data_msg(chunk)
@@ -548,6 +604,7 @@ cdef class BaseProtocol(CoreProtocol):
         self._handle_waiter_on_connection_lost(None)
         self._terminate()
         self.transport.abort()
+        self.transport = None
 
     @cython.iterable_coroutine
     async def close(self, timeout):
@@ -588,7 +645,7 @@ cdef class BaseProtocol(CoreProtocol):
             pass
         finally:
             self.waiter = None
-        self.transport.abort()
+            self.transport.abort()
 
     def _request_cancel(self):
         self.cancel_waiter = self.create_future()
@@ -626,12 +683,12 @@ cdef class BaseProtocol(CoreProtocol):
         self.waiter.set_exception(asyncio.TimeoutError())
 
     def _on_waiter_completed(self, fut):
+        if self.timeout_handle:
+            self.timeout_handle.cancel()
+            self.timeout_handle = None
         if fut is not self.waiter or self.cancel_waiter is not None:
             return
         if fut.cancelled():
-            if self.timeout_handle:
-                self.timeout_handle.cancel()
-                self.timeout_handle = None
             self._request_cancel()
 
     def _create_future_fallback(self):
@@ -718,8 +775,8 @@ cdef class BaseProtocol(CoreProtocol):
         self.waiter = self.create_future()
         if timeout is not None:
             self.timeout_handle = self.loop.call_later(
-                timeout, self.timeout_callback, self.waiter)
-        self.waiter.add_done_callback(self.completed_callback)
+                timeout, self._on_timeout, self.waiter)
+        self.waiter.add_done_callback(self._on_waiter_completed)
         return self.waiter
 
     cdef _on_result__connect(self, object waiter):

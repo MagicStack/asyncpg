@@ -9,11 +9,17 @@ import asyncio
 import asyncpg
 import collections
 import collections.abc
+import contextlib
+import functools
 import itertools
+import inspect
+import os
 import sys
 import time
 import traceback
+import typing
 import warnings
+import weakref
 
 from . import compat
 from . import connect_utils
@@ -43,11 +49,12 @@ class Connection(metaclass=ConnectionMeta):
     __slots__ = ('_protocol', '_transport', '_loop',
                  '_top_xact', '_aborted',
                  '_pool_release_ctr', '_stmt_cache', '_stmts_to_close',
+                 '_stmt_cache_enabled',
                  '_listeners', '_server_version', '_server_caps',
                  '_intro_query', '_reset_query', '_proxy',
                  '_stmt_exclusive_section', '_config', '_params', '_addr',
                  '_log_listeners', '_termination_listeners', '_cancellations',
-                 '_source_traceback', '__weakref__')
+                 '_source_traceback', '_query_loggers', '__weakref__')
 
     def __init__(self, protocol, transport, loop,
                  addr,
@@ -70,15 +77,18 @@ class Connection(metaclass=ConnectionMeta):
         self._stmt_cache = _StatementCache(
             loop=loop,
             max_size=config.statement_cache_size,
-            on_remove=self._maybe_gc_stmt,
+            on_remove=functools.partial(
+                _weak_maybe_gc_stmt, weakref.ref(self)),
             max_lifetime=config.max_cached_statement_lifetime)
 
         self._stmts_to_close = set()
+        self._stmt_cache_enabled = config.statement_cache_size > 0
 
         self._listeners = {}
         self._log_listeners = set()
         self._cancellations = set()
         self._termination_listeners = set()
+        self._query_loggers = set()
 
         settings = self._protocol.get_settings()
         ver_string = settings.server_version
@@ -88,7 +98,10 @@ class Connection(metaclass=ConnectionMeta):
         self._server_caps = _detect_server_capabilities(
             self._server_version, settings)
 
-        self._intro_query = introspection.INTRO_LOOKUP_TYPES
+        if self._server_version < (14, 0):
+            self._intro_query = introspection.INTRO_LOOKUP_TYPES_13
+        else:
+            self._intro_query = introspection.INTRO_LOOKUP_TYPES
 
         self._reset_query = None
         self._proxy = None
@@ -129,17 +142,21 @@ class Connection(metaclass=ConnectionMeta):
         :param str channel: Channel to listen on.
 
         :param callable callback:
-            A callable receiving the following arguments:
+            A callable or a coroutine function receiving the following
+            arguments:
             **connection**: a Connection the callback is registered with;
             **pid**: PID of the Postgres server that sent the notification;
             **channel**: name of the channel the notification was sent to;
             **payload**: the payload.
+
+        .. versionchanged:: 0.24.0
+            The ``callback`` argument may be a coroutine function.
         """
         self._check_open()
         if channel not in self._listeners:
             await self.fetch('LISTEN {}'.format(utils._quote_ident(channel)))
             self._listeners[channel] = set()
-        self._listeners[channel].add(callback)
+        self._listeners[channel].add(_Callback.from_callable(callback))
 
     async def remove_listener(self, channel, callback):
         """Remove a listening callback on the specified channel."""
@@ -147,9 +164,10 @@ class Connection(metaclass=ConnectionMeta):
             return
         if channel not in self._listeners:
             return
-        if callback not in self._listeners[channel]:
+        cb = _Callback.from_callable(callback)
+        if cb not in self._listeners[channel]:
             return
-        self._listeners[channel].remove(callback)
+        self._listeners[channel].remove(cb)
         if not self._listeners[channel]:
             del self._listeners[channel]
             await self.fetch('UNLISTEN {}'.format(utils._quote_ident(channel)))
@@ -162,44 +180,75 @@ class Connection(metaclass=ConnectionMeta):
         DEBUG, INFO, or LOG.
 
         :param callable callback:
-            A callable receiving the following arguments:
+            A callable or a coroutine function receiving the following
+            arguments:
             **connection**: a Connection the callback is registered with;
             **message**: the `exceptions.PostgresLogMessage` message.
 
         .. versionadded:: 0.12.0
+
+        .. versionchanged:: 0.24.0
+            The ``callback`` argument may be a coroutine function.
         """
         if self.is_closed():
             raise exceptions.InterfaceError('connection is closed')
-        self._log_listeners.add(callback)
+        self._log_listeners.add(_Callback.from_callable(callback))
 
     def remove_log_listener(self, callback):
         """Remove a listening callback for log messages.
 
         .. versionadded:: 0.12.0
         """
-        self._log_listeners.discard(callback)
+        self._log_listeners.discard(_Callback.from_callable(callback))
 
     def add_termination_listener(self, callback):
         """Add a listener that will be called when the connection is closed.
 
         :param callable callback:
-            A callable receiving one argument:
+            A callable or a coroutine function receiving one argument:
             **connection**: a Connection the callback is registered with.
 
         .. versionadded:: 0.21.0
+
+        .. versionchanged:: 0.24.0
+            The ``callback`` argument may be a coroutine function.
         """
-        self._termination_listeners.add(callback)
+        self._termination_listeners.add(_Callback.from_callable(callback))
 
     def remove_termination_listener(self, callback):
         """Remove a listening callback for connection termination.
 
         :param callable callback:
-            The callable that was passed to
+            The callable or coroutine function that was passed to
             :meth:`Connection.add_termination_listener`.
 
         .. versionadded:: 0.21.0
         """
-        self._termination_listeners.discard(callback)
+        self._termination_listeners.discard(_Callback.from_callable(callback))
+
+    def add_query_logger(self, callback):
+        """Add a logger that will be called when queries are executed.
+
+        :param callable callback:
+            A callable or a coroutine function receiving one argument:
+            **record**: a LoggedQuery containing `query`, `args`, `timeout`,
+                        `elapsed`, `exception`, `conn_addr`, and
+                        `conn_params`.
+
+        .. versionadded:: 0.29.0
+        """
+        self._query_loggers.add(_Callback.from_callable(callback))
+
+    def remove_query_logger(self, callback):
+        """Remove a query logger callback.
+
+        :param callable callback:
+            The callable or coroutine function that was passed to
+            :meth:`Connection.add_query_logger`.
+
+        .. versionadded:: 0.29.0
+        """
+        self._query_loggers.discard(_Callback.from_callable(callback))
 
     def get_server_pid(self):
         """Return the PID of the Postgres server the connection is bound to."""
@@ -237,9 +286,9 @@ class Connection(metaclass=ConnectionMeta):
 
         :param isolation: Transaction isolation mode, can be one of:
                           `'serializable'`, `'repeatable_read'`,
-                          `'read_committed'`. If not specified, the behavior
-                          is up to the server and session, which is usually
-                          ``read_committed``.
+                          `'read_uncommitted'`, `'read_committed'`. If not
+                          specified, the behavior is up to the server and
+                          session, which is usually ``read_committed``.
 
         :param readonly: Specifies whether or not this transaction is
                          read-only.
@@ -294,7 +343,12 @@ class Connection(metaclass=ConnectionMeta):
         self._check_open()
 
         if not args:
-            return await self._protocol.query(query, timeout)
+            if self._query_loggers:
+                with self._time_and_log(query, args, timeout):
+                    result = await self._protocol.query(query, timeout)
+            else:
+                result = await self._protocol.query(query, timeout)
+            return result
 
         _, status, _ = await self._execute(
             query,
@@ -341,8 +395,8 @@ class Connection(metaclass=ConnectionMeta):
         query,
         timeout,
         *,
-        named: bool=False,
-        use_cache: bool=True,
+        named=False,
+        use_cache=True,
         ignore_custom_codec=False,
         record_class=None
     ):
@@ -361,13 +415,17 @@ class Connection(metaclass=ConnectionMeta):
             # Only use the cache when:
             #  * `statement_cache_size` is greater than 0;
             #  * query size is less than `max_cacheable_statement_size`.
-            use_cache = self._stmt_cache.get_max_size() > 0
-            if (use_cache and
-                    self._config.max_cacheable_statement_size and
-                    len(query) > self._config.max_cacheable_statement_size):
-                use_cache = False
+            use_cache = (
+                self._stmt_cache_enabled
+                and (
+                    not self._config.max_cacheable_statement_size
+                    or len(query) <= self._config.max_cacheable_statement_size
+                )
+            )
 
-        if use_cache or named:
+        if isinstance(named, str):
+            stmt_name = named
+        elif use_cache or named:
             stmt_name = self._get_unique_id('stmt')
         else:
             stmt_name = ''
@@ -412,14 +470,16 @@ class Connection(metaclass=ConnectionMeta):
         # for the statement.
         statement._init_codecs()
 
-        if need_reprepare:
-            await self._protocol.prepare(
-                stmt_name,
-                query,
-                timeout,
-                state=statement,
-                record_class=record_class,
-            )
+        if (
+            need_reprepare
+            or (not statement.name and not self._stmt_cache_enabled)
+        ):
+            # Mark this anonymous prepared statement as "unprepared",
+            # causing it to get re-Parsed in next bind_execute.
+            # We always do this when stmt_cache_size is set to 0 assuming
+            # people are running PgBouncer which is mishandling implicit
+            # transactions.
+            statement.mark_unprepared()
 
         if use_cache:
             self._stmt_cache.put(
@@ -433,13 +493,46 @@ class Connection(metaclass=ConnectionMeta):
         return statement
 
     async def _introspect_types(self, typeoids, timeout):
-        return await self.__execute(
+        if self._server_caps.jit:
+            try:
+                cfgrow, _ = await self.__execute(
+                    """
+                    SELECT
+                        current_setting('jit') AS cur,
+                        set_config('jit', 'off', false) AS new
+                    """,
+                    (),
+                    0,
+                    timeout,
+                    ignore_custom_codec=True,
+                )
+                jit_state = cfgrow[0]['cur']
+            except exceptions.UndefinedObjectError:
+                jit_state = 'off'
+        else:
+            jit_state = 'off'
+
+        result = await self.__execute(
             self._intro_query,
             (list(typeoids),),
             0,
             timeout,
             ignore_custom_codec=True,
         )
+
+        if jit_state != 'off':
+            await self.__execute(
+                """
+                SELECT
+                    set_config('jit', $1, false)
+                """,
+                (jit_state,),
+                0,
+                timeout,
+                ignore_custom_codec=True,
+            )
+
+        return result
 
     async def _introspect_type(self, typename, schema):
         if (
@@ -508,11 +601,21 @@ class Connection(metaclass=ConnectionMeta):
             record_class,
         )
 
-    async def prepare(self, query, *, timeout=None, record_class=None):
+    async def prepare(
+        self,
+        query,
+        *,
+        name=None,
+        timeout=None,
+        record_class=None,
+    ):
         """Create a *prepared statement* for the specified query.
 
         :param str query:
             Text of the query to create a prepared statement for.
+        :param str name:
+            Optional name of the returned prepared statement.  If not
+            specified, the name is auto-generated.
         :param float timeout:
             Optional timeout value in seconds.
         :param type record_class:
@@ -526,9 +629,13 @@ class Connection(metaclass=ConnectionMeta):
 
         .. versionchanged:: 0.22.0
             Added the *record_class* parameter.
+
+        .. versionchanged:: 0.25.0
+            Added the *name* parameter.
         """
         return await self._prepare(
             query,
+            name=name,
             timeout=timeout,
             use_cache=False,
             record_class=record_class,
@@ -538,6 +645,7 @@ class Connection(metaclass=ConnectionMeta):
         self,
         query,
         *,
+        name=None,
         timeout=None,
         use_cache: bool=False,
         record_class=None
@@ -546,7 +654,7 @@ class Connection(metaclass=ConnectionMeta):
         stmt = await self._get_statement(
             query,
             timeout,
-            named=True,
+            named=True if name is None else name,
             use_cache=use_cache,
             record_class=record_class,
         )
@@ -789,7 +897,7 @@ class Connection(metaclass=ConnectionMeta):
                             delimiter=None, null=None, header=None,
                             quote=None, escape=None, force_quote=None,
                             force_not_null=None, force_null=None,
-                            encoding=None):
+                            encoding=None, where=None):
         """Copy data to the specified table.
 
         :param str table_name:
@@ -807,6 +915,15 @@ class Connection(metaclass=ConnectionMeta):
 
         :param str schema_name:
             An optional schema name to qualify the table.
+
+        :param str where:
+            An optional SQL expression used to filter rows when copying.
+
+            .. note::
+
+                Usage of this parameter requires support for the
+                ``COPY FROM ... WHERE`` syntax, introduced in
+                PostgreSQL version 12.
 
         :param float timeout:
             Optional timeout value in seconds.
@@ -835,6 +952,9 @@ class Connection(metaclass=ConnectionMeta):
             https://www.postgresql.org/docs/current/static/sql-copy.html
 
         .. versionadded:: 0.11.0
+
+        .. versionadded:: 0.29.0
+            Added the *where* parameter.
         """
         tabname = utils._quote_ident(table_name)
         if schema_name:
@@ -846,6 +966,7 @@ class Connection(metaclass=ConnectionMeta):
         else:
             cols = ''
 
+        cond = self._format_copy_where(where)
         opts = self._format_copy_opts(
             format=format, oids=oids, freeze=freeze, delimiter=delimiter,
             null=null, header=header, quote=quote, escape=escape,
@@ -853,14 +974,14 @@ class Connection(metaclass=ConnectionMeta):
             encoding=encoding
         )
 
-        copy_stmt = 'COPY {tab}{cols} FROM STDIN {opts}'.format(
-            tab=tabname, cols=cols, opts=opts)
+        copy_stmt = 'COPY {tab}{cols} FROM STDIN {opts} {cond}'.format(
+            tab=tabname, cols=cols, opts=opts, cond=cond)
 
         return await self._copy_in(copy_stmt, source, timeout)
 
     async def copy_records_to_table(self, table_name, *, records,
                                     columns=None, schema_name=None,
-                                    timeout=None):
+                                    timeout=None, where=None):
         """Copy a list of records to the specified table using binary COPY.
 
         :param str table_name:
@@ -868,12 +989,24 @@ class Connection(metaclass=ConnectionMeta):
 
         :param records:
             An iterable returning row tuples to copy into the table.
+            :term:`Asynchronous iterables <python:asynchronous iterable>`
+            are also supported.
 
         :param list columns:
             An optional list of column names to copy.
 
         :param str schema_name:
             An optional schema name to qualify the table.
+
+        :param str where:
+            An optional SQL expression used to filter rows when copying.
+
+            .. note::
+
+                Usage of this parameter requires support for the
+                ``COPY FROM ... WHERE`` syntax, introduced in
+                PostgreSQL version 12.
+
 
         :param float timeout:
             Optional timeout value in seconds.
@@ -897,7 +1030,31 @@ class Connection(metaclass=ConnectionMeta):
             >>> asyncio.get_event_loop().run_until_complete(run())
             'COPY 2'
 
+        Asynchronous record iterables are also supported:
+
+        .. code-block:: pycon
+
+            >>> import asyncpg
+            >>> import asyncio
+            >>> async def run():
+            ...     con = await asyncpg.connect(user='postgres')
+            ...     async def record_gen(size):
+            ...         for i in range(size):
+            ...             yield (i,)
+            ...     result = await con.copy_records_to_table(
+            ...         'mytable', records=record_gen(100))
+            ...     print(result)
+            ...
+            >>> asyncio.get_event_loop().run_until_complete(run())
+            'COPY 100'
+
         .. versionadded:: 0.11.0
+
+        .. versionchanged:: 0.24.0
+            The ``records`` argument may be an asynchronous iterable.
+
+        .. versionadded:: 0.29.0
+            Added the *where* parameter.
         """
         tabname = utils._quote_ident(table_name)
         if schema_name:
@@ -915,13 +1072,26 @@ class Connection(metaclass=ConnectionMeta):
 
         intro_ps = await self._prepare(intro_query, use_cache=True)
 
+        cond = self._format_copy_where(where)
         opts = '(FORMAT binary)'
 
-        copy_stmt = 'COPY {tab}{cols} FROM STDIN {opts}'.format(
-            tab=tabname, cols=cols, opts=opts)
+        copy_stmt = 'COPY {tab}{cols} FROM STDIN {opts} {cond}'.format(
+            tab=tabname, cols=cols, opts=opts, cond=cond)
 
-        return await self._copy_in_records(
-            copy_stmt, records, intro_ps._state, timeout)
+        return await self._protocol.copy_in(
+            copy_stmt, None, None, records, intro_ps._state, timeout)
+
+    def _format_copy_where(self, where):
+        if where and not self._server_caps.sql_copy_from_where:
+            raise exceptions.UnsupportedServerFeatureError(
+                'the `where` parameter requires PostgreSQL 12 or later')
+
+        if where:
+            where_clause = 'WHERE ' + where
+        else:
+            where_clause = ''
+
+        return where_clause
 
     def _format_copy_opts(self, *, format=None, oids=None, freeze=None,
                           delimiter=None, null=None, header=None, quote=None,
@@ -954,7 +1124,7 @@ class Connection(metaclass=ConnectionMeta):
 
     async def _copy_out(self, copy_stmt, output, timeout):
         try:
-            path = compat.fspath(output)
+            path = os.fspath(output)
         except TypeError:
             # output is not a path-like object
             path = None
@@ -993,7 +1163,7 @@ class Connection(metaclass=ConnectionMeta):
 
     async def _copy_in(self, copy_stmt, source, timeout):
         try:
-            path = compat.fspath(source)
+            path = os.fspath(source)
         except TypeError:
             # source is not a path-like object
             path = None
@@ -1024,7 +1194,6 @@ class Connection(metaclass=ConnectionMeta):
         if f is not None:
             # Copying from a file-like object.
             class _Reader:
-                @compat.aiter_compat
                 def __aiter__(self):
                     return self
 
@@ -1043,10 +1212,6 @@ class Connection(metaclass=ConnectionMeta):
         finally:
             if opened_by_us:
                 await run_in_executor(None, f.close)
-
-    async def _copy_in_records(self, copy_stmt, records, intro_stmt, timeout):
-        return await self._protocol.copy_in(
-            copy_stmt, None, None, records, intro_stmt, timeout)
 
     async def set_type_codec(self, typename, *,
                              schema='public', encoder, decoder,
@@ -1098,6 +1263,9 @@ class Connection(metaclass=ConnectionMeta):
             +-----------------+---------------------------------------------+
             | ``time with     | (``microseconds``,                          |
             | time zone``     | ``time zone offset in seconds``)            |
+            +-----------------+---------------------------------------------+
+            | any composite   | Composite value elements                    |
+            | type            |                                             |
             +-----------------+---------------------------------------------+
 
         :param encoder:
@@ -1153,6 +1321,10 @@ class Connection(metaclass=ConnectionMeta):
             The ``binary`` keyword argument was removed in favor of
             ``format``.
 
+        .. versionchanged:: 0.29.0
+            Custom codecs for composite types are now supported with
+            ``format='tuple'``.
+
         .. note::
 
            It is recommended to use the ``'binary'`` or ``'tuple'`` *format*
@@ -1163,11 +1335,28 @@ class Connection(metaclass=ConnectionMeta):
            codecs.
         """
         self._check_open()
+        settings = self._protocol.get_settings()
         typeinfo = await self._introspect_type(typename, schema)
-        if not introspection.is_scalar_type(typeinfo):
+        full_typeinfos = []
+        if introspection.is_scalar_type(typeinfo):
+            kind = 'scalar'
+        elif introspection.is_composite_type(typeinfo):
+            if format != 'tuple':
+                raise exceptions.UnsupportedClientFeatureError(
+                    'only tuple-format codecs can be used on composite types',
+                    hint="Use `set_type_codec(..., format='tuple')` and "
+                         "pass/interpret data as a Python tuple.  See an "
+                         "example at https://magicstack.github.io/asyncpg/"
+                         "current/usage.html#example-decoding-complex-types",
+                )
+            kind = 'composite'
+            full_typeinfos, _ = await self._introspect_types(
+                (typeinfo['oid'],), 10)
+        else:
             raise exceptions.InterfaceError(
-                'cannot use custom codec on non-scalar type {}.{}'.format(
-                    schema, typename))
+                f'cannot use custom codec on type {schema}.{typename}: '
+                f'it is neither a scalar type nor a composite type'
+            )
         if introspection.is_domain_type(typeinfo):
             raise exceptions.UnsupportedClientFeatureError(
                 'custom codecs on domain types are not supported',
@@ -1179,8 +1368,8 @@ class Connection(metaclass=ConnectionMeta):
             )
 
         oid = typeinfo['oid']
-        self._protocol.get_settings().add_python_codec(
-            oid, typename, schema, 'scalar',
+        settings.add_python_codec(
+            oid, typename, schema, full_typeinfos, kind,
             encoder, decoder, format)
 
         # Statement cache is no longer valid due to codec changes.
@@ -1329,6 +1518,7 @@ class Connection(metaclass=ConnectionMeta):
         self._mark_stmts_as_closed()
         self._listeners.clear()
         self._log_listeners.clear()
+        self._query_loggers.clear()
         self._clean_tasks()
 
     def _clean_tasks(self):
@@ -1361,6 +1551,7 @@ class Connection(metaclass=ConnectionMeta):
     def _maybe_gc_stmt(self, stmt):
         if (
             stmt.refs == 0
+            and stmt.name
             and not self._stmt_cache.has(
                 (stmt.query, stmt.record_class, stmt.ignore_custom_codec)
             )
@@ -1412,7 +1603,7 @@ class Connection(metaclass=ConnectionMeta):
                 waiter.set_exception(ex)
         finally:
             self._cancellations.discard(
-                compat.current_asyncio_task(self._loop))
+                asyncio.current_task(self._loop))
             if not waiter.done():
                 waiter.set_result(None)
 
@@ -1427,18 +1618,10 @@ class Connection(metaclass=ConnectionMeta):
 
         con_ref = self._unwrap()
         for cb in self._log_listeners:
-            self._loop.call_soon(
-                self._call_log_listener, cb, con_ref, message)
-
-    def _call_log_listener(self, cb, con_ref, message):
-        try:
-            cb(con_ref, message)
-        except Exception as ex:
-            self._loop.call_exception_handler({
-                'message': 'Unhandled exception in asyncpg log message '
-                           'listener callback {!r}'.format(cb),
-                'exception': ex
-            })
+            if cb.is_async:
+                self._loop.create_task(cb.cb(con_ref, message))
+            else:
+                self._loop.call_soon(cb.cb, con_ref, message)
 
     def _call_termination_listeners(self):
         if not self._termination_listeners:
@@ -1446,16 +1629,10 @@ class Connection(metaclass=ConnectionMeta):
 
         con_ref = self._unwrap()
         for cb in self._termination_listeners:
-            try:
-                cb(con_ref)
-            except Exception as ex:
-                self._loop.call_exception_handler({
-                    'message': (
-                        'Unhandled exception in asyncpg connection '
-                        'termination listener callback {!r}'.format(cb)
-                    ),
-                    'exception': ex
-                })
+            if cb.is_async:
+                self._loop.create_task(cb.cb(con_ref))
+            else:
+                self._loop.call_soon(cb.cb, con_ref)
 
         self._termination_listeners.clear()
 
@@ -1465,18 +1642,10 @@ class Connection(metaclass=ConnectionMeta):
 
         con_ref = self._unwrap()
         for cb in self._listeners[channel]:
-            self._loop.call_soon(
-                self._call_listener, cb, con_ref, pid, channel, payload)
-
-    def _call_listener(self, cb, con_ref, pid, channel, payload):
-        try:
-            cb(con_ref, pid, channel, payload)
-        except Exception as ex:
-            self._loop.call_exception_handler({
-                'message': 'Unhandled exception in asyncpg notification '
-                           'listener callback {!r}'.format(cb),
-                'exception': ex
-            })
+            if cb.is_async:
+                self._loop.create_task(cb.cb(con_ref, pid, channel, payload))
+            else:
+                self._loop.call_soon(cb.cb, con_ref, pid, channel, payload)
 
     def _unwrap(self):
         if self._proxy is None:
@@ -1633,6 +1802,63 @@ class Connection(metaclass=ConnectionMeta):
             )
         return result
 
+    @contextlib.contextmanager
+    def query_logger(self, callback):
+        """Context manager that adds `callback` to the list of query loggers,
+        and removes it upon exit.
+
+        :param callable callback:
+            A callable or a coroutine function receiving one argument:
+            **record**: a LoggedQuery containing `query`, `args`, `timeout`,
+                        `elapsed`, `exception`, `conn_addr`, and
+                        `conn_params`.
+
+        Example:
+
+        .. code-block:: pycon
+
+            >>> class QuerySaver:
+                    def __init__(self):
+                        self.queries = []
+                    def __call__(self, record):
+                        self.queries.append(record.query)
+            >>> with con.query_logger(QuerySaver()):
+            >>>     await con.execute("SELECT 1")
+            >>> print(log.queries)
+            ['SELECT 1']
+
+        .. versionadded:: 0.29.0
+        """
+        self.add_query_logger(callback)
+        yield
+        self.remove_query_logger(callback)
+
+    @contextlib.contextmanager
+    def _time_and_log(self, query, args, timeout):
+        start = time.monotonic()
+        exception = None
+        try:
+            yield
+        except BaseException as ex:
+            exception = ex
+            raise
+        finally:
+            elapsed = time.monotonic() - start
+            record = LoggedQuery(
+                query=query,
+                args=args,
+                timeout=timeout,
+                elapsed=elapsed,
+                exception=exception,
+                conn_addr=self._addr,
+                conn_params=self._params,
+            )
+            for cb in self._query_loggers:
+                if cb.is_async:
+                    self._loop.create_task(cb.cb(record))
+                else:
+                    self._loop.call_soon(cb.cb, record)
+
     async def __execute(
         self,
         query,
@@ -1645,22 +1871,44 @@ class Connection(metaclass=ConnectionMeta):
         record_class=None
     ):
         executor = lambda stmt, timeout: self._protocol.bind_execute(
-            stmt, args, '', limit, return_status, timeout)
-        timeout = self._protocol._get_timeout(timeout)
-        return await self._do_execute(
-            query,
-            executor,
-            timeout,
-            record_class=record_class,
-            ignore_custom_codec=ignore_custom_codec,
+            state=stmt,
+            args=args,
+            portal_name='',
+            limit=limit,
+            return_extra=return_status,
+            timeout=timeout,
         )
+        timeout = self._protocol._get_timeout(timeout)
+        if self._query_loggers:
+            with self._time_and_log(query, args, timeout):
+                result, stmt = await self._do_execute(
+                    query,
+                    executor,
+                    timeout,
+                    record_class=record_class,
+                    ignore_custom_codec=ignore_custom_codec,
+                )
+        else:
+            result, stmt = await self._do_execute(
+                query,
+                executor,
+                timeout,
+                record_class=record_class,
+                ignore_custom_codec=ignore_custom_codec,
+            )
+        return result, stmt
 
     async def _executemany(self, query, args, timeout):
         executor = lambda stmt, timeout: self._protocol.bind_execute_many(
-            stmt, args, '', timeout)
+            state=stmt,
+            args=args,
+            portal_name='',
+            timeout=timeout,
+        )
         timeout = self._protocol._get_timeout(timeout)
         with self._stmt_exclusive_section:
-            result, _ = await self._do_execute(query, executor, timeout)
+            with self._time_and_log(query, args, timeout):
+                result, _ = await self._do_execute(query, executor, timeout)
         return result
 
     async def _do_execute(
@@ -1755,9 +2003,13 @@ async def connect(dsn=None, *,
                   max_cacheable_statement_size=1024 * 15,
                   command_timeout=None,
                   ssl=None,
+                  direct_tls=False,
                   connection_class=Connection,
                   record_class=protocol.Record,
-                  server_settings=None):
+                  server_settings=None,
+                  target_session_attrs=None,
+                  krbsrvname=None,
+                  gsslib=None):
     r"""A coroutine to establish a connection to a PostgreSQL server.
 
     The connection parameters may be specified either as a connection
@@ -1773,15 +2025,22 @@ async def connect(dsn=None, *,
         Connection arguments specified using as a single string in the
         `libpq connection URI format`_:
         ``postgres://user:password@host:port/database?option=value``.
-        The following options are recognized by asyncpg: host, port,
-        user, database (or dbname), password, passfile, sslmode.
-        Unlike libpq, asyncpg will treat unrecognized options
-        as `server settings`_ to be used for the connection.
+        The following options are recognized by asyncpg: ``host``,
+        ``port``, ``user``, ``database`` (or ``dbname``), ``password``,
+        ``passfile``, ``sslmode``, ``sslcert``, ``sslkey``, ``sslrootcert``,
+        and ``sslcrl``.  Unlike libpq, asyncpg will treat unrecognized
+        options as `server settings`_ to be used for the connection.
 
         .. note::
 
            The URI must be *valid*, which means that all components must
-           be properly quoted with :py:func:`urllib.parse.quote`.
+           be properly quoted with :py:func:`urllib.parse.quote_plus`, and
+           any literal IPv6 addresses must be enclosed in square brackets.
+           For example:
+
+           .. code-block:: text
+
+              postgres://dbuser@[fe80::1ff:fe23:4567:890a%25eth0]/dbname
 
     :param host:
         Database host address as one of the following:
@@ -1826,7 +2085,7 @@ async def connect(dsn=None, *,
 
         If not specified, the value parsed from the *dsn* argument is used,
         or the value of the ``PGDATABASE`` environment variable, or the
-        operating system name of the user running the application.
+        computed value of the *user* argument.
 
     :param password:
         Password to be used for authentication, if the server requires
@@ -1898,6 +2157,55 @@ async def connect(dsn=None, *,
 
            *ssl* is ignored for Unix domain socket communication.
 
+        Example of programmatic SSL context configuration that is equivalent
+        to ``sslmode=verify-full&sslcert=..&sslkey=..&sslrootcert=..``:
+
+        .. code-block:: pycon
+
+            >>> import asyncpg
+            >>> import asyncio
+            >>> import ssl
+            >>> async def main():
+            ...     # Load CA bundle for server certificate verification,
+            ...     # equivalent to sslrootcert= in DSN.
+            ...     sslctx = ssl.create_default_context(
+            ...         ssl.Purpose.SERVER_AUTH,
+            ...         cafile="path/to/ca_bundle.pem")
+            ...     # If True, equivalent to sslmode=verify-full, if False:
+            ...     # sslmode=verify-ca.
+            ...     sslctx.check_hostname = True
+            ...     # Load client certificate and private key for client
+            ...     # authentication, equivalent to sslcert= and sslkey= in
+            ...     # DSN.
+            ...     sslctx.load_cert_chain(
+            ...         "path/to/client.cert",
+            ...         keyfile="path/to/client.key",
+            ...     )
+            ...     con = await asyncpg.connect(user='postgres', ssl=sslctx)
+            ...     await con.close()
+            >>> asyncio.run(main())
+
+        Example of programmatic SSL context configuration that is equivalent
+        to ``sslmode=require`` (no server certificate or host verification):
+
+        .. code-block:: pycon
+
+            >>> import asyncpg
+            >>> import asyncio
+            >>> import ssl
+            >>> async def main():
+            ...     sslctx = ssl.create_default_context(
+            ...         ssl.Purpose.SERVER_AUTH)
+            ...     sslctx.check_hostname = False
+            ...     sslctx.verify_mode = ssl.CERT_NONE
+            ...     con = await asyncpg.connect(user='postgres', ssl=sslctx)
+            ...     await con.close()
+            >>> asyncio.run(main())
+
+    :param bool direct_tls:
+        Pass ``True`` to skip PostgreSQL STARTTLS mode and perform a direct
+        SSL connection. Must be used alongside ``ssl`` param.
+
     :param dict server_settings:
         An optional dict of server runtime parameters.  Refer to
         PostgreSQL documentation for
@@ -1911,6 +2219,31 @@ async def connect(dsn=None, *,
         If specified, the class to use for records returned by queries on
         this connection object.  Must be a subclass of
         :class:`~asyncpg.Record`.
+
+    :param SessionAttribute target_session_attrs:
+        If specified, check that the host has the correct attribute.
+        Can be one of:
+
+        - ``"any"`` - the first successfully connected host
+        - ``"primary"`` - the host must NOT be in hot standby mode
+        - ``"standby"`` - the host must be in hot standby mode
+        - ``"read-write"`` - the host must allow writes
+        - ``"read-only"`` - the host most NOT allow writes
+        - ``"prefer-standby"`` - first try to find a standby host, but if
+          none of the listed hosts is a standby server,
+          return any of them.
+
+        If not specified, the value parsed from the *dsn* argument is used,
+        or the value of the ``PGTARGETSESSIONATTRS`` environment variable,
+        or ``"any"`` if neither is specified.
+
+    :param str krbsrvname:
+        Kerberos service name to use when authenticating with GSSAPI. This
+        must match the server configuration. Defaults to 'postgres'.
+
+    :param str gsslib:
+        GSS library to use for GSSAPI/SSPI authentication. Can be 'gssapi'
+        or 'sspi'. Defaults to 'sspi' on Windows and 'gssapi' otherwise.
 
     :return: A :class:`~asyncpg.connection.Connection` instance.
 
@@ -1956,6 +2289,33 @@ async def connect(dsn=None, *,
     .. versionchanged:: 0.22.0
        The *ssl* argument now defaults to ``'prefer'``.
 
+    .. versionchanged:: 0.24.0
+       The ``sslcert``, ``sslkey``, ``sslrootcert``, and ``sslcrl`` options
+       are supported in the *dsn* argument.
+
+    .. versionchanged:: 0.25.0
+       The ``sslpassword``, ``ssl_min_protocol_version``,
+       and ``ssl_max_protocol_version`` options are supported in the *dsn*
+       argument.
+
+    .. versionchanged:: 0.25.0
+       Default system root CA certificates won't be loaded when specifying a
+       particular sslmode, following the same behavior in libpq.
+
+    .. versionchanged:: 0.25.0
+       The ``sslcert``, ``sslkey``, ``sslrootcert``, and ``sslcrl`` options
+       in the *dsn* argument now have consistent default values of files under
+       ``~/.postgresql/`` as libpq.
+
+    .. versionchanged:: 0.26.0
+       Added the *direct_tls* parameter.
+
+    .. versionchanged:: 0.28.0
+       Added the *target_session_attrs* parameter.
+
+    .. versionchanged:: 0.30.0
+       Added the *krbsrvname* and *gsslib* parameters.
+
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
         https://docs.python.org/3/library/ssl.html#ssl.create_default_context
@@ -1978,25 +2338,29 @@ async def connect(dsn=None, *,
     if loop is None:
         loop = asyncio.get_event_loop()
 
-    return await connect_utils._connect(
-        loop=loop,
-        timeout=timeout,
-        connection_class=connection_class,
-        record_class=record_class,
-        dsn=dsn,
-        host=host,
-        port=port,
-        user=user,
-        password=password,
-        passfile=passfile,
-        ssl=ssl,
-        database=database,
-        server_settings=server_settings,
-        command_timeout=command_timeout,
-        statement_cache_size=statement_cache_size,
-        max_cached_statement_lifetime=max_cached_statement_lifetime,
-        max_cacheable_statement_size=max_cacheable_statement_size,
-    )
+    async with compat.timeout(timeout):
+        return await connect_utils._connect(
+            loop=loop,
+            connection_class=connection_class,
+            record_class=record_class,
+            dsn=dsn,
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            passfile=passfile,
+            ssl=ssl,
+            direct_tls=direct_tls,
+            database=database,
+            server_settings=server_settings,
+            command_timeout=command_timeout,
+            statement_cache_size=statement_cache_size,
+            max_cached_statement_lifetime=max_cached_statement_lifetime,
+            max_cacheable_statement_size=max_cacheable_statement_size,
+            target_session_attrs=target_session_attrs,
+            krbsrvname=krbsrvname,
+            gsslib=gsslib,
+        )
 
 
 class _StatementCacheEntry:
@@ -2151,6 +2515,26 @@ class _StatementCache:
             self._on_remove(old_entry._statement)
 
 
+class _Callback(typing.NamedTuple):
+
+    cb: typing.Callable[..., None]
+    is_async: bool
+
+    @classmethod
+    def from_callable(cls, cb: typing.Callable[..., None]) -> '_Callback':
+        if inspect.iscoroutinefunction(cb):
+            is_async = True
+        elif callable(cb):
+            is_async = False
+        else:
+            raise exceptions.InterfaceError(
+                'expected a callable or an `async def` function,'
+                'got {!r}'.format(cb)
+            )
+
+        return cls(cb, is_async)
+
+
 class _Atomic:
     __slots__ = ('_acquired',)
 
@@ -2172,10 +2556,17 @@ class _ConnectionProxy:
     __slots__ = ()
 
 
+LoggedQuery = collections.namedtuple(
+    'LoggedQuery',
+    ['query', 'args', 'timeout', 'elapsed', 'exception', 'conn_addr',
+     'conn_params'])
+LoggedQuery.__doc__ = 'Log record of an executed query.'
+
+
 ServerCapabilities = collections.namedtuple(
     'ServerCapabilities',
     ['advisory_locks', 'notifications', 'plpgsql', 'sql_reset',
-     'sql_close_all'])
+     'sql_close_all', 'sql_copy_from_where', 'jit'])
 ServerCapabilities.__doc__ = 'PostgreSQL server capabilities.'
 
 
@@ -2187,6 +2578,8 @@ def _detect_server_capabilities(server_version, connection_settings):
         plpgsql = False
         sql_reset = True
         sql_close_all = False
+        jit = False
+        sql_copy_from_where = False
     elif hasattr(connection_settings, 'crdb_version'):
         # CockroachDB detected.
         advisory_locks = False
@@ -2194,6 +2587,8 @@ def _detect_server_capabilities(server_version, connection_settings):
         plpgsql = False
         sql_reset = False
         sql_close_all = False
+        jit = False
+        sql_copy_from_where = False
     elif hasattr(connection_settings, 'crate_version'):
         # CrateDB detected.
         advisory_locks = False
@@ -2201,6 +2596,8 @@ def _detect_server_capabilities(server_version, connection_settings):
         plpgsql = False
         sql_reset = False
         sql_close_all = False
+        jit = False
+        sql_copy_from_where = False
     else:
         # Standard PostgreSQL server assumed.
         advisory_locks = True
@@ -2208,13 +2605,17 @@ def _detect_server_capabilities(server_version, connection_settings):
         plpgsql = True
         sql_reset = True
         sql_close_all = True
+        jit = server_version >= (11, 0)
+        sql_copy_from_where = server_version.major >= 12
 
     return ServerCapabilities(
         advisory_locks=advisory_locks,
         notifications=notifications,
         plpgsql=plpgsql,
         sql_reset=sql_reset,
-        sql_close_all=sql_close_all
+        sql_close_all=sql_close_all,
+        sql_copy_from_where=sql_copy_from_where,
+        jit=jit,
     )
 
 
@@ -2258,6 +2659,12 @@ def _check_record_class(record_class):
             'record_class is expected to be a subclass of '
             'asyncpg.Record, got {!r}'.format(record_class)
         )
+
+
+def _weak_maybe_gc_stmt(weak_ref, stmt):
+    self = weak_ref()
+    if self is not None:
+        self._maybe_gc_stmt(stmt)
 
 
 _uid = 0
