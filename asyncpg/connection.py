@@ -231,9 +231,8 @@ class Connection(metaclass=ConnectionMeta):
 
         :param callable callback:
             A callable or a coroutine function receiving one argument:
-            **record**: a LoggedQuery containing `query`, `args`, `timeout`,
-                        `elapsed`, `exception`, `conn_addr`, and
-                        `conn_params`.
+            **record**, a LoggedQuery containing `query`, `args`, `timeout`,
+            `elapsed`, `exception`, `conn_addr`, and `conn_params`.
 
         .. versionadded:: 0.29.0
         """
@@ -1809,9 +1808,8 @@ class Connection(metaclass=ConnectionMeta):
 
         :param callable callback:
             A callable or a coroutine function receiving one argument:
-            **record**: a LoggedQuery containing `query`, `args`, `timeout`,
-                        `elapsed`, `exception`, `conn_addr`, and
-                        `conn_params`.
+            **record**, a LoggedQuery containing `query`, `args`, `timeout`,
+            `elapsed`, `exception`, `conn_addr`, and `conn_params`.
 
         Example:
 
