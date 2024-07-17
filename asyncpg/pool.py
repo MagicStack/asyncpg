@@ -33,7 +33,8 @@ class PoolConnectionProxyMeta(type):
                 if not inspect.isfunction(meth):
                     continue
 
-                wrapper = mcls._wrap_connection_method(attrname)
+                iscoroutine = inspect.iscoroutinefunction(meth)
+                wrapper = mcls._wrap_connection_method(attrname, iscoroutine)
                 wrapper = functools.update_wrapper(wrapper, meth)
                 dct[attrname] = wrapper
 
@@ -43,7 +44,7 @@ class PoolConnectionProxyMeta(type):
         return super().__new__(mcls, name, bases, dct)
 
     @staticmethod
-    def _wrap_connection_method(meth_name):
+    def _wrap_connection_method(meth_name, iscoroutine):
         def call_con_method(self, *args, **kwargs):
             # This method will be owned by PoolConnectionProxy class.
             if self._con is None:
@@ -54,6 +55,9 @@ class PoolConnectionProxyMeta(type):
 
             meth = getattr(self._con.__class__, meth_name)
             return meth(self._con, *args, **kwargs)
+
+        if iscoroutine:
+            compat.markcoroutinefunction(call_con_method)
 
         return call_con_method
 
