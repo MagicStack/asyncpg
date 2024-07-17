@@ -11,12 +11,12 @@ from asyncpg import exceptions
 @cython.final
 cdef class ConnectionSettings(pgproto.CodecContext):
 
-    def __cinit__(self, conn_key):
+    def __cinit__(self):
         self._encoding = 'utf-8'
         self._is_utf8 = True
         self._settings = {}
         self._codec = codecs.lookup('utf-8')
-        self._data_codecs = DataCodecConfig(conn_key)
+        self._data_codecs = DataCodecConfig()
 
     cdef add_setting(self, str name, str val):
         self._settings[name] = val

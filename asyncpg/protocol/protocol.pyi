@@ -222,7 +222,7 @@ class Codec:
 
 class DataCodecConfig:
     __pyx_vtable__: Any
-    def __init__(self, cache_key: object) -> None: ...
+    def __init__(self) -> None: ...
     def add_python_codec(
         self,
         typeoid: int,

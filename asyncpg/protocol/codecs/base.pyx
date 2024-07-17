@@ -483,7 +483,7 @@ cdef uint32_t pylong_as_oid(val) except? 0xFFFFFFFFl:
 
 
 cdef class DataCodecConfig:
-    def __init__(self, cache_key):
+    def __init__(self):
         # Codec instance cache for derived types:
         # composites, arrays, ranges, domains and their combinations.
         self._derived_type_codecs = {}
