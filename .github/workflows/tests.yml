@@ -53,6 +53,12 @@ jobs:
         version_line_pattern: |
           __version__\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
 
+    - name: Setup PostgreSQL
+      uses: tj-actions/install-postgresql@2a80e9368dff47cd05fee5bf3cf7d88f68c2f8e9  # v3.1.1
+      if: steps.release.outputs.version == 0 && matrix.os == 'macos-latest'
+      with:
+        postgresql-version: 16
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       if: steps.release.outputs.version == 0

@@ -231,9 +231,8 @@ class Connection(metaclass=ConnectionMeta):
 
         :param callable callback:
             A callable or a coroutine function receiving one argument:
-            **record**: a LoggedQuery containing `query`, `args`, `timeout`,
-                        `elapsed`, `exception`, `conn_addr`, and
-                        `conn_params`.
+            **record**, a LoggedQuery containing `query`, `args`, `timeout`,
+            `elapsed`, `exception`, `conn_addr`, and `conn_params`.
 
         .. versionadded:: 0.29.0
         """
@@ -800,7 +799,7 @@ class Connection(metaclass=ConnectionMeta):
             ...         output='file.csv', format='csv')
             ...     print(result)
             ...
-            >>> asyncio.get_event_loop().run_until_complete(run())
+            >>> asyncio.run(run())
             'COPY 100'
 
         .. _`COPY statement documentation`:
@@ -869,7 +868,7 @@ class Connection(metaclass=ConnectionMeta):
             ...         output='file.csv', format='csv')
             ...     print(result)
             ...
-            >>> asyncio.get_event_loop().run_until_complete(run())
+            >>> asyncio.run(run())
             'COPY 10'
 
         .. _`COPY statement documentation`:
@@ -945,7 +944,7 @@ class Connection(metaclass=ConnectionMeta):
             ...         'mytable', source='datafile.tbl')
             ...     print(result)
             ...
-            >>> asyncio.get_event_loop().run_until_complete(run())
+            >>> asyncio.run(run())
             'COPY 140000'
 
         .. _`COPY statement documentation`:
@@ -1027,7 +1026,7 @@ class Connection(metaclass=ConnectionMeta):
             ...             (2, 'ham', 'spam')])
             ...     print(result)
             ...
-            >>> asyncio.get_event_loop().run_until_complete(run())
+            >>> asyncio.run(run())
             'COPY 2'
 
         Asynchronous record iterables are also supported:
@@ -1045,7 +1044,7 @@ class Connection(metaclass=ConnectionMeta):
             ...         'mytable', records=record_gen(100))
             ...     print(result)
             ...
-            >>> asyncio.get_event_loop().run_until_complete(run())
+            >>> asyncio.run(run())
             'COPY 100'
 
         .. versionadded:: 0.11.0
@@ -1305,7 +1304,7 @@ class Connection(metaclass=ConnectionMeta):
             ...     print(result)
             ...     print(datetime.datetime(2002, 1, 1) + result)
             ...
-            >>> asyncio.get_event_loop().run_until_complete(run())
+            >>> asyncio.run(run())
             relativedelta(years=+2, months=+3, days=+1)
             2004-04-02 00:00:00
 
@@ -1772,7 +1771,7 @@ class Connection(metaclass=ConnectionMeta):
             ...         await con.execute('LOCK TABLE tbl')
             ...         await change_type(con)
             ...
-            >>> asyncio.get_event_loop().run_until_complete(run())
+            >>> asyncio.run(run())
 
         .. versionadded:: 0.14.0
         """
@@ -1809,9 +1808,8 @@ class Connection(metaclass=ConnectionMeta):
 
         :param callable callback:
             A callable or a coroutine function receiving one argument:
-            **record**: a LoggedQuery containing `query`, `args`, `timeout`,
-                        `elapsed`, `exception`, `conn_addr`, and
-                        `conn_params`.
+            **record**, a LoggedQuery containing `query`, `args`, `timeout`,
+            `elapsed`, `exception`, `conn_addr`, and `conn_params`.
 
         Example:
 
@@ -2258,7 +2256,7 @@ async def connect(dsn=None, *,
         ...     types = await con.fetch('SELECT * FROM pg_type')
         ...     print(types)
         ...
-        >>> asyncio.get_event_loop().run_until_complete(run())
+        >>> asyncio.run(run())
         [<Record typname='bool' typnamespace=11 ...
 
     .. versionadded:: 0.10.0
