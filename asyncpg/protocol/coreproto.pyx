@@ -747,15 +747,12 @@ cdef class CoreProtocol:
 
     cdef _auth_gss_get_spn(self):
         service_name = self.con_params.krbsrvname or 'postgres'
-        # find the canonical name of the server host
         if isinstance(self.address, str):
             raise apg_exc.InternalClientError(
                 'GSSAPI/SSPI authentication is only supported for TCP/IP '
                 'connections')
 
-        host = self.address[0]
-        host_cname = socket.gethostbyname_ex(host)[0]
-        return f'{service_name}/{host_cname}'
+        return f'{service_name}/{self.address[0]}'
 
     cdef _auth_gss_step(self, bytes server_response):
         cdef:
