@@ -140,7 +140,7 @@ cdef class CoreProtocol:
     cdef _auth_password_message_sasl_continue(self, bytes server_response)
     cdef _auth_gss_init_gssapi(self)
     cdef _auth_gss_init_sspi(self, bint negotiate)
-    cdef _auth_gss_get_spn(self)
+    cdef _auth_gss_get_service(self)
     cdef _auth_gss_step(self, bytes server_response)
 
     cdef _write(self, buf)
