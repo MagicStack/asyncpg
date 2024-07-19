@@ -58,7 +58,6 @@ docs = [
 requires = [
     "setuptools>=60",
     "wheel",
-
     "Cython(>=0.29.24,<4.0.0)"
 ]
 build-backend = "setuptools.build_meta"
