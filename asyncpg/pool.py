@@ -778,7 +778,7 @@ class Pool:
                 where=where
             )
 
-    def acquire(self, *, timeout=None):
+    def acquire(self, *, timeout=None) -> connection.Connection:
         """Acquire a database connection from the pool.
 
         :param float timeout: A timeout for acquiring a Connection.
