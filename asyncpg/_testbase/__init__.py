@@ -268,6 +268,7 @@ def create_pool(dsn=None, *,
                 pool_class=pg_pool.Pool,
                 connection_class=pg_connection.Connection,
                 record_class=asyncpg.Record,
+                connect_fn=pg_connection.connect,
                 **connect_kwargs):
     return pool_class(
         dsn,
@@ -275,7 +276,7 @@ def create_pool(dsn=None, *,
         max_queries=max_queries, loop=loop, setup=setup, init=init,
         max_inactive_connection_lifetime=max_inactive_connection_lifetime,
         connection_class=connection_class,
-        record_class=record_class,
+        record_class=record_class, connect_fn=connect_fn,
         **connect_kwargs)
 
 

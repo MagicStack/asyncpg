@@ -313,7 +313,7 @@ class Pool:
 
     __slots__ = (
         '_queue', '_loop', '_minsize', '_maxsize',
-        '_init', '_connect_args', '_connect_kwargs',
+        '_init', '_connect_fn', '_connect_args', '_connect_kwargs',
         '_holders', '_initialized', '_initializing', '_closing',
         '_closed', '_connection_class', '_record_class', '_generation',
         '_setup', '_max_queries', '_max_inactive_connection_lifetime'
@@ -329,6 +329,7 @@ class Pool:
                  loop,
                  connection_class,
                  record_class,
+                 connect_fn,
                  **connect_kwargs):
 
         if len(connect_args) > 1:
@@ -388,6 +389,7 @@ class Pool:
         self._init = init
         self._connect_args = connect_args
         self._connect_kwargs = connect_kwargs
+        self._connect_fn = connect_fn
 
         self._setup = setup
         self._max_queries = max_queries
@@ -503,7 +505,7 @@ class Pool:
         self._connect_kwargs = connect_kwargs
 
     async def _get_new_connection(self):
-        con = await connection.connect(
+        con = await self._connect_fn(
             *self._connect_args,
             loop=self._loop,
             connection_class=self._connection_class,
@@ -1097,6 +1099,10 @@ def create_pool(dsn=None, *,
         or :meth:`Connection.set_type_codec() <\
         asyncpg.connection.Connection.set_type_codec>`.
 
+    :param coroutine connect_fn:
+        A coroutine with signature identical to :func:`~asyncpg.connection.connect`. This can be used to add custom
+        authentication or ssl logic when creating a connection, as is required by GCP's cloud-sql-python-connector.
+
     :param loop:
         An asyncio event loop instance.  If ``None``, the default
         event loop will be used.
@@ -1127,7 +1133,7 @@ def create_pool(dsn=None, *,
     return Pool(
         dsn,
         connection_class=connection_class,
-        record_class=record_class,
+        record_class=record_class, connect_fn=connection.connect,
         min_size=min_size, max_size=max_size,
         max_queries=max_queries, loop=loop, setup=setup, init=init,
         max_inactive_connection_lifetime=max_inactive_connection_lifetime,
