@@ -212,6 +212,7 @@ cdef class BaseProtocol(CoreProtocol):
         args,
         portal_name: str,
         timeout,
+        return_rows: bool,
     ):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
@@ -237,7 +238,8 @@ cdef class BaseProtocol(CoreProtocol):
             more = self._bind_execute_many(
                 portal_name,
                 state.name,
-                arg_bufs)  # network op
+                arg_bufs,
+                return_rows)  # network op
 
             self.last_query = state.query
             self.statement = state
