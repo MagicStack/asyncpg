@@ -564,6 +564,19 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'dsn_bad_characters_maybe',
+            'dsn': 'postgres://eoapi:a2Vw%3Ayk%3D%29CdSis%5Bfek%5DtW%3D%2Fo@eoapi-primary.default.svc:5432/eoapi',
+            'result': ([('eoapi-primary.default.svc', 5432)], {
+                'user': 'eoapi',
+                'password': 'a2Vw:yk=)CdSis[fek]tW=/o',
+                'database': 'eoapi',
+                'ssl': True,
+                'sslmode': SSLMode.prefer
+                ,
+                'target_session_attrs': 'any'})
+        },
+
+        {
             'name': 'params_override_env_and_dsn_ssl_prefer',
             'env': {
                 'PGUSER': 'user',
@@ -1169,6 +1182,7 @@ class TestConnectParams(tb.TestCase):
 
     def test_connect_params(self):
         for testcase in self.TESTS:
+            print(testcase)
             self.run_testcase(testcase)
 
     def test_connect_pgpass_regular(self):
