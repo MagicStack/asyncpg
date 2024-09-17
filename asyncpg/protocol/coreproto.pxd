@@ -171,7 +171,7 @@ cdef class CoreProtocol:
     cdef _bind_execute(self, str portal_name, str stmt_name,
                        WriteBuffer bind_data, int32_t limit)
     cdef bint _bind_execute_many(self, str portal_name, str stmt_name,
-                                 object bind_data)
+                                 object bind_data, bint return_rows)
     cdef bint _bind_execute_many_more(self, bint first=*)
     cdef _bind_execute_many_fail(self, object error, bint first=*)
     cdef _bind(self, str portal_name, str stmt_name,

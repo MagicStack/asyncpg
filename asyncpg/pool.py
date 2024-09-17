@@ -609,6 +609,22 @@ class Pool:
                 record_class=record_class
             )
 
+    async def fetchmany(self, query, args, *, timeout=None, record_class=None):
+        """Run a query for each sequence of arguments in *args*
+        and return the results as a list of :class:`Record`.
+
+        Pool performs this operation using one of its connections.  Other than
+        that, it behaves identically to
+        :meth:`Connection.fetchmany()
+        <asyncpg.connection.Connection.fetchmany>`.
+
+        .. versionadded:: 0.30.0
+        """
+        async with self.acquire() as con:
+            return await con.fetchmany(
+                query, args, timeout=timeout, record_class=record_class
+            )
+
     async def copy_from_table(
         self,
         table_name,

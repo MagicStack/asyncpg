@@ -211,6 +211,27 @@ class PreparedStatement(connresource.ConnectionResource):
         return data[0]
 
     @connresource.guarded
+    async def fetchmany(self, args, *, timeout=None):
+        """Execute the statement and return a list of :class:`Record` objects.
+
+        :param args: Query arguments.
+        :param float timeout: Optional timeout value in seconds.
+
+        :return: A list of :class:`Record` instances.
+
+        .. versionadded:: 0.30.0
+        """
+        return await self.__do_execute(
+            lambda protocol: protocol.bind_execute_many(
+                self._state,
+                args,
+                portal_name='',
+                timeout=timeout,
+                return_rows=True,
+            )
+        )
+
+    @connresource.guarded
     async def executemany(self, args, *, timeout: float=None):
         """Execute the statement for each sequence of arguments in *args*.
 
