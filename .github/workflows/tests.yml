@@ -24,9 +24,6 @@ jobs:
           # uvloop does not support windows
           - loop: uvloop
             os: windows-latest
-          # No 3.12 release yet
-          - loop: uvloop
-            python-version: "3.12"
 
     runs-on: ${{ matrix.os }}
 
