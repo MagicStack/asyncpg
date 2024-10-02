@@ -142,7 +142,7 @@ cdef class PreparedStatementState:
                 # that the user tried to parametrize a statement that does
                 # not support parameters.
                 hint += (r'  Note that parameters are supported only in'
-                         r' SELECT, INSERT, UPDATE, DELETE, and VALUES'
+                         r' SELECT, INSERT, UPDATE, DELETE, MERGE and VALUES'
                          r' statements, and will *not* work in statements '
                          r' like CREATE VIEW or DECLARE CURSOR.')
 

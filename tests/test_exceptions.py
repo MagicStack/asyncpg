@@ -42,7 +42,7 @@ class TestExceptions(tb.ConnectedTestCase):
             self.assertEqual(
                 e.detail,
                 "Function's final statement must be SELECT or "
-                "INSERT/UPDATE/DELETE RETURNING.")
+                "INSERT/UPDATE/DELETE/MERGE RETURNING.")
             self.assertIn(
                 'DETAIL:  Function', str(e)
             )

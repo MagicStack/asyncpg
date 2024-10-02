@@ -147,8 +147,8 @@ class PreparedStatement(connresource.ConnectionResource):
             # will discard any output that a SELECT would return, other
             # side effects of the statement will happen as usual. If you
             # wish to use EXPLAIN ANALYZE on an INSERT, UPDATE, DELETE,
-            # CREATE TABLE AS, or EXECUTE statement without letting the
-            # command affect your data, use this approach:
+            # MERGE, CREATE TABLE AS, or EXECUTE statement without letting
+            # the command affect your data, use this approach:
             #     BEGIN;
             #     EXPLAIN ANALYZE ...;
             #     ROLLBACK;
