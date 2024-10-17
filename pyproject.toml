@@ -42,7 +42,7 @@ gssauth = [
 test = [
     'flake8~=6.1',
     'flake8-pyi~=24.1.0',
-    'uvloop>=0.15.3; platform_system != "Windows" and python_version < "3.13.0"',
+    'uvloop>=0.15.3; platform_system != "Windows" and python_version < "3.14.0"',
     'gssapi; platform_system == "Linux"',
     'k5test; platform_system == "Linux"',
     'sspilib; platform_system == "Windows"',
