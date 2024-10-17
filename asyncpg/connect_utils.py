@@ -45,6 +45,11 @@ class SSLMode(enum.IntEnum):
         return getattr(cls, sslmode.replace('-', '_'))
 
 
+class SSLNegotiation(compat.StrEnum):
+    postgres = "postgres"
+    direct = "direct"
+
+
 _ConnectionParameters = collections.namedtuple(
     'ConnectionParameters',
     [
@@ -53,7 +58,7 @@ _ConnectionParameters = collections.namedtuple(
         'database',
         'ssl',
         'sslmode',
-        'direct_tls',
+        'ssl_negotiation',
         'server_settings',
         'target_session_attrs',
         'krbsrvname',
@@ -269,6 +274,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     auth_hosts = None
     sslcert = sslkey = sslrootcert = sslcrl = sslpassword = None
     ssl_min_protocol_version = ssl_max_protocol_version = None
+    sslnegotiation = None
 
     if dsn:
         parsed = urllib.parse.urlparse(dsn)
@@ -361,6 +367,9 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
             if 'sslrootcert' in query:
                 sslrootcert = query.pop('sslrootcert')
+
+            if 'sslnegotiation' in query:
+                sslnegotiation = query.pop('sslnegotiation')
 
             if 'sslcrl' in query:
                 sslcrl = query.pop('sslcrl')
@@ -503,13 +512,36 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     if ssl is None and have_tcp_addrs:
         ssl = 'prefer'
 
+    if direct_tls is not None:
+        sslneg = (
+            SSLNegotiation.direct if direct_tls else SSLNegotiation.postgres
+        )
+    else:
+        if sslnegotiation is None:
+            sslnegotiation = os.environ.get("PGSSLNEGOTIATION")
+
+        if sslnegotiation is not None:
+            try:
+                sslneg = SSLNegotiation(sslnegotiation)
+            except ValueError:
+                modes = ', '.join(
+                    m.name.replace('_', '-')
+                    for m in SSLNegotiation
+                )
+                raise exceptions.ClientConfigurationError(
+                    f'`sslnegotiation` parameter must be one of: {modes}'
+                ) from None
+        else:
+            sslneg = SSLNegotiation.postgres
+
     if isinstance(ssl, (str, SSLMode)):
         try:
             sslmode = SSLMode.parse(ssl)
         except AttributeError:
             modes = ', '.join(m.name.replace('_', '-') for m in SSLMode)
             raise exceptions.ClientConfigurationError(
-                '`sslmode` parameter must be one of: {}'.format(modes))
+                '`sslmode` parameter must be one of: {}'.format(modes)
+            ) from None
 
         # docs at https://www.postgresql.org/docs/10/static/libpq-connect.html
         if sslmode < SSLMode.allow:
@@ -676,7 +708,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
     params = _ConnectionParameters(
         user=user, password=password, database=database, ssl=ssl,
-        sslmode=sslmode, direct_tls=direct_tls,
+        sslmode=sslmode, ssl_negotiation=sslneg,
         server_settings=server_settings,
         target_session_attrs=target_session_attrs,
         krbsrvname=krbsrvname, gsslib=gsslib)
@@ -882,9 +914,9 @@ async def __connect_addr(
         # UNIX socket
         connector = loop.create_unix_connection(proto_factory, addr)
 
-    elif params.ssl and params.direct_tls:
-        # if ssl and direct_tls are given, skip STARTTLS and perform direct
-        # SSL connection
+    elif params.ssl and params.ssl_negotiation is SSLNegotiation.direct:
+        # if ssl and ssl_negotiation is `direct`, skip STARTTLS and perform
+        # direct SSL connection
         connector = loop.create_connection(
             proto_factory, *addr, ssl=params.ssl
         )
