@@ -39,12 +39,18 @@ class TestExceptions(tb.ConnectedTestCase):
                  CREATE FUNCTION foo() RETURNS bool AS $$ $$ LANGUAGE SQL;
             ''')
         except asyncpg.InvalidFunctionDefinitionError as e:
-            self.assertEqual(
-                e.detail,
-                "Function's final statement must be SELECT or "
-                "INSERT/UPDATE/DELETE/MERGE RETURNING.")
-            self.assertIn(
-                'DETAIL:  Function', str(e)
-            )
+            if self.server_version < (17, 0):
+                detail = (
+                    "Function's final statement must be SELECT or "
+                    "INSERT/UPDATE/DELETE RETURNING."
+                )
+            else:
+                detail = (
+                    "Function's final statement must be SELECT or "
+                    "INSERT/UPDATE/DELETE/MERGE RETURNING."
+                )
+
+            self.assertEqual(e.detail, detail)
+            self.assertIn('DETAIL:  Function', str(e))
         else:
             self.fail('InvalidFunctionDefinitionError not raised')
