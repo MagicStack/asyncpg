@@ -42,4 +42,11 @@ async def _mogrify(conn, query, args):
 
     # Finally, replace $n references with text values.
     return re.sub(
-        r'\$(\d+)\b', lambda m: textified[int(m.group(1)) - 1], query)
+        r"\$(\d+)\b",
+        lambda m: (
+            textified[int(m.group(1)) - 1]
+            if textified[int(m.group(1)) - 1] is not None
+            else "NULL"
+        ),
+        query,
+    )
