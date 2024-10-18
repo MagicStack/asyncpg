@@ -48,28 +48,28 @@ jobs:
         missing_version_ok: yes
         version_file: asyncpg/_version.py
         version_line_pattern: |
-          __version__\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
+          __version__(?:\s*:\s*typing\.Final)?\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
 
     - name: Setup PostgreSQL
-      if: steps.release.outputs.version == 0 && matrix.os == 'macos-latest'
+      if: "!steps.release.outputs.is_release && matrix.os == 'macos-latest'"
       run: |
         brew install postgresql
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
-      if: steps.release.outputs.version == 0
+      if: "!steps.release.outputs.is_release"
       with:
         python-version: ${{ matrix.python-version }}
 
     - name: Install Python Deps
-      if: steps.release.outputs.version == 0
+      if: "!steps.release.outputs.is_release"
       run: |
-        .github/workflows/install-krb5.sh
+        [ "$RUNNER_OS" = "Linux" ] && .github/workflows/install-krb5.sh
         python -m pip install -U pip setuptools wheel
         python -m pip install -e .[test]
 
     - name: Test
-      if: steps.release.outputs.version == 0
+      if: "!steps.release.outputs.is_release"
       env:
         LOOP_IMPL: ${{ matrix.loop }}
       run: |
@@ -103,10 +103,10 @@ jobs:
         missing_version_ok: yes
         version_file: asyncpg/_version.py
         version_line_pattern: |
-          __version__\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
+          __version__(?:\s*:\s*typing\.Final)?\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
 
     - name: Set up PostgreSQL
-      if: steps.release.outputs.version == 0
+      if: "!steps.release.outputs.is_release"
       env:
         PGVERSION: ${{ matrix.postgres-version }}
         DISTRO_NAME: focal
@@ -118,19 +118,19 @@ jobs:
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
-      if: steps.release.outputs.version == 0
+      if: "!steps.release.outputs.is_release"
       with:
         python-version: "3.x"
 
     - name: Install Python Deps
-      if: steps.release.outputs.version == 0
+      if: "!steps.release.outputs.is_release"
       run: |
-        .github/workflows/install-krb5.sh
+        [ "$RUNNER_OS" = "Linux" ] && .github/workflows/install-krb5.sh
         python -m pip install -U pip setuptools wheel
         python -m pip install -e .[test]
 
     - name: Test
-      if: steps.release.outputs.version == 0
+      if: "!steps.release.outputs.is_release"
       env:
         PGVERSION: ${{ matrix.postgres-version }}
       run: |

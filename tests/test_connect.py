@@ -24,6 +24,8 @@ import urllib.parse
 import warnings
 import weakref
 
+import distro
+
 import asyncpg
 from asyncpg import _testbase as tb
 from asyncpg import connection as pg_connection
@@ -388,6 +390,10 @@ class TestAuthentication(BaseTestAuthentication):
             await self.connect(user='md5_user', password=CORRECT_PASSWORD)
 
 
+@unittest.skipIf(
+    distro.id() == "alpine",
+    "Alpine Linux ships PostgreSQL without GSS auth support",
+)
 class TestGssAuthentication(BaseTestAuthentication):
     @classmethod
     def setUpClass(cls):
@@ -426,10 +432,11 @@ class TestGssAuthentication(BaseTestAuthentication):
         cls.start_cluster(
             cls.cluster, server_settings=cls.get_server_settings())
 
-    async def test_auth_gssapi(self):
+    async def test_auth_gssapi_ok(self):
         conn = await self.connect(user=self.realm.user_princ)
         await conn.close()
 
+    async def test_auth_gssapi_bad_srvname(self):
         # Service name mismatch.
         with self.assertRaisesRegex(
             exceptions.InternalClientError,
@@ -437,6 +444,7 @@ class TestGssAuthentication(BaseTestAuthentication):
         ):
             await self.connect(user=self.realm.user_princ, krbsrvname='wrong')
 
+    async def test_auth_gssapi_bad_user(self):
         # Credentials mismatch.
         with self.assertRaisesRegex(
             exceptions.InvalidAuthorizationSpecificationError,

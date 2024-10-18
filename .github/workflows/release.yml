@@ -39,8 +39,8 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: dist
-        path: dist/
+        name: dist-version
+        path: dist/VERSION
 
   build-sdist:
     needs: validate-release-request
@@ -67,7 +67,7 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: dist
+        name: dist-sdist
         path: dist/*.tar.*
 
   build-wheels-matrix:
@@ -127,8 +127,18 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: dist
+        name: dist-wheels-${{ matrix.only }}
         path: wheelhouse/*.whl
+
+  merge-artifacts:
+    runs-on: ubuntu-latest
+    needs: [build-sdist, build-wheels]
+    steps:
+      - name: Merge Artifacts
+        uses: actions/upload-artifact/merge@v4
+        with:
+          name: dist
+          delete-merged: true
 
   publish-docs:
     needs: [build-sdist, build-wheels]
@@ -180,6 +190,12 @@ jobs:
     needs: [build-sdist, build-wheels, publish-docs]
     runs-on: ubuntu-latest
 
+    environment:
+      name: pypi
+      url: https://pypi.org/p/asyncpg
+    permissions:
+      id-token: write
+
     steps:
     - uses: actions/checkout@v4
       with:
@@ -223,7 +239,4 @@ jobs:
     - name: Upload to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        user: __token__
-        password: ${{ secrets.PYPI_TOKEN }}
-        # password: ${{ secrets.TEST_PYPI_TOKEN }}
-        # repository_url: https://test.pypi.org/legacy/
+        attestations: true

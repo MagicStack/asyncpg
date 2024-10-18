@@ -226,13 +226,6 @@ def _init_cluster(ClusterCls, cluster_kwargs, initdb_options=None):
     return cluster
 
 
-def _start_cluster(ClusterCls, cluster_kwargs, server_settings,
-                   initdb_options=None):
-    cluster = _init_cluster(ClusterCls, cluster_kwargs, initdb_options)
-    cluster.start(port='dynamic', server_settings=server_settings)
-    return cluster
-
-
 def _get_initdb_options(initdb_options=None):
     if not initdb_options:
         initdb_options = {}
@@ -256,8 +249,12 @@ def _init_default_cluster(initdb_options=None):
             _default_cluster = pg_cluster.RunningCluster()
         else:
             _default_cluster = _init_cluster(
-                pg_cluster.TempCluster, cluster_kwargs={},
-                initdb_options=_get_initdb_options(initdb_options))
+                pg_cluster.TempCluster,
+                cluster_kwargs={
+                    "data_dir_suffix": ".apgtest",
+                },
+                initdb_options=_get_initdb_options(initdb_options),
+            )
 
     return _default_cluster
 

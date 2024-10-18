@@ -9,9 +9,11 @@ import asyncio
 import os
 import os.path
 import platform
+import random
 import re
 import shutil
 import socket
+import string
 import subprocess
 import sys
 import tempfile
@@ -43,6 +45,29 @@ def find_available_port():
         return None
     finally:
         sock.close()
+
+
+def _world_readable_mkdtemp(suffix=None, prefix=None, dir=None):
+    name = "".join(random.choices(string.ascii_lowercase, k=8))
+    if dir is None:
+        dir = tempfile.gettempdir()
+    if prefix is None:
+        prefix = tempfile.gettempprefix()
+    if suffix is None:
+        suffix = ""
+    fn = os.path.join(dir, prefix + name + suffix)
+    os.mkdir(fn, 0o755)
+    return fn
+
+
+def _mkdtemp(suffix=None, prefix=None, dir=None):
+    if _system == 'Windows' and os.environ.get("GITHUB_ACTIONS"):
+        # Due to mitigations introduced in python/cpython#118486
+        # when Python runs in a session created via an SSH connection
+        # tempfile.mkdtemp creates directories that are not accessible.
+        return _world_readable_mkdtemp(suffix, prefix, dir)
+    else:
+        return tempfile.mkdtemp(suffix, prefix, dir)
 
 
 class ClusterError(Exception):
@@ -122,9 +147,13 @@ class Cluster:
         else:
             extra_args = []
 
+        os.makedirs(self._data_dir, exist_ok=True)
         process = subprocess.run(
             [self._pg_ctl, 'init', '-D', self._data_dir] + extra_args,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            cwd=self._data_dir,
+        )
 
         output = process.stdout
 
@@ -199,7 +228,10 @@ class Cluster:
             process = subprocess.run(
                 [self._pg_ctl, 'start', '-D', self._data_dir,
                  '-o', ' '.join(extra_args)],
-                stdout=stdout, stderr=subprocess.STDOUT)
+                stdout=stdout,
+                stderr=subprocess.STDOUT,
+                cwd=self._data_dir,
+            )
 
             if process.returncode != 0:
                 if process.stderr:
@@ -218,7 +250,10 @@ class Cluster:
             self._daemon_process = \
                 subprocess.Popen(
                     [self._postgres, '-D', self._data_dir, *extra_args],
-                    stdout=stdout, stderr=subprocess.STDOUT)
+                    stdout=stdout,
+                    stderr=subprocess.STDOUT,
+                    cwd=self._data_dir,
+                )
 
             self._daemon_pid = self._daemon_process.pid
 
@@ -232,7 +267,10 @@ class Cluster:
 
         process = subprocess.run(
             [self._pg_ctl, 'reload', '-D', self._data_dir],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=self._data_dir,
+        )
 
         stderr = process.stderr
 
@@ -245,7 +283,10 @@ class Cluster:
         process = subprocess.run(
             [self._pg_ctl, 'stop', '-D', self._data_dir, '-t', str(wait),
              '-m', 'fast'],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=self._data_dir,
+        )
 
         stderr = process.stderr
 
@@ -583,9 +624,9 @@ class TempCluster(Cluster):
     def __init__(self, *,
                  data_dir_suffix=None, data_dir_prefix=None,
                  data_dir_parent=None, pg_config_path=None):
-        self._data_dir = tempfile.mkdtemp(suffix=data_dir_suffix,
-                                          prefix=data_dir_prefix,
-                                          dir=data_dir_parent)
+        self._data_dir = _mkdtemp(suffix=data_dir_suffix,
+                                  prefix=data_dir_prefix,
+                                  dir=data_dir_parent)
         super().__init__(self._data_dir, pg_config_path=pg_config_path)
 
 
