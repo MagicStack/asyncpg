@@ -121,6 +121,10 @@ class StackedDiagnosticsAccessedWithoutActiveHandlerError(DiagnosticsError):
     sqlstate = '0Z002'
 
 
+class InvalidArgumentForXqueryError(_base.PostgresError):
+    sqlstate = '10608'
+
+
 class CaseNotFoundError(_base.PostgresError):
     sqlstate = '20000'
 
@@ -483,6 +487,10 @@ class InFailedSQLTransactionError(InvalidTransactionStateError):
 
 class IdleInTransactionSessionTimeoutError(InvalidTransactionStateError):
     sqlstate = '25P03'
+
+
+class TransactionTimeoutError(InvalidTransactionStateError):
+    sqlstate = '25P04'
 
 
 class InvalidSQLStatementNameError(_base.PostgresError):
@@ -900,6 +908,10 @@ class DuplicateFileError(PostgresSystemError):
     sqlstate = '58P02'
 
 
+class FileNameTooLongError(PostgresSystemError):
+    sqlstate = '58P03'
+
+
 class SnapshotTooOldError(_base.PostgresError):
     sqlstate = '72000'
 
@@ -1095,9 +1107,9 @@ __all__ = (
     'FDWTableNotFoundError', 'FDWTooManyHandlesError',
     'FDWUnableToCreateExecutionError', 'FDWUnableToCreateReplyError',
     'FDWUnableToEstablishConnectionError', 'FeatureNotSupportedError',
-    'ForeignKeyViolationError', 'FunctionExecutedNoReturnStatementError',
-    'GeneratedAlwaysError', 'GroupingError',
-    'HeldCursorRequiresSameIsolationLevelError',
+    'FileNameTooLongError', 'ForeignKeyViolationError',
+    'FunctionExecutedNoReturnStatementError', 'GeneratedAlwaysError',
+    'GroupingError', 'HeldCursorRequiresSameIsolationLevelError',
     'IdleInTransactionSessionTimeoutError', 'IdleSessionTimeoutError',
     'ImplicitZeroBitPadding', 'InFailedSQLTransactionError',
     'InappropriateAccessModeForBranchTransactionError',
@@ -1112,6 +1124,7 @@ __all__ = (
     'InvalidArgumentForPowerFunctionError',
     'InvalidArgumentForSQLJsonDatetimeFunctionError',
     'InvalidArgumentForWidthBucketFunctionError',
+    'InvalidArgumentForXqueryError',
     'InvalidAuthorizationSpecificationError',
     'InvalidBinaryRepresentationError', 'InvalidCachedStatementError',
     'InvalidCatalogNameError', 'InvalidCharacterValueForCastError',
@@ -1184,9 +1197,9 @@ __all__ = (
     'TooManyJsonObjectMembersError', 'TooManyRowsError',
     'TransactionIntegrityConstraintViolationError',
     'TransactionResolutionUnknownError', 'TransactionRollbackError',
-    'TriggerProtocolViolatedError', 'TriggeredActionError',
-    'TriggeredDataChangeViolationError', 'TrimError',
-    'UndefinedColumnError', 'UndefinedFileError',
+    'TransactionTimeoutError', 'TriggerProtocolViolatedError',
+    'TriggeredActionError', 'TriggeredDataChangeViolationError',
+    'TrimError', 'UndefinedColumnError', 'UndefinedFileError',
     'UndefinedFunctionError', 'UndefinedObjectError',
     'UndefinedParameterError', 'UndefinedTableError',
     'UniqueViolationError', 'UnsafeNewEnumValueUsageError',
