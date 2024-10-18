@@ -243,7 +243,12 @@ class PreparedStatement(connresource.ConnectionResource):
         """
         return await self.__do_execute(
             lambda protocol: protocol.bind_execute_many(
-                self._state, args, '', timeout))
+                self._state,
+                args,
+                portal_name='',
+                timeout=timeout,
+                return_rows=False,
+            ))
 
     async def __do_execute(self, executor):
         protocol = self._connection._protocol

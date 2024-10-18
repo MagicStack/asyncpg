@@ -613,10 +613,15 @@ class TestPrepare(tb.ConnectedTestCase):
             await self.con.prepare('select 1', name='foobar')
 
     async def test_prepare_fetchmany(self):
-        await self.con.execute('CREATE TABLE mytab (a int, b text)')
+        tr = self.con.transaction()
+        await tr.start()
+        try:
+            await self.con.execute('CREATE TABLE fetchmany (a int, b text)')
 
-        stmt = await self.con.prepare(
-            'INSERT INTO mytab (a, b) VALUES ($1, $2) RETURNING a, b'
-        )
-        result = await stmt.fetchmany([(1, 'a'), (2, 'b'), (3, 'c')])
-        self.assertEqual(result, [(1, 'a'), (2, 'b'), (3, 'c')])
+            stmt = await self.con.prepare(
+                'INSERT INTO fetchmany (a, b) VALUES ($1, $2) RETURNING a, b'
+            )
+            result = await stmt.fetchmany([(1, 'a'), (2, 'b'), (3, 'c')])
+            self.assertEqual(result, [(1, 'a'), (2, 'b'), (3, 'c')])
+        finally:
+            await tr.rollback()
