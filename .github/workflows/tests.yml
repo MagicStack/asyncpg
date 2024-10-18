@@ -51,10 +51,9 @@ jobs:
           __version__\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
 
     - name: Setup PostgreSQL
-      uses: tj-actions/install-postgresql@2a80e9368dff47cd05fee5bf3cf7d88f68c2f8e9  # v3.1.1
       if: steps.release.outputs.version == 0 && matrix.os == 'macos-latest'
-      with:
-        postgresql-version: 16
+      run: |
+        brew install postgresql
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
@@ -83,7 +82,7 @@ jobs:
   test-postgres:
     strategy:
       matrix:
-        postgres-version: ["9.5", "9.6", "10", "11", "12", "13", "14", "15", "16"]
+        postgres-version: ["9.5", "9.6", "10", "11", "12", "13", "14", "15", "16", "17"]
 
     runs-on: ubuntu-latest
 
