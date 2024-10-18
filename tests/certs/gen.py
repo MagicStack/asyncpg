@@ -59,6 +59,20 @@ def _new_cert(issuer=None, is_issuer=False, serial_number=None, **subject):
         builder = (
             builder.add_extension(
                 x509.BasicConstraints(ca=True, path_length=None),
+                critical=True,
+            )
+            .add_extension(
+                x509.KeyUsage(
+                    digital_signature=False,
+                    content_commitment=False,
+                    key_encipherment=False,
+                    data_encipherment=False,
+                    key_agreement=False,
+                    key_cert_sign=True,
+                    crl_sign=True,
+                    encipher_only=False,
+                    decipher_only=False,
+                ),
                 critical=False,
             )
             .add_extension(
@@ -88,7 +102,7 @@ def _new_cert(issuer=None, is_issuer=False, serial_number=None, **subject):
             )
             .add_extension(
                 x509.BasicConstraints(ca=False, path_length=None),
-                critical=False,
+                critical=True,
             )
             .add_extension(
                 x509.ExtendedKeyUsage([oid.ExtendedKeyUsageOID.SERVER_AUTH]),
