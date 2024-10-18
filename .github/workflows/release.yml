@@ -22,7 +22,7 @@ jobs:
         github_token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
         version_file: asyncpg/_version.py
         version_line_pattern: |
-          __version__\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
+          __version__(?:\s*:\s*typing\.Final)?\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
 
     - name: Stop if not approved
       if: steps.checkver.outputs.approved != 'true'
@@ -37,7 +37,7 @@ jobs:
         mkdir -p dist/
         echo "${VERSION}" > dist/VERSION
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: dist
         path: dist/
@@ -56,7 +56,7 @@ jobs:
         submodules: true
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: "3.x"
 
@@ -65,7 +65,7 @@ jobs:
         pip install -U setuptools wheel pip
         python setup.py sdist
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: dist
         path: dist/*.tar.*
@@ -77,10 +77,10 @@ jobs:
       include: ${{ steps.set-matrix.outputs.include }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - run: pip install cibuildwheel==2.16.2
+      - run: pip install cibuildwheel==2.21.3
       - id: set-matrix
         run: |
           MATRIX_INCLUDE=$(
@@ -119,13 +119,13 @@ jobs:
       if: runner.os == 'Linux'
       uses: docker/setup-qemu-action@v2
 
-    - uses: pypa/cibuildwheel@fff9ec32ed25a9c576750c91e06b410ed0c15db7  # v2.16.2
+    - uses: pypa/cibuildwheel@7940a4c0e76eb2030e473a5f864f291f63ee879b  # v2.21.3
       with:
         only: ${{ matrix.only }}
       env:
         CIBW_BUILD_VERBOSITY: 1
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: dist
         path: wheelhouse/*.whl
@@ -145,7 +145,7 @@ jobs:
         submodules: true
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: "3.x"
 
@@ -186,7 +186,7 @@ jobs:
         fetch-depth: 5
         submodules: false
 
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       with:
         name: dist
         path: dist/

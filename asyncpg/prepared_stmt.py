@@ -147,8 +147,8 @@ class PreparedStatement(connresource.ConnectionResource):
             # will discard any output that a SELECT would return, other
             # side effects of the statement will happen as usual. If you
             # wish to use EXPLAIN ANALYZE on an INSERT, UPDATE, DELETE,
-            # CREATE TABLE AS, or EXECUTE statement without letting the
-            # command affect your data, use this approach:
+            # MERGE, CREATE TABLE AS, or EXECUTE statement without letting
+            # the command affect your data, use this approach:
             #     BEGIN;
             #     EXPLAIN ANALYZE ...;
             #     ROLLBACK;
@@ -211,6 +211,27 @@ class PreparedStatement(connresource.ConnectionResource):
         return data[0]
 
     @connresource.guarded
+    async def fetchmany(self, args, *, timeout=None):
+        """Execute the statement and return a list of :class:`Record` objects.
+
+        :param args: Query arguments.
+        :param float timeout: Optional timeout value in seconds.
+
+        :return: A list of :class:`Record` instances.
+
+        .. versionadded:: 0.30.0
+        """
+        return await self.__do_execute(
+            lambda protocol: protocol.bind_execute_many(
+                self._state,
+                args,
+                portal_name='',
+                timeout=timeout,
+                return_rows=True,
+            )
+        )
+
+    @connresource.guarded
     async def executemany(self, args, *, timeout: float=None):
         """Execute the statement for each sequence of arguments in *args*.
 
@@ -222,7 +243,12 @@ class PreparedStatement(connresource.ConnectionResource):
         """
         return await self.__do_execute(
             lambda protocol: protocol.bind_execute_many(
-                self._state, args, '', timeout))
+                self._state,
+                args,
+                portal_name='',
+                timeout=timeout,
+                return_rows=False,
+            ))
 
     async def __do_execute(self, executor):
         protocol = self._connection._protocol

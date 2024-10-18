@@ -148,12 +148,14 @@ class TestCopyFrom(tb.ConnectedTestCase):
 
         res = await self.con.copy_from_query('''
             SELECT
-                i, i * 10
+                i,
+                i * 10,
+                $2::text
             FROM
                 generate_series(1, 5) AS i
             WHERE
                 i = $1
-        ''', 3, output=f)
+        ''', 3, None, output=f)
 
         self.assertEqual(res, 'COPY 1')
 
@@ -161,7 +163,7 @@ class TestCopyFrom(tb.ConnectedTestCase):
         self.assertEqual(
             output,
             [
-                '3\t30',
+                '3\t30\t\\N',
                 ''
             ]
         )

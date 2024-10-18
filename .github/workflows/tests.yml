@@ -17,16 +17,13 @@ jobs:
     # job.
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         os: [ubuntu-latest, macos-latest, windows-latest]
         loop: [asyncio, uvloop]
         exclude:
           # uvloop does not support windows
           - loop: uvloop
             os: windows-latest
-          # No 3.12 release yet
-          - loop: uvloop
-            python-version: "3.12"
 
     runs-on: ${{ matrix.os }}
 
@@ -53,8 +50,13 @@ jobs:
         version_line_pattern: |
           __version__\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
 
+    - name: Setup PostgreSQL
+      if: steps.release.outputs.version == 0 && matrix.os == 'macos-latest'
+      run: |
+        brew install postgresql
+
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       if: steps.release.outputs.version == 0
       with:
         python-version: ${{ matrix.python-version }}
@@ -62,6 +64,7 @@ jobs:
     - name: Install Python Deps
       if: steps.release.outputs.version == 0
       run: |
+        .github/workflows/install-krb5.sh
         python -m pip install -U pip setuptools wheel
         python -m pip install -e .[test]
 
@@ -79,7 +82,7 @@ jobs:
   test-postgres:
     strategy:
       matrix:
-        postgres-version: ["9.5", "9.6", "10", "11", "12", "13", "14", "15", "16"]
+        postgres-version: ["9.5", "9.6", "10", "11", "12", "13", "14", "15", "16", "17"]
 
     runs-on: ubuntu-latest
 
@@ -114,7 +117,7 @@ jobs:
           >> "${GITHUB_ENV}"
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       if: steps.release.outputs.version == 0
       with:
         python-version: "3.x"
@@ -122,6 +125,7 @@ jobs:
     - name: Install Python Deps
       if: steps.release.outputs.version == 0
       run: |
+        .github/workflows/install-krb5.sh
         python -m pip install -U pip setuptools wheel
         python -m pip install -e .[test]
 

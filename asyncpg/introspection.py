@@ -4,8 +4,14 @@
 # This module is part of asyncpg and is released under
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
+from __future__ import annotations
 
-_TYPEINFO_13 = '''\
+import typing
+
+if typing.TYPE_CHECKING:
+    from . import protocol
+
+_TYPEINFO_13: typing.Final = '''\
     (
         SELECT
             t.oid                           AS oid,
@@ -124,7 +130,7 @@ ORDER BY
 '''.format(typeinfo=_TYPEINFO_13)
 
 
-_TYPEINFO = '''\
+_TYPEINFO: typing.Final = '''\
     (
         SELECT
             t.oid                           AS oid,
@@ -248,7 +254,7 @@ ORDER BY
 '''.format(typeinfo=_TYPEINFO)
 
 
-TYPE_BY_NAME = '''\
+TYPE_BY_NAME: typing.Final = '''\
 SELECT
     t.oid,
     t.typelem     AS elemtype,
@@ -277,16 +283,16 @@ WHERE
 SCALAR_TYPE_KINDS = (b'b', b'd', b'e')
 
 
-def is_scalar_type(typeinfo) -> bool:
+def is_scalar_type(typeinfo: protocol.Record) -> bool:
     return (
         typeinfo['kind'] in SCALAR_TYPE_KINDS and
         not typeinfo['elemtype']
     )
 
 
-def is_domain_type(typeinfo) -> bool:
-    return typeinfo['kind'] == b'd'
+def is_domain_type(typeinfo: protocol.Record) -> bool:
+    return typeinfo['kind'] == b'd'  # type: ignore[no-any-return]
 
 
-def is_composite_type(typeinfo) -> bool:
-    return typeinfo['kind'] == b'c'
+def is_composite_type(typeinfo: protocol.Record) -> bool:
+    return typeinfo['kind'] == b'c'  # type: ignore[no-any-return]

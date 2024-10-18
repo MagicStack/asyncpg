@@ -25,7 +25,7 @@ from setuptools.command import sdist as setuptools_sdist
 from setuptools.command import build_ext as setuptools_build_ext
 
 
-CYTHON_DEPENDENCY = 'Cython(>=0.29.24,<0.30.0)'
+CYTHON_DEPENDENCY = 'Cython(>=0.29.24,<4.0.0)'
 
 CFLAGS = ['-O2']
 LDFLAGS = []
@@ -43,7 +43,7 @@ with open(str(_ROOT / 'README.rst')) as f:
 
 with open(str(_ROOT / 'asyncpg' / '_version.py')) as f:
     for line in f:
-        if line.startswith('__version__ ='):
+        if line.startswith('__version__: typing.Final ='):
             _, _, version = line.partition('=')
             VERSION = version.strip(" \n'\"")
             break

@@ -44,8 +44,7 @@ which provides methods to run queries and manage transactions.
         # Close the connection.
         await conn.close()
 
-    asyncio.get_event_loop().run_until_complete(main())
-
+    asyncio.run(main())
 
 
 .. note::
@@ -344,7 +343,7 @@ shows how to instruct asyncpg to use floats instead.
         finally:
             await conn.close()
 
-    asyncio.get_event_loop().run_until_complete(main())
+    asyncio.run(main())
 
 
 Example: decoding hstore values
@@ -369,7 +368,7 @@ be registered on a connection using :meth:`Connection.set_builtin_type_codec()
         result = await conn.fetchval("SELECT 'a=>1,b=>2,c=>NULL'::hstore")
         assert result == {'a': '1', 'b': '2', 'c': None}
 
-    asyncio.get_event_loop().run_until_complete(run())
+    asyncio.run(run())
 
 .. _hstore: https://www.postgresql.org/docs/current/static/hstore.html
 
@@ -443,7 +442,7 @@ Web service that computes the requested power of two.
          app['pool'] = await asyncpg.create_pool(database='postgres',
                                                  user='postgres')
          yield
-         app['pool'].close()
+         await app['pool'].close()
 
  
     def init_app():

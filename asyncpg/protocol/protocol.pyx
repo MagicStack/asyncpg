@@ -75,7 +75,7 @@ NO_TIMEOUT = object()
 cdef class BaseProtocol(CoreProtocol):
     def __init__(self, addr, connected_fut, con_params, record_class: type, loop):
         # type of `con_params` is `_ConnectionParameters`
-        CoreProtocol.__init__(self, con_params)
+        CoreProtocol.__init__(self, addr, con_params)
 
         self.loop = loop
         self.transport = None
@@ -83,8 +83,7 @@ cdef class BaseProtocol(CoreProtocol):
         self.cancel_waiter = None
         self.cancel_sent_waiter = None
 
-        self.address = addr
-        self.settings = ConnectionSettings((self.address, con_params.database))
+        self.settings = ConnectionSettings((addr, con_params.database))
         self.record_class = record_class
 
         self.statement = None
@@ -213,6 +212,7 @@ cdef class BaseProtocol(CoreProtocol):
         args,
         portal_name: str,
         timeout,
+        return_rows: bool,
     ):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
@@ -238,7 +238,8 @@ cdef class BaseProtocol(CoreProtocol):
             more = self._bind_execute_many(
                 portal_name,
                 state.name,
-                arg_bufs)  # network op
+                arg_bufs,
+                return_rows)  # network op
 
             self.last_query = state.query
             self.statement = state

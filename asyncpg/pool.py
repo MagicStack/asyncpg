@@ -33,7 +33,8 @@ class PoolConnectionProxyMeta(type):
                 if not inspect.isfunction(meth):
                     continue
 
-                wrapper = mcls._wrap_connection_method(attrname)
+                iscoroutine = inspect.iscoroutinefunction(meth)
+                wrapper = mcls._wrap_connection_method(attrname, iscoroutine)
                 wrapper = functools.update_wrapper(wrapper, meth)
                 dct[attrname] = wrapper
 
@@ -43,7 +44,7 @@ class PoolConnectionProxyMeta(type):
         return super().__new__(mcls, name, bases, dct)
 
     @staticmethod
-    def _wrap_connection_method(meth_name):
+    def _wrap_connection_method(meth_name, iscoroutine):
         def call_con_method(self, *args, **kwargs):
             # This method will be owned by PoolConnectionProxy class.
             if self._con is None:
@@ -54,6 +55,9 @@ class PoolConnectionProxyMeta(type):
 
             meth = getattr(self._con.__class__, meth_name)
             return meth(self._con, *args, **kwargs)
+
+        if iscoroutine:
+            compat.markcoroutinefunction(call_con_method)
 
         return call_con_method
 
@@ -309,7 +313,7 @@ class Pool:
 
     __slots__ = (
         '_queue', '_loop', '_minsize', '_maxsize',
-        '_init', '_connect_args', '_connect_kwargs',
+        '_init', '_connect', '_connect_args', '_connect_kwargs',
         '_holders', '_initialized', '_initializing', '_closing',
         '_closed', '_connection_class', '_record_class', '_generation',
         '_setup', '_max_queries', '_max_inactive_connection_lifetime'
@@ -320,8 +324,9 @@ class Pool:
                  max_size,
                  max_queries,
                  max_inactive_connection_lifetime,
-                 setup,
-                 init,
+                 connect=None,
+                 setup=None,
+                 init=None,
                  loop,
                  connection_class,
                  record_class,
@@ -381,18 +386,21 @@ class Pool:
         self._closing = False
         self._closed = False
         self._generation = 0
-        self._init = init
+
+        self._connect = connect if connect is not None else connection.connect
         self._connect_args = connect_args
         self._connect_kwargs = connect_kwargs
 
         self._setup = setup
+        self._init = init
+
         self._max_queries = max_queries
         self._max_inactive_connection_lifetime = \
             max_inactive_connection_lifetime
 
     async def _async__init__(self):
         if self._initialized:
-            return
+            return self
         if self._initializing:
             raise exceptions.InterfaceError(
                 'pool is being initialized in another task')
@@ -499,13 +507,25 @@ class Pool:
         self._connect_kwargs = connect_kwargs
 
     async def _get_new_connection(self):
-        con = await connection.connect(
+        con = await self._connect(
             *self._connect_args,
             loop=self._loop,
             connection_class=self._connection_class,
             record_class=self._record_class,
             **self._connect_kwargs,
         )
+        if not isinstance(con, self._connection_class):
+            good = self._connection_class
+            good_n = f'{good.__module__}.{good.__name__}'
+            bad = type(con)
+            if bad.__module__ == "builtins":
+                bad_n = bad.__name__
+            else:
+                bad_n = f'{bad.__module__}.{bad.__name__}'
+            raise exceptions.InterfaceError(
+                "expected pool connect callback to return an instance of "
+                f"'{good_n}', got " f"'{bad_n}'"
+            )
 
         if self._init is not None:
             try:
@@ -603,6 +623,22 @@ class Pool:
                 *args,
                 timeout=timeout,
                 record_class=record_class
+            )
+
+    async def fetchmany(self, query, args, *, timeout=None, record_class=None):
+        """Run a query for each sequence of arguments in *args*
+        and return the results as a list of :class:`Record`.
+
+        Pool performs this operation using one of its connections.  Other than
+        that, it behaves identically to
+        :meth:`Connection.fetchmany()
+        <asyncpg.connection.Connection.fetchmany>`.
+
+        .. versionadded:: 0.30.0
+        """
+        async with self.acquire() as con:
+            return await con.fetchmany(
+                query, args, timeout=timeout, record_class=record_class
             )
 
     async def copy_from_table(
@@ -997,6 +1033,7 @@ def create_pool(dsn=None, *,
                 max_size=10,
                 max_queries=50000,
                 max_inactive_connection_lifetime=300.0,
+                connect=None,
                 setup=None,
                 init=None,
                 loop=None,
@@ -1079,6 +1116,13 @@ def create_pool(dsn=None, *,
         Number of seconds after which inactive connections in the
         pool will be closed.  Pass ``0`` to disable this mechanism.
 
+    :param coroutine connect:
+        A coroutine that is called instead of
+        :func:`~asyncpg.connection.connect` whenever the pool needs to make a
+        new connection.  Must return an instance of type specified by
+        *connection_class* or :class:`~asyncpg.connection.Connection` if
+        *connection_class* was not specified.
+
     :param coroutine setup:
         A coroutine to prepare a connection right before it is returned
         from :meth:`Pool.acquire() <pool.Pool.acquire>`.  An example use
@@ -1119,12 +1163,21 @@ def create_pool(dsn=None, *,
 
     .. versionchanged:: 0.22.0
        Added the *record_class* parameter.
+
+    .. versionchanged:: 0.30.0
+       Added the *connect* parameter.
     """
     return Pool(
         dsn,
         connection_class=connection_class,
         record_class=record_class,
-        min_size=min_size, max_size=max_size,
-        max_queries=max_queries, loop=loop, setup=setup, init=init,
+        min_size=min_size,
+        max_size=max_size,
+        max_queries=max_queries,
+        loop=loop,
+        connect=connect,
+        setup=setup,
+        init=init,
         max_inactive_connection_lifetime=max_inactive_connection_lifetime,
-        **connect_kwargs)
+        **connect_kwargs,
+    )

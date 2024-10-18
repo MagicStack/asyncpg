@@ -14,8 +14,9 @@ framework.  You can read more about asyncpg in an introductory
 `blog post <http://magic.io/blog/asyncpg-1m-rows-from-postgres-to-python/>`_.
 
 asyncpg requires Python 3.8 or later and is supported for PostgreSQL
-versions 9.5 to 16.  Older PostgreSQL versions or other databases implementing
-the PostgreSQL protocol *may* work, but are not being actively tested.
+versions 9.5 to 17.  Other PostgreSQL versions or other databases
+implementing the PostgreSQL protocol *may* work, but are not being
+actively tested.
 
 
 Documentation
@@ -58,10 +59,17 @@ This enables asyncpg to have easy-to-use support for:
 Installation
 ------------
 
-asyncpg is available on PyPI and has no dependencies.
-Use pip to install::
+asyncpg is available on PyPI.  When not using GSSAPI/SSPI authentication it
+has no dependencies.  Use pip to install::
 
     $ pip install asyncpg
+
+If you need GSSAPI/SSPI authentication, use::
+
+    $ pip install 'asyncpg[gssauth]'
+
+For more details, please `see the documentation
+<https://magicstack.github.io/asyncpg/current/installation.html>`_.
 
 
 Basic Usage
@@ -81,8 +89,7 @@ Basic Usage
         )
         await conn.close()
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run())
+    asyncio.run(run())
 
 
 License
