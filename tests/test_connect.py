@@ -593,6 +593,58 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'params_ssl_negotiation_dsn',
+            'env': {
+                'PGSSLNEGOTIATION': 'postgres'
+            },
+
+            'dsn': 'postgres://u:p@localhost/d?sslnegotiation=direct',
+
+            'result': ([('localhost', 5432)], {
+                'user': 'u',
+                'password': 'p',
+                'database': 'd',
+                'ssl_negotiation': 'direct',
+                'target_session_attrs': 'any',
+            })
+        },
+
+        {
+            'name': 'params_ssl_negotiation_env',
+            'env': {
+                'PGSSLNEGOTIATION': 'direct'
+            },
+
+            'dsn': 'postgres://u:p@localhost/d',
+
+            'result': ([('localhost', 5432)], {
+                'user': 'u',
+                'password': 'p',
+                'database': 'd',
+                'ssl_negotiation': 'direct',
+                'target_session_attrs': 'any',
+            })
+        },
+
+        {
+            'name': 'params_ssl_negotiation_params',
+            'env': {
+                'PGSSLNEGOTIATION': 'direct'
+            },
+
+            'dsn': 'postgres://u:p@localhost/d',
+            'direct_tls': False,
+
+            'result': ([('localhost', 5432)], {
+                'user': 'u',
+                'password': 'p',
+                'database': 'd',
+                'ssl_negotiation': 'postgres',
+                'target_session_attrs': 'any',
+            })
+        },
+
+        {
             'name': 'dsn_overrides_env_partially_ssl_prefer',
             'env': {
                 'PGUSER': 'user',
@@ -1067,6 +1119,7 @@ class TestConnectParams(tb.TestCase):
         passfile = testcase.get('passfile')
         database = testcase.get('database')
         sslmode = testcase.get('ssl')
+        direct_tls = testcase.get('direct_tls')
         server_settings = testcase.get('server_settings')
         target_session_attrs = testcase.get('target_session_attrs')
         krbsrvname = testcase.get('krbsrvname')
@@ -1093,7 +1146,7 @@ class TestConnectParams(tb.TestCase):
             addrs, params = connect_utils._parse_connect_dsn_and_args(
                 dsn=dsn, host=host, port=port, user=user, password=password,
                 passfile=passfile, database=database, ssl=sslmode,
-                direct_tls=False,
+                direct_tls=direct_tls,
                 server_settings=server_settings,
                 target_session_attrs=target_session_attrs,
                 krbsrvname=krbsrvname, gsslib=gsslib)
@@ -1118,6 +1171,10 @@ class TestConnectParams(tb.TestCase):
                 # Avoid the hassle of specifying direct_tls
                 # unless explicitly tested for
                 params.pop('direct_tls', False)
+            if 'ssl_negotiation' not in expected[1]:
+                # Avoid the hassle of specifying sslnegotiation
+                # unless explicitly tested for
+                params.pop('ssl_negotiation', False)
             if 'gsslib' not in expected[1]:
                 # Avoid the hassle of specifying gsslib
                 # unless explicitly tested for

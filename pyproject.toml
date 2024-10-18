@@ -112,6 +112,15 @@ exclude_lines = [
 show_missing = true
 
 [tool.mypy]
+exclude = [
+    "^.eggs",
+    "^.github",
+    "^.vscode",
+    "^build",
+    "^dist",
+    "^docs",
+    "^tests",
+]
 incremental = true
 strict = true
 implicit_reexport = true
