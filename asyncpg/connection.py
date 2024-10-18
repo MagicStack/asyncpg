@@ -756,6 +756,44 @@ class Connection(metaclass=ConnectionMeta):
             return None
         return data[0]
 
+    async def fetchmany(
+        self, query, args, *, timeout: float=None, record_class=None
+    ):
+        """Run a query for each sequence of arguments in *args*
+        and return the results as a list of :class:`Record`.
+
+        :param query:
+            Query to execute.
+        :param args:
+            An iterable containing sequences of arguments for the query.
+        :param float timeout:
+            Optional timeout value in seconds.
+        :param type record_class:
+            If specified, the class to use for records returned by this method.
+            Must be a subclass of :class:`~asyncpg.Record`.  If not specified,
+            a per-connection *record_class* is used.
+
+        :return list:
+            A list of :class:`~asyncpg.Record` instances.  If specified, the
+            actual type of list elements would be *record_class*.
+
+        Example:
+
+        .. code-block:: pycon
+
+            >>> rows = await con.fetchmany('''
+            ...         INSERT INTO mytab (a, b) VALUES ($1, $2) RETURNING a;
+            ...     ''', [('x', 1), ('y', 2), ('z', 3)])
+            >>> rows
+            [<Record row=('x',)>, <Record row=('y',)>, <Record row=('z',)>]
+
+        .. versionadded:: 0.30.0
+        """
+        self._check_open()
+        return await self._executemany(
+            query, args, timeout, return_rows=True, record_class=record_class
+        )
+
     async def copy_from_table(self, table_name, *, output,
                               columns=None, schema_name=None, timeout=None,
                               format=None, oids=None, delimiter=None,
@@ -1896,17 +1934,27 @@ class Connection(metaclass=ConnectionMeta):
             )
         return result, stmt
 
-    async def _executemany(self, query, args, timeout):
+    async def _executemany(
+        self,
+        query,
+        args,
+        timeout,
+        return_rows=False,
+        record_class=None,
+    ):
         executor = lambda stmt, timeout: self._protocol.bind_execute_many(
             state=stmt,
             args=args,
             portal_name='',
             timeout=timeout,
+            return_rows=return_rows,
         )
         timeout = self._protocol._get_timeout(timeout)
         with self._stmt_exclusive_section:
             with self._time_and_log(query, args, timeout):
-                result, _ = await self._do_execute(query, executor, timeout)
+                result, _ = await self._do_execute(
+                    query, executor, timeout, record_class=record_class
+                )
         return result
 
     async def _do_execute(
