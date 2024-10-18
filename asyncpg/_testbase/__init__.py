@@ -262,22 +262,28 @@ def create_pool(dsn=None, *,
                 max_size=10,
                 max_queries=50000,
                 max_inactive_connection_lifetime=60.0,
+                connect=None,
                 setup=None,
                 init=None,
                 loop=None,
                 pool_class=pg_pool.Pool,
                 connection_class=pg_connection.Connection,
                 record_class=asyncpg.Record,
-                connect_fn=pg_connection.connect,
                 **connect_kwargs):
     return pool_class(
         dsn,
-        min_size=min_size, max_size=max_size,
-        max_queries=max_queries, loop=loop, setup=setup, init=init,
+        min_size=min_size,
+        max_size=max_size,
+        max_queries=max_queries,
+        loop=loop,
+        connect=connect,
+        setup=setup,
+        init=init,
         max_inactive_connection_lifetime=max_inactive_connection_lifetime,
         connection_class=connection_class,
-        record_class=record_class, connect_fn=connect_fn,
-        **connect_kwargs)
+        record_class=record_class,
+        **connect_kwargs,
+    )
 
 
 class ClusterTestCase(TestCase):

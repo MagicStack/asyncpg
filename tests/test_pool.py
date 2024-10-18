@@ -136,6 +136,12 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_07(self):
         cons = set()
+        connect_called = 0
+
+        async def connect(*args, **kwargs):
+            nonlocal connect_called
+            connect_called += 1
+            return await pg_connection.connect(*args, **kwargs)
 
         async def setup(con):
             if con._con not in cons:  # `con` is `PoolConnectionProxy`.
@@ -152,13 +158,26 @@ class TestPool(tb.ConnectedTestCase):
                     raise RuntimeError('init was not called')
 
         async with self.create_pool(database='postgres',
-                                    min_size=2, max_size=5,
+                                    min_size=2,
+                                    max_size=5,
+                                    connect=connect,
                                     init=init,
                                     setup=setup) as pool:
             users = asyncio.gather(*[user(pool) for _ in range(10)])
             await users
 
         self.assertEqual(len(cons), 5)
+        self.assertEqual(connect_called, 5)
+
+        async def bad_connect(*args, **kwargs):
+            return 1
+
+        with self.assertRaisesRegex(
+            asyncpg.InterfaceError,
+            "expected pool connect callback to return an instance of "
+            "'asyncpg\\.connection\\.Connection', got 'int'"
+        ):
+            await self.create_pool(database='postgres', connect=bad_connect)
 
     async def test_pool_08(self):
         pool = await self.create_pool(database='postgres',
