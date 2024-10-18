@@ -1515,11 +1515,10 @@ class Connection(metaclass=ConnectionMeta):
             self._abort()
         self._cleanup()
 
-    async def reset(self, *, timeout=None):
+    async def _reset(self):
         self._check_open()
         self._listeners.clear()
         self._log_listeners.clear()
-        reset_query = self._get_reset_query()
 
         if self._protocol.is_in_transaction() or self._top_xact is not None:
             if self._top_xact is None or not self._top_xact._managed:
@@ -1531,10 +1530,36 @@ class Connection(metaclass=ConnectionMeta):
                 })
 
             self._top_xact = None
-            reset_query = 'ROLLBACK;\n' + reset_query
+            await self.execute("ROLLBACK")
 
-        if reset_query:
-            await self.execute(reset_query, timeout=timeout)
+    async def reset(self, *, timeout=None):
+        """Reset the connection state.
+
+        Calling this will reset the connection session state to a state
+        resembling that of a newly obtained connection.  Namely, an open
+        transaction (if any) is rolled back, open cursors are closed,
+        all `LISTEN <https://www.postgresql.org/docs/current/sql-listen.html>`_
+        registrations are removed, all session configuration
+        variables are reset to their default values, and all advisory locks
+        are released.
+
+        Note that the above describes the default query returned by
+        :meth:`Connection.get_reset_query`.  If one overloads the method
+        by subclassing ``Connection``, then this method will do whatever
+        the overloaded method returns, except open transactions are always
+        terminated and any callbacks registered by
+        :meth:`Connection.add_listener` or :meth:`Connection.add_log_listener`
+        are removed.
+
+        :param float timeout:
+            A timeout for resetting the connection.  If not specified, defaults
+            to no timeout.
+        """
+        async with compat.timeout(timeout):
+            await self._reset()
+            reset_query = self.get_reset_query()
+            if reset_query:
+                await self.execute(reset_query)
 
     def _abort(self):
         # Put the connection into the aborted state.
@@ -1695,7 +1720,15 @@ class Connection(metaclass=ConnectionMeta):
             con_ref = self._proxy
         return con_ref
 
-    def _get_reset_query(self):
+    def get_reset_query(self):
+        """Return the query sent to server on connection release.
+
+        The query returned by this method is used by :meth:`Connection.reset`,
+        which is, in turn, used by :class:`~asyncpg.pool.Pool` before making
+        the connection available to another acquirer.
+
+        .. versionadded:: 0.30.0
+        """
         if self._reset_query is not None:
             return self._reset_query
 
