@@ -14,4 +14,4 @@ from __future__ import annotations
 
 import typing
 
-__version__: typing.Final = '0.30.0.dev0'
+__version__: typing.Final = '0.30.0'
