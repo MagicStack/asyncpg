@@ -195,6 +195,9 @@ jobs:
       url: https://pypi.org/p/asyncpg
     permissions:
       id-token: write
+      attestations: write
+      contents: write
+      deployments: write
 
     steps:
     - uses: actions/checkout@v4
