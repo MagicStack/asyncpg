@@ -137,6 +137,9 @@ class TestPool(tb.ConnectedTestCase):
     async def test_pool_07(self):
         cons = set()
         connect_called = 0
+        init_called = 0
+        setup_called = 0
+        reset_called = 0
 
         async def connect(*args, **kwargs):
             nonlocal connect_called
@@ -144,13 +147,21 @@ class TestPool(tb.ConnectedTestCase):
             return await pg_connection.connect(*args, **kwargs)
 
         async def setup(con):
+            nonlocal setup_called
             if con._con not in cons:  # `con` is `PoolConnectionProxy`.
                 raise RuntimeError('init was not called before setup')
+            setup_called += 1
 
         async def init(con):
+            nonlocal init_called
             if con in cons:
                 raise RuntimeError('init was called more than once')
             cons.add(con)
+            init_called += 1
+
+        async def reset(con):
+            nonlocal reset_called
+            reset_called += 1
 
         async def user(pool):
             async with pool.acquire() as con:
@@ -162,12 +173,16 @@ class TestPool(tb.ConnectedTestCase):
                                     max_size=5,
                                     connect=connect,
                                     init=init,
-                                    setup=setup) as pool:
+                                    setup=setup,
+                                    reset=reset) as pool:
             users = asyncio.gather(*[user(pool) for _ in range(10)])
             await users
 
         self.assertEqual(len(cons), 5)
         self.assertEqual(connect_called, 5)
+        self.assertEqual(init_called, 5)
+        self.assertEqual(setup_called, 10)
+        self.assertEqual(reset_called, 10)
 
         async def bad_connect(*args, **kwargs):
             return 1

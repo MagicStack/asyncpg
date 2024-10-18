@@ -210,7 +210,12 @@ class PoolConnectionHolder:
                 if budget is not None:
                     budget -= time.monotonic() - started
 
-            await self._con.reset(timeout=budget)
+            if self._pool._reset is not None:
+                async with compat.timeout(budget):
+                    await self._con._reset()
+                    await self._pool._reset(self._con)
+            else:
+                await self._con.reset(timeout=budget)
         except (Exception, asyncio.CancelledError) as ex:
             # If the `reset` call failed, terminate the connection.
             # A new one will be created when `acquire` is called
@@ -313,7 +318,7 @@ class Pool:
 
     __slots__ = (
         '_queue', '_loop', '_minsize', '_maxsize',
-        '_init', '_connect', '_connect_args', '_connect_kwargs',
+        '_init', '_connect', '_reset', '_connect_args', '_connect_kwargs',
         '_holders', '_initialized', '_initializing', '_closing',
         '_closed', '_connection_class', '_record_class', '_generation',
         '_setup', '_max_queries', '_max_inactive_connection_lifetime'
@@ -327,6 +332,7 @@ class Pool:
                  connect=None,
                  setup=None,
                  init=None,
+                 reset=None,
                  loop,
                  connection_class,
                  record_class,
@@ -393,6 +399,7 @@ class Pool:
 
         self._setup = setup
         self._init = init
+        self._reset = reset
 
         self._max_queries = max_queries
         self._max_inactive_connection_lifetime = \
@@ -1036,6 +1043,7 @@ def create_pool(dsn=None, *,
                 connect=None,
                 setup=None,
                 init=None,
+                reset=None,
                 loop=None,
                 connection_class=connection.Connection,
                 record_class=protocol.Record,
@@ -1125,7 +1133,7 @@ def create_pool(dsn=None, *,
 
     :param coroutine setup:
         A coroutine to prepare a connection right before it is returned
-        from :meth:`Pool.acquire() <pool.Pool.acquire>`.  An example use
+        from :meth:`Pool.acquire()`.  An example use
         case would be to automatically set up notifications listeners for
         all connections of a pool.
 
@@ -1136,6 +1144,25 @@ def create_pool(dsn=None, *,
         asyncpg.connection.Connection.set_builtin_type_codec>`
         or :meth:`Connection.set_type_codec() <\
         asyncpg.connection.Connection.set_type_codec>`.
+
+    :param coroutine reset:
+        A coroutine to reset a connection before it is returned to the pool by
+        :meth:`Pool.release()`.  The function is supposed
+        to reset any changes made to the database session so that the next
+        acquirer gets the connection in a well-defined state.
+
+        The default implementation calls :meth:`Connection.reset() <\
+        asyncpg.connection.Connection.reset>`, which runs the following::
+
+            SELECT pg_advisory_unlock_all();
+            CLOSE ALL;
+            UNLISTEN *;
+            RESET ALL;
+
+        The exact reset query is determined by detected server capabilities,
+        and a custom *reset* implementation can obtain the default query
+        by calling :meth:`Connection.get_reset_query() <\
+        asyncpg.connection.Connection.get_reset_query>`.
 
     :param loop:
         An asyncio event loop instance.  If ``None``, the default
@@ -1165,7 +1192,7 @@ def create_pool(dsn=None, *,
        Added the *record_class* parameter.
 
     .. versionchanged:: 0.30.0
-       Added the *connect* parameter.
+       Added the *connect* and *reset* parameters.
     """
     return Pool(
         dsn,
@@ -1178,6 +1205,7 @@ def create_pool(dsn=None, *,
         connect=connect,
         setup=setup,
         init=init,
+        reset=reset,
         max_inactive_connection_lifetime=max_inactive_connection_lifetime,
         **connect_kwargs,
     )
