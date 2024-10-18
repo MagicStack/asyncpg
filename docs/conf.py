@@ -26,7 +26,6 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
     'sphinx.ext.intersphinx',
-    'sphinxcontrib.asyncio',
 ]
 
 add_module_names = False
