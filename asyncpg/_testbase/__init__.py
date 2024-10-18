@@ -117,10 +117,22 @@ class TestCase(unittest.TestCase, metaclass=TestCaseMeta):
         self.__unhandled_exceptions = []
 
     def tearDown(self):
-        if self.__unhandled_exceptions:
+        excs = []
+        for exc in self.__unhandled_exceptions:
+            if isinstance(exc, ConnectionResetError):
+                texc = traceback.TracebackException.from_exception(
+                    exc, lookup_lines=False)
+                if texc.stack[-1].name == "_call_connection_lost":
+                    # On Windows calling socket.shutdown may raise
+                    # ConnectionResetError, which happens in the
+                    # finally block of _call_connection_lost.
+                    continue
+            excs.append(exc)
+
+        if excs:
             formatted = []
 
-            for i, context in enumerate(self.__unhandled_exceptions):
+            for i, context in enumerate(excs):
                 formatted.append(self._format_loop_exception(context, i + 1))
 
             self.fail(
