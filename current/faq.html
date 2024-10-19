@@ -1,22 +1,21 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="./">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Frequently Asked Questions &mdash; asyncpg Documentation</title>
-      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <!--[if lt IE 9]>
-    <script src="_static/js/html5shiv.min.js"></script>
-  <![endif]-->
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
   
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script src="_static/doctools.js"></script>
-        <script src="_static/sphinx_highlight.js"></script>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=a7ea5d77"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -34,9 +33,6 @@
           <a href="index.html" class="icon icon-home">
             asyncpg
           </a>
-              <div class="version">
-                0.29.0
-              </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
@@ -84,9 +80,9 @@
            <div itemprop="articleBody">
              
   <section id="frequently-asked-questions">
-<span id="asyncpg-faq"></span><h1>Frequently Asked Questions<a class="headerlink" href="#frequently-asked-questions" title="Permalink to this heading"></a></h1>
+<span id="asyncpg-faq"></span><h1>Frequently Asked Questions<a class="headerlink" href="#frequently-asked-questions" title="Link to this heading"></a></h1>
 <section id="does-asyncpg-support-db-api">
-<h2>Does asyncpg support DB-API?<a class="headerlink" href="#does-asyncpg-support-db-api" title="Permalink to this heading"></a></h2>
+<h2>Does asyncpg support DB-API?<a class="headerlink" href="#does-asyncpg-support-db-api" title="Link to this heading"></a></h2>
 <p>No.  DB-API is a synchronous API, while asyncpg is based
 around an asynchronous I/O model.  Thus, full drop-in compatibility
 with DB-API is not possible and we decided to design asyncpg API
@@ -95,14 +91,14 @@ terminology.  We will release a synchronous DB-API-compatible version
 of asyncpg at some point in the future.</p>
 </section>
 <section id="can-i-use-asyncpg-with-sqlalchemy-orm">
-<h2>Can I use asyncpg with SQLAlchemy ORM?<a class="headerlink" href="#can-i-use-asyncpg-with-sqlalchemy-orm" title="Permalink to this heading"></a></h2>
+<h2>Can I use asyncpg with SQLAlchemy ORM?<a class="headerlink" href="#can-i-use-asyncpg-with-sqlalchemy-orm" title="Link to this heading"></a></h2>
 <p>Yes.  SQLAlchemy version 1.4 and later supports the asyncpg dialect natively.
 Please refer to its documentation for details.  Older SQLAlchemy versions
 may be used in tandem with a third-party adapter such as
 <a class="reference external" href="https://github.com/CanopyTax/asyncpgsa">asyncpgsa</a> or <a class="reference external" href="https://github.com/encode/databases">databases</a>.</p>
 </section>
 <section id="can-i-use-dot-notation-with-asyncpg-record-it-looks-cleaner">
-<h2>Can I use dot-notation with <a class="reference internal" href="api/index.html#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Record</span></code></a>?  It looks cleaner.<a class="headerlink" href="#can-i-use-dot-notation-with-asyncpg-record-it-looks-cleaner" title="Permalink to this heading"></a></h2>
+<h2>Can I use dot-notation with <a class="reference internal" href="api/index.html#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Record</span></code></a>?  It looks cleaner.<a class="headerlink" href="#can-i-use-dot-notation-with-asyncpg-record-it-looks-cleaner" title="Link to this heading"></a></h2>
 <p>We decided against making <a class="reference internal" href="api/index.html#asyncpg.Record" title="asyncpg.Record"><code class="xref py py-class docutils literal notranslate"><span class="pre">asyncpg.Record</span></code></a> a named tuple
 because we want to keep the <code class="docutils literal notranslate"><span class="pre">Record</span></code> method namespace separate
 from the column namespace.  That said, you can provide a custom <code class="docutils literal notranslate"><span class="pre">Record</span></code>
@@ -116,7 +112,7 @@ methods.</p>
 </div>
 </section>
 <section id="why-can-t-i-use-a-cursor-outside-of-a-transaction">
-<h2>Why can’t I use a <a class="reference internal" href="api/index.html#asyncpg-api-cursor"><span class="std std-ref">cursor</span></a> outside of a transaction?<a class="headerlink" href="#why-can-t-i-use-a-cursor-outside-of-a-transaction" title="Permalink to this heading"></a></h2>
+<h2>Why can’t I use a <a class="reference internal" href="api/index.html#asyncpg-api-cursor"><span class="std std-ref">cursor</span></a> outside of a transaction?<a class="headerlink" href="#why-can-t-i-use-a-cursor-outside-of-a-transaction" title="Link to this heading"></a></h2>
 <p>Cursors created by a call to
 <a class="reference internal" href="api/index.html#asyncpg.connection.Connection.cursor" title="asyncpg.connection.Connection.cursor"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Connection.cursor()</span></code></a> or
 <a class="reference internal" href="api/index.html#asyncpg.prepared_stmt.PreparedStatement.cursor" title="asyncpg.prepared_stmt.PreparedStatement.cursor"><code class="xref py py-meth docutils literal notranslate"><span class="pre">PreparedStatement.cursor()</span> </code></a>
@@ -126,7 +122,7 @@ To create a cursor usable outside of a transaction, use the
 <code class="docutils literal notranslate"><span class="pre">DECLARE</span> <span class="pre">...</span> <span class="pre">CURSOR</span> <span class="pre">WITH</span> <span class="pre">HOLD</span></code> SQL statement directly.</p>
 </section>
 <section id="why-am-i-getting-prepared-statement-errors">
-<span id="asyncpg-prepared-stmt-errors"></span><h2>Why am I getting prepared statement errors?<a class="headerlink" href="#why-am-i-getting-prepared-statement-errors" title="Permalink to this heading"></a></h2>
+<span id="asyncpg-prepared-stmt-errors"></span><h2>Why am I getting prepared statement errors?<a class="headerlink" href="#why-am-i-getting-prepared-statement-errors" title="Link to this heading"></a></h2>
 <p>If you are getting intermittent <code class="docutils literal notranslate"><span class="pre">prepared</span> <span class="pre">statement</span> <span class="pre">&quot;__asyncpg_stmt_xx__&quot;</span>
 <span class="pre">does</span> <span class="pre">not</span> <span class="pre">exist</span></code> or <code class="docutils literal notranslate"><span class="pre">prepared</span> <span class="pre">statement</span> <span class="pre">“__asyncpg_stmt_xx__”</span>
 <span class="pre">already</span> <span class="pre">exists</span></code> errors, you are most likely not connecting to the
@@ -151,7 +147,7 @@ to <a class="reference internal" href="api/index.html#asyncpg.connection.connect
 </ul>
 </section>
 <section id="why-do-i-get-postgressyntaxerror-when-using-expression-in-1">
-<h2>Why do I get <code class="docutils literal notranslate"><span class="pre">PostgresSyntaxError</span></code> when using <code class="docutils literal notranslate"><span class="pre">expression</span> <span class="pre">IN</span> <span class="pre">$1</span></code>?<a class="headerlink" href="#why-do-i-get-postgressyntaxerror-when-using-expression-in-1" title="Permalink to this heading"></a></h2>
+<h2>Why do I get <code class="docutils literal notranslate"><span class="pre">PostgresSyntaxError</span></code> when using <code class="docutils literal notranslate"><span class="pre">expression</span> <span class="pre">IN</span> <span class="pre">$1</span></code>?<a class="headerlink" href="#why-do-i-get-postgressyntaxerror-when-using-expression-in-1" title="Link to this heading"></a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">expression</span> <span class="pre">IN</span> <span class="pre">$1</span></code> is not a valid PostgreSQL syntax.  To check
 a value against a sequence use <code class="docutils literal notranslate"><span class="pre">expression</span> <span class="pre">=</span> <span class="pre">any($1::mytype[])</span></code>,
 where <code class="docutils literal notranslate"><span class="pre">mytype</span></code> is the array element type.</p>
