@@ -7,6 +7,7 @@
 
 import asyncio
 import contextlib
+import copy
 import gc
 import ipaddress
 import os
@@ -18,11 +19,13 @@ import ssl
 import stat
 import tempfile
 import textwrap
+import time
 import unittest
 import unittest.mock
 import urllib.parse
 import warnings
 import weakref
+from unittest import mock
 
 import distro
 
@@ -2245,6 +2248,58 @@ class TestConnectionAttributes(tb.HotStandbyTestCase):
         connected_host = _get_connected_host(con)
         self.assertTrue(connected_host.endswith(master_port))
         await con.close()
+
+
+class TestMisbehavingServer(tb.TestCase):
+    """Tests for client connection behaviour given a misbehaving server."""
+
+    async def test_tls_upgrade_extra_data_received(self):
+        data = [
+            # First, the server writes b"S" to signal it is willing to perform
+            # SSL
+            b"S",
+            # Then, the server writes an unsolicted arbitrary byte afterwards
+            b"N",
+        ]
+        data_received_events = [asyncio.Event() for _ in data]
+
+        # Patch out the loop's create_connection so we can instrument the proto
+        # we return.
+        old_create_conn = self.loop.create_connection
+
+        async def _mock_create_conn(*args, **kwargs):
+            transport, proto = await old_create_conn(*args, **kwargs)
+            old_data_received = proto.data_received
+
+            num_received = 0
+
+            def _data_received(*args, **kwargs):
+                nonlocal num_received
+                # Call the original data_received method
+                ret = old_data_received(*args, **kwargs)
+                # Fire the event to signal we've received this datum now.
+                data_received_events[num_received].set()
+                num_received += 1
+                return ret
+
+            proto.data_received = _data_received
+
+            # To deterministically provoke the race we're interested in for
+            # this regression test, wait for all data to be received before
+            # returning from create_connection().
+            await data_received_events[-1].wait()
+            return transport, proto
+
+        server = tb.InstrumentedServer(data, data_received_events)
+        conn_spec = await server.start()
+
+        # The call to connect() should raise a ConnectionResetError as the
+        # server will close the connection after writing all the data.
+        with (mock.patch.object(self.loop, "create_connection", side_effect=_mock_create_conn),
+              self.assertRaises(ConnectionResetError)):
+            await pg_connection.connect(**conn_spec, ssl=True, loop=self.loop)
+
+        server.stop()
 
 
 def _get_connected_host(con):
