@@ -131,11 +131,13 @@ def _read_password_file(passfile: pathlib.Path) \
 
 
 def _read_password_from_pgpass(
-        *, passfile: typing.Optional[pathlib.Path],
-        hosts: typing.List[str],
-        ports: typing.List[int],
-        database: str,
-        user: str):
+    *,
+    passfile: pathlib.Path,
+    hosts: "Sequence[str]",
+    ports: typing.List[int],
+    database: str,
+    user: str
+) -> typing.Optional[str]:
     """Parse the pgpass file and return the matching password.
 
     :return:
