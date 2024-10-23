@@ -52,20 +52,17 @@ class SSLNegotiation(compat.StrEnum):
     direct = "direct"
 
 
-_ConnectionParameters = collections.namedtuple(
-    'ConnectionParameters',
-    [
-        'user',
-        'password',
-        'database',
-        'ssl',
-        'sslmode',
-        'ssl_negotiation',
-        'server_settings',
-        'target_session_attrs',
-        'krbsrvname',
-        'gsslib',
-    ])
+class _ConnectionParameters(typing.NamedTuple):
+    user: str
+    password: typing.Optional[str]
+    database: str
+    ssl: typing.Union[ssl_module.SSLContext, bool, str, SSLMode, None]
+    sslmode: SSLMode
+    ssl_negotiation: SSLNegotiation
+    server_settings: typing.Optional[typing.Dict[str, str]]
+    target_session_attrs: "SessionAttribute"
+    krbsrvname: typing.Optional[str]
+    gsslib: str
 
 
 _ClientConfiguration = collections.namedtuple(
@@ -276,10 +273,25 @@ def _dot_postgresql_path(filename) -> typing.Optional[pathlib.Path]:
     return (homedir / '.postgresql' / filename).resolve()
 
 
-def _parse_connect_dsn_and_args(*, dsn, host, port, user,
-                                password, passfile, database, ssl,
-                                direct_tls, server_settings,
-                                target_session_attrs, krbsrvname, gsslib):
+def _parse_connect_dsn_and_args(
+    *,
+    dsn: str,
+    host: typing.Union[str, typing.List[str], typing.Tuple[str]],
+    port: typing.Union[int, typing.List[int]],
+    user: typing.Optional[str],
+    password: typing.Optional[str],
+    passfile: typing.Union[str, pathlib.Path, None],
+    database: typing.Optional[str],
+    ssl: typing.Union[bool, None, str, SSLMode],
+    direct_tls: typing.Optional[bool],
+    server_settings: typing.Optional[typing.Dict[str, str]],
+    target_session_attrs: typing.Optional[str],
+    krbsrvname: typing.Optional[str],
+    gsslib: typing.Optional[str],
+) -> typing.Tuple[
+    typing.List[typing.Union[str, typing.Tuple[str, int]]],
+    _ConnectionParameters,
+]:
     # `auth_hosts` is the version of host information for the purposes
     # of reading the pgpass file.
     auth_hosts = None
@@ -502,7 +514,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 database=database, user=user,
                 passfile=passfile)
 
-    addrs = []
+    addrs: typing.List[typing.Union[str, typing.Tuple[str, int]]] = []
     have_tcp_addrs = False
     for h, p in zip(host, port):
         if h.startswith('/'):
