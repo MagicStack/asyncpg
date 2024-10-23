@@ -7,6 +7,7 @@
 
 import asyncio
 import collections
+from collections.abc import Callable
 import enum
 import functools
 import getpass
@@ -803,8 +804,23 @@ class TLSUpgradeProto(asyncio.Protocol):
             self.on_data.set_exception(exc)
 
 
-async def _create_ssl_connection(protocol_factory, host, port, *,
-                                 loop, ssl_context, ssl_is_advisory=False):
+_ProctolFactoryR = typing.TypeVar(
+    "_ProctolFactoryR", bound=asyncio.protocols.Protocol
+)
+
+
+async def _create_ssl_connection(
+    # TODO: The return type is a specific combination of subclasses of
+    # asyncio.protocols.Protocol that we can't express. For now, having the
+    # return type be dependent on signature of the factory is an improvement
+    protocol_factory: "Callable[[], _ProctolFactoryR]",
+    host: str,
+    port: int,
+    *,
+    loop: asyncio.AbstractEventLoop,
+    ssl_context: ssl_module.SSLContext,
+    ssl_is_advisory: bool = False,
+) -> typing.Tuple[asyncio.Transport, _ProctolFactoryR]:
 
     tr, pr = await loop.create_connection(
         lambda: TLSUpgradeProto(loop, host, port,
@@ -824,6 +840,7 @@ async def _create_ssl_connection(protocol_factory, host, port, *,
             try:
                 new_tr = await loop.start_tls(
                     tr, pr, ssl_context, server_hostname=host)
+                assert new_tr is not None
             except (Exception, asyncio.CancelledError):
                 tr.close()
                 raise
