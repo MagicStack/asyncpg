@@ -325,10 +325,12 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             password = urllib.parse.unquote(dsn_password)
 
         if parsed.query:
-            query = urllib.parse.parse_qs(parsed.query, strict_parsing=True)
-            for key, val in query.items():
-                if isinstance(val, list):
-                    query[key] = val[-1]
+            query = {
+                key: val[-1]
+                for key, val in urllib.parse.parse_qs(
+                    parsed.query, strict_parsing=True
+                ).items()
+            }
 
             if 'port' in query:
                 val = query.pop('port')
