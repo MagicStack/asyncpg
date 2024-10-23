@@ -183,15 +183,20 @@ def _validate_port_spec(
     return port
 
 
-def _parse_hostlist(hostlist, port, *, unquote=False):
+def _parse_hostlist(
+    hostlist: str,
+    port: typing.Union[int, typing.List[int]],
+    *,
+    unquote: bool = False,
+) -> typing.Tuple[typing.List[str], typing.List[int]]:
     if ',' in hostlist:
         # A comma-separated list of host addresses.
         hostspecs = hostlist.split(',')
     else:
         hostspecs = [hostlist]
 
-    hosts = []
-    hostlist_ports = []
+    hosts: typing.List[str] = []
+    hostlist_ports: typing.List[int] = []
 
     if not port:
         portspec = os.environ.get('PGPORT')
