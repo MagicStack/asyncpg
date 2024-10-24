@@ -4,6 +4,7 @@
 # This module is part of asyncpg and is released under
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
+from __future__ import annotations
 
 import asyncio
 import collections
@@ -813,7 +814,7 @@ async def _create_ssl_connection(
     # TODO: The return type is a specific combination of subclasses of
     # asyncio.protocols.Protocol that we can't express. For now, having the
     # return type be dependent on signature of the factory is an improvement
-    protocol_factory: "Callable[[], _ProctolFactoryR]",
+    protocol_factory: Callable[[], _ProctolFactoryR],
     host: str,
     port: int,
     *,
