@@ -60,7 +60,7 @@ class _ConnectionParameters(typing.NamedTuple):
     sslmode: SSLMode
     ssl_negotiation: SSLNegotiation
     server_settings: typing.Optional[typing.Dict[str, str]]
-    target_session_attrs: "SessionAttribute"
+    target_session_attrs: SessionAttribute
     krbsrvname: typing.Optional[str]
     gsslib: str
 
@@ -130,7 +130,7 @@ def _read_password_file(passfile: pathlib.Path) \
 def _read_password_from_pgpass(
     *,
     passfile: pathlib.Path,
-    hosts: "Sequence[str]",
+    hosts: Sequence[str],
     ports: typing.List[int],
     database: str,
     user: str
@@ -167,7 +167,7 @@ def _read_password_from_pgpass(
 
 
 def _validate_port_spec(
-    hosts: "Sequence[object]", port: typing.Union[int, typing.List[int]]
+    hosts: Sequence[object], port: typing.Union[int, typing.List[int]]
 ) -> typing.List[int]:
     if isinstance(port, list):
         # If there is a list of ports, its length must
