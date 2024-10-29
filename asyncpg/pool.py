@@ -34,7 +34,7 @@ class PoolConnectionProxyMeta(type):
         dct: dict[str, Any],
         *,
         wrap: bool = False,
-    ) -> "PoolConnectionProxyMeta":
+    ) -> PoolConnectionProxyMeta:
         if wrap:
             for attrname in dir(connection.Connection):
                 if attrname.startswith('_') or attrname in dct:
@@ -82,7 +82,7 @@ class PoolConnectionProxy(connection._ConnectionProxy,
     __slots__ = ('_con', '_holder')
 
     def __init__(
-        self, holder: "PoolConnectionHolder", con: connection.Connection
+        self, holder: PoolConnectionHolder, con: connection.Connection
     ) -> None:
         self._con = con
         self._holder = holder
