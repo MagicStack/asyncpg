@@ -41,7 +41,7 @@ class SSLMode(enum.IntEnum):
     verify_full = 5
 
     @classmethod
-    def parse(cls, sslmode: typing.Union[str, "SSLMode"]) -> "SSLMode":
+    def parse(cls, sslmode: typing.Union[str, SSLMode]) -> SSLMode:
         if isinstance(sslmode, str):
             return getattr(cls, sslmode.replace('-', '_'))
         return sslmode
