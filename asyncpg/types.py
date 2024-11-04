@@ -63,10 +63,10 @@ class _RangeValue(typing.Protocol):
     def __eq__(self, __value: object) -> bool:
         ...
 
-    def __lt__(self, __other: _RangeValue) -> bool:
+    def __lt__(self, __other: Self, /) -> bool:
         ...
 
-    def __gt__(self, __other: _RangeValue) -> bool:
+    def __gt__(self, __other: Self, /) -> bool:
         ...
 
 
