@@ -10,7 +10,7 @@ cimport cpython
 
 cdef extern from "record/recordobj.h":
 
-	cpython.PyTypeObject *ApgRecord_InitTypes() except NULL
+	tuple ApgRecord_InitTypes()
 
 	int ApgRecord_CheckExact(object)
 	object ApgRecord_New(type, object, int)
