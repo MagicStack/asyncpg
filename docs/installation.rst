@@ -51,14 +51,14 @@ in the root of the source checkout:
 
 .. code-block:: bash
 
-    $ pip install -e .
+    $ make
 
 A debug build containing more runtime checks can be created by setting
 the ``ASYNCPG_DEBUG`` environment variable when building:
 
 .. code-block:: bash
 
-    $ env ASYNCPG_DEBUG=1 pip install -e .
+    $ make debug
 
 
 Running tests
@@ -71,4 +71,4 @@ To execute the testsuite run:
 
 .. code-block:: bash
 
-    $ python setup.py test
+    $ make test
