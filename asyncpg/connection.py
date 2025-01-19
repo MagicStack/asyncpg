@@ -650,10 +650,17 @@ class Connection(metaclass=ConnectionMeta):
         record_class=None
     ):
         self._check_open()
+
+        named = True
+        if name is not None:
+            named = name
+        elif not self._stmt_cache_enabled:
+            named = False
+
         stmt = await self._get_statement(
             query,
             timeout,
-            named=True if name is None else name,
+            named=named,
             use_cache=use_cache,
             record_class=record_class,
         )
