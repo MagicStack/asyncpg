@@ -357,7 +357,7 @@ class Pool:
                  loop,
                  connection_class,
                  record_class,
-                 **connect_kwargs):
+                 **connect_kwargs) -> None:
 
         if len(connect_args) > 1:
             warnings.warn(
@@ -442,7 +442,7 @@ class Pool:
             self._initializing = False
             self._initialized = True
 
-    async def _initialize(self):
+    async def _initialize(self) -> None:
         self._queue = asyncio.LifoQueue(maxsize=self._maxsize)
         for _ in range(self._maxsize):
             ch = PoolConnectionHolder(
@@ -475,42 +475,42 @@ class Pool:
 
                 await asyncio.gather(*connect_tasks)
 
-    def is_closing(self):
+    def is_closing(self) -> bool:
         """Return ``True`` if the pool is closing or is closed.
 
         .. versionadded:: 0.28.0
         """
         return self._closed or self._closing
 
-    def get_size(self):
+    def get_size(self) -> int:
         """Return the current number of connections in this pool.
 
         .. versionadded:: 0.25.0
         """
         return sum(h.is_connected() for h in self._holders)
 
-    def get_min_size(self):
+    def get_min_size(self) -> int:
         """Return the minimum number of connections in this pool.
 
         .. versionadded:: 0.25.0
         """
         return self._minsize
 
-    def get_max_size(self):
+    def get_max_size(self) -> int:
         """Return the maximum allowed number of connections in this pool.
 
         .. versionadded:: 0.25.0
         """
         return self._maxsize
 
-    def get_idle_size(self):
+    def get_idle_size(self) -> int:
         """Return the current number of idle connections in this pool.
 
         .. versionadded:: 0.25.0
         """
         return sum(h.is_connected() and h.is_idle() for h in self._holders)
 
-    def set_connect_args(self, dsn=None, **connect_kwargs):
+    def set_connect_args(self, dsn=None, **connect_kwargs) -> None:
         r"""Set the new connection arguments for this pool.
 
         The new connection arguments will be used for all subsequent
@@ -574,7 +574,7 @@ class Pool:
 
         return con
 
-    async def execute(self, query: str, *args, timeout: float=None) -> str:
+    async def execute(self, query: str, *args, timeout: Optional[float] = None) -> str:
         """Execute an SQL command (or commands).
 
         Pool performs this operation using one of its connections.  Other than
@@ -586,7 +586,7 @@ class Pool:
         async with self.acquire() as con:
             return await con.execute(query, *args, timeout=timeout)
 
-    async def executemany(self, command: str, args, *, timeout: float=None):
+    async def executemany(self, command: str, args, *, timeout: Optional[float] = None):
         """Execute an SQL *command* for each sequence of arguments in *args*.
 
         Pool performs this operation using one of its connections.  Other than
@@ -925,7 +925,7 @@ class Pool:
         # pool properly.
         return await asyncio.shield(ch.release(timeout))
 
-    async def close(self):
+    async def close(self) -> None:
         """Attempt to gracefully close all connections in the pool.
 
         Wait until all pool connections are released, close them and
@@ -970,13 +970,13 @@ class Pool:
             self._closed = True
             self._closing = False
 
-    def _warn_on_long_close(self):
+    def _warn_on_long_close(self) -> None:
         logger.warning('Pool.close() is taking over 60 seconds to complete. '
                        'Check if you have any unreleased connections left. '
                        'Use asyncio.wait_for() to set a timeout for '
                        'Pool.close().')
 
-    def terminate(self):
+    def terminate(self) -> None:
         """Terminate all connections in the pool."""
         if self._closed:
             return
@@ -985,7 +985,7 @@ class Pool:
             ch.terminate()
         self._closed = True
 
-    async def expire_connections(self):
+    async def expire_connections(self) -> None:
         """Expire all currently open connections.
 
         Cause all currently open connections to get replaced on the
@@ -995,7 +995,7 @@ class Pool:
         """
         self._generation += 1
 
-    def _check_init(self):
+    def _check_init(self) -> None:
         if not self._initialized:
             if self._initializing:
                 raise exceptions.InterfaceError(
@@ -1006,13 +1006,13 @@ class Pool:
         if self._closed:
             raise exceptions.InterfaceError('pool is closed')
 
-    def _drop_statement_cache(self):
+    def _drop_statement_cache(self) -> None:
         # Drop statement cache for all connections in the pool.
         for ch in self._holders:
             if ch._con is not None:
                 ch._con._drop_local_statement_cache()
 
-    def _drop_type_cache(self):
+    def _drop_type_cache(self) -> None:
         # Drop type codec cache for all connections in the pool.
         for ch in self._holders:
             if ch._con is not None:
@@ -1021,11 +1021,11 @@ class Pool:
     def __await__(self):
         return self._async__init__().__await__()
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> Pool:
         await self._async__init__()
         return self
 
-    async def __aexit__(self, *exc):
+    async def __aexit__(self, *exc) -> None:
         await self.close()
 
 
