@@ -311,7 +311,7 @@ class Connection(metaclass=ConnectionMeta):
         """
         return self._protocol.is_in_transaction()
 
-    async def execute(self, query: str, *args, timeout: float=None) -> str:
+    async def execute(self, query: str, *args, timeout: typing.Optional[float]=None) -> str:
         """Execute an SQL command (or commands).
 
         This method can execute many SQL commands at once, when no arguments
@@ -358,7 +358,7 @@ class Connection(metaclass=ConnectionMeta):
         )
         return status.decode()
 
-    async def executemany(self, command: str, args, *, timeout: float=None):
+    async def executemany(self, command: str, args, *, timeout: typing.Optional[float]=None):
         """Execute an SQL *command* for each sequence of arguments in *args*.
 
         Example:
@@ -757,7 +757,7 @@ class Connection(metaclass=ConnectionMeta):
         return data[0]
 
     async def fetchmany(
-        self, query, args, *, timeout: float=None, record_class=None
+        self, query, args, *, timeout: typing.Optional[float]=None, record_class=None
     ):
         """Run a query for each sequence of arguments in *args*
         and return the results as a list of :class:`Record`.
