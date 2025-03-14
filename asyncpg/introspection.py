@@ -7,9 +7,11 @@
 from __future__ import annotations
 
 import typing
+from .protocol.protocol import _create_record  # type: ignore
 
 if typing.TYPE_CHECKING:
     from . import protocol
+
 
 _TYPEINFO_13: typing.Final = '''\
     (
@@ -267,16 +269,12 @@ WHERE
 '''
 
 
-TYPE_BY_OID = '''\
-SELECT
-    t.oid,
-    t.typelem     AS elemtype,
-    t.typtype     AS kind
-FROM
-    pg_catalog.pg_type AS t
-WHERE
-    t.oid = $1
-'''
+def TypeRecord(
+    rec: typing.Tuple[int, typing.Optional[int], bytes],
+) -> protocol.Record:
+    assert len(rec) == 3
+    return _create_record(  # type: ignore
+        {"oid": 0, "elemtype": 1, "kind": 2}, rec)
 
 
 # 'b' for a base type, 'd' for a domain, 'e' for enum.

@@ -534,26 +534,18 @@ class Connection(metaclass=ConnectionMeta):
         return result
 
     async def _introspect_type(self, typename, schema):
-        if (
-            schema == 'pg_catalog'
-            and typename.lower() in protocol.BUILTIN_TYPE_NAME_MAP
-        ):
-            typeoid = protocol.BUILTIN_TYPE_NAME_MAP[typename.lower()]
-            rows = await self._execute(
-                introspection.TYPE_BY_OID,
-                [typeoid],
-                limit=0,
-                timeout=None,
-                ignore_custom_codec=True,
-            )
-        else:
-            rows = await self._execute(
-                introspection.TYPE_BY_NAME,
-                [typename, schema],
-                limit=1,
-                timeout=None,
-                ignore_custom_codec=True,
-            )
+        if schema == 'pg_catalog' and not typename.endswith("[]"):
+            typeoid = protocol.BUILTIN_TYPE_NAME_MAP.get(typename.lower())
+            if typeoid is not None:
+                return introspection.TypeRecord((typeoid, None, b"b"))
+
+        rows = await self._execute(
+            introspection.TYPE_BY_NAME,
+            [typename, schema],
+            limit=1,
+            timeout=None,
+            ignore_custom_codec=True,
+        )
 
         if not rows:
             raise ValueError(
