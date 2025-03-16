@@ -168,13 +168,15 @@ def _read_password_from_pgpass(
 
 
 def _validate_port_spec(hosts, port):
-    if isinstance(port, list):
+    if isinstance(port, list) and len(port) > 1:
         # If there is a list of ports, its length must
         # match that of the host list.
         if len(port) != len(hosts):
             raise exceptions.ClientConfigurationError(
                 'could not match {} port numbers to {} hosts'.format(
                     len(port), len(hosts)))
+    elif isinstance(port, list) and len(port) == 1:
+        port = [port[0] for _ in range(len(hosts))]
     else:
         port = [port for _ in range(len(hosts))]
 
