@@ -6,6 +6,7 @@
 
 
 import json
+import typing
 
 from . import connresource
 from . import cursor
@@ -232,7 +233,7 @@ class PreparedStatement(connresource.ConnectionResource):
         )
 
     @connresource.guarded
-    async def executemany(self, args, *, timeout: float=None):
+    async def executemany(self, args, *, timeout: typing.Optional[float]=None):
         """Execute the statement for each sequence of arguments in *args*.
 
         :param args: An iterable containing sequences of arguments.

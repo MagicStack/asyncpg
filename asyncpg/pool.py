@@ -574,7 +574,12 @@ class Pool:
 
         return con
 
-    async def execute(self, query: str, *args, timeout: float=None) -> str:
+    async def execute(
+        self,
+        query: str,
+        *args,
+        timeout: Optional[float]=None,
+    ) -> str:
         """Execute an SQL command (or commands).
 
         Pool performs this operation using one of its connections.  Other than
@@ -586,7 +591,13 @@ class Pool:
         async with self.acquire() as con:
             return await con.execute(query, *args, timeout=timeout)
 
-    async def executemany(self, command: str, args, *, timeout: float=None):
+    async def executemany(
+        self,
+        command: str,
+        args,
+        *,
+        timeout: Optional[float]=None,
+    ):
         """Execute an SQL *command* for each sequence of arguments in *args*.
 
         Pool performs this operation using one of its connections.  Other than
