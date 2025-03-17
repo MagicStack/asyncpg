@@ -1090,7 +1090,8 @@ class TestConnectParams(tb.TestCase):
         },
         {
             'name': 'multi_host_single_port',
-            'dsn': 'postgres:///postgres?host=127.0.0.1,127.0.0.2&port=5432&user=postgres',
+            'dsn': 'postgres:///postgres?host=127.0.0.1,127.0.0.2&port=5432'
+                   '&user=postgres',
             'result': (
                 [
                     ('127.0.0.1', 5432),
