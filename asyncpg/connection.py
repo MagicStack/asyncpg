@@ -405,7 +405,7 @@ class Connection(metaclass=ConnectionMeta):
         query,
         timeout,
         *,
-        named=False,
+        named: typing.Union[str, bool, None] = False,
         use_cache=True,
         ignore_custom_codec=False,
         record_class=None
@@ -639,7 +639,6 @@ class Connection(metaclass=ConnectionMeta):
             query,
             name=name,
             timeout=timeout,
-            use_cache=False,
             record_class=record_class,
         )
 
@@ -647,16 +646,18 @@ class Connection(metaclass=ConnectionMeta):
         self,
         query,
         *,
-        name=None,
+        name: typing.Union[str, bool, None] = None,
         timeout=None,
         use_cache: bool=False,
         record_class=None
     ):
         self._check_open()
+        if name is None:
+            name = self._stmt_cache_enabled
         stmt = await self._get_statement(
             query,
             timeout,
-            named=True if name is None else name,
+            named=name,
             use_cache=use_cache,
             record_class=record_class,
         )
@@ -1115,7 +1116,7 @@ class Connection(metaclass=ConnectionMeta):
         intro_query = 'SELECT {cols} FROM {tab} LIMIT 1'.format(
             tab=tabname, cols=col_list)
 
-        intro_ps = await self._prepare(intro_query, use_cache=True)
+        intro_ps = await self.prepare(intro_query)
 
         cond = self._format_copy_where(where)
         opts = '(FORMAT binary)'
