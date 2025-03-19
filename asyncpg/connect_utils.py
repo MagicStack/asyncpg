@@ -526,6 +526,8 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
             if 'service' in query:
                 val = query.pop('service')
+                if service is None:
+                    service = val
 
             if query:
                 if server_settings is None:
