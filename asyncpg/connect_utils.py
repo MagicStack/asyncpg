@@ -284,6 +284,8 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
     if dsn:
         parsed = urllib.parse.urlparse(dsn)
+
+        query = None
         if parsed.query:
             query = urllib.parse.parse_qs(parsed.query, strict_parsing=True)
             for key, val in query.items():
@@ -306,7 +308,6 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
           connection_service_file = pathlib.Path(connection_service_file)
 
         if connection_service_file is not None and service is not None:
-            # TODO Open and parse connection service file
             pg_service = configparser.ConfigParser()
             pg_service.read(connection_service_file)
             if service in pg_service.sections():
@@ -396,8 +397,6 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                   if gsslib is None:
                       gsslib = val
 
-    if dsn:
-        parsed = urllib.parse.urlparse(dsn)
 
         if parsed.scheme not in {'postgresql', 'postgres'}:
             raise exceptions.ClientConfigurationError(
@@ -433,11 +432,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         if password is None and dsn_password:
             password = urllib.parse.unquote(dsn_password)
 
-        if parsed.query:
-            query = urllib.parse.parse_qs(parsed.query, strict_parsing=True)
-            for key, val in query.items():
-                if isinstance(val, list):
-                    query[key] = val[-1]
+        if query:
 
             if 'port' in query:
                 val = query.pop('port')
