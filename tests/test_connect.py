@@ -1322,7 +1322,9 @@ gsslib=sspi
             })
             # Test that dsn params overwrite service file
             self.run_testcase({
-                'dsn': 'postgresql://?service=test_service_dbname&dbname=test_dbname_dsn',
+                'dsn': 'postgresql://?service={}&dbname={}'.format(
+                    "test_service_dbname", "test_dbname_dsn"
+                ),
                 'env': {
                     'PGSERVICEFILE': connection_service_file.name
                 },
