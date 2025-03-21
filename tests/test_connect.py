@@ -1265,7 +1265,7 @@ gsslib=sspi
         connection_service_file.close()
         os.chmod(connection_service_file.name, stat.S_IWUSR | stat.S_IRUSR)
         try:
-            # passfile path in env
+            # Test connection service file with dbname
             self.run_testcase({
                 'dsn': 'postgresql://?service=test_service_dbname',
                 'env': {
@@ -1283,6 +1283,7 @@ gsslib=sspi
                     }
                 )
             })
+            # Test connection service file with database
             self.run_testcase({
                 'dsn': 'postgresql://?service=test_service_database',
                 'env': {
@@ -1294,6 +1295,43 @@ gsslib=sspi
                         'user': 'admin',
                         'password': 'test_password',
                         'database': 'test_dbname',
+                        'target_session_attrs': 'primary',
+                        'krbsrvname': 'fakekrbsrvname',
+                        'gsslib': 'sspi',
+                    }
+                )
+            })
+            # Test that envvars are overridden by service file
+            self.run_testcase({
+                'dsn': 'postgresql://?service=test_service_dbname',
+                'env': {
+                    'PGUSER': 'user',
+                    'PGSERVICEFILE': connection_service_file.name
+                },
+                'result': (
+                    [('somehost', 5433)],
+                    {
+                        'user': 'admin',
+                        'password': 'test_password',
+                        'database': 'test_dbname',
+                        'target_session_attrs': 'primary',
+                        'krbsrvname': 'fakekrbsrvname',
+                        'gsslib': 'sspi',
+                    }
+                )
+            })
+            # Test that dsn params overwrite service file
+            self.run_testcase({
+                'dsn': 'postgresql://?service=test_service_dbname&dbname=test_dbname_dsn',
+                'env': {
+                    'PGSERVICEFILE': connection_service_file.name
+                },
+                'result': (
+                    [('somehost', 5433)],
+                    {
+                        'user': 'admin',
+                        'password': 'test_password',
+                        'database': 'test_dbname_dsn',
                         'target_session_attrs': 'primary',
                         'krbsrvname': 'fakekrbsrvname',
                         'gsslib': 'sspi',
