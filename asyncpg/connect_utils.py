@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import asyncio
+import configparser
 import collections
 from collections.abc import Callable
 import enum
@@ -85,6 +86,9 @@ if _system == 'Windows':
     PGPASSFILE = 'pgpass.conf'
 else:
     PGPASSFILE = '.pgpass'
+
+
+PG_SERVICEFILE = '.pg_service.conf'
 
 
 def _read_password_file(passfile: pathlib.Path) \
@@ -270,7 +274,7 @@ def _dot_postgresql_path(filename) -> typing.Optional[pathlib.Path]:
 
 
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
-                                password, passfile, database, ssl,
+                                password, passfile, database, ssl, service,
                                 direct_tls, server_settings,
                                 target_session_attrs, krbsrvname, gsslib):
     # `auth_hosts` is the version of host information for the purposes
@@ -282,6 +286,28 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
     if dsn:
         parsed = urllib.parse.urlparse(dsn)
+
+        query = None
+        if parsed.query:
+            query = urllib.parse.parse_qs(parsed.query, strict_parsing=True)
+            for key, val in query.items():
+                if isinstance(val, list):
+                    query[key] = val[-1]
+
+            if 'service' in query:
+                val = query.pop('service')
+                if not service and val:
+                    service = val
+
+        connection_service_file = os.getenv('PGSERVICEFILE')
+        if connection_service_file is None:
+            homedir = compat.get_pg_home_directory()
+            if homedir:
+                connection_service_file = homedir / PG_SERVICEFILE
+            else:
+                connection_service_file = None
+        else:
+            connection_service_file = pathlib.Path(connection_service_file)
 
         if parsed.scheme not in {'postgresql', 'postgres'}:
             raise exceptions.ClientConfigurationError(
@@ -317,11 +343,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         if password is None and dsn_password:
             password = urllib.parse.unquote(dsn_password)
 
-        if parsed.query:
-            query = urllib.parse.parse_qs(parsed.query, strict_parsing=True)
-            for key, val in query.items():
-                if isinstance(val, list):
-                    query[key] = val[-1]
+        if query:
 
             if 'port' in query:
                 val = query.pop('port')
@@ -408,12 +430,108 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 if gsslib is None:
                     gsslib = val
 
+            if 'service' in query:
+                val = query.pop('service')
+                if service is None:
+                    service = val
+
             if query:
                 if server_settings is None:
                     server_settings = query
                 else:
                     server_settings = {**query, **server_settings}
 
+        if connection_service_file is not None and service is not None:
+            pg_service = configparser.ConfigParser()
+            pg_service.read(connection_service_file)
+            if service in pg_service.sections():
+                service_params = pg_service[service]
+                if 'port' in service_params:
+                    val = service_params.pop('port')
+                    if not port and val:
+                        port = [int(p) for p in val.split(',')]
+
+                if 'host' in service_params:
+                    val = service_params.pop('host')
+                    if not host and val:
+                        host, port = _parse_hostlist(val, port)
+
+                if 'dbname' in service_params:
+                    val = service_params.pop('dbname')
+                    if database is None:
+                        database = val
+
+                if 'database' in service_params:
+                    val = service_params.pop('database')
+                    if database is None:
+                        database = val
+
+                if 'user' in service_params:
+                    val = service_params.pop('user')
+                    if user is None:
+                        user = val
+
+                if 'password' in service_params:
+                    val = service_params.pop('password')
+                    if password is None:
+                        password = val
+
+                if 'passfile' in service_params:
+                    val = service_params.pop('passfile')
+                    if passfile is None:
+                        passfile = val
+
+                if 'sslmode' in service_params:
+                    val = service_params.pop('sslmode')
+                    if ssl is None:
+                        ssl = val
+
+                if 'sslcert' in service_params:
+                    sslcert = service_params.pop('sslcert')
+
+                if 'sslkey' in service_params:
+                    sslkey = service_params.pop('sslkey')
+
+                if 'sslrootcert' in service_params:
+                    sslrootcert = service_params.pop('sslrootcert')
+
+                if 'sslnegotiation' in service_params:
+                    sslnegotiation = service_params.pop('sslnegotiation')
+
+                if 'sslcrl' in service_params:
+                    sslcrl = service_params.pop('sslcrl')
+
+                if 'sslpassword' in service_params:
+                    sslpassword = service_params.pop('sslpassword')
+
+                if 'ssl_min_protocol_version' in service_params:
+                    ssl_min_protocol_version = service_params.pop(
+                        'ssl_min_protocol_version'
+                    )
+
+                if 'ssl_max_protocol_version' in service_params:
+                    ssl_max_protocol_version = service_params.pop(
+                        'ssl_max_protocol_version'
+                    )
+
+                if 'target_session_attrs' in service_params:
+                    dsn_target_session_attrs = service_params.pop(
+                        'target_session_attrs'
+                    )
+                    if target_session_attrs is None:
+                        target_session_attrs = dsn_target_session_attrs
+
+                if 'krbsrvname' in service_params:
+                    val = service_params.pop('krbsrvname')
+                    if krbsrvname is None:
+                        krbsrvname = val
+
+                if 'gsslib' in service_params:
+                    val = service_params.pop('gsslib')
+                    if gsslib is None:
+                        gsslib = val
+    if not service:
+        service = os.environ.get('PGSERVICE')
     if not host:
         hostspec = os.environ.get('PGHOST')
         if hostspec:
@@ -726,7 +844,8 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
                              ssl, direct_tls, server_settings,
-                             target_session_attrs, krbsrvname, gsslib):
+                             target_session_attrs, krbsrvname, gsslib,
+                             service):
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
                      'max_cached_statement_lifetime',
@@ -756,7 +875,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
         direct_tls=direct_tls, database=database,
         server_settings=server_settings,
         target_session_attrs=target_session_attrs,
-        krbsrvname=krbsrvname, gsslib=gsslib)
+        krbsrvname=krbsrvname, gsslib=gsslib, service=service)
 
     config = _ClientConfiguration(
         command_timeout=command_timeout,
