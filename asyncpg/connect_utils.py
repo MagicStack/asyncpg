@@ -528,7 +528,8 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     val = service_params.pop('gsslib')
                     if gsslib is None:
                         gsslib = val
-
+    if not service:
+        service = os.environ.get('PGSERVICE')
     if not host:
         hostspec = os.environ.get('PGHOST')
         if hostspec:
