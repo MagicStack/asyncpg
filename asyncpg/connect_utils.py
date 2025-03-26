@@ -487,46 +487,46 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 if 'sslcert' in service_params:
                     val = service_params.pop('sslcert')
                     if sslcert is None:
-                      sslcert = val
+                        sslcert = val
 
                 if 'sslkey' in service_params:
                     val = service_params.pop('sslkey')
                     if sslkey is None:
-                      sslkey = val
+                        sslkey = val
 
                 if 'sslrootcert' in service_params:
                     val = service_params.pop('sslrootcert')
                     if sslrootcert is None:
-                      sslrootcert = val
+                        sslrootcert = val
 
                 if 'sslnegotiation' in service_params:
                     val = service_params.pop('sslnegotiation')
                     if sslnegotiation is None:
-                      sslnegotiation = val
+                        sslnegotiation = val
 
                 if 'sslcrl' in service_params:
                     val = service_params.pop('sslcrl')
                     if sslcrl is None:
-                      sslcrl = val
+                        sslcrl = val
 
                 if 'sslpassword' in service_params:
                     val = service_params.pop('sslpassword')
                     if sslpassword is None:
-                      sslpassword = val
+                        sslpassword = val
 
                 if 'ssl_min_protocol_version' in service_params:
                     val = service_params.pop(
                         'ssl_min_protocol_version'
                     )
                     if ssl_min_protocol_version is None:
-                      ssl_min_protocol_version = val
+                        ssl_min_protocol_version = val
 
                 if 'ssl_max_protocol_version' in service_params:
                     val = service_params.pop(
                         'ssl_max_protocol_version'
                     )
                     if ssl_max_protocol_version is None:
-                      ssl_max_protocol_version = val
+                        ssl_max_protocol_version = val
 
                 if 'target_session_attrs' in service_params:
                     dsn_target_session_attrs = service_params.pop(
