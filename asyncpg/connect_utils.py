@@ -272,7 +272,8 @@ def _dot_postgresql_path(filename) -> typing.Optional[pathlib.Path]:
 
 
 def _parse_connect_dsn_and_args(*, dsn, host, port, user,
-                                password, passfile, database, ssl, service,
+                                password, passfile, database, ssl,
+                                service, servicefile,
                                 direct_tls, server_settings,
                                 target_session_attrs, krbsrvname, gsslib):
     # `auth_hosts` is the version of host information for the purposes
@@ -297,7 +298,11 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 if not service and val:
                     service = val
 
-        connection_service_file = os.getenv('PGSERVICEFILE')
+        connection_service_file = servicefile
+
+        if connection_service_file is None:
+            connection_service_file = os.getenv('PGSERVICEFILE')
+
         if connection_service_file is None:
             homedir = compat.get_pg_home_directory()
             if homedir:
@@ -859,7 +864,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
                              max_cacheable_statement_size,
                              ssl, direct_tls, server_settings,
                              target_session_attrs, krbsrvname, gsslib,
-                             service):
+                             service, servicefile):
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
                      'max_cached_statement_lifetime',
@@ -889,7 +894,8 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
         direct_tls=direct_tls, database=database,
         server_settings=server_settings,
         target_session_attrs=target_session_attrs,
-        krbsrvname=krbsrvname, gsslib=gsslib, service=service)
+        krbsrvname=krbsrvname, gsslib=gsslib,
+        service=service, servicefile=servicefile)
 
     config = _ClientConfiguration(
         command_timeout=command_timeout,

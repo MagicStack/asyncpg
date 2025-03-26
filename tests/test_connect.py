@@ -1134,6 +1134,7 @@ class TestConnectParams(tb.TestCase):
         krbsrvname = testcase.get('krbsrvname')
         gsslib = testcase.get('gsslib')
         service = testcase.get('service')
+        servicefile = testcase.get('servicefile')
 
         expected = testcase.get('result')
         expected_error = testcase.get('error')
@@ -1159,7 +1160,8 @@ class TestConnectParams(tb.TestCase):
                 direct_tls=direct_tls,
                 server_settings=server_settings,
                 target_session_attrs=target_session_attrs,
-                krbsrvname=krbsrvname, gsslib=gsslib, service=service)
+                krbsrvname=krbsrvname, gsslib=gsslib,
+                service=service, servicefile=servicefile)
 
             params = {
                 k: v for k, v in params._asdict().items()
