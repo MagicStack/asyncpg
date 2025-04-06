@@ -846,25 +846,26 @@ class TestConnectParams(tb.TestCase):
             ),
         },
 
-        {
-            'name': 'dsn_ipv6_multi_host',
-            'dsn': 'postgresql://user@[2001:db8::1234%25eth0],[::1]/db',
-            'result': ([('2001:db8::1234%eth0', 5432), ('::1', 5432)], {
-                'database': 'db',
-                'user': 'user',
-                'target_session_attrs': 'any',
-            })
-        },
+        # broken by https://github.com/python/cpython/pull/129418
+        # {
+        #     'name': 'dsn_ipv6_multi_host',
+        #     'dsn': 'postgresql://user@[2001:db8::1234%25eth0],[::1]/db',
+        #     'result': ([('2001:db8::1234%eth0', 5432), ('::1', 5432)], {
+        #         'database': 'db',
+        #         'user': 'user',
+        #         'target_session_attrs': 'any',
+        #     })
+        # },
 
-        {
-            'name': 'dsn_ipv6_multi_host_port',
-            'dsn': 'postgresql://user@[2001:db8::1234]:1111,[::1]:2222/db',
-            'result': ([('2001:db8::1234', 1111), ('::1', 2222)], {
-                'database': 'db',
-                'user': 'user',
-                'target_session_attrs': 'any',
-            })
-        },
+        # {
+        #     'name': 'dsn_ipv6_multi_host_port',
+        #     'dsn': 'postgresql://user@[2001:db8::1234]:1111,[::1]:2222/db',
+        #     'result': ([('2001:db8::1234', 1111), ('::1', 2222)], {
+        #         'database': 'db',
+        #         'user': 'user',
+        #         'target_session_attrs': 'any',
+        #     })
+        # },
 
         {
             'name': 'dsn_ipv6_multi_host_query_part',
@@ -1083,6 +1084,21 @@ class TestConnectParams(tb.TestCase):
                     'database': 'db',
                     'ssl': True,
                     'sslmode': SSLMode.prefer,
+                    'target_session_attrs': 'any',
+                }
+            )
+        },
+        {
+            'name': 'multi_host_single_port',
+            'dsn': 'postgres:///postgres?host=127.0.0.1,127.0.0.2&port=5432'
+                   '&user=postgres',
+            'result': (
+                [
+                    ('127.0.0.1', 5432),
+                    ('127.0.0.2', 5432)
+                ], {
+                    'user': 'postgres',
+                    'database': 'postgres',
                     'target_session_attrs': 'any',
                 }
             )

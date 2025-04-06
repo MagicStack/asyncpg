@@ -311,7 +311,12 @@ class Connection(metaclass=ConnectionMeta):
         """
         return self._protocol.is_in_transaction()
 
-    async def execute(self, query: str, *args, timeout: float=None) -> str:
+    async def execute(
+        self,
+        query: str,
+        *args,
+        timeout: typing.Optional[float]=None,
+    ) -> str:
         """Execute an SQL command (or commands).
 
         This method can execute many SQL commands at once, when no arguments
@@ -358,7 +363,13 @@ class Connection(metaclass=ConnectionMeta):
         )
         return status.decode()
 
-    async def executemany(self, command: str, args, *, timeout: float=None):
+    async def executemany(
+        self,
+        command: str,
+        args,
+        *,
+        timeout: typing.Optional[float]=None,
+    ):
         """Execute an SQL *command* for each sequence of arguments in *args*.
 
         Example:
@@ -394,7 +405,7 @@ class Connection(metaclass=ConnectionMeta):
         query,
         timeout,
         *,
-        named=False,
+        named: typing.Union[str, bool, None] = False,
         use_cache=True,
         ignore_custom_codec=False,
         record_class=None
@@ -534,26 +545,18 @@ class Connection(metaclass=ConnectionMeta):
         return result
 
     async def _introspect_type(self, typename, schema):
-        if (
-            schema == 'pg_catalog'
-            and typename.lower() in protocol.BUILTIN_TYPE_NAME_MAP
-        ):
-            typeoid = protocol.BUILTIN_TYPE_NAME_MAP[typename.lower()]
-            rows = await self._execute(
-                introspection.TYPE_BY_OID,
-                [typeoid],
-                limit=0,
-                timeout=None,
-                ignore_custom_codec=True,
-            )
-        else:
-            rows = await self._execute(
-                introspection.TYPE_BY_NAME,
-                [typename, schema],
-                limit=1,
-                timeout=None,
-                ignore_custom_codec=True,
-            )
+        if schema == 'pg_catalog' and not typename.endswith("[]"):
+            typeoid = protocol.BUILTIN_TYPE_NAME_MAP.get(typename.lower())
+            if typeoid is not None:
+                return introspection.TypeRecord((typeoid, None, b"b"))
+
+        rows = await self._execute(
+            introspection.TYPE_BY_NAME,
+            [typename, schema],
+            limit=1,
+            timeout=None,
+            ignore_custom_codec=True,
+        )
 
         if not rows:
             raise ValueError(
@@ -636,7 +639,6 @@ class Connection(metaclass=ConnectionMeta):
             query,
             name=name,
             timeout=timeout,
-            use_cache=False,
             record_class=record_class,
         )
 
@@ -644,16 +646,18 @@ class Connection(metaclass=ConnectionMeta):
         self,
         query,
         *,
-        name=None,
+        name: typing.Union[str, bool, None] = None,
         timeout=None,
         use_cache: bool=False,
         record_class=None
     ):
         self._check_open()
+        if name is None:
+            name = self._stmt_cache_enabled
         stmt = await self._get_statement(
             query,
             timeout,
-            named=True if name is None else name,
+            named=name,
             use_cache=use_cache,
             record_class=record_class,
         )
@@ -757,7 +761,12 @@ class Connection(metaclass=ConnectionMeta):
         return data[0]
 
     async def fetchmany(
-        self, query, args, *, timeout: float=None, record_class=None
+        self,
+        query,
+        args,
+        *,
+        timeout: typing.Optional[float]=None,
+        record_class=None,
     ):
         """Run a query for each sequence of arguments in *args*
         and return the results as a list of :class:`Record`.
@@ -1107,7 +1116,7 @@ class Connection(metaclass=ConnectionMeta):
         intro_query = 'SELECT {cols} FROM {tab} LIMIT 1'.format(
             tab=tabname, cols=col_list)
 
-        intro_ps = await self._prepare(intro_query, use_cache=True)
+        intro_ps = await self.prepare(intro_query)
 
         cond = self._format_copy_where(where)
         opts = '(FORMAT binary)'
