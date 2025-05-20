@@ -98,6 +98,8 @@ class Connection(metaclass=ConnectionMeta):
         self._server_caps = _detect_server_capabilities(
             self._server_version, settings)
 
+        self._protocol.get_settings().register_data_types(self._server_caps.extra_types)
+
         if self._server_version < (14, 0):
             self._intro_query = introspection.INTRO_LOOKUP_TYPES_13
         else:
@@ -2654,7 +2656,7 @@ LoggedQuery.__doc__ = 'Log record of an executed query.'
 ServerCapabilities = collections.namedtuple(
     'ServerCapabilities',
     ['advisory_locks', 'notifications', 'plpgsql', 'sql_reset',
-     'sql_close_all', 'sql_copy_from_where', 'jit'])
+     'sql_close_all', 'sql_copy_from_where', 'jit', 'extra_types'])
 ServerCapabilities.__doc__ = 'PostgreSQL server capabilities.'
 
 
@@ -2668,6 +2670,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_close_all = False
         jit = False
         sql_copy_from_where = False
+        extra_types = []
     elif hasattr(connection_settings, 'crdb_version'):
         # CockroachDB detected.
         advisory_locks = False
@@ -2677,6 +2680,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_close_all = False
         jit = False
         sql_copy_from_where = False
+        extra_types = []
     elif hasattr(connection_settings, 'crate_version'):
         # CrateDB detected.
         advisory_locks = False
@@ -2686,6 +2690,29 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_close_all = False
         jit = False
         sql_copy_from_where = False
+        extra_types = []
+    elif hasattr(connection_settings, 'questdb_version'):
+        # QuestDB detected.
+        advisory_locks = False
+        notifications = False
+        plpgsql = False
+        sql_reset = False
+        sql_close_all = False
+        jit = False
+        sql_copy_from_where = False
+        extra_types = [{
+            'oid': 1022,
+            'elemtype': 701,
+            'kind': 'b',
+            'name': '_float8',
+            'elemtype_name': 'float8',
+            'ns': 'pg_catalog',
+            'elemdelim': ',',
+            'depth': 0,
+            'range_subtype': None,
+            'attrtypoids': None,
+            'basetype': None
+        }]
     else:
         # Standard PostgreSQL server assumed.
         advisory_locks = True
@@ -2695,6 +2722,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_close_all = True
         jit = server_version >= (11, 0)
         sql_copy_from_where = server_version.major >= 12
+        extra_types = []
 
     return ServerCapabilities(
         advisory_locks=advisory_locks,
@@ -2704,6 +2732,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_close_all=sql_close_all,
         sql_copy_from_where=sql_copy_from_where,
         jit=jit,
+        extra_types=extra_types
     )
 
 
