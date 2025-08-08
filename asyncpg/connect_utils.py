@@ -1071,30 +1071,35 @@ async def _connect(*, loop, connection_class, record_class, **kwargs):
     candidates = []
     chosen_connection = None
     last_error = None
-    for addr in addrs:
-        try:
-            conn = await _connect_addr(
-                addr=addr,
-                loop=loop,
-                params=params,
-                config=config,
-                connection_class=connection_class,
-                record_class=record_class,
+    try:
+        for addr in addrs:
+            try:
+                conn = await _connect_addr(
+                    addr=addr,
+                    loop=loop,
+                    params=params,
+                    config=config,
+                    connection_class=connection_class,
+                    record_class=record_class,
+                )
+                candidates.append(conn)
+                if await _can_use_connection(conn, target_attr):
+                    chosen_connection = conn
+                    break
+            except OSError as ex:
+                last_error = ex
+        else:
+            if target_attr == SessionAttribute.prefer_standby and candidates:
+                chosen_connection = random.choice(candidates)
+    finally:
+        
+        async def _close_candidates(conns, chosen):
+            await asyncio.gather(
+                *(c.close() for c in conns if c is not chosen),
+                return_exceptions=True
             )
-            candidates.append(conn)
-            if await _can_use_connection(conn, target_attr):
-                chosen_connection = conn
-                break
-        except OSError as ex:
-            last_error = ex
-    else:
-        if target_attr == SessionAttribute.prefer_standby and candidates:
-            chosen_connection = random.choice(candidates)
-
-    await asyncio.gather(
-        *(c.close() for c in candidates if c is not chosen_connection),
-        return_exceptions=True
-    )
+        if candidates:
+            asyncio.create_task(_close_candidates(candidates, chosen_connection))
 
     if chosen_connection:
         return chosen_connection
