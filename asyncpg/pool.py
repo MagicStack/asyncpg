@@ -287,12 +287,59 @@ class PoolConnectionHolder:
             self._inactive_callback.cancel()
             self._inactive_callback = None
 
+    def _can_deactivate_inactive_connection(self) -> bool:
+        """Return True if an idle connection may be deactivated (trimmed).
+
+        Constraints:
+        - Do not trim if there are waiters in the pool queue.
+        - Do not trim below pool min size.
+        - Keep at least one idle connection available.
+        """
+        pool = getattr(self, '_pool', None)
+        if pool is None:
+            return True
+
+        # If the pool is closing, avoid racing the explicit close path.
+        if getattr(pool, '_closing', False):
+            return False
+
+        holders = list(getattr(pool, '_holders', []) or [])
+        total = len(holders)
+        minsize = int(getattr(pool, '_minsize', 0) or 0)
+
+        # Number of tasks waiting to acquire a connection.
+        q = getattr(pool, '_queue', None)
+        try:
+            waiters = q.qsize() if q is not None else 0
+        except Exception:
+            # on error, assume no waiters.
+            waiters = 0
+
+        # Count currently idle holders that have a live connection.
+        idle = sum(
+            1 for h in holders
+            if getattr(h, "_in_use", None) is None and getattr(h, "_con", None) is not None
+        )
+
+        return (
+                waiters == 0
+                and idle >= 2
+                and (total - 1) >= minsize
+        )
+
     def _deactivate_inactive_connection(self) -> None:
         if self._in_use is not None:
             raise exceptions.InternalClientError(
                 'attempting to deactivate an acquired connection')
 
         if self._con is not None:
+            # Only deactivate if doing so respects pool size and demand constraints.
+            if not self._can_deactivate_inactive_connection():
+                # Still mark this holder as available and keep the connection.
+                # Re-arm the inactivity timer so we can reevaluate later.
+                self._setup_inactive_callback()
+                return
+
             # The connection is idle and not in use, so it's fine to
             # use terminate() instead of close().
             self._con.terminate()
