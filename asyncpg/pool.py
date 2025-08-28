@@ -291,40 +291,51 @@ class PoolConnectionHolder:
         """Return True if an idle connection may be deactivated (trimmed).
 
         Constraints:
-        - Do not trim if there are waiters in the pool queue.
-        - Do not trim below pool min size.
-        - Keep at least one idle connection available.
+        - Do not trim if there are waiters in the pool queue (including acquiring).
+        - Do not trim below pool min size (leave at least `minsize` open connections).
+        - Keep at least one idle connection available (i.e., at least 2 idle holders so
+          trimming one still leaves one idle).
         """
-        pool = getattr(self, '_pool', None)
+        pool = getattr(self, "_pool", None)
         if pool is None:
+            # No pool state; allow default trimming behavior.
             return True
 
-        # If the pool is closing, avoid racing the explicit close path.
-        if getattr(pool, '_closing', False):
-            return False
+        # Follow original logic: if pool is closing, handle as default (allow trim).
+        if getattr(pool, "_closing", False):
+            return True
 
-        holders = list(getattr(pool, '_holders', []) or [])
-        total = len(holders)
-        minsize = int(getattr(pool, '_minsize', 0) or 0)
+        minsize = int(getattr(pool, "_minsize", 0) or 0)
 
-        # Number of tasks waiting to acquire a connection.
-        q = getattr(pool, '_queue', None)
-        try:
-            waiters = q.qsize() if q is not None else 0
-        except Exception:
-            # on error, assume no waiters.
+        # Compute the number of tasks waiting to acquire a connection.
+        q = getattr(pool, "_queue", None)
+        if q is not None:
+            getters = getattr(q, "_getters", None)
+            waiters = len(getters) if getters is not None else 0
+        else:
             waiters = 0
 
-        # Count currently idle holders that have a live connection.
-        idle = sum(
-            1 for h in holders
-            if getattr(h, "_in_use", None) is None and getattr(h, "_con", None) is not None
-        )
+        # Include tasks currently in the process of acquiring.
+        waiters += int(getattr(pool, "_acquiring", 0) or 0)
 
+        # Count open (live) connections and how many of them are idle.
+        open_conns = 0
+        idle = 0
+        holders = list(getattr(pool, "_holders", []) or [])
+        for h in holders:
+            if getattr(h, "_con", None) is not None:
+                open_conns += 1
+                if not getattr(h, "_in_use", None):
+                    idle += 1
+
+        # Conditions to allow trimming one idle connection:
+        # - No waiters.
+        # - Trimming one won't drop below minsize (so open_conns - 1 >= minsize).
+        # - After trimming one idle, at least one idle remains (so idle >= 2).
         return (
-                waiters == 0
-                and idle >= 2
-                and (total - 1) >= minsize
+                waiters == 0 and
+                (open_conns - 1) >= minsize and
+                idle >= 2
         )
 
     def _deactivate_inactive_connection(self) -> None:
