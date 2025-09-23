@@ -29,9 +29,9 @@ POOL_NOMINAL_TIMEOUT = 0.1
 
 class SlowResetConnection(pg_connection.Connection):
     """Connection class to simulate races with Connection.reset()."""
-    async def reset(self, *, timeout=None):
+    async def _reset(self):
         await asyncio.sleep(0.2)
-        return await super().reset(timeout=timeout)
+        return await super()._reset()
 
 
 class SlowCancelConnection(pg_connection.Connection):
@@ -1003,6 +1003,46 @@ class TestPool(tb.ConnectedTestCase):
         # Check that connection_lost has released the pool holder.
         conn = await pool.acquire(timeout=0.1)
         await pool.release(conn)
+
+    async def test_pool_timeout_acquire_timeout(self):
+        pool = await self.create_pool(
+            database='postgres',
+            min_size=1,
+            max_size=1,  # Only 1 connection to force timeout
+            pool_timeout=0.1
+        )
+
+        # First acquire the only connection
+        conn1 = await pool.acquire()
+
+        # Now try to acquire another - should timeout due to pool_timeout
+        start_time = time.monotonic()
+        with self.assertRaises(asyncio.TimeoutError):
+            await pool.acquire()
+        end_time = time.monotonic()
+
+        self.assertLess(end_time - start_time, 0.2)
+
+        await pool.release(conn1)
+        await pool.close()
+
+    async def test_pool_timeout_release_with_slow_reset(self):
+        pool = await self.create_pool(
+            database='postgres',
+            min_size=1,
+            max_size=1,
+            pool_timeout=0.1,
+            connection_class=SlowResetConnection,
+        )
+
+        start_time = time.monotonic()
+        with self.assertRaises(asyncio.TimeoutError):
+            conn = await pool.acquire()
+            await pool.release(conn)
+        end_time = time.monotonic()
+
+        self.assertLess(end_time - start_time, 0.2)
+        await pool.close()
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
