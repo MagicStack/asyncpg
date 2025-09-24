@@ -290,7 +290,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
         if parsed.netloc:
             if '@' in parsed.netloc:
-                dsn_auth, _, dsn_hostspec = parsed.netloc.partition('@')
+                dsn_auth, dsn_hostspec = parsed.netloc.rsplit("@", maxsplit=1)
             else:
                 dsn_hostspec = parsed.netloc
                 dsn_auth = ''
