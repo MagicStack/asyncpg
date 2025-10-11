@@ -24,7 +24,7 @@ from asyncpg import cluster as pg_cluster
 _system = platform.uname().system
 
 
-POOL_NOMINAL_TIMEOUT = 0.1
+POOL_NOMINAL_TIMEOUT = 0.5
 
 
 class SlowResetConnection(pg_connection.Connection):
