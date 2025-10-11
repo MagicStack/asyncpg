@@ -1132,7 +1132,8 @@ class TestConnectParams(tb.TestCase):
         env = testcase.get('env', {})
         test_env = {'PGHOST': None, 'PGPORT': None,
                     'PGUSER': None, 'PGPASSWORD': None,
-                    'PGDATABASE': None, 'PGSSLMODE': None}
+                    'PGDATABASE': None, 'PGSSLMODE': None,
+                    'PGSERVICE': None, }
         test_env.update(env)
 
         dsn = testcase.get('dsn')
@@ -1148,6 +1149,8 @@ class TestConnectParams(tb.TestCase):
         target_session_attrs = testcase.get('target_session_attrs')
         krbsrvname = testcase.get('krbsrvname')
         gsslib = testcase.get('gsslib')
+        service = testcase.get('service')
+        servicefile = testcase.get('servicefile')
 
         expected = testcase.get('result')
         expected_error = testcase.get('error')
@@ -1173,7 +1176,8 @@ class TestConnectParams(tb.TestCase):
                 direct_tls=direct_tls,
                 server_settings=server_settings,
                 target_session_attrs=target_session_attrs,
-                krbsrvname=krbsrvname, gsslib=gsslib)
+                krbsrvname=krbsrvname, gsslib=gsslib,
+                service=service, servicefile=servicefile)
 
             params = {
                 k: v for k, v in params._asdict().items()
@@ -1251,6 +1255,111 @@ class TestConnectParams(tb.TestCase):
     def test_connect_params(self):
         for testcase in self.TESTS:
             self.run_testcase(testcase)
+
+    def test_connect_connection_service_file(self):
+        connection_service_file = tempfile.NamedTemporaryFile(
+            'w+t', delete=False)
+        connection_service_file.write(textwrap.dedent('''
+[test_service_dbname]
+port=5433
+host=somehost
+dbname=test_dbname
+user=admin
+password=test_password
+target_session_attrs=primary
+krbsrvname=fakekrbsrvname
+gsslib=sspi
+
+[test_service_database]
+port=5433
+host=somehost
+database=test_dbname
+user=admin
+password=test_password
+target_session_attrs=primary
+krbsrvname=fakekrbsrvname
+gsslib=sspi
+        '''))
+        connection_service_file.close()
+        os.chmod(connection_service_file.name, stat.S_IWUSR | stat.S_IRUSR)
+        try:
+            # Test connection service file with dbname
+            self.run_testcase({
+                'dsn': 'postgresql://?service=test_service_dbname',
+                'env': {
+                    'PGSERVICEFILE': connection_service_file.name
+                },
+                'result': (
+                    [('somehost', 5433)],
+                    {
+                        'user': 'admin',
+                        'password': 'test_password',
+                        'database': 'test_dbname',
+                        'target_session_attrs': 'primary',
+                        'krbsrvname': 'fakekrbsrvname',
+                        'gsslib': 'sspi',
+                    }
+                )
+            })
+            # Test connection service file with database
+            self.run_testcase({
+                'dsn': 'postgresql://?service=test_service_database',
+                'env': {
+                    'PGSERVICEFILE': connection_service_file.name
+                },
+                'result': (
+                    [('somehost', 5433)],
+                    {
+                        'user': 'admin',
+                        'password': 'test_password',
+                        'database': 'test_dbname',
+                        'target_session_attrs': 'primary',
+                        'krbsrvname': 'fakekrbsrvname',
+                        'gsslib': 'sspi',
+                    }
+                )
+            })
+            # Test that envvars are overridden by service file
+            self.run_testcase({
+                'dsn': 'postgresql://?service=test_service_dbname',
+                'env': {
+                    'PGUSER': 'user',
+                    'PGSERVICEFILE': connection_service_file.name
+                },
+                'result': (
+                    [('somehost', 5433)],
+                    {
+                        'user': 'admin',
+                        'password': 'test_password',
+                        'database': 'test_dbname',
+                        'target_session_attrs': 'primary',
+                        'krbsrvname': 'fakekrbsrvname',
+                        'gsslib': 'sspi',
+                    }
+                )
+            })
+            # Test that dsn params overwrite service file
+            self.run_testcase({
+                'dsn': 'postgresql://?service={}&dbname={}'.format(
+                    "test_service_dbname", "test_dbname_dsn"
+                ),
+                'env': {
+                    'PGSERVICEFILE': connection_service_file.name
+                },
+                'result': (
+                    [('somehost', 5433)],
+                    {
+                        'user': 'admin',
+                        'password': 'test_password',
+                        'database': 'test_dbname_dsn',
+                        'target_session_attrs': 'primary',
+                        'krbsrvname': 'fakekrbsrvname',
+                        'gsslib': 'sspi',
+                    }
+                )
+            })
+        finally:
+            os.unlink(connection_service_file.name)
 
     def test_connect_pgpass_regular(self):
         passfile = tempfile.NamedTemporaryFile('w+t', delete=False)

@@ -2083,6 +2083,8 @@ class Connection(metaclass=ConnectionMeta):
 async def connect(dsn=None, *,
                   host=None, port=None,
                   user=None, password=None, passfile=None,
+                  service=None,
+                  servicefile=None,
                   database=None,
                   loop=None,
                   timeout=60,
@@ -2191,6 +2193,14 @@ async def connect(dsn=None, *,
         The name of the file used to store passwords
         (defaults to ``~/.pgpass``, or ``%APPDATA%\postgresql\pgpass.conf``
         on Windows).
+
+    :param service:
+        The name of the postgres connection service stored in the postgres
+        connection service file.
+
+    :param servicefile:
+        The location of the connnection service file used to store
+        connection parameters.
 
     :param loop:
         An asyncio event loop instance.  If ``None``, the default
@@ -2404,6 +2414,9 @@ async def connect(dsn=None, *,
     .. versionchanged:: 0.30.0
        Added the *krbsrvname* and *gsslib* parameters.
 
+    .. versionchanged:: 0.31.0
+       Added the *servicefile* and *service* parameters.
+
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
         https://docs.python.org/3/library/ssl.html#ssl.create_default_context
@@ -2437,6 +2450,8 @@ async def connect(dsn=None, *,
             user=user,
             password=password,
             passfile=passfile,
+            service=service,
+            servicefile=servicefile,
             ssl=ssl,
             direct_tls=direct_tls,
             database=database,
