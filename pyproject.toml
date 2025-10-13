@@ -4,7 +4,8 @@ description = "An asyncio PostgreSQL driver"
 authors = [{name = "MagicStack Inc", email = "hello@magic.io"}]
 requires-python = '>=3.8.0'
 readme = "README.rst"
-license = {text = "Apache License, Version 2.0"}
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 dynamic = ["version"]
 keywords = [
     "database",
@@ -14,16 +15,15 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Framework :: AsyncIO",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: POSIX",
     "Operating System :: MacOS :: MacOS X",
     "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
     "Topic :: Database :: Front-Ends",
 ]
@@ -56,8 +56,7 @@ docs = [
 
 [build-system]
 requires = [
-    "setuptools>=60",
-    "wheel",
+    "setuptools>=77.0.3",
     "Cython(>=0.29.24,<4.0.0)"
 ]
 build-backend = "setuptools.build_meta"
@@ -74,6 +73,7 @@ include = ["asyncpg", "asyncpg.*"]
 [tool.cibuildwheel]
 build-frontend = "build"
 test-extras = "test"
+skip = "cp38-*"
 
 [tool.cibuildwheel.macos]
 before-all = ".github/workflows/install-postgres.sh"
