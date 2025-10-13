@@ -22,6 +22,18 @@ ctypedef object (*codec_decode_func)(Codec codec,
                                      FRBuffer *buf)
 
 
+cdef class CodecMap:
+    cdef:
+        void** binary_codec_map
+        void** text_codec_map
+        dict extra_codecs
+
+    cdef inline void *get_binary_codec_ptr(self, uint32_t idx)
+    cdef inline void set_binary_codec_ptr(self, uint32_t idx, void *ptr)
+    cdef inline void *get_text_codec_ptr(self, uint32_t idx)
+    cdef inline void set_text_codec_ptr(self, uint32_t idx, void *ptr)
+
+
 cdef enum CodecType:
     CODEC_UNDEFINED  = 0
     CODEC_C          = 1

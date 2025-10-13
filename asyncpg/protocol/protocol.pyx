@@ -34,7 +34,7 @@ from asyncpg.pgproto.pgproto cimport (
 
 from asyncpg.pgproto cimport pgproto
 from asyncpg.protocol cimport cpythonx
-from asyncpg.protocol cimport record
+from asyncpg.protocol cimport recordcapi
 
 from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, \
                          int32_t, uint32_t, int64_t, uint64_t, \
@@ -46,6 +46,7 @@ from asyncpg import types as apg_types
 from asyncpg import exceptions as apg_exc
 
 from asyncpg.pgproto cimport hton
+from asyncpg.protocol.record import Record, RecordDescriptor
 
 
 include "consts.pxi"
@@ -1049,17 +1050,14 @@ def _create_record(object mapping, tuple elems):
         int32_t i
 
     if mapping is None:
-        desc = record.ApgRecordDesc_New({}, ())
+        desc = RecordDescriptor({}, ())
     else:
-        desc = record.ApgRecordDesc_New(
+        desc = RecordDescriptor(
             mapping, tuple(mapping) if mapping else ())
 
-    rec = record.ApgRecord_New(Record, desc, len(elems))
+    rec = desc.make_record(Record, len(elems))
     for i in range(len(elems)):
         elem = elems[i]
         cpython.Py_INCREF(elem)
-        record.ApgRecord_SET_ITEM(rec, i, elem)
+        recordcapi.ApgRecord_SET_ITEM(rec, i, elem)
     return rec
-
-
-Record = <object>record.ApgRecord_InitTypes()

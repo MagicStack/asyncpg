@@ -11,7 +11,7 @@ import hashlib
 include "scram.pyx"
 
 
-cdef dict AUTH_METHOD_NAME = {
+AUTH_METHOD_NAME = {
     AUTH_REQUIRED_KERBEROS: 'kerberosv5',
     AUTH_REQUIRED_PASSWORD: 'password',
     AUTH_REQUIRED_PASSWORDMD5: 'md5',
@@ -1229,5 +1229,5 @@ cdef class CoreProtocol:
         pass
 
 
-cdef bytes SYNC_MESSAGE = bytes(WriteBuffer.new_message(b'S').end_message())
-cdef bytes FLUSH_MESSAGE = bytes(WriteBuffer.new_message(b'H').end_message())
+SYNC_MESSAGE = bytes(WriteBuffer.new_message(b'S').end_message())
+FLUSH_MESSAGE = bytes(WriteBuffer.new_message(b'H').end_message())
