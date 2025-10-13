@@ -39,6 +39,8 @@ gssauth = [
     'gssapi; platform_system != "Windows"',
     'sspilib; platform_system == "Windows"',
 ]
+
+[dependency-groups]
 test = [
     'flake8~=6.1',
     'flake8-pyi~=24.1.0',
@@ -72,7 +74,7 @@ include = ["asyncpg", "asyncpg.*"]
 
 [tool.cibuildwheel]
 build-frontend = "build"
-test-extras = "test"
+test-groups = "test"
 skip = "cp38-*"
 
 [tool.cibuildwheel.macos]
