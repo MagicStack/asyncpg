@@ -230,7 +230,7 @@ cdef class PreparedStatementState:
             return
 
         if self.cols_num == 0:
-            self.cols_desc = record.ApgRecordDesc_New({}, ())
+            self.cols_desc = RecordDescriptor({}, ())
             return
 
         cols_mapping = collections.OrderedDict()
@@ -252,7 +252,7 @@ cdef class PreparedStatementState:
 
             codecs.append(codec)
 
-        self.cols_desc = record.ApgRecordDesc_New(
+        self.cols_desc = RecordDescriptor(
             cols_mapping, tuple(cols_names))
 
         self.rows_codecs = tuple(codecs)
@@ -310,7 +310,7 @@ cdef class PreparedStatementState:
                 'different from what was described ({})'.format(
                     fnum, self.cols_num))
 
-        dec_row = record.ApgRecord_New(self.record_class, self.cols_desc, fnum)
+        dec_row = self.cols_desc.make_record(self.record_class, fnum)
         for i in range(fnum):
             flen = hton.unpack_int32(frb_read(&rbuf, 4))
 
@@ -333,7 +333,7 @@ cdef class PreparedStatementState:
                 frb_set_len(&rbuf, bl - flen)
 
             cpython.Py_INCREF(val)
-            record.ApgRecord_SET_ITEM(dec_row, i, val)
+            recordcapi.ApgRecord_SET_ITEM(dec_row, i, val)
 
         if frb_get_len(&rbuf) != 0:
             raise BufferError('unexpected trailing {} bytes in buffer'.format(

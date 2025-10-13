@@ -10,7 +10,7 @@
 https://www.postgresql.org/docs/current/static/multibyte.html#CHARSET-TABLE
 '''
 
-cdef dict ENCODINGS_MAP = {
+ENCODINGS_MAP = {
     'abc': 'cp1258',
     'alt': 'cp866',
     'euc_cn': 'euccn',
