@@ -2,7 +2,7 @@
 name = "asyncpg"
 description = "An asyncio PostgreSQL driver"
 authors = [{name = "MagicStack Inc", email = "hello@magic.io"}]
-requires-python = '>=3.8.0'
+requires-python = '>=3.9.0'
 readme = "README.rst"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
