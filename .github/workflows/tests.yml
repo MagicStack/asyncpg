@@ -69,7 +69,8 @@ jobs:
       run: |
         [ "$RUNNER_OS" = "Linux" ] && .github/workflows/install-krb5.sh
         python -m pip install -U pip setuptools wheel
-        python -m pip install -e .[test]
+        python -m pip install --group test
+        python -m pip install -e .
 
     - name: Test
       if: "!steps.release.outputs.is_release"
@@ -133,7 +134,8 @@ jobs:
       run: |
         [ "$RUNNER_OS" = "Linux" ] && .github/workflows/install-krb5.sh
         python -m pip install -U pip setuptools wheel
-        python -m pip install -e .[test]
+        python -m pip install --group test
+        python -m pip install -e .
 
     - name: Test
       if: "!steps.release.outputs.is_release"

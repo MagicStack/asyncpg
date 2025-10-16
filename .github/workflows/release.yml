@@ -166,7 +166,8 @@ jobs:
 
     - name: Build docs
       run: |
-        pip install -e .[docs]
+        pip install --group docs
+        pip install -e .
         make htmldocs
 
     - name: Checkout gh-pages
