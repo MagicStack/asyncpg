@@ -1042,19 +1042,19 @@ class Pool:
 
 class PoolAcquireContext:
 
-    __slots__ = ('timeout', 'connection', 'done', 'pool')
+    __slots__ = ('timeout', '_conn', 'done', 'pool')
 
     def __init__(self, pool: Pool, timeout: Optional[float]) -> None:
         self.pool = pool
         self.timeout = timeout
-        self.connection = None
+        self._conn = None
         self.done = False
 
-    async def __aenter__(self):
-        if self.connection is not None or self.done:
+    async def __aenter__(self) -> connection.Connection:
+        if self._conn is not None or self.done:
             raise exceptions.InterfaceError('a connection is already acquired')
-        self.connection = await self.pool._acquire(self.timeout)
-        return self.connection
+        self._conn = await self.pool._acquire(self.timeout)
+        return self._conn
 
     async def __aexit__(
         self,
@@ -1063,8 +1063,8 @@ class PoolAcquireContext:
         exc_tb: Optional[TracebackType] = None,
     ) -> None:
         self.done = True
-        con = self.connection
-        self.connection = None
+        con = self._conn
+        self._conn = None
         await self.pool.release(con)
 
     def __await__(self):
