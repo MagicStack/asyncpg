@@ -173,7 +173,9 @@ record_dealloc(PyObject *self)
     ApgRecordObject *o = (ApgRecordObject *)self;
     Py_ssize_t i;
     Py_ssize_t len = Py_SIZE(o);
+    PyTypeObject *tp = Py_TYPE(o);
     record_module_state *state;
+    int skip_dealloc = 0;
 
     state = find_module_state_by_def(Py_TYPE(o));
     if (state == NULL) {
@@ -193,19 +195,19 @@ record_dealloc(PyObject *self)
         Py_XDECREF(o->ob_item[i]);
     }
 
-    if (len < ApgRecord_MAXSAVESIZE && Py_TYPE(o) == state->ApgRecord_Type) {
+    if (len < ApgRecord_MAXSAVESIZE && tp == state->ApgRecord_Type) {
         record_freelist_state *freelist = get_freelist_state(state);
         if (freelist != NULL && freelist->numfree[len] < ApgRecord_MAXFREELIST) {
             o->ob_item[0] = (PyObject *)freelist->freelist[len];
             freelist->numfree[len]++;
             freelist->freelist[len] = o;
-        }
-        else {
-            Py_TYPE(o)->tp_free((PyObject *)o);
+            skip_dealloc = 1;
         }
     }
-    else {
-        Py_TYPE(o)->tp_free((PyObject *)o);
+
+    if (!skip_dealloc) {
+        tp->tp_free(self);
+        Py_DECREF(tp);
     }
 
     Py_TRASHCAN_END
@@ -392,7 +394,7 @@ record_richcompare(PyObject *v, PyObject *w, int op)
                 cmp = vlen >= wlen;
                 break;
             default:
-                return NULL; /* cannot happen */
+                Py_UNREACHABLE();
         }
         if (cmp) {
             Py_RETURN_TRUE;
@@ -776,9 +778,11 @@ typedef struct {
 static void
 record_iter_dealloc(ApgRecordIterObject *it)
 {
+    PyTypeObject *tp = Py_TYPE(it);
     PyObject_GC_UnTrack(it);
     Py_CLEAR(it->it_seq);
     PyObject_GC_Del(it);
+    Py_DECREF(tp);
 }
 
 static int
@@ -870,10 +874,12 @@ typedef struct {
 static void
 record_items_dealloc(ApgRecordItemsObject *it)
 {
+    PyTypeObject *tp = Py_TYPE(it);
     PyObject_GC_UnTrack(it);
     Py_CLEAR(it->it_key_iter);
     Py_CLEAR(it->it_seq);
     PyObject_GC_Del(it);
+    Py_DECREF(tp);
 }
 
 static int
@@ -997,10 +1003,12 @@ record_new_items_iter(ApgRecordObject *r, const record_module_state *state)
 static void
 record_desc_dealloc(ApgRecordDescObject *o)
 {
+    PyTypeObject *tp = Py_TYPE(o);
     PyObject_GC_UnTrack(o);
     Py_CLEAR(o->mapping);
     Py_CLEAR(o->keys);
     PyObject_GC_Del(o);
+    Py_DECREF(tp);
 }
 
 static int
