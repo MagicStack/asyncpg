@@ -177,7 +177,7 @@ record_dealloc(PyObject *self)
     record_module_state *state;
     int skip_dealloc = 0;
 
-    state = find_module_state_by_def(Py_TYPE(o));
+    state = find_module_state_by_def(tp);
     if (state == NULL) {
         return;
     }
