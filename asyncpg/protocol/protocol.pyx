@@ -136,7 +136,6 @@ cdef class BaseProtocol(CoreProtocol):
             self.is_reading = False
             self.transport.pause_reading()
 
-    @cython.iterable_coroutine
     async def prepare(self, stmt_name, query, timeout,
                       *,
                       PreparedStatementState state=None,
@@ -165,7 +164,6 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             return await waiter
 
-    @cython.iterable_coroutine
     async def bind_execute(
         self,
         state: PreparedStatementState,
@@ -206,7 +204,6 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             return await waiter
 
-    @cython.iterable_coroutine
     async def bind_execute_many(
         self,
         state: PreparedStatementState,
@@ -268,7 +265,6 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             return await waiter
 
-    @cython.iterable_coroutine
     async def bind(self, PreparedStatementState state, args,
                    str portal_name, timeout):
 
@@ -297,7 +293,6 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             return await waiter
 
-    @cython.iterable_coroutine
     async def execute(self, PreparedStatementState state,
                       str portal_name, int limit, return_extra,
                       timeout):
@@ -327,7 +322,6 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             return await waiter
 
-    @cython.iterable_coroutine
     async def close_portal(self, str portal_name, timeout):
 
         if self.cancel_waiter is not None:
@@ -350,7 +344,6 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             return await waiter
 
-    @cython.iterable_coroutine
     async def query(self, query, timeout):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
@@ -375,7 +368,6 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             return await waiter
 
-    @cython.iterable_coroutine
     async def copy_out(self, copy_stmt, sink, timeout):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
@@ -429,7 +421,6 @@ cdef class BaseProtocol(CoreProtocol):
 
         return status_msg
 
-    @cython.iterable_coroutine
     async def copy_in(self, copy_stmt, reader, data,
                       records, PreparedStatementState record_stmt, timeout):
         cdef:
@@ -568,7 +559,6 @@ cdef class BaseProtocol(CoreProtocol):
 
         return status_msg
 
-    @cython.iterable_coroutine
     async def close_statement(self, PreparedStatementState state, timeout):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
@@ -609,7 +599,6 @@ cdef class BaseProtocol(CoreProtocol):
         self.transport.abort()
         self.transport = None
 
-    @cython.iterable_coroutine
     async def close(self, timeout):
         if self.closing:
             return
@@ -752,7 +741,6 @@ cdef class BaseProtocol(CoreProtocol):
             self.cancel_sent_waiter is not None
         )
 
-    @cython.iterable_coroutine
     async def _wait_for_cancellation(self):
         if self.cancel_sent_waiter is not None:
             await self.cancel_sent_waiter
