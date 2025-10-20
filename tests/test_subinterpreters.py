@@ -5,54 +5,62 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-import sys
+import textwrap
+import threading
 import unittest
 
+try:
+    from concurrent import interpreters
+except ImportError:
+    pass
+else:
+    class TestSubinterpreters(unittest.TestCase):
+        def test_record_module_loads_in_subinterpreter(self) -> None:
+            def run_in_subinterpreter() -> None:
+                interp = interpreters.create()
 
-@unittest.skipIf(
-    sys.version_info < (3, 14),
-    "Subinterpreter support requires Python 3.14+",
-)
-class TestSubinterpreters(unittest.TestCase):
-    def setUp(self) -> None:
-        from concurrent import interpreters
-        self.interpreters = interpreters
+                try:
+                    code = textwrap.dedent("""\
+                    import asyncpg.protocol.record as record
+                    assert record.Record is not None
+                    """)
+                    interp.exec(code)
+                finally:
+                    interp.close()
 
-    def test_record_module_loads_in_subinterpreter(self) -> None:
-        interp = self.interpreters.create()
+            thread = threading.Thread(target=run_in_subinterpreter)
+            thread.start()
+            thread.join()
 
-        try:
-            code = """
-import asyncpg.protocol.record as record
-assert record.Record is not None
-"""
-            interp.exec(code)
-        finally:
-            interp.close()
+        def test_record_module_state_isolation(self) -> None:
+            import asyncpg.protocol.record
 
-    def test_record_module_state_isolation(self) -> None:
-        import asyncpg.protocol.record
+            main_record_id = id(asyncpg.protocol.record.Record)
 
-        main_record_id = id(asyncpg.protocol.record.Record)
+            def run_in_subinterpreter() -> None:
+                interp = interpreters.create()
 
-        interp = self.interpreters.create()
+                try:
+                    code = textwrap.dedent(f"""\
+                    import asyncpg.protocol.record as record
 
-        try:
-            code = f"""
-import asyncpg.protocol.record as record
+                    sub_record_id = id(record.Record)
+                    main_id = {main_record_id}
 
-sub_record_id = id(record.Record)
-main_id = {main_record_id}
+                    assert sub_record_id != main_id, (
+                        f"Record type objects are the same: "
+                        f"{{sub_record_id}} == {{main_id}}. "
+                        f"This indicates shared global state."
+                    )
+                    """)
+                    interp.exec(code)
+                finally:
+                    interp.close()
 
-assert sub_record_id != main_id, (
-    f"Record type objects are the same: {{sub_record_id}} == {{main_id}}. "
-    "This indicates shared global state."
-)
-"""
-            interp.exec(code)
-        finally:
-            interp.close()
+            thread = threading.Thread(target=run_in_subinterpreter)
+            thread.start()
+            thread.join()
 
 
 if __name__ == "__main__":
-    unittest.main()
+    _ = unittest.main()
