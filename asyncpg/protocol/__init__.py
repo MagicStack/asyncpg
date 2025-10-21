@@ -8,4 +8,5 @@
 
 from __future__ import annotations
 
-from .protocol import Protocol, Record, NO_TIMEOUT, BUILTIN_TYPE_NAME_MAP
+from .protocol import Protocol, NO_TIMEOUT, BUILTIN_TYPE_NAME_MAP
+from .record import Record

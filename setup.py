@@ -25,7 +25,7 @@ from setuptools.command import sdist as setuptools_sdist
 from setuptools.command import build_ext as setuptools_build_ext
 
 
-CYTHON_DEPENDENCY = 'Cython(>=0.29.24,<4.0.0)'
+CYTHON_DEPENDENCY = 'Cython(>=3.1.0,<4.0.0)'
 
 CFLAGS = ['-O2']
 LDFLAGS = []
@@ -128,16 +128,25 @@ class build_ext(setuptools_build_ext.build_ext):
 
         super(build_ext, self).initialize_options()
 
+        defines = [
+            "CYTHON_USE_MODULE_STATE",
+            "CYTHON_PEP489_MULTI_PHASE_INIT",
+            "CYTHON_USE_TYPE_SPECS",
+        ]
+
         if os.environ.get('ASYNCPG_DEBUG'):
             self.cython_always = True
             self.cython_annotate = True
             self.cython_directives = "linetrace=True"
-            self.define = 'PG_DEBUG,CYTHON_TRACE,CYTHON_TRACE_NOGIL'
             self.debug = True
+
+            defines += ["PG_DEBUG", "CYTHON_TRACE", "CYTHON_TRACE_NOGIL"]
         else:
             self.cython_always = False
             self.cython_annotate = None
             self.cython_directives = None
+
+        self.define = ",".join(defines)
 
     def finalize_options(self):
         # finalize_options() may be called multiple times on the
@@ -201,6 +210,8 @@ class build_ext(setuptools_build_ext.build_ext):
 
             directives = {
                 'language_level': '3',
+                'freethreading_compatible': 'True',
+                'subinterpreters_compatible': 'own_gil',
             }
 
             if self.cython_directives:
@@ -231,7 +242,7 @@ if (
     setup_requires.append(CYTHON_DEPENDENCY)
 
 
-setuptools.setup(
+_ = setuptools.setup(
     version=VERSION,
     ext_modules=[
         setuptools.extension.Extension(
@@ -241,9 +252,15 @@ setuptools.setup(
             extra_link_args=LDFLAGS),
 
         setuptools.extension.Extension(
+            "asyncpg.protocol.record",
+            ["asyncpg/protocol/record/recordobj.c"],
+            include_dirs=['asyncpg/protocol/record/'],
+            extra_compile_args=CFLAGS,
+            extra_link_args=LDFLAGS),
+
+        setuptools.extension.Extension(
             "asyncpg.protocol.protocol",
-            ["asyncpg/protocol/record/recordobj.c",
-             "asyncpg/protocol/protocol.pyx"],
+            ["asyncpg/protocol/protocol.pyx"],
             include_dirs=['asyncpg/pgproto/'],
             extra_compile_args=CFLAGS,
             extra_link_args=LDFLAGS),

@@ -2751,8 +2751,8 @@ def _check_record_class(record_class):
         and issubclass(record_class, protocol.Record)
     ):
         if (
-            record_class.__new__ is not object.__new__
-            or record_class.__init__ is not object.__init__
+            record_class.__new__ is not protocol.Record.__new__
+            or record_class.__init__ is not protocol.Record.__init__
         ):
             raise exceptions.InterfaceError(
                 'record_class must not redefine __new__ or __init__'

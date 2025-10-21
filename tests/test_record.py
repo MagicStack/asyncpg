@@ -151,7 +151,8 @@ class TestRecord(tb.ConnectedTestCase):
         r = Record(R_AB, (42, 43))
         vv = r.values()
         self.assertEqual(tuple(vv), (42, 43))
-        self.assertTrue(repr(vv).startswith('<RecordIterator '))
+        self.assertTrue(
+            repr(vv).startswith('<asyncpg.protocol.record.RecordIterator '))
 
     def test_record_keys(self):
         r = Record(R_AB, (42, 43))
@@ -345,7 +346,9 @@ class TestRecord(tb.ConnectedTestCase):
     async def test_record_no_new(self):
         """Instances of Record cannot be directly created."""
         with self.assertRaisesRegex(
-                TypeError, "cannot create 'asyncpg.Record' instances"):
+            TypeError,
+            "cannot create 'asyncpg.protocol.record.Record' instances",
+        ):
             asyncpg.Record()
 
     @tb.with_connection_options(record_class=CustomRecord)

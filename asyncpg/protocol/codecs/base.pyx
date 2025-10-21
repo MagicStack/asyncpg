@@ -11,9 +11,33 @@ import asyncpg
 from asyncpg import exceptions
 
 
-cdef void* binary_codec_map[(MAXSUPPORTEDOID + 1) * 2]
-cdef void* text_codec_map[(MAXSUPPORTEDOID + 1) * 2]
-cdef dict EXTRA_CODECS = {}
+# The class indirection is needed because Cython
+# does not (as of 3.1.0) store global cdef variables
+# in module state.
+@cython.final
+cdef class CodecMap:
+
+    def __cinit__(self):
+        self.extra_codecs = {}
+        self.binary_codec_map = <void **>cpython.PyMem_Calloc(
+            (MAXSUPPORTEDOID + 1) * 2, sizeof(void *))
+        self.text_codec_map = <void **>cpython.PyMem_Calloc(
+            (MAXSUPPORTEDOID + 1) * 2, sizeof(void *))
+
+    cdef inline void *get_binary_codec_ptr(self, uint32_t idx):
+        return <void*>self.binary_codec_map[idx]
+
+    cdef inline void set_binary_codec_ptr(self, uint32_t idx, void *ptr):
+        self.binary_codec_map[idx] = ptr
+
+    cdef inline void *get_text_codec_ptr(self, uint32_t idx):
+        return <void*>self.text_codec_map[idx]
+
+    cdef inline void set_text_codec_ptr(self, uint32_t idx, void *ptr):
+        self.text_codec_map[idx] = ptr
+
+
+codec_map = CodecMap()
 
 
 @cython.final
@@ -67,7 +91,7 @@ cdef class Codec:
                 )
 
         if element_names is not None:
-            self.record_desc = record.ApgRecordDesc_New(
+            self.record_desc = RecordDescriptor(
                 element_names, tuple(element_names))
         else:
             self.record_desc = None
@@ -271,7 +295,7 @@ cdef class Codec:
                 schema=self.schema,
                 data_type=self.name,
             )
-        result = record.ApgRecord_New(asyncpg.Record, self.record_desc, elem_count)
+        result = self.record_desc.make_record(asyncpg.Record, elem_count)
         for i in range(elem_count):
             elem_typ = self.element_type_oids[i]
             received_elem_typ = <uint32_t>hton.unpack_int32(frb_read(buf, 4))
@@ -301,7 +325,7 @@ cdef class Codec:
                     settings, frb_slice_from(&elem_buf, buf, elem_len))
 
             cpython.Py_INCREF(elem)
-            record.ApgRecord_SET_ITEM(result, i, elem)
+            recordcapi.ApgRecord_SET_ITEM(result, i, elem)
 
         return result
 
@@ -811,9 +835,9 @@ cdef inline Codec get_core_codec(
     if oid > MAXSUPPORTEDOID:
         return None
     if format == PG_FORMAT_BINARY:
-        ptr = binary_codec_map[oid * xformat]
+        ptr = (<CodecMap>codec_map).get_binary_codec_ptr(oid * xformat)
     elif format == PG_FORMAT_TEXT:
-        ptr = text_codec_map[oid * xformat]
+        ptr = (<CodecMap>codec_map).get_text_codec_ptr(oid * xformat)
 
     if ptr is NULL:
         return None
@@ -839,7 +863,10 @@ cdef inline Codec get_any_core_codec(
 
 
 cdef inline int has_core_codec(uint32_t oid):
-    return binary_codec_map[oid] != NULL or text_codec_map[oid] != NULL
+    return (
+        (<CodecMap>codec_map).get_binary_codec_ptr(oid) != NULL
+        or (<CodecMap>codec_map).get_text_codec_ptr(oid) != NULL
+    )
 
 
 cdef register_core_codec(uint32_t oid,
@@ -867,9 +894,9 @@ cdef register_core_codec(uint32_t oid,
     cpython.Py_INCREF(codec)  # immortalize
 
     if format == PG_FORMAT_BINARY:
-        binary_codec_map[oid * xformat] = <void*>codec
+        (<CodecMap>codec_map).set_binary_codec_ptr(oid * xformat, <void*>codec)
     elif format == PG_FORMAT_TEXT:
-        text_codec_map[oid * xformat] = <void*>codec
+        (<CodecMap>codec_map).set_text_codec_ptr(oid * xformat, <void*>codec)
     else:
         raise exceptions.InternalClientError(
             'invalid data format: {}'.format(format))
@@ -888,8 +915,8 @@ cdef register_extra_codec(str name,
     codec = Codec(INVALIDOID)
     codec.init(name, None, kind, CODEC_C, format, PG_XFORMAT_OBJECT,
                encode, decode, None, None, None, None, None, None, None, 0)
-    EXTRA_CODECS[name, format] = codec
+    (<CodecMap>codec_map).extra_codecs[name, format] = codec
 
 
 cdef inline Codec get_extra_codec(str name, ServerDataFormat format):
-    return EXTRA_CODECS.get((name, format))
+    return (<CodecMap>codec_map).extra_codecs.get((name, format))

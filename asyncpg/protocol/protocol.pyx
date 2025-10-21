@@ -34,7 +34,7 @@ from asyncpg.pgproto.pgproto cimport (
 
 from asyncpg.pgproto cimport pgproto
 from asyncpg.protocol cimport cpythonx
-from asyncpg.protocol cimport record
+from asyncpg.protocol cimport recordcapi
 
 from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, \
                          int32_t, uint32_t, int64_t, uint64_t, \
@@ -46,6 +46,7 @@ from asyncpg import types as apg_types
 from asyncpg import exceptions as apg_exc
 
 from asyncpg.pgproto cimport hton
+from asyncpg.protocol.record import Record, RecordDescriptor
 
 
 include "consts.pxi"
@@ -135,7 +136,6 @@ cdef class BaseProtocol(CoreProtocol):
             self.is_reading = False
             self.transport.pause_reading()
 
-    @cython.iterable_coroutine
     async def prepare(self, stmt_name, query, timeout,
                       *,
                       PreparedStatementState state=None,
@@ -164,7 +164,6 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             return await waiter
 
-    @cython.iterable_coroutine
     async def bind_execute(
         self,
         state: PreparedStatementState,
@@ -205,7 +204,6 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             return await waiter
 
-    @cython.iterable_coroutine
     async def bind_execute_many(
         self,
         state: PreparedStatementState,
@@ -267,7 +265,6 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             return await waiter
 
-    @cython.iterable_coroutine
     async def bind(self, PreparedStatementState state, args,
                    str portal_name, timeout):
 
@@ -296,7 +293,6 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             return await waiter
 
-    @cython.iterable_coroutine
     async def execute(self, PreparedStatementState state,
                       str portal_name, int limit, return_extra,
                       timeout):
@@ -326,7 +322,6 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             return await waiter
 
-    @cython.iterable_coroutine
     async def close_portal(self, str portal_name, timeout):
 
         if self.cancel_waiter is not None:
@@ -349,7 +344,6 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             return await waiter
 
-    @cython.iterable_coroutine
     async def query(self, query, timeout):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
@@ -374,7 +368,6 @@ cdef class BaseProtocol(CoreProtocol):
         finally:
             return await waiter
 
-    @cython.iterable_coroutine
     async def copy_out(self, copy_stmt, sink, timeout):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
@@ -428,7 +421,6 @@ cdef class BaseProtocol(CoreProtocol):
 
         return status_msg
 
-    @cython.iterable_coroutine
     async def copy_in(self, copy_stmt, reader, data,
                       records, PreparedStatementState record_stmt, timeout):
         cdef:
@@ -567,7 +559,6 @@ cdef class BaseProtocol(CoreProtocol):
 
         return status_msg
 
-    @cython.iterable_coroutine
     async def close_statement(self, PreparedStatementState state, timeout):
         if self.cancel_waiter is not None:
             await self.cancel_waiter
@@ -608,7 +599,6 @@ cdef class BaseProtocol(CoreProtocol):
         self.transport.abort()
         self.transport = None
 
-    @cython.iterable_coroutine
     async def close(self, timeout):
         if self.closing:
             return
@@ -751,7 +741,6 @@ cdef class BaseProtocol(CoreProtocol):
             self.cancel_sent_waiter is not None
         )
 
-    @cython.iterable_coroutine
     async def _wait_for_cancellation(self):
         if self.cancel_sent_waiter is not None:
             await self.cancel_sent_waiter
@@ -1049,17 +1038,14 @@ def _create_record(object mapping, tuple elems):
         int32_t i
 
     if mapping is None:
-        desc = record.ApgRecordDesc_New({}, ())
+        desc = RecordDescriptor({}, ())
     else:
-        desc = record.ApgRecordDesc_New(
+        desc = RecordDescriptor(
             mapping, tuple(mapping) if mapping else ())
 
-    rec = record.ApgRecord_New(Record, desc, len(elems))
+    rec = desc.make_record(Record, len(elems))
     for i in range(len(elems)):
         elem = elems[i]
         cpython.Py_INCREF(elem)
-        record.ApgRecord_SET_ITEM(rec, i, elem)
+        recordcapi.ApgRecord_SET_ITEM(rec, i, elem)
     return rec
-
-
-Record = <object>record.ApgRecord_InitTypes()
