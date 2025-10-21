@@ -1491,7 +1491,7 @@ class Connection(metaclass=ConnectionMeta):
         # Statement cache is no longer valid due to codec changes.
         self._drop_local_statement_cache()
 
-    def is_closed(self):
+    def is_closed(self) -> bool:
         """Return ``True`` if the connection is closed, ``False`` otherwise.
 
         :return bool: ``True`` if the connection is closed, ``False``

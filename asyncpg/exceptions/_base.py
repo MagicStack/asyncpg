@@ -4,6 +4,8 @@
 # This module is part of asyncpg and is released under
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
+from __future__ import annotations
+from typing import Optional
 
 import asyncpg
 import sys
@@ -208,11 +210,17 @@ class InterfaceMessage:
 class InterfaceError(InterfaceMessage, Exception):
     """An error caused by improper use of asyncpg API."""
 
-    def __init__(self, msg, *, detail=None, hint=None):
+    def __init__(
+        self,
+        msg: str,
+        *,
+        detail: Optional[str] = None,
+        hint: Optional[str] = None,
+    ) -> None:
         InterfaceMessage.__init__(self, detail=detail, hint=hint)
         Exception.__init__(self, msg)
 
-    def with_msg(self, msg):
+    def with_msg(self, msg: str) -> InterfaceError:
         return type(self)(
             msg,
             detail=self.detail,
