@@ -7,14 +7,14 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Frequently Asked Questions &mdash; asyncpg Documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=a7ea5d77"></script>
-      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/documentation_options.js?v=d63f172e"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -105,8 +105,8 @@ from the column namespace.  That said, you can provide a custom <code class="doc
 class that implements dot-notation via the <code class="docutils literal notranslate"><span class="pre">record_class</span></code> argument to
 <a class="reference internal" href="api/index.html#asyncpg.connection.connect" title="asyncpg.connection.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">connect()</span></code></a> or any of the Record-returning
 methods.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyRecord</span><span class="p">(</span><span class="n">asyncpg</span><span class="o">.</span><span class="n">Record</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MyRecord</span><span class="p">(</span><span class="n">asyncpg</span><span class="o">.</span><span class="n">Record</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -115,7 +115,7 @@ methods.</p>
 <h2>Why can’t I use a <a class="reference internal" href="api/index.html#asyncpg-api-cursor"><span class="std std-ref">cursor</span></a> outside of a transaction?<a class="headerlink" href="#why-can-t-i-use-a-cursor-outside-of-a-transaction" title="Link to this heading"></a></h2>
 <p>Cursors created by a call to
 <a class="reference internal" href="api/index.html#asyncpg.connection.Connection.cursor" title="asyncpg.connection.Connection.cursor"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Connection.cursor()</span></code></a> or
-<a class="reference internal" href="api/index.html#asyncpg.prepared_stmt.PreparedStatement.cursor" title="asyncpg.prepared_stmt.PreparedStatement.cursor"><code class="xref py py-meth docutils literal notranslate"><span class="pre">PreparedStatement.cursor()</span> </code></a>
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">PreparedStatement.cursor()</span> </code>
 cannot be used outside of a transaction.  Any such attempt will result in
 <code class="docutils literal notranslate"><span class="pre">InterfaceError</span></code>.
 To create a cursor usable outside of a transaction, use the

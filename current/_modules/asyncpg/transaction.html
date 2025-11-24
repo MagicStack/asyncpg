@@ -6,14 +6,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>asyncpg.transaction &mdash; asyncpg Documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../_static/documentation_options.js?v=a7ea5d77"></script>
-      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/documentation_options.js?v=d63f172e"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -78,13 +78,13 @@
 <span class="c1"># the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0</span>
 
 
-<span class="kn">import</span> <span class="nn">enum</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">enum</span>
 
-<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">connresource</span>
-<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">exceptions</span> <span class="k">as</span> <span class="n">apg_errors</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">connresource</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">exceptions</span> <span class="k">as</span> <span class="n">apg_errors</span>
 
 
-<span class="k">class</span> <span class="nc">TransactionState</span><span class="p">(</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TransactionState</span><span class="p">(</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
     <span class="n">NEW</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">STARTED</span> <span class="o">=</span> <span class="mi">1</span>
     <span class="n">COMMITTED</span> <span class="o">=</span> <span class="mi">2</span>
@@ -108,7 +108,7 @@
 
 <div class="viewcode-block" id="Transaction">
 <a class="viewcode-back" href="../../api/index.html#asyncpg.transaction.Transaction">[docs]</a>
-<span class="k">class</span> <span class="nc">Transaction</span><span class="p">(</span><span class="n">connresource</span><span class="o">.</span><span class="n">ConnectionResource</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Transaction</span><span class="p">(</span><span class="n">connresource</span><span class="o">.</span><span class="n">ConnectionResource</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a transaction or savepoint block.</span>
 
 <span class="sd">    Transactions are created by calling the</span>
@@ -119,7 +119,7 @@
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_connection&#39;</span><span class="p">,</span> <span class="s1">&#39;_isolation&#39;</span><span class="p">,</span> <span class="s1">&#39;_readonly&#39;</span><span class="p">,</span> <span class="s1">&#39;_deferrable&#39;</span><span class="p">,</span>
                  <span class="s1">&#39;_state&#39;</span><span class="p">,</span> <span class="s1">&#39;_nested&#39;</span><span class="p">,</span> <span class="s1">&#39;_id&#39;</span><span class="p">,</span> <span class="s1">&#39;_managed&#39;</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">isolation</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">deferrable</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">isolation</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">deferrable</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">isolation</span> <span class="ow">and</span> <span class="n">isolation</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ISOLATION_LEVELS</span><span class="p">:</span>
@@ -135,14 +135,14 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_id</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_managed</span> <span class="o">=</span> <span class="kc">False</span>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="fm">__aenter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__aenter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_managed</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
                 <span class="s1">&#39;cannot enter context: already in an `async with` block&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_managed</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="fm">__aexit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">extype</span><span class="p">,</span> <span class="n">ex</span><span class="p">,</span> <span class="n">tb</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__aexit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">extype</span><span class="p">,</span> <span class="n">ex</span><span class="p">,</span> <span class="n">tb</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_check_conn_validity</span><span class="p">(</span><span class="s1">&#39;__aexit__&#39;</span><span class="p">)</span>
         <span class="k">except</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">:</span>
@@ -170,7 +170,7 @@
 <div class="viewcode-block" id="Transaction.start">
 <a class="viewcode-back" href="../../api/index.html#asyncpg.transaction.Transaction.start">[docs]</a>
     <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Enter the transaction or savepoint block.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__check_state_base</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">STARTED</span><span class="p">:</span>
@@ -228,7 +228,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">STARTED</span></div>
 
 
-    <span class="k">def</span> <span class="nf">__check_state_base</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">opname</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__check_state_base</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">opname</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">COMMITTED</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
                 <span class="s1">&#39;cannot </span><span class="si">{}</span><span class="s1">; the transaction is already committed&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
@@ -242,7 +242,7 @@
                 <span class="s1">&#39;cannot </span><span class="si">{}</span><span class="s1">; the transaction is in error state&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">opname</span><span class="p">))</span>
 
-    <span class="k">def</span> <span class="nf">__check_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">opname</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__check_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">opname</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">STARTED</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">NEW</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
@@ -250,7 +250,7 @@
                         <span class="n">opname</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">__check_state_base</span><span class="p">(</span><span class="n">opname</span><span class="p">)</span>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">__commit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">__commit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__check_state</span><span class="p">(</span><span class="s1">&#39;commit&#39;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_top_xact</span> <span class="ow">is</span> <span class="bp">self</span><span class="p">:</span>
@@ -269,7 +269,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">TransactionState</span><span class="o">.</span><span class="n">COMMITTED</span>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">__rollback</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">__rollback</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__check_state</span><span class="p">(</span><span class="s1">&#39;rollback&#39;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_top_xact</span> <span class="ow">is</span> <span class="bp">self</span><span class="p">:</span>
@@ -291,7 +291,7 @@
 <div class="viewcode-block" id="Transaction.commit">
 <a class="viewcode-back" href="../../api/index.html#asyncpg.transaction.Transaction.commit">[docs]</a>
     <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Exit the transaction or savepoint block and commit changes.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_managed</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
@@ -302,7 +302,7 @@
 <div class="viewcode-block" id="Transaction.rollback">
 <a class="viewcode-back" href="../../api/index.html#asyncpg.transaction.Transaction.rollback">[docs]</a>
     <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">rollback</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">rollback</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Exit the transaction or savepoint block and rollback changes.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_managed</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">apg_errors</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
@@ -310,7 +310,7 @@
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__rollback</span><span class="p">()</span></div>
 
 
-    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">attrs</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;state:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()))</span>
 
