@@ -56,7 +56,9 @@ jobs:
     - name: Setup PostgreSQL
       if: "!steps.release.outputs.is_release && matrix.os == 'macos-latest'"
       run: |
-        brew install postgresql
+        POSTGRES_FORMULA="postgresql@18"
+        brew install "$POSTGRES_FORMULA"
+        echo "$(brew --prefix "$POSTGRES_FORMULA")/bin" >> $GITHUB_PATH
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v6
@@ -86,7 +88,7 @@ jobs:
   test-postgres:
     strategy:
       matrix:
-        postgres-version: ["9.5", "9.6", "10", "11", "12", "13", "14", "15", "16", "17"]
+        postgres-version: ["9.5", "9.6", "10", "11", "12", "13", "14", "15", "16", "17", "18"]
 
     runs-on: ubuntu-latest
 
