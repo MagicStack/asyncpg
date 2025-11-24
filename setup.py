@@ -25,7 +25,7 @@ from setuptools.command import sdist as setuptools_sdist
 from setuptools.command import build_ext as setuptools_build_ext
 
 
-CYTHON_DEPENDENCY = 'Cython(>=3.1.0,<4.0.0)'
+CYTHON_DEPENDENCY = 'Cython(>=3.2.1,<4.0.0)'
 
 CFLAGS = ['-O2']
 LDFLAGS = []
