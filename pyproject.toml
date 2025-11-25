@@ -141,7 +141,6 @@ module = [
     "asyncpg.cluster",
     "asyncpg.connect_utils",
     "asyncpg.connection",
-    "asyncpg.connresource",
     "asyncpg.cursor",
     "asyncpg.exceptions",
     "asyncpg.exceptions.*",
