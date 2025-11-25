@@ -80,6 +80,7 @@ cdef class CoreProtocol:
 
         ConnectionStatus con_status
         ProtocolState state
+        ProtocolState cancelled_from_state
         TransactionStatus xact_status
 
         str encoding

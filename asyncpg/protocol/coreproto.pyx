@@ -33,6 +33,7 @@ cdef class CoreProtocol:
         self.con_params = con_params
         self.con_status = CONNECTION_BAD
         self.state = PROTOCOL_IDLE
+        self.cancelled_from_state = PROTOCOL_IDLE
         self.xact_status = PQTRANS_IDLE
         self.encoding = 'utf-8'
         # type of `scram` is `SCRAMAuthentcation`
@@ -835,11 +836,13 @@ cdef class CoreProtocol:
                 pass
             else:
                 self.state = new_state
+            self.cancelled_from_state = PROTOCOL_IDLE
 
         elif new_state == PROTOCOL_FAILED:
             self.state = PROTOCOL_FAILED
 
         elif new_state == PROTOCOL_CANCELLED:
+            self.cancelled_from_state = self.state
             self.state = PROTOCOL_CANCELLED
 
         elif new_state == PROTOCOL_TERMINATING:
