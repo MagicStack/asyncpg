@@ -287,12 +287,20 @@ class PoolConnectionHolder:
             self._inactive_callback.cancel()
             self._inactive_callback = None
 
+
     def _deactivate_inactive_connection(self) -> None:
         if self._in_use is not None:
             raise exceptions.InternalClientError(
                 'attempting to deactivate an acquired connection')
 
         if self._con is not None:
+            # Only deactivate if doing so respects pool size and demand constraints.
+            if not self._pool.safe_to_close_connection():
+                # Still mark this holder as available and keep the connection.
+                # Re-arm the inactivity timer so we can reevaluate later.
+                self._setup_inactive_callback()
+                return
+
             # The connection is idle and not in use, so it's fine to
             # use terminate() instead of close().
             self._con.terminate()
@@ -1005,6 +1013,47 @@ class Pool:
         .. versionadded:: 0.16.0
         """
         self._generation += 1
+
+    def safe_to_close_connection(self):
+        """
+        Return True if an idle connection may be deactivated (trimmed).
+
+        Constraints:
+        - Do not trim if there are waiters in the pool queue.
+        - Do not trim below pool min size (leave at least `minsize` open connections).
+        - Keep at least one idle connection available (i.e., at least 2 idle holders so
+          trimming one still leaves one idle).
+        """
+
+        # Follow original logic: if pool is closing, handle as default (allow trim).
+        if self.is_closing():
+            return True
+
+        if self._queue is not None:
+            getters = getattr(self._queue, "_getters", [])
+            waiters = len(getters)
+        else:
+            waiters = 0
+
+        # Count open (live) connections and how many of them are idle.
+        open_conns = 0
+        idle = 0
+        holders = list(self._holders or [])
+        for h in holders:
+            if h._con is not None:
+                open_conns += 1
+                if h.is_idle():
+                    idle += 1
+
+        # Conditions to allow trimming one idle connection:
+        # - No waiters.
+        # - Trimming one won't drop below minsize (so open_conns - 1 >= minsize).
+        # - After trimming one idle, at least one idle remains (so idle >= 2).
+        return (
+                waiters == 0 and
+                (open_conns - 1) >= self._minsize and
+                idle >= 2
+        )
 
     def _check_init(self):
         if not self._initialized:
