@@ -295,7 +295,7 @@ class PoolConnectionHolder:
 
         if self._con is not None:
             # Only deactivate if doing so respects pool size and demand constraints.
-            if not self._pool.is_safe_to_close_connection():
+            if not self._pool.safe_to_close_connection():
                 # Still mark this holder as available and keep the connection.
                 # Re-arm the inactivity timer so we can reevaluate later.
                 self._setup_inactive_callback()
