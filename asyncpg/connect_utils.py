@@ -123,10 +123,15 @@ def _read_password_file(passfile: pathlib.Path) \
                     continue
                 # Backslash escapes both itself and the colon,
                 # which is a record separator.
+                # First, temporarily replace \\ with a placeholder
                 line = line.replace(R'\\', '\n')
+                # Split on unescaped colons
+                parts = re.split(r'(?<!\\):', line, maxsplit=4)
+                # De-escape: replace \n (placeholder for \\) with \
+                # and \: with :
                 passtab.append(tuple(
-                    p.replace('\n', R'\\')
-                    for p in re.split(r'(?<!\\):', line, maxsplit=4)
+                    p.replace('\n', '\\').replace(R'\:', ':')
+                    for p in parts
                 ))
     except IOError:
         pass

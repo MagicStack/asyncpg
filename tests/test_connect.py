@@ -1514,18 +1514,19 @@ gsslib=sspi
                 )
             })
 
-            # test escaping
+            # test escaping - values should be de-escaped
+            # \: becomes : and \\ becomes \
             self.run_testcase({
                 'host': 'fgh',
-                'user': R'test\\',
-                'database': R'test\:db',
+                'user': R'test\',
+                'database': R'test:db',
                 'passfile': passfile.name,
                 'result': (
                     [('fgh', 5432)],
                     {
                         'password': 'password from pgpass with escapes',
-                        'user': R'test\\',
-                        'database': R'test\:db',
+                        'user': R'test\',
+                        'database': R'test:db',
                         'target_session_attrs': 'any',
                     }
                 )
