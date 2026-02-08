@@ -32,6 +32,8 @@ LDFLAGS = []
 
 if platform.uname().system != 'Windows':
     CFLAGS.extend(['-fsigned-char', '-Wall', '-Wsign-compare', '-Wconversion'])
+    # Link against libm (math library) for functions like log10()
+    LDFLAGS.extend(['-lm'])
 
 
 _ROOT = pathlib.Path(__file__).parent
