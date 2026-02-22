@@ -9,6 +9,10 @@ on:
     branches:
       - master
 
+concurrency:  # https://stackoverflow.com/questions/66335225#comment133398800_72408109
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test-platforms:
     # NOTE: this matrix is for testing various combinations of Python and OS
@@ -32,9 +36,6 @@ jobs:
     defaults:
       run:
         shell: bash
-
-    env:
-      PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
     - uses: actions/checkout@v5
@@ -61,18 +62,17 @@ jobs:
         echo "$(brew --prefix "$POSTGRES_FORMULA")/bin" >> $GITHUB_PATH
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v6
+      uses: astral-sh/setup-uv@v7
       if: "!steps.release.outputs.is_release"
       with:
         python-version: ${{ matrix.python-version }}
+        activate-environment: true
 
     - name: Install Python Deps
       if: "!steps.release.outputs.is_release"
       run: |
         [ "$RUNNER_OS" = "Linux" ] && .github/workflows/install-krb5.sh
-        python -m pip install -U pip setuptools wheel
-        python -m pip install --group test
-        python -m pip install -e .
+        uv pip install -e . --group test
 
     - name: Test
       if: "!steps.release.outputs.is_release"
@@ -93,9 +93,6 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions: {}
-
-    env:
-      PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
     - uses: actions/checkout@v5
@@ -125,19 +122,17 @@ jobs:
         echo PGINSTALLATION="/usr/lib/postgresql/${PGVERSION}/bin" \
           >> "${GITHUB_ENV}"
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v6
+    - name: Set up Python
+      uses: astral-sh/setup-uv@v7
       if: "!steps.release.outputs.is_release"
       with:
-        python-version: "3.x"
+        activate-environment: true
 
     - name: Install Python Deps
       if: "!steps.release.outputs.is_release"
       run: |
         [ "$RUNNER_OS" = "Linux" ] && .github/workflows/install-krb5.sh
-        python -m pip install -U pip setuptools wheel
-        python -m pip install --group test
-        python -m pip install -e .
+        uv pip install -e . --group test
 
     - name: Test
       if: "!steps.release.outputs.is_release"
