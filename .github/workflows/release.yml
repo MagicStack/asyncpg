@@ -11,7 +11,7 @@ on:
 
 jobs:
   validate-release-request:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Validate release PR
       uses: edgedb/action-release/validate-pr@master
@@ -44,7 +44,7 @@ jobs:
 
   build-sdist:
     needs: validate-release-request
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     env:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
@@ -73,7 +73,7 @@ jobs:
 
   build-wheels-matrix:
     needs: validate-release-request
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       include: ${{ steps.set-matrix.outputs.include }}
     steps:
@@ -141,7 +141,7 @@ jobs:
         path: wheelhouse/*.whl
 
   merge-artifacts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [build-sdist, build-wheels]
     steps:
       - name: Merge Artifacts
@@ -152,7 +152,7 @@ jobs:
 
   publish-docs:
     needs: [build-sdist, build-wheels]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     env:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
@@ -201,7 +201,7 @@ jobs:
 
   publish:
     needs: [build-sdist, build-wheels, publish-docs]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     environment:
       name: pypi
