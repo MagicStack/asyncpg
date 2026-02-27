@@ -25,7 +25,7 @@ from setuptools.command import sdist as setuptools_sdist
 from setuptools.command import build_ext as setuptools_build_ext
 
 
-CYTHON_DEPENDENCY = 'Cython(>=3.2.1,<4.0.0)'
+CYTHON_DEPENDENCY = 'Cython>=3.2.1,<4.0.0'
 
 CFLAGS = ['-O2']
 LDFLAGS = []
@@ -188,7 +188,8 @@ class build_ext(setuptools_build_ext.build_ext):
                         need_cythonize = True
 
         if need_cythonize:
-            import pkg_resources
+            # 'packaging' gets installed by 'wheel'
+            from packaging.requirements import Requirement
 
             # Double check Cython presence in case setup_requires
             # didn't go into effect (most likely because someone
@@ -201,8 +202,8 @@ class build_ext(setuptools_build_ext.build_ext):
                     'please install {} to compile asyncpg from source'.format(
                         CYTHON_DEPENDENCY))
 
-            cython_dep = pkg_resources.Requirement.parse(CYTHON_DEPENDENCY)
-            if Cython.__version__ not in cython_dep:
+            cython_dep = Requirement(CYTHON_DEPENDENCY)
+            if Cython.__version__ not in cython_dep.specifier:
                 raise RuntimeError(
                     'asyncpg requires {}, got Cython=={}'.format(
                         CYTHON_DEPENDENCY, Cython.__version__

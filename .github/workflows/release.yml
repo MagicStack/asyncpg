@@ -11,7 +11,7 @@ on:
 
 jobs:
   validate-release-request:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Validate release PR
       uses: edgedb/action-release/validate-pr@master
@@ -44,7 +44,7 @@ jobs:
 
   build-sdist:
     needs: validate-release-request
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     env:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
@@ -63,8 +63,8 @@ jobs:
 
     - name: Build source distribution
       run: |
-        pip install -U setuptools wheel pip
-        python setup.py sdist
+        pip install -U setuptools wheel build
+        python -m build --sdist
 
     - uses: actions/upload-artifact@v4
       with:
@@ -73,7 +73,7 @@ jobs:
 
   build-wheels-matrix:
     needs: validate-release-request
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       include: ${{ steps.set-matrix.outputs.include }}
     steps:
@@ -83,14 +83,20 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.x"
-      - run: pip install cibuildwheel==3.3.0
+      - run: pip install cibuildwheel==3.3.1
       - id: set-matrix
+        env:
+          # skipping pypy for now
+          CIBW_SKIP: >
+            pp*
         run: |
           MATRIX_INCLUDE=$(
             {
-              cibuildwheel --print-build-identifiers --platform linux --archs x86_64,aarch64 | grep cp |  jq -nRc '{"only": inputs, "os": "ubuntu-latest"}' \
-              && cibuildwheel --print-build-identifiers --platform macos --archs x86_64,arm64 | grep cp |  jq -nRc '{"only": inputs, "os": "macos-latest"}' \
-              && cibuildwheel --print-build-identifiers --platform windows --archs x86,AMD64 | grep cp |  jq -nRc '{"only": inputs, "os": "windows-latest"}'
+              cibuildwheel --print-build-identifiers --platform linux --archs x86_64 | jq -nRc '{"only": inputs, "os": "ubuntu-24.04"}' \
+              && cibuildwheel --print-build-identifiers --platform linux --archs aarch64 | jq -nRc '{"only": inputs, "os": "ubuntu-24.04-arm"}' \
+              && cibuildwheel --print-build-identifiers --platform macos --archs x86_64 | jq -nRc '{"only": inputs, "os": "macos-15-intel"}' \
+              && cibuildwheel --print-build-identifiers --platform macos --archs arm64 | jq -nRc '{"only": inputs, "os": "macos-15"}' \
+              && cibuildwheel --print-build-identifiers --platform windows --archs x86,AMD64 | jq -nRc '{"only": inputs, "os": "windows-2025"}'
             } | jq -sc
           )
           echo "include=$MATRIX_INCLUDE" >> $GITHUB_OUTPUT
@@ -123,7 +129,7 @@ jobs:
       if: runner.os == 'Linux'
       uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392  # v3.6.0
 
-    - uses: pypa/cibuildwheel@63fd63b352a9a8bdcc24791c9dbee952ee9a8abc  # v3.3.0
+    - uses: pypa/cibuildwheel@298ed2fb2c105540f5ed055e8a6ad78d82dd3a7e  # v3.3.1
       with:
         only: ${{ matrix.only }}
       env:
@@ -135,7 +141,7 @@ jobs:
         path: wheelhouse/*.whl
 
   merge-artifacts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [build-sdist, build-wheels]
     steps:
       - name: Merge Artifacts
@@ -146,7 +152,7 @@ jobs:
 
   publish-docs:
     needs: [build-sdist, build-wheels]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     env:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
@@ -195,7 +201,7 @@ jobs:
 
   publish:
     needs: [build-sdist, build-wheels, publish-docs]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     environment:
       name: pypi
