@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterator
 import functools
 import inspect
 import logging
@@ -405,7 +405,7 @@ class Pool:
         self._holders = []
         self._initialized = False
         self._initializing = False
-        self._queue = None
+        self._queue: Optional[asyncio.LifoQueue[PoolConnectionHolder]] = None
 
         self._connection_class = connection_class
         self._record_class = record_class
@@ -849,7 +849,11 @@ class Pool:
                 where=where
             )
 
-    def acquire(self, *, timeout=None):
+    def acquire(
+        self,
+        *,
+        timeout: Optional[float] = None,
+    ) -> PoolAcquireContext:
         """Acquire a database connection from the pool.
 
         :param float timeout: A timeout for acquiring a Connection.
@@ -874,11 +878,12 @@ class Pool:
         """
         return PoolAcquireContext(self, timeout)
 
-    async def _acquire(self, timeout):
-        async def _acquire_impl():
-            ch = await self._queue.get()  # type: PoolConnectionHolder
+    async def _acquire(self, timeout: Optional[float]) -> PoolConnectionProxy:
+        async def _acquire_impl() -> PoolConnectionProxy:
+            assert self._queue is not None
+            ch = await self._queue.get()
             try:
-                proxy = await ch.acquire()  # type: PoolConnectionProxy
+                proxy = await ch.acquire()
             except (Exception, asyncio.CancelledError):
                 self._queue.put_nowait(ch)
                 raise
@@ -1050,7 +1055,7 @@ class PoolAcquireContext:
         self.connection = None
         self.done = False
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> PoolConnectionProxy:
         if self.connection is not None or self.done:
             raise exceptions.InterfaceError('a connection is already acquired')
         self.connection = await self.pool._acquire(self.timeout)
@@ -1067,7 +1072,7 @@ class PoolAcquireContext:
         self.connection = None
         await self.pool.release(con)
 
-    def __await__(self):
+    def __await__(self) -> Iterator[PoolConnectionProxy]:
         self.done = True
         return self.pool._acquire(self.timeout).__await__()
 
