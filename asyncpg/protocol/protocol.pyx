@@ -851,39 +851,46 @@ cdef class BaseProtocol(CoreProtocol):
             waiter.set_exception(exc)
             return
 
+        state = self.state
+        if state == PROTOCOL_CANCELLED:
+            state = self.cancelled_from_state
+            if state == PROTOCOL_IDLE:
+                waiter.set_exception(asyncio.CancelledError())
+                return
+
         try:
-            if self.state == PROTOCOL_AUTH:
+            if state == PROTOCOL_AUTH:
                 self._on_result__connect(waiter)
 
-            elif self.state == PROTOCOL_PREPARE:
+            elif state == PROTOCOL_PREPARE:
                 self._on_result__prepare(waiter)
 
-            elif self.state == PROTOCOL_BIND_EXECUTE:
+            elif state == PROTOCOL_BIND_EXECUTE:
                 self._on_result__bind_and_exec(waiter)
 
-            elif self.state == PROTOCOL_BIND_EXECUTE_MANY:
+            elif state == PROTOCOL_BIND_EXECUTE_MANY:
                 self._on_result__bind_and_exec(waiter)
 
-            elif self.state == PROTOCOL_EXECUTE:
+            elif state == PROTOCOL_EXECUTE:
                 self._on_result__bind_and_exec(waiter)
 
-            elif self.state == PROTOCOL_BIND:
+            elif state == PROTOCOL_BIND:
                 self._on_result__bind(waiter)
 
-            elif self.state == PROTOCOL_CLOSE_STMT_PORTAL:
+            elif state == PROTOCOL_CLOSE_STMT_PORTAL:
                 self._on_result__close_stmt_or_portal(waiter)
 
-            elif self.state == PROTOCOL_SIMPLE_QUERY:
+            elif state == PROTOCOL_SIMPLE_QUERY:
                 self._on_result__simple_query(waiter)
 
-            elif (self.state == PROTOCOL_COPY_OUT_DATA or
-                    self.state == PROTOCOL_COPY_OUT_DONE):
+            elif (state == PROTOCOL_COPY_OUT_DATA or
+                    state == PROTOCOL_COPY_OUT_DONE):
                 self._on_result__copy_out(waiter)
 
-            elif self.state == PROTOCOL_COPY_IN_DATA:
+            elif state == PROTOCOL_COPY_IN_DATA:
                 self._on_result__copy_in(waiter)
 
-            elif self.state == PROTOCOL_TERMINATING:
+            elif state == PROTOCOL_TERMINATING:
                 # We are waiting for the connection to drop, so
                 # ignore any stray results at this point.
                 pass
