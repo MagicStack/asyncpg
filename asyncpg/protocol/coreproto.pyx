@@ -941,7 +941,7 @@ cdef class CoreProtocol:
         buf.write_int16(0)
 
         buf.write_bytestring(b'client_encoding')
-        buf.write_bytestring("'{}'".format(self.encoding).encode('ascii'))
+        buf.write_bytestring(self.encoding.encode('ascii'))
 
         buf.write_str('user', self.encoding)
         buf.write_str(self.con_params.user, self.encoding)
