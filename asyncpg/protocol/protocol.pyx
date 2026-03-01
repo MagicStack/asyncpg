@@ -801,7 +801,10 @@ cdef class BaseProtocol(CoreProtocol):
         waiter.set_result(self.result)
 
     cdef _on_result__simple_query(self, object waiter):
-        waiter.set_result(self.result_status_msg.decode(self.encoding))
+        if self.result_status_msg is not None:
+            waiter.set_result(self.result_status_msg.decode(self.encoding))
+        else:
+            waiter.set_result(None)
 
     cdef _on_result__copy_out(self, object waiter):
         cdef bint copy_done = self.state == PROTOCOL_COPY_OUT_DONE
