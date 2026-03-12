@@ -944,7 +944,10 @@ class TLSUpgradeProto(asyncio.Protocol):
     def connection_lost(self, exc: typing.Optional[Exception]) -> None:
         if not self.on_data.done():
             if exc is None:
-                exc = ConnectionError('unexpected connection_lost() call')
+                exc = ConnectionResetError(
+                    'PostgreSQL server at "{host}:{port}" '
+                    'closed the connection during SSL negotiation'.format(
+                        host=self.host, port=self.port))
             self.on_data.set_exception(exc)
 
 
