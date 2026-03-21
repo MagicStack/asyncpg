@@ -66,6 +66,7 @@ _ConnectionParameters = collections.namedtuple(
         'target_session_attrs',
         'krbsrvname',
         'gsslib',
+        'connector_factory',
     ])
 
 
@@ -854,7 +855,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         sslmode=sslmode, ssl_negotiation=sslneg,
         server_settings=server_settings,
         target_session_attrs=target_session_attrs,
-        krbsrvname=krbsrvname, gsslib=gsslib)
+        krbsrvname=krbsrvname, gsslib=gsslib, connector_factory=None)
 
     return addrs, params
 
@@ -866,7 +867,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
                              max_cacheable_statement_size,
                              ssl, direct_tls, server_settings,
                              target_session_attrs, krbsrvname, gsslib,
-                             service, servicefile):
+                             service, servicefile, connector_factory=None):
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
                      'max_cached_statement_lifetime',
@@ -898,6 +899,15 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
         target_session_attrs=target_session_attrs,
         krbsrvname=krbsrvname, gsslib=gsslib,
         service=service, servicefile=servicefile)
+
+    if connector_factory is not None:
+        if not callable(connector_factory):
+            raise TypeError(
+                "connector_factory is expected to be a callable, got {!r}".format(
+                    type(connector_factory)
+                )
+            )
+        params = params._replace(connector_factory=connector_factory)
 
     config = _ClientConfiguration(
         command_timeout=command_timeout,
@@ -1078,7 +1088,11 @@ async def __connect_addr(
     proto_factory = lambda: protocol.Protocol(
         addr, connected, params, record_class, loop)
 
-    if isinstance(addr, str):
+    if params.connector_factory is not None:
+        connector = params.connector_factory(
+            proto_factory, *addr, loop=loop, ssl=params.ssl)
+
+    elif isinstance(addr, str):
         # UNIX socket
         connector = loop.create_unix_connection(proto_factory, addr)
 
