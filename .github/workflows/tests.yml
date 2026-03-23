@@ -9,6 +9,10 @@ on:
     branches:
       - master
 
+concurrency:  # https://stackoverflow.com/questions/66335225#comment133398800_72408109
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test-platforms:
     # NOTE: this matrix is for testing various combinations of Python and OS
@@ -18,12 +22,15 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.14t"]
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-24.04, macos-15, windows-2025]
         loop: [asyncio, uvloop]
         exclude:
           # uvloop does not support windows
           - loop: uvloop
-            os: windows-latest
+            os: windows-2025
+          # github does not provide 3.9 cpython for arm64 runners
+          - python-version: "3.9"
+            os: macos-15
 
     runs-on: ${{ matrix.os }}
 
@@ -32,9 +39,6 @@ jobs:
     defaults:
       run:
         shell: bash
-
-    env:
-      PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
     - uses: actions/checkout@v5
@@ -53,49 +57,43 @@ jobs:
         version_line_pattern: |
           __version__(?:\s*:\s*typing\.Final)?\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
 
-    - name: Setup PostgreSQL
-      if: "!steps.release.outputs.is_release && matrix.os == 'macos-latest'"
+    - name: Set up PostgreSQL
+      if: "!steps.release.outputs.is_release && startsWith(matrix.os, 'macos')"
       run: |
         POSTGRES_FORMULA="postgresql@18"
         brew install "$POSTGRES_FORMULA"
         echo "$(brew --prefix "$POSTGRES_FORMULA")/bin" >> $GITHUB_PATH
 
+    - name: Set up Kerberos
+      if: "!steps.release.outputs.is_release && startsWith(matrix.os, 'ubuntu')"
+      run: .github/workflows/install-krb5.sh
+
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v6
+      uses: astral-sh/setup-uv@v7
       if: "!steps.release.outputs.is_release"
       with:
         python-version: ${{ matrix.python-version }}
+        activate-environment: true
 
     - name: Install Python Deps
       if: "!steps.release.outputs.is_release"
       run: |
-        [ "$RUNNER_OS" = "Linux" ] && .github/workflows/install-krb5.sh
-        python -m pip install -U pip setuptools wheel
-        python -m pip install --group test
-        python -m pip install -e .
+        uv pip install -e . --group test
 
     - name: Test
       if: "!steps.release.outputs.is_release"
       env:
-        LOOP_IMPL: ${{ matrix.loop }}
-      run: |
-        if [ "${LOOP_IMPL}" = "uvloop" ]; then
-          env USE_UVLOOP=1 python -m unittest -v tests.suite
-        else
-          python -m unittest -v tests.suite
-        fi
+        USE_UVLOOP: ${{ matrix.loop == 'uvloop' && '1' || '' }}
+      run: python -m unittest -v tests.suite
 
   test-postgres:
     strategy:
       matrix:
         postgres-version: ["9.5", "9.6", "10", "11", "12", "13", "14", "15", "16", "17", "18"]
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions: {}
-
-    env:
-      PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
     - uses: actions/checkout@v5
@@ -125,19 +123,20 @@ jobs:
         echo PGINSTALLATION="/usr/lib/postgresql/${PGVERSION}/bin" \
           >> "${GITHUB_ENV}"
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v6
+    - name: Set up Kerberos
+      if: "!steps.release.outputs.is_release"
+      run: .github/workflows/install-krb5.sh
+
+    - name: Set up Python
+      uses: astral-sh/setup-uv@v7
       if: "!steps.release.outputs.is_release"
       with:
-        python-version: "3.x"
+        activate-environment: true
 
     - name: Install Python Deps
       if: "!steps.release.outputs.is_release"
       run: |
-        [ "$RUNNER_OS" = "Linux" ] && .github/workflows/install-krb5.sh
-        python -m pip install -U pip setuptools wheel
-        python -m pip install --group test
-        python -m pip install -e .
+        uv pip install -e . --group test
 
     - name: Test
       if: "!steps.release.outputs.is_release"
@@ -151,7 +150,7 @@ jobs:
   regression-tests:
     name: "Regression Tests"
     needs: [test-platforms, test-postgres]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions: {}
 
     steps:
