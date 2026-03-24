@@ -2099,7 +2099,8 @@ async def connect(dsn=None, *,
                   server_settings=None,
                   target_session_attrs=None,
                   krbsrvname=None,
-                  gsslib=None):
+                  gsslib=None,
+                  connector_factory=None):
     r"""A coroutine to establish a connection to a PostgreSQL server.
 
     The connection parameters may be specified either as a connection
@@ -2343,6 +2344,42 @@ async def connect(dsn=None, *,
         GSS library to use for GSSAPI/SSPI authentication. Can be 'gssapi'
         or 'sspi'. Defaults to 'sspi' on Windows and 'gssapi' otherwise.
 
+    :param callable connector_factory:
+        A callable that provides full control over how the network connection
+        to the PostgreSQL server is established. When specified, this
+        factory replaces the default connection logic. The callable receives
+        the following arguments:
+
+        - ``proto_factory`` - a callable that returns the asyncpg protocol
+          instance
+        - ``host`` - the target hostname (positional)
+        - ``port`` - the target port (positional)
+        - ``loop`` - the event loop (keyword argument)
+        - ``ssl`` - the SSL context, or ``None`` (keyword argument)
+
+        The callable must return an awaitable that resolves to a
+        ``(transport, protocol)`` tuple, compatible with
+        :meth:`asyncio.loop.create_connection`.
+
+        This is useful for scenarios such as connecting through a proxy,
+        establishing an SSH tunnel, or performing custom socket setup
+        before the PostgreSQL protocol begins.
+
+        Example:
+
+        .. code-block:: python
+
+            async def my_connector(proto_factory, host, port, *, loop, ssl):
+                tunnel_sock = await open_ssh_tunnel(host, port)
+                return await loop.create_connection(
+                    proto_factory, sock=tunnel_sock, ssl=ssl)
+
+            conn = await asyncpg.connect(
+                connector_factory=my_connector,
+                host='db.example.com',
+                user='postgres',
+            )
+
     :return: A :class:`~asyncpg.connection.Connection` instance.
 
     Example:
@@ -2463,6 +2500,7 @@ async def connect(dsn=None, *,
             target_session_attrs=target_session_attrs,
             krbsrvname=krbsrvname,
             gsslib=gsslib,
+            connector_factory=connector_factory,
         )
 
 

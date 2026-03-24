@@ -1207,6 +1207,8 @@ class TestConnectParams(tb.TestCase):
                 # Avoid the hassle of specifying gsslib
                 # unless explicitly tested for
                 params.pop('gsslib', None)
+            if 'connector_factory' not in expected[1]:
+                params.pop('connector_factory', None)
 
             self.assertEqual(expected, result, 'Testcase: {}'.format(testcase))
 
@@ -1791,6 +1793,67 @@ class TestConnection(tb.ConnectedTestCase):
                     host='localhost',
                     user='ssl_user',
                     ssl='verify-full')
+
+    async def test_connection_connector_factory(self):
+        conn_spec = self.get_connection_spec()
+        host = conn_spec.get('host')
+        port = conn_spec.get('port')
+
+        factory_called = False
+
+        async def connector_factory(proto_factory, host, port, *, loop, ssl):
+            nonlocal factory_called
+            factory_called = True
+            sock = socket.create_connection((host, port))
+            sock.setblocking(False)
+            return await loop.create_connection(
+                proto_factory, sock=sock, ssl=ssl)
+
+        con = await asyncpg.connect(
+            host=host,
+            port=port,
+            user=conn_spec.get('user'),
+            database=conn_spec.get('database'),
+            ssl=False,
+            connector_factory=connector_factory,
+        )
+        try:
+            self.assertTrue(factory_called)
+            self.assertEqual(await con.fetchval('SELECT 42'), 42)
+        finally:
+            await con.close()
+
+    async def test_connection_connector_factory_with_pool(self):
+        conn_spec = self.get_connection_spec()
+        host = conn_spec.get('host')
+        port = conn_spec.get('port')
+
+        factory_called = False
+
+        async def connector_factory(proto_factory, host, port, *, loop, ssl):
+            nonlocal factory_called
+            factory_called = True
+            sock = socket.create_connection((host, port))
+            sock.setblocking(False)
+            return await loop.create_connection(
+                proto_factory, sock=sock, ssl=ssl)
+
+        pool = await asyncpg.create_pool(
+            host=host,
+            port=port,
+            user=conn_spec.get('user'),
+            database=conn_spec.get('database'),
+            ssl=False,
+            connector_factory=connector_factory,
+            min_size=1,
+            max_size=1,
+        )
+        try:
+            self.assertTrue(factory_called)
+            async with pool.acquire() as con:
+                self.assertEqual(await con.fetchval('SELECT 42'), 42)
+        finally:
+            await pool.close()
 
 
 class BaseTestSSLConnection(tb.ConnectedTestCase):
