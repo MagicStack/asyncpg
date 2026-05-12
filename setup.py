@@ -203,7 +203,7 @@ class build_ext(setuptools_build_ext.build_ext):
 
             cython_dep = Requirement(CYTHON_DEPENDENCY)
             if not cython_dep.specifier.contains(
-                    Cython.__version__, prerelease=True):
+                    Cython.__version__, prereleases=True):
                 raise RuntimeError(
                     'asyncpg requires {}, got Cython=={}'.format(
                         CYTHON_DEPENDENCY, Cython.__version__
