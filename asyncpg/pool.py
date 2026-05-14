@@ -911,29 +911,27 @@ class Pool:
             raise exceptions.InterfaceError('pool is closing')
         self._check_init()
 
-        cb = self._on_acquire
-        if cb is None:
-            if timeout is None:
-                return await _acquire_impl()
-            return await compat.wait_for(_acquire_impl(), timeout=timeout)
-
         started = time.monotonic()
         if timeout is None:
             proxy = await _acquire_impl()
         else:
-            proxy = await compat.wait_for(_acquire_impl(), timeout=timeout)
-        event = AcquireEvent(
-            wait_seconds=time.monotonic() - started,
-            size=self.get_size(),
-            idle=self.get_idle_size(),
-            max_size=self._maxsize,
-        )
+            proxy = await compat.wait_for(
+                _acquire_impl(), timeout=timeout)
+        if self._on_acquire is not None:
+            self._fire_on_acquire(time.monotonic() - started)
+        return proxy
+
+    def _fire_on_acquire(self, wait_seconds: float) -> None:
         try:
-            cb(event)
+            self._on_acquire(AcquireEvent(
+                wait_seconds=wait_seconds,
+                size=self.get_size(),
+                idle=self.get_idle_size(),
+                max_size=self._maxsize,
+            ))
         except Exception:
             logger.exception(
                 'asyncpg on_acquire callback raised; suppressing')
-        return proxy
 
     async def release(self, connection, *, timeout=None):
         """Release a database connection back to the pool.
