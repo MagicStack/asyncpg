@@ -1004,6 +1004,62 @@ class TestPool(tb.ConnectedTestCase):
         conn = await pool.acquire(timeout=0.1)
         await pool.release(conn)
 
+    async def test_pool_on_acquire_reports_saturation_wait(self):
+        events = []
+        pool = await self.create_pool(
+            database='postgres',
+            min_size=1,
+            max_size=1,
+            on_acquire=events.append,
+        )
+        try:
+            holder_acquired = asyncio.Event()
+            release_holder = asyncio.Event()
+
+            async def holder():
+                async with pool.acquire():
+                    holder_acquired.set()
+                    await release_holder.wait()
+
+            async def waiter():
+                await holder_acquired.wait()
+                async with pool.acquire() as con:
+                    await con.fetchval('SELECT 1')
+
+            holder_task = self.loop.create_task(holder())
+            waiter_task = self.loop.create_task(waiter())
+            await holder_acquired.wait()
+            await asyncio.sleep(0.15)
+            release_holder.set()
+            await asyncio.gather(holder_task, waiter_task)
+        finally:
+            await pool.close()
+
+        self.assertEqual(len(events), 2)
+        for ev in events:
+            self.assertEqual(ev.max_size, 1)
+            self.assertGreaterEqual(ev.wait_seconds, 0)
+        self.assertGreaterEqual(
+            max(ev.wait_seconds for ev in events), 0.1)
+
+    async def test_pool_on_acquire_not_fired_on_timeout(self):
+        events = []
+        pool = await self.create_pool(
+            database='postgres',
+            min_size=1,
+            max_size=1,
+            on_acquire=events.append,
+        )
+        try:
+            async with pool.acquire():
+                with self.assertRaises(asyncio.TimeoutError):
+                    await pool.acquire(timeout=0.1)
+        finally:
+            await pool.close()
+
+        # one event for the outer successful acquire, none for the timeout
+        self.assertEqual(len(events), 1)
+
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
 class TestPoolReconnectWithTargetSessionAttrs(tb.ClusterTestCase):
