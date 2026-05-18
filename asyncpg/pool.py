@@ -513,14 +513,18 @@ class Pool:
     def get_init_size(self):
         """Return the initial number of connections in this pool.
 
-        .. versionadded:: 0.4.0
+        .. versionadded:: 0.32.0
         """
         return self._initsize
 
     def get_min_size(self):
         """Return the minimum number of connections in this pool.
 
-        .. versionadded:: 0.4.0
+        .. versionadded:: 0.25.0
+
+        .. versionchanged:: 0.32.0
+            The parameter now controls the connection floor rather than the
+            initial pool size (see ``init_size``).
         """
         return self._minsize
 
@@ -1179,10 +1183,10 @@ def create_pool(dsn=None, *,
         :class:`~asyncpg.Record`.
 
     :param int init_size:
-        Number of connection the pool will be initialized with.
+        Number of connections the pool will be initialized with.
 
-    :param int minsize:
-        Min number of connections in the pool.
+    :param int min_size:
+        Minimum number of connections the pool will keep alive at all times.
 
     :param int max_size:
         Max number of connections in the pool.
@@ -1264,6 +1268,12 @@ def create_pool(dsn=None, *,
 
     .. versionchanged:: 0.30.0
        Added the *connect* and *reset* parameters.
+
+    .. versionchanged:: 0.32.0
+       The *min_size* parameter now defines the connection floor (minimum
+       number of live connections kept at all times).  The former role of
+       *min_size* — setting the initial pool size — is now handled by the
+       new *init_size* parameter.
     """
     return Pool(
         dsn,
