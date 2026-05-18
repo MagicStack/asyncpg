@@ -1961,6 +1961,7 @@ class TestSSLConnection(BaseTestSSLConnection):
             host='localhost',
             user='ssl_user',
             database='postgres',
+            init_size=5,
             min_size=5,
             max_size=10,
             ssl=ssl_context)
@@ -2221,6 +2222,7 @@ class TestNoSSLConnection(BaseTestSSLConnection):
             host='localhost',
             user='ssl_user',
             database='postgres',
+            init_size=5,
             min_size=5,
             max_size=10,
             ssl='prefer')

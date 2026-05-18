@@ -293,6 +293,15 @@ class PoolConnectionHolder:
                 'attempting to deactivate an acquired connection')
 
         if self._con is not None:
+            # The connection is idle and not in use,
+            # but we have min size limitation. So keep it alive for a while.
+            if self._pool.get_size() <= self._pool.get_min_size():
+                # We already in the callback. Clean the field
+                self._inactive_callback = None
+                # But next time it can be the case when we have to terminate it
+                self._setup_inactive_callback()
+                return
+
             # The connection is idle and not in use, so it's fine to
             # use terminate() instead of close().
             self._con.terminate()
@@ -338,7 +347,7 @@ class Pool:
     """
 
     __slots__ = (
-        '_queue', '_loop', '_minsize', '_maxsize',
+        '_queue', '_loop', '_initsize', '_minsize', '_maxsize',
         '_init', '_connect', '_reset', '_connect_args', '_connect_kwargs',
         '_holders', '_initialized', '_initializing', '_closing',
         '_closed', '_connection_class', '_record_class', '_generation',
@@ -346,6 +355,7 @@ class Pool:
     )
 
     def __init__(self, *connect_args,
+                 init_size,
                  min_size,
                  max_size,
                  max_queries,
@@ -381,6 +391,16 @@ class Pool:
         if min_size > max_size:
             raise ValueError('min_size is greater than max_size')
 
+        if init_size < 0:
+            raise ValueError(
+                'init_size is expected to be greater or equal to zero')
+
+        if init_size > max_size:
+            raise ValueError('init_size is greater than max_size')
+
+        if init_size < min_size:
+            raise ValueError('init_size is smaller than min_size')
+
         if max_queries <= 0:
             raise ValueError('max_queries is expected to be greater than zero')
 
@@ -399,6 +419,7 @@ class Pool:
                 'record_class is expected to be a subclass of '
                 'asyncpg.Record, got {!r}'.format(record_class))
 
+        self._initsize = init_size
         self._minsize = min_size
         self._maxsize = max_size
 
@@ -454,7 +475,7 @@ class Pool:
             self._holders.append(ch)
             self._queue.put_nowait(ch)
 
-        if self._minsize:
+        if self._initsize:
             # Since we use a LIFO queue, the first items in the queue will be
             # the last ones in `self._holders`.  We want to pre-connect the
             # first few connections in the queue, therefore we want to walk
@@ -465,11 +486,11 @@ class Pool:
             first_ch = self._holders[-1]  # type: PoolConnectionHolder
             await first_ch.connect()
 
-            if self._minsize > 1:
+            if self._initsize > 1:
                 connect_tasks = []
                 for i, ch in enumerate(reversed(self._holders[:-1])):
-                    # `minsize - 1` because we already have first_ch
-                    if i >= self._minsize - 1:
+                    # `initsize - 1` because we already have first_ch
+                    if i >= self._initsize - 1:
                         break
                     connect_tasks.append(ch.connect())
 
@@ -489,10 +510,21 @@ class Pool:
         """
         return sum(h.is_connected() for h in self._holders)
 
+    def get_init_size(self):
+        """Return the initial number of connections in this pool.
+
+        .. versionadded:: 0.32.0
+        """
+        return self._initsize
+
     def get_min_size(self):
         """Return the minimum number of connections in this pool.
 
         .. versionadded:: 0.25.0
+
+        .. versionchanged:: 0.32.0
+            The parameter now controls the connection floor rather than the
+            initial pool size (see ``init_size``).
         """
         return self._minsize
 
@@ -1073,6 +1105,7 @@ class PoolAcquireContext:
 
 
 def create_pool(dsn=None, *,
+                init_size=10,
                 min_size=10,
                 max_size=10,
                 max_queries=50000,
@@ -1147,8 +1180,11 @@ def create_pool(dsn=None, *,
         the connections in this pool.  Must be a subclass of
         :class:`~asyncpg.Record`.
 
+    :param int init_size:
+        Number of connections the pool will be initialized with.
+
     :param int min_size:
-        Number of connection the pool will be initialized with.
+        Minimum number of connections the pool will keep alive at all times.
 
     :param int max_size:
         Max number of connections in the pool.
@@ -1230,11 +1266,18 @@ def create_pool(dsn=None, *,
 
     .. versionchanged:: 0.30.0
        Added the *connect* and *reset* parameters.
+
+    .. versionchanged:: 0.32.0
+       The *min_size* parameter now defines the connection floor (minimum
+       number of live connections kept at all times).  The former role of
+       *min_size* — setting the initial pool size — is now handled by the
+       new *init_size* parameter.
     """
     return Pool(
         dsn,
         connection_class=connection_class,
         record_class=record_class,
+        init_size=init_size,
         min_size=min_size,
         max_size=max_size,
         max_queries=max_queries,
