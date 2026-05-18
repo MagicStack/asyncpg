@@ -746,6 +746,110 @@ class TestPool(tb.ConnectedTestCase):
             # but should be closed nonetheless.
             self.assertIs(pool._holders[1]._con, None)
 
+    async def test_pool_min_size_keeps_connections_alive(self):
+        # Test that min_size prevents idle connections from being closed.
+        async with self.create_pool(
+                database='postgres', init_size=2, min_size=2, max_size=2,
+                max_inactive_connection_lifetime=0.2) as pool:
+
+            con0 = pool._holders[0]._con
+            con1 = pool._holders[1]._con
+            self.assertIsNotNone(con0)
+            self.assertIsNotNone(con1)
+
+            await asyncio.sleep(0.5)
+
+            # Connections should be kept alive because pool size == min_size.
+            self.assertIs(pool._holders[0]._con, con0)
+            self.assertIs(pool._holders[1]._con, con1)
+
+    async def test_pool_min_size_partial_keep(self):
+        # When the pool has more connections than min_size, only the excess
+        # connections should be allowed to expire; the min_size ones are kept.
+        async with self.create_pool(
+                database='postgres', init_size=3, min_size=1, max_size=3,
+                max_inactive_connection_lifetime=0.2) as pool:
+
+            # Force all 3 connections to be created by acquiring them all.
+            c1 = await pool.acquire()
+            c2 = await pool.acquire()
+            c3 = await pool.acquire()
+            await pool.release(c1)
+            await pool.release(c2)
+            await pool.release(c3)
+
+            self.assertEqual(pool.get_size(), 3)
+
+            await asyncio.sleep(0.5)
+
+            # At least min_size (1) connection must survive.
+            alive = sum(
+                1 for h in pool._holders if h._con is not None
+            )
+            self.assertGreaterEqual(alive, 1)
+
+    async def test_pool_min_size_zero_allows_full_expiry(self):
+        # When min_size=0, all idle connections are allowed to expire.
+        async with self.create_pool(
+                database='postgres', init_size=2, min_size=0, max_size=2,
+                max_inactive_connection_lifetime=0.2) as pool:
+
+            self.assertIsNotNone(pool._holders[0]._con)
+            self.assertIsNotNone(pool._holders[1]._con)
+
+            await asyncio.sleep(0.5)
+
+            self.assertIs(pool._holders[0]._con, None)
+            self.assertIs(pool._holders[1]._con, None)
+
+    async def test_pool_min_size_validation(self):
+        # init_size < min_size should raise.
+        with self.assertRaisesRegex(ValueError, 'init_size is smaller than min_size'):
+            await self.create_pool(
+                database='postgres', init_size=1, min_size=2, max_size=5)
+
+        # min_size > max_size should raise.
+        with self.assertRaisesRegex(ValueError, 'min_size is greater than max_size'):
+            await self.create_pool(
+                database='postgres', init_size=3, min_size=3, max_size=2)
+
+        # init_size > max_size should raise.
+        with self.assertRaisesRegex(ValueError, 'init_size is greater than max_size'):
+            await self.create_pool(
+                database='postgres', init_size=5, min_size=1, max_size=3)
+
+        # init_size < 0 should raise.
+        with self.assertRaisesRegex(ValueError,
+                                    'init_size is expected to be greater or equal to zero'):
+            await self.create_pool(
+                database='postgres', init_size=-1, min_size=0, max_size=3)
+
+    async def test_pool_init_size_and_min_size_getters(self):
+        async with self.create_pool(
+                database='postgres', init_size=3, min_size=2, max_size=5) as pool:
+            self.assertEqual(pool.get_init_size(), 3)
+            self.assertEqual(pool.get_min_size(), 2)
+            self.assertEqual(pool.get_max_size(), 5)
+            self.assertEqual(pool.get_size(), 3)
+
+    async def test_pool_min_size_reconnect_after_expiry(self):
+        # Connections kept alive by min_size should still be functional.
+        async with self.create_pool(
+                database='postgres', init_size=1, min_size=1, max_size=1,
+                max_inactive_connection_lifetime=0.2) as pool:
+
+            con_before = pool._holders[0]._con
+            self.assertIsNotNone(con_before)
+
+            await asyncio.sleep(0.5)
+
+            # Connection must still be alive due to min_size=1.
+            self.assertIs(pool._holders[0]._con, con_before)
+
+            # And it must still work.
+            result = await pool.fetchval('SELECT 42::int')
+            self.assertEqual(result, 42)
+
     async def test_pool_handles_inactive_connection_errors(self):
         pool = await self.create_pool(database='postgres',
                                       init_size=1, min_size=0, max_size=1)
