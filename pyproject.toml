@@ -62,7 +62,8 @@ docs = [
 [build-system]
 requires = [
     "setuptools>=77.0.3",
-    "Cython(>=3.2.1,<4.0.0)"
+    "Cython(>=3.2.1,<4.0.0)",
+    "packaging",
 ]
 build-backend = "setuptools.build_meta"
 
