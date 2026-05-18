@@ -293,6 +293,15 @@ class PoolConnectionHolder:
                 'attempting to deactivate an acquired connection')
 
         if self._con is not None:
+            # The connection is idle and not in use,
+            # but we have min size limitation. So keep it alive for a while.
+            if self._pool.get_size() <= self._pool.get_min_size():
+                # We already in the callback. Clean the field
+                self._inactive_callback = None
+                # But next time it can be the case when we have to terminate it
+                self._setup_inactive_callback()
+                return
+
             # The connection is idle and not in use, so it's fine to
             # use terminate() instead of close().
             self._con.terminate()
@@ -338,7 +347,7 @@ class Pool:
     """
 
     __slots__ = (
-        '_queue', '_loop', '_initsize', '_maxsize',
+        '_queue', '_loop', '_initsize', '_minsize', '_maxsize',
         '_init', '_connect', '_reset', '_connect_args', '_connect_kwargs',
         '_holders', '_initialized', '_initializing', '_closing',
         '_closed', '_connection_class', '_record_class', '_generation',
@@ -347,6 +356,7 @@ class Pool:
 
     def __init__(self, *connect_args,
                  init_size,
+                 min_size,
                  max_size,
                  max_queries,
                  max_inactive_connection_lifetime,
@@ -374,12 +384,22 @@ class Pool:
         if max_size <= 0:
             raise ValueError('max_size is expected to be greater than zero')
 
+        if min_size < 0:
+            raise ValueError(
+                'min_size is expected to be greater or equal to zero')
+
+        if min_size > max_size:
+            raise ValueError('min_size is greater than max_size')
+
         if init_size < 0:
             raise ValueError(
                 'init_size is expected to be greater or equal to zero')
 
         if init_size > max_size:
             raise ValueError('init_size is greater than max_size')
+
+        if init_size < min_size:
+            raise ValueError('init_size is smaller than min_size')
 
         if max_queries <= 0:
             raise ValueError('max_queries is expected to be greater than zero')
@@ -400,6 +420,7 @@ class Pool:
                 'asyncpg.Record, got {!r}'.format(record_class))
 
         self._initsize = init_size
+        self._minsize = min_size
         self._maxsize = max_size
 
         self._holders = []
@@ -492,9 +513,16 @@ class Pool:
     def get_init_size(self):
         """Return the initial number of connections in this pool.
 
-        .. versionadded:: 0.25.0
+        .. versionadded:: 0.4.0
         """
         return self._initsize
+
+    def get_min_size(self):
+        """Return the minimum number of connections in this pool.
+
+        .. versionadded:: 0.4.0
+        """
+        return self._minsize
 
     def get_max_size(self):
         """Return the maximum allowed number of connections in this pool.
@@ -1073,7 +1101,10 @@ class PoolAcquireContext:
 
 
 def create_pool(dsn=None, *,
-                init_size=10,
+                # Trigger min_size exception everywhere in the world
+                # to pay attention to the breaking changes
+                init_size=1,
+                min_size=10,
                 max_size=10,
                 max_queries=50000,
                 max_inactive_connection_lifetime=300.0,
@@ -1149,6 +1180,9 @@ def create_pool(dsn=None, *,
 
     :param int init_size:
         Number of connection the pool will be initialized with.
+
+    :param int minsize:
+        Min number of connections in the pool.
 
     :param int max_size:
         Max number of connections in the pool.
@@ -1236,6 +1270,7 @@ def create_pool(dsn=None, *,
         connection_class=connection_class,
         record_class=record_class,
         init_size=init_size,
+        min_size=min_size,
         max_size=max_size,
         max_queries=max_queries,
         loop=loop,

@@ -77,7 +77,7 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
 
     async def test_prepare_cache_invalidation_in_pool(self):
         pool = await self.create_pool(database='postgres',
-                                      init_size=2, max_size=2)
+                                      init_size=2, min_size=0, max_size=2)
 
         await self.con.execute('CREATE TABLE tab1(a int, b int)')
 
@@ -309,10 +309,10 @@ class TestCacheInvalidation(tb.ConnectedTestCase):
     async def test_type_cache_invalidation_in_pool(self):
         await self.con.execute('CREATE DATABASE testdb')
         pool = await self.create_pool(database='postgres',
-                                      init_size=2, max_size=2)
+                                      init_size=2, min_size=0, max_size=2)
 
         pool_chk = await self.create_pool(database='testdb',
-                                          init_size=2, max_size=2)
+                                          init_size=2, min_size=0, max_size=2)
 
         await self.con.execute('CREATE TYPE typ1 AS (x int, y int)')
         await self.con.execute('CREATE TABLE tab1(a int, b typ1)')
