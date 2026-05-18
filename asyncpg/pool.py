@@ -1105,9 +1105,7 @@ class PoolAcquireContext:
 
 
 def create_pool(dsn=None, *,
-                # Trigger min_size exception everywhere in the world
-                # to pay attention to the breaking changes
-                init_size=1,
+                init_size=10,
                 min_size=10,
                 max_size=10,
                 max_queries=50000,

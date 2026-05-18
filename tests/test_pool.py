@@ -804,29 +804,36 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_min_size_validation(self):
         # init_size < min_size should raise.
-        with self.assertRaisesRegex(ValueError, 'init_size is smaller than min_size'):
+        with self.assertRaisesRegex(ValueError,
+                                    'init_size is smaller than min_size'):
             await self.create_pool(
                 database='postgres', init_size=1, min_size=2, max_size=5)
 
         # min_size > max_size should raise.
-        with self.assertRaisesRegex(ValueError, 'min_size is greater than max_size'):
+        with self.assertRaisesRegex(ValueError,
+                                    'min_size is greater than max_size'):
             await self.create_pool(
                 database='postgres', init_size=3, min_size=3, max_size=2)
 
         # init_size > max_size should raise.
-        with self.assertRaisesRegex(ValueError, 'init_size is greater than max_size'):
+        with self.assertRaisesRegex(ValueError,
+                                    'init_size is greater than max_size'):
             await self.create_pool(
                 database='postgres', init_size=5, min_size=1, max_size=3)
 
         # init_size < 0 should raise.
-        with self.assertRaisesRegex(ValueError,
-                                    'init_size is expected to be greater or equal to zero'):
+        with self.assertRaisesRegex(
+                ValueError,
+                'init_size is expected to be greater or equal to zero'):
             await self.create_pool(
                 database='postgres', init_size=-1, min_size=0, max_size=3)
 
     async def test_pool_init_size_and_min_size_getters(self):
         async with self.create_pool(
-                database='postgres', init_size=3, min_size=2, max_size=5) as pool:
+                database='postgres',
+                init_size=3,
+                min_size=2,
+                max_size=5) as pool:
             self.assertEqual(pool.get_init_size(), 3)
             self.assertEqual(pool.get_min_size(), 2)
             self.assertEqual(pool.get_max_size(), 5)
