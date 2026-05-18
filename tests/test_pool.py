@@ -47,7 +47,7 @@ class TestPool(tb.ConnectedTestCase):
         for n in {1, 5, 10, 20, 100}:
             with self.subTest(tasksnum=n):
                 pool = await self.create_pool(database='postgres',
-                                              min_size=5, max_size=10)
+                                              init_size=5, max_size=10)
 
                 async def worker():
                     con = await pool.acquire()
@@ -62,7 +62,7 @@ class TestPool(tb.ConnectedTestCase):
         for n in {1, 3, 5, 10, 20, 100}:
             with self.subTest(tasksnum=n):
                 async with self.create_pool(database='postgres',
-                                            min_size=5, max_size=5) as pool:
+                                            init_size=5, max_size=5) as pool:
 
                     async def worker():
                         con = await pool.acquire(timeout=5)
@@ -74,7 +74,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_03(self):
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         con = await pool.acquire(timeout=1)
         with self.assertRaises(asyncio.TimeoutError):
@@ -85,7 +85,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_04(self):
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         con = await pool.acquire(timeout=POOL_NOMINAL_TIMEOUT)
 
@@ -110,7 +110,7 @@ class TestPool(tb.ConnectedTestCase):
         for n in {1, 3, 5, 10, 20, 100}:
             with self.subTest(tasksnum=n):
                 pool = await self.create_pool(database='postgres',
-                                              min_size=5, max_size=10)
+                                              init_size=5, max_size=10)
 
                 async def worker():
                     async with pool.acquire() as con:
@@ -127,7 +127,7 @@ class TestPool(tb.ConnectedTestCase):
             fut.set_result(con)
 
         async with self.create_pool(database='postgres',
-                                    min_size=5, max_size=5,
+                                    init_size=5, max_size=5,
                                     setup=setup) as pool:
             async with pool.acquire() as con:
                 pass
@@ -169,7 +169,7 @@ class TestPool(tb.ConnectedTestCase):
                     raise RuntimeError('init was not called')
 
         async with self.create_pool(database='postgres',
-                                    min_size=2,
+                                    init_size=2,
                                     max_size=5,
                                     connect=connect,
                                     init=init,
@@ -196,7 +196,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_08(self):
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         con = await pool.acquire(timeout=POOL_NOMINAL_TIMEOUT)
         with self.assertRaisesRegex(asyncpg.InterfaceError, 'is not a member'):
@@ -204,10 +204,10 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_09(self):
         pool1 = await self.create_pool(database='postgres',
-                                       min_size=1, max_size=1)
+                                       init_size=1, max_size=1)
 
         pool2 = await self.create_pool(database='postgres',
-                                       min_size=1, max_size=1)
+                                       init_size=1, max_size=1)
 
         try:
             con = await pool1.acquire(timeout=POOL_NOMINAL_TIMEOUT)
@@ -222,7 +222,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_10(self):
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         con = await pool.acquire()
         await pool.release(con)
@@ -232,7 +232,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_11(self):
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         async with pool.acquire() as con:
             self.assertIn(repr(con._con), repr(con))  # Test __repr__.
@@ -289,7 +289,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_12(self):
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         async with pool.acquire() as con:
             self.assertTrue(isinstance(con, pg_connection.Connection))
@@ -299,7 +299,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_13(self):
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         async with pool.acquire() as con:
             self.assertIn('Execute an SQL command', con.execute.__doc__)
@@ -335,7 +335,7 @@ class TestPool(tb.ConnectedTestCase):
             last_con = None
             cons = []
             async with self.create_pool(database='postgres',
-                                        min_size=1, max_size=1,
+                                        init_size=1, max_size=1,
                                         setup=setup) as pool:
                 with self.assertRaises(Error):
                     await pool.acquire()
@@ -349,7 +349,7 @@ class TestPool(tb.ConnectedTestCase):
             last_con = None
             cons = []
             async with self.create_pool(database='postgres',
-                                        min_size=0, max_size=1,
+                                        init_size=0, max_size=1,
                                         init=setup) as pool:
                 with self.assertRaises(Error):
                     await pool.acquire()
@@ -391,7 +391,7 @@ class TestPool(tb.ConnectedTestCase):
             pool = await self.create_pool(database='postgres',
                                           user='pooluser',
                                           password='poolpassword',
-                                          min_size=5, max_size=10)
+                                          init_size=5, max_size=10)
 
             async def worker():
                 con = await pool.acquire()
@@ -412,7 +412,7 @@ class TestPool(tb.ConnectedTestCase):
     async def test_pool_handles_task_cancel_in_acquire_with_timeout(self):
         # See https://github.com/MagicStack/asyncpg/issues/547
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         async def worker():
             async with pool.acquire(timeout=100):
@@ -433,7 +433,7 @@ class TestPool(tb.ConnectedTestCase):
         # Use SlowResetConnectionPool to simulate
         # the Task.cancel() and __aexit__ race.
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1,
+                                      init_size=1, max_size=1,
                                       connection_class=SlowResetConnection)
 
         async def worker():
@@ -454,7 +454,7 @@ class TestPool(tb.ConnectedTestCase):
         # Use SlowResetConnectionPool to simulate
         # the Task.cancel() and __aexit__ race.
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1,
+                                      init_size=1, max_size=1,
                                       connection_class=SlowCancelConnection)
 
         async def worker():
@@ -473,7 +473,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_no_acquire_deadlock(self):
         async with self.create_pool(database='postgres',
-                                    min_size=1, max_size=1,
+                                    init_size=1, max_size=1,
                                     max_queries=1) as pool:
 
             async def sleep_and_release():
@@ -507,7 +507,7 @@ class TestPool(tb.ConnectedTestCase):
                 cons.add(con)
 
         async with self.create_pool(
-                database='postgres', min_size=10, max_size=10,
+                database='postgres', init_size=10, max_size=10,
                 max_queries=1, connection_class=MyConnection,
                 statement_cache_size=3) as pool:
 
@@ -518,7 +518,7 @@ class TestPool(tb.ConnectedTestCase):
     async def test_pool_release_in_xact(self):
         """Test that Connection.reset() closes any open transaction."""
         async with self.create_pool(database='postgres',
-                                    min_size=1, max_size=1) as pool:
+                                    init_size=1, max_size=1) as pool:
             async def get_xact_id(con):
                 return await con.fetchval('select txid_current()')
 
@@ -581,7 +581,7 @@ class TestPool(tb.ConnectedTestCase):
 
         async def run(N, meth):
             async with self.create_pool(database='postgres',
-                                        min_size=5, max_size=10) as pool:
+                                        init_size=5, max_size=10) as pool:
 
                 coros = [meth(pool) for _ in range(N)]
                 res = await asyncio.gather(*coros)
@@ -608,7 +608,7 @@ class TestPool(tb.ConnectedTestCase):
         N = 200
 
         async with self.create_pool(database='postgres',
-                                    min_size=5, max_size=10) as pool:
+                                    init_size=5, max_size=10) as pool:
 
             await pool.execute('CREATE TABLE exmany (a text, b int)')
             try:
@@ -625,7 +625,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_max_inactive_time_01(self):
         async with self.create_pool(
-                database='postgres', min_size=1, max_size=1,
+                database='postgres', init_size=1, max_size=1,
                 max_inactive_connection_lifetime=0.1) as pool:
 
             # Test that it's OK if a query takes longer time to execute
@@ -644,7 +644,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_max_inactive_time_02(self):
         async with self.create_pool(
-                database='postgres', min_size=1, max_size=1,
+                database='postgres', init_size=1, max_size=1,
                 max_inactive_connection_lifetime=0.5) as pool:
 
             # Test that we have a new connection after pool not
@@ -667,7 +667,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_max_inactive_time_03(self):
         async with self.create_pool(
-                database='postgres', min_size=1, max_size=1,
+                database='postgres', init_size=1, max_size=1,
                 max_inactive_connection_lifetime=1) as pool:
 
             # Test that we start counting inactive time *after*
@@ -708,7 +708,7 @@ class TestPool(tb.ConnectedTestCase):
             N += 1
 
         async with self.create_pool(
-                database='postgres', min_size=10, max_size=30,
+                database='postgres', init_size=10, max_size=30,
                 max_inactive_connection_lifetime=0.1) as pool:
 
             workers = [worker(pool) for _ in range(50)]
@@ -720,7 +720,7 @@ class TestPool(tb.ConnectedTestCase):
         # Test that idle never-acquired connections abide by
         # the max inactive lifetime.
         async with self.create_pool(
-                database='postgres', min_size=2, max_size=2,
+                database='postgres', init_size=2, max_size=2,
                 max_inactive_connection_lifetime=0.2) as pool:
 
             self.assertIsNotNone(pool._holders[0]._con)
@@ -736,7 +736,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_handles_inactive_connection_errors(self):
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         con = await pool.acquire(timeout=POOL_NOMINAL_TIMEOUT)
 
@@ -757,10 +757,10 @@ class TestPool(tb.ConnectedTestCase):
     async def test_pool_size_and_capacity(self):
         async with self.create_pool(
             database='postgres',
-            min_size=2,
+            init_size=2,
             max_size=3,
         ) as pool:
-            self.assertEqual(pool.get_min_size(), 2)
+            self.assertEqual(pool.get_init_size(), 2)
             self.assertEqual(pool.get_max_size(), 3)
             self.assertEqual(pool.get_size(), 2)
             self.assertEqual(pool.get_idle_size(), 2)
@@ -788,7 +788,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_handles_transaction_exit_in_asyncgen_1(self):
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         locals_ = {}
         exec(textwrap.dedent('''\
@@ -809,7 +809,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_handles_transaction_exit_in_asyncgen_2(self):
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         locals_ = {}
         exec(textwrap.dedent('''\
@@ -833,7 +833,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_handles_asyncgen_finalization(self):
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         locals_ = {}
         exec(textwrap.dedent('''\
@@ -854,7 +854,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_close_waits_for_release(self):
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         flag = self.loop.create_future()
         conn_released = False
@@ -877,7 +877,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_close_timeout(self):
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         flag = self.loop.create_future()
 
@@ -896,7 +896,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_expire_connections(self):
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         con = await pool.acquire()
         try:
@@ -909,7 +909,7 @@ class TestPool(tb.ConnectedTestCase):
 
     async def test_pool_set_connection_args(self):
         pool = await self.create_pool(database='postgres',
-                                      min_size=1, max_size=1)
+                                      init_size=1, max_size=1)
 
         # Test that connection is expired on release.
         con = await pool.acquire()
@@ -951,7 +951,7 @@ class TestPool(tb.ConnectedTestCase):
         await pool.close()
 
     async def test_pool_init_race(self):
-        pool = self.create_pool(database='postgres', min_size=1, max_size=1)
+        pool = self.create_pool(database='postgres', init_size=1, max_size=1)
 
         t1 = asyncio.ensure_future(pool)
         t2 = asyncio.ensure_future(pool)
@@ -965,7 +965,7 @@ class TestPool(tb.ConnectedTestCase):
         await pool.close()
 
     async def test_pool_init_and_use_race(self):
-        pool = self.create_pool(database='postgres', min_size=1, max_size=1)
+        pool = self.create_pool(database='postgres', init_size=1, max_size=1)
 
         pool_task = asyncio.ensure_future(pool)
         await asyncio.sleep(0)
@@ -980,7 +980,7 @@ class TestPool(tb.ConnectedTestCase):
         await pool.close()
 
     async def test_pool_remote_close(self):
-        pool = await self.create_pool(min_size=1, max_size=1)
+        pool = await self.create_pool(init_size=1, max_size=1)
         backend_pid_fut = self.loop.create_future()
 
         async def worker():
@@ -1037,7 +1037,7 @@ class TestPoolReconnectWithTargetSessionAttrs(tb.ClusterTestCase):
             return
 
         pool = await self.create_pool(
-            min_size=1,
+            init_size=1,
             max_size=1,
             target_session_attrs='primary'
         )
@@ -1081,7 +1081,7 @@ class TestHotStandby(tb.HotStandbyTestCase):
             with self.subTest(tasksnum=n):
                 pool = await self.create_pool(
                     database='postgres', user='postgres',
-                    min_size=5, max_size=10)
+                    init_size=5, max_size=10)
 
                 async def worker():
                     con = await pool.acquire()

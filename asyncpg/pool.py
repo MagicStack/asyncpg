@@ -338,7 +338,7 @@ class Pool:
     """
 
     __slots__ = (
-        '_queue', '_loop', '_minsize', '_maxsize',
+        '_queue', '_loop', '_initsize', '_maxsize',
         '_init', '_connect', '_reset', '_connect_args', '_connect_kwargs',
         '_holders', '_initialized', '_initializing', '_closing',
         '_closed', '_connection_class', '_record_class', '_generation',
@@ -346,7 +346,7 @@ class Pool:
     )
 
     def __init__(self, *connect_args,
-                 min_size,
+                 init_size,
                  max_size,
                  max_queries,
                  max_inactive_connection_lifetime,
@@ -374,12 +374,12 @@ class Pool:
         if max_size <= 0:
             raise ValueError('max_size is expected to be greater than zero')
 
-        if min_size < 0:
+        if init_size < 0:
             raise ValueError(
-                'min_size is expected to be greater or equal to zero')
+                'init_size is expected to be greater or equal to zero')
 
-        if min_size > max_size:
-            raise ValueError('min_size is greater than max_size')
+        if init_size > max_size:
+            raise ValueError('init_size is greater than max_size')
 
         if max_queries <= 0:
             raise ValueError('max_queries is expected to be greater than zero')
@@ -399,7 +399,7 @@ class Pool:
                 'record_class is expected to be a subclass of '
                 'asyncpg.Record, got {!r}'.format(record_class))
 
-        self._minsize = min_size
+        self._initsize = init_size
         self._maxsize = max_size
 
         self._holders = []
@@ -454,7 +454,7 @@ class Pool:
             self._holders.append(ch)
             self._queue.put_nowait(ch)
 
-        if self._minsize:
+        if self._initsize:
             # Since we use a LIFO queue, the first items in the queue will be
             # the last ones in `self._holders`.  We want to pre-connect the
             # first few connections in the queue, therefore we want to walk
@@ -465,11 +465,11 @@ class Pool:
             first_ch = self._holders[-1]  # type: PoolConnectionHolder
             await first_ch.connect()
 
-            if self._minsize > 1:
+            if self._initsize > 1:
                 connect_tasks = []
                 for i, ch in enumerate(reversed(self._holders[:-1])):
-                    # `minsize - 1` because we already have first_ch
-                    if i >= self._minsize - 1:
+                    # `initsize - 1` because we already have first_ch
+                    if i >= self._initsize - 1:
                         break
                     connect_tasks.append(ch.connect())
 
@@ -489,12 +489,12 @@ class Pool:
         """
         return sum(h.is_connected() for h in self._holders)
 
-    def get_min_size(self):
-        """Return the minimum number of connections in this pool.
+    def get_init_size(self):
+        """Return the initial number of connections in this pool.
 
         .. versionadded:: 0.25.0
         """
-        return self._minsize
+        return self._initsize
 
     def get_max_size(self):
         """Return the maximum allowed number of connections in this pool.
@@ -1073,7 +1073,7 @@ class PoolAcquireContext:
 
 
 def create_pool(dsn=None, *,
-                min_size=10,
+                init_size=10,
                 max_size=10,
                 max_queries=50000,
                 max_inactive_connection_lifetime=300.0,
@@ -1147,7 +1147,7 @@ def create_pool(dsn=None, *,
         the connections in this pool.  Must be a subclass of
         :class:`~asyncpg.Record`.
 
-    :param int min_size:
+    :param int init_size:
         Number of connection the pool will be initialized with.
 
     :param int max_size:
@@ -1235,7 +1235,7 @@ def create_pool(dsn=None, *,
         dsn,
         connection_class=connection_class,
         record_class=record_class,
-        min_size=min_size,
+        init_size=init_size,
         max_size=max_size,
         max_queries=max_queries,
         loop=loop,

@@ -267,7 +267,7 @@ def _shutdown_cluster(cluster):
 
 
 def create_pool(dsn=None, *,
-                min_size=10,
+                init_size=10,
                 max_size=10,
                 max_queries=50000,
                 max_inactive_connection_lifetime=60.0,
@@ -281,7 +281,7 @@ def create_pool(dsn=None, *,
                 **connect_kwargs):
     return pool_class(
         dsn,
-        min_size=min_size,
+        init_size=init_size,
         max_size=max_size,
         max_queries=max_queries,
         loop=loop,
