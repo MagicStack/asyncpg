@@ -1004,6 +1004,19 @@ class TestPool(tb.ConnectedTestCase):
         conn = await pool.acquire(timeout=0.1)
         await pool.release(conn)
 
+    async def test_pool_release_after_protocol_abort(self):
+        pool = await self.create_pool(min_size=1, max_size=1)
+
+        conn = await pool.acquire()
+        conn._con._protocol.abort()
+
+        await pool.release(conn)
+
+        # Check the connection has been released back to the pool
+        conn2 = await pool.acquire(timeout=1.0)
+        await pool.release(conn2)
+        await pool.close()
+
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
 class TestPoolReconnectWithTargetSessionAttrs(tb.ClusterTestCase):
