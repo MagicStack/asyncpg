@@ -1103,9 +1103,14 @@ async def __connect_addr(
     except (
         exceptions.InvalidAuthorizationSpecificationError,
         exceptions.ConnectionDoesNotExistError,  # seen on Windows
-    ):
+    ) as exc: 
         tr.close()
-
+        
+        # Do not retry on wrong password (28P01) — the issue is credentials,
+        # not SSL negotiation. Only pg_hba.conf rejections (28000) warrant a retry.
+        if isinstance(exc, exceptions.InvalidPasswordError):
+            raise
+        
         # retry=True here is a redundant check because we don't want to
         # accidentally raise the internal _RetryConnectSignal to the user
         if retry and (
