@@ -175,7 +175,7 @@ class Connection(metaclass=ConnectionMeta):
     def add_log_listener(self, callback):
         """Add a listener for Postgres log messages.
 
-        It will be called when asyncronous NoticeResponse is received
+        It will be called when asynchronous NoticeResponse is received
         from the connection.  Possible message types are: WARNING, NOTICE,
         DEBUG, INFO, or LOG.
 
@@ -2147,7 +2147,7 @@ async def connect(dsn=None, *,
         - host address(es) parsed from the *dsn* argument,
         - the value of the ``PGHOST`` environment variable,
         - on Unix, common directories used for PostgreSQL Unix-domain
-          sockets: ``"/run/postgresql"``, ``"/var/run/postgresl"``,
+          sockets: ``"/run/postgresql"``, ``"/var/run/postgresql"``,
           ``"/var/pgsql_socket"``, ``"/private/tmp"``, and ``"/tmp"``,
         - ``"localhost"``.
 
@@ -2199,7 +2199,7 @@ async def connect(dsn=None, *,
         connection service file.
 
     :param servicefile:
-        The location of the connnection service file used to store
+        The location of the connection service file used to store
         connection parameters.
 
     :param loop:
