@@ -341,6 +341,23 @@ class Connection(metaclass=ConnectionMeta):
         :param float timeout: Optional timeout value in seconds.
         :return str: Status of the last SQL command.
 
+        When query arguments are provided, the command is executed as a
+        prepared statement and is eligible for the connection's LRU
+        statement cache.
+
+        The status string for an ``INSERT`` has the form
+        ``INSERT <oid> <count>``.  A result such as ``INSERT 0 0`` is a
+        legitimate outcome for queries that insert zero rows (for example,
+        ``INSERT ... SELECT ... WHERE false``), and does not indicate a
+        failure.  To confirm that a single row was inserted, check the
+        status string:
+
+        .. code-block:: pycon
+
+            >>> result = await con.execute(
+            ...     'INSERT INTO mytab (a) VALUES ($1)', 1)
+            >>> assert result == 'INSERT 0 1'
+
         .. versionchanged:: 0.5.4
            Made it possible to pass query arguments.
         """
