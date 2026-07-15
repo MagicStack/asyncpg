@@ -188,7 +188,7 @@ class build_ext(setuptools_build_ext.build_ext):
                         need_cythonize = True
 
         if need_cythonize:
-            import pkg_resources
+            from packaging.requirements import Requirement
 
             # Double check Cython presence in case setup_requires
             # didn't go into effect (most likely because someone
@@ -201,8 +201,10 @@ class build_ext(setuptools_build_ext.build_ext):
                     'please install {} to compile asyncpg from source'.format(
                         CYTHON_DEPENDENCY))
 
-            cython_dep = pkg_resources.Requirement.parse(CYTHON_DEPENDENCY)
-            if Cython.__version__ not in cython_dep:
+            cython_dep = Requirement(CYTHON_DEPENDENCY)
+            if not cython_dep.specifier.contains(
+                Cython.__version__, prereleases=True
+            ):
                 raise RuntimeError(
                     'asyncpg requires {}, got Cython=={}'.format(
                         CYTHON_DEPENDENCY, Cython.__version__
