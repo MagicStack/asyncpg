@@ -280,6 +280,12 @@ cdef class BaseProtocol(CoreProtocol):
 
         waiter = self._new_waiter(timeout)
         try:
+            # Same as bind_execute: anonymous statements may have been
+            # clobbered by type introspection (statement_cache_size=0) and
+            # marked unprepared. Re-Parse before Bind (#1335).
+            if not state.prepared:
+                self._send_parse_message(state.name, state.query)
+
             self._bind(
                 portal_name,
                 state.name,

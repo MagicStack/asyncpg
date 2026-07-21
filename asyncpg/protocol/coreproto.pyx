@@ -313,6 +313,10 @@ cdef class CoreProtocol:
             # ErrorResponse
             self._parse_msg_error_response(True)
 
+        elif mtype == b'1':
+            # ParseComplete, in case `_bind()` is reparsing
+            self.buffer.discard_message()
+
         elif mtype == b'2':
             # BindComplete
             self.buffer.discard_message()
