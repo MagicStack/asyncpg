@@ -431,6 +431,38 @@ class TestPrepare(tb.ConnectedTestCase):
             await self.con.execute('DROP TABLE tab1')
 
     @tb.with_connection_options(statement_cache_size=0)
+    async def test_prepare_statement_cache_0_cursor_with_enum(self):
+        # Regression: prepare(name=None) uses the unnamed statement when the
+        # cache is disabled. Type introspection also uses "", which clobbers
+        # the user statement. Cursor.bind must re-Parse (like bind_execute)
+        # or the next bind fails with ProtocolViolationError (#1335).
+        await self.con.execute(
+            """
+            DROP TYPE IF EXISTS asyncpg_test_enum CASCADE;
+            CREATE TYPE asyncpg_test_enum AS ENUM ('a', 'b');
+            CREATE TEMP TABLE asyncpg_test_enum_tab (
+                id int,
+                val asyncpg_test_enum
+            );
+            INSERT INTO asyncpg_test_enum_tab VALUES (1, 'a'), (2, 'b');
+            """
+        )
+        try:
+            ps = await self.con.prepare(
+                'SELECT id, val FROM asyncpg_test_enum_tab WHERE id = $1'
+            )
+            self.assertEqual(ps.get_name(), '')
+            async with self.con.transaction():
+                cur = await ps.cursor(1)
+                row = await cur.fetchrow()
+                self.assertEqual(tuple(row), (1, 'a'))
+        finally:
+            await self.con.execute(
+                'DROP TABLE IF EXISTS asyncpg_test_enum_tab; '
+                'DROP TYPE IF EXISTS asyncpg_test_enum CASCADE;'
+            )
+
+    @tb.with_connection_options(statement_cache_size=0)
     async def test_prepare_23_no_stmt_cache_seq(self):
         self.assertEqual(self.con._stmt_cache.get_max_size(), 0)
 
