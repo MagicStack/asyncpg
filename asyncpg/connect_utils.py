@@ -1212,6 +1212,7 @@ async def _connect(*, loop, connection_class, record_class, **kwargs):
     candidates = []
     chosen_connection = None
     last_error = None
+    last_addr = None
     try:
         for addr in addrs:
             try:
@@ -1229,6 +1230,7 @@ async def _connect(*, loop, connection_class, record_class, **kwargs):
                     break
             except OSError as ex:
                 last_error = ex
+                last_addr = addr
         else:
             if target_attr == SessionAttribute.prefer_standby and candidates:
                 chosen_connection = random.choice(candidates)
@@ -1246,7 +1248,20 @@ async def _connect(*, loop, connection_class, record_class, **kwargs):
     if chosen_connection:
         return chosen_connection
 
-    raise last_error or exceptions.TargetServerAttributeNotMatched(
+    if last_error is not None:
+        # The raw OSError (e.g. ConnectionRefusedError) is identical whether
+        # the server is not running or is simply listening on a different
+        # port, so add a hint naming the address that was attempted.
+        if isinstance(last_addr, str):
+            addr_str = last_addr
+        else:
+            addr_str = '{}:{}'.format(last_addr[0], last_addr[1])
+        raise type(last_error)(
+            '{} - verify that PostgreSQL is running and listening on '
+            '{}'.format(last_error, addr_str)
+        ) from last_error
+
+    raise exceptions.TargetServerAttributeNotMatched(
         'None of the hosts match the target attribute requirement '
         '{!r}'.format(target_attr)
     )
