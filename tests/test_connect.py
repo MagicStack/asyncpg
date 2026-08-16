@@ -99,6 +99,19 @@ def mock_dev_null_home_dir():
         yield
 
 
+class TestTLSUpgradeProto(tb.TestCase):
+
+    async def test_error_response_preserves_server_message(self):
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        proto = connect_utils.TLSUpgradeProto(
+            self.loop, 'localhost', 5432, context, False)
+
+        proto.data_received(b'Etoo many connections\n\x00')
+        with self.assertRaisesRegex(
+                exceptions.InterfaceError, 'too many connections'):
+            await proto.on_data
+
+
 class TestSettings(tb.ConnectedTestCase):
 
     async def test_get_settings_01(self):
