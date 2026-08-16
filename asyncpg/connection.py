@@ -1510,6 +1510,7 @@ class Connection(metaclass=ConnectionMeta):
         """
         try:
             if not self.is_closed():
+                self._clean_tasks()
                 await self._protocol.close(timeout)
         except (Exception, asyncio.CancelledError):
             # If we fail to close gracefully, abort the connection.
