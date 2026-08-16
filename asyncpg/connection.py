@@ -653,7 +653,7 @@ class Connection(metaclass=ConnectionMeta):
     ):
         self._check_open()
         if name is None:
-            name = self._stmt_cache_enabled
+            name = True
         stmt = await self._get_statement(
             query,
             timeout,
