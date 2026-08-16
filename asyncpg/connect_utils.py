@@ -934,6 +934,15 @@ class TLSUpgradeProto(asyncio.Protocol):
             # sslmode=prefer. But be extra sure to disallow insecure
             # connections when the ssl context asks for real security.
             self.on_data.set_result(False)
+        elif data.startswith(b'E'):
+            message = data[1:].rstrip(b'\x00\r\n').decode(
+                'utf-8', errors='replace')
+            if not message:
+                message = 'server error during SSL negotiation'
+            self.on_data.set_exception(
+                exceptions.InterfaceError(
+                    'PostgreSQL server at "{host}:{port}" reported: {message}'.format(
+                        host=self.host, port=self.port, message=message)))
         else:
             self.on_data.set_exception(
                 ConnectionError(
