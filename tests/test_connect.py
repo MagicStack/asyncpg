@@ -266,6 +266,12 @@ class TestAuthentication(BaseTestAuthentication):
                 user='password_user',
                 password='wrongpassword')
 
+    async def test_auth_password_cleartext_without_password(self):
+        with self.assertRaisesRegex(
+                asyncpg.InterfaceError, 'no password was supplied'):
+            await self._try_connect(
+                user='password_user', password=None)
+
     async def test_auth_password_cleartext_callable(self):
         def get_correctpassword():
             return CORRECT_PASSWORD

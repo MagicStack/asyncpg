@@ -573,8 +573,14 @@ cdef class CoreProtocol:
 
         elif status == AUTH_REQUIRED_PASSWORD:
             # AuthenticationCleartextPassword
-            self.result_type = RESULT_OK
-            self.auth_msg = self._auth_password_message_cleartext()
+            if self.password is None:
+                self.result_type = RESULT_FAILED
+                self.result = apg_exc.InterfaceError(
+                    'password authentication requested by server, '
+                    'but no password was supplied')
+            else:
+                self.result_type = RESULT_OK
+                self.auth_msg = self._auth_password_message_cleartext()
 
         elif status == AUTH_REQUIRED_PASSWORDMD5:
             # AuthenticationMD5Password
