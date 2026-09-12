@@ -546,8 +546,12 @@ cdef class BaseProtocol(CoreProtocol):
             else:
                 raise apg_exc.InternalClientError('TimoutError was not raised')
 
-        except (Exception, asyncio.CancelledError) as e:
-            self._write_copy_fail_msg(str(e))
+        except (Exception, asyncio.CancelledError):
+            # CopyFail is limited to 10000 bytes, including its length and
+            # trailing NUL. Use a fixed reason so formatting or encoding the
+            # application exception cannot break COPY cleanup. The original
+            # exception is re-raised below.
+            self._write_copy_fail_msg('COPY source failed')
             self._request_cancel()
             # Make asyncio shut up about unretrieved QueryCanceledError
             waiter.add_done_callback(lambda f: f.exception())
