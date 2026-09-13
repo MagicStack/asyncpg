@@ -232,26 +232,16 @@ cdef class SCRAMAuthentication:
         cdef:
             bytes p
             bytes s
-            bytes u
 
         # convert the password to a binary string - UTF8 is safe for SASL
         # (though there are SASLPrep rules)
         p = password.encode("utf8")
         # the salt needs to be base64 decoded -- full binary must be used
         s = base64.b64decode(salt)
-        # the initial signature is the salt with a terminator of a 32-bit string
-        # ending in 1
-        ui = hmac.new(p, s + b'\x00\x00\x00\x01', self.DIGEST)
-        # grab the initial digest
-        u = ui.digest()
-        # for X number of iterations, recompute the HMAC signature against the
-        # password and the latest iteration of the hash, and XOR it with the
-        # previous version
-        for x in range(iterations - 1):
-            ui = hmac.new(p, ui.digest(), hashlib.sha256)
-            # this is a fancy way of XORing two byte strings together
-            u = self._bytes_xor(u, ui.digest())
-        return u
+        # hashlib.pbkdf2_hmac is PBKDF2-HMAC-SHA256: the same output as the
+        # Python loop this replaces, computed in C.  SHA-256 is hardcoded
+        # because SCRAM-SHA-256 is the only method this class supports.
+        return hashlib.pbkdf2_hmac("sha256", p, s, iterations)
 
     cdef _normalize_password(self, str original_password):
         """Normalize the password using the SASLprep from RFC4013"""
