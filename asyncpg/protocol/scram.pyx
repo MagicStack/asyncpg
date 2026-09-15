@@ -227,7 +227,7 @@ cdef class SCRAMAuthentication:
         # and the proof
         return self._bytes_xor(client_key.digest(), client_signature.digest())
 
-    cdef _generate_salted_password(self, str password, bytes salt, int iterations):
+    cpdef _generate_salted_password(self, str password, bytes salt, int iterations):
         """This follows the "Hi" algorithm specified in RFC5802"""
         cdef:
             bytes p
