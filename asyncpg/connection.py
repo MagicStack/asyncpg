@@ -1116,7 +1116,7 @@ class Connection(metaclass=ConnectionMeta):
         intro_query = 'SELECT {cols} FROM {tab} LIMIT 1'.format(
             tab=tabname, cols=col_list)
 
-        intro_ps = await self.prepare(intro_query)
+        intro_ps = await self._prepare(intro_query, use_cache=True)
 
         cond = self._format_copy_where(where)
         opts = '(FORMAT binary)'
