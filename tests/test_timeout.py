@@ -152,3 +152,20 @@ class TestTimeoutCoversPrepare(tb.ConnectedTestCase):
             with self.assertRaises(asyncio.TimeoutError):
                 meth = getattr(self.con, methname)
                 await meth('select pg_sleep($1)', 0.2)
+
+
+class TestCloseTimeoutPendingCancel(tb.ConnectedTestCase):
+
+    async def test_close_times_out_pending_cancel(self):
+        with self.assertRaises(asyncio.TimeoutError):
+            await self.con.fetch('select pg_sleep(10)', timeout=0.05)
+
+        proto = self.con._protocol
+        proto.cancel_waiter = self.loop.create_future()
+        proto.cancel_sent_waiter = None
+
+        with self.assertRunUnder(1):
+            await self.con.close(timeout=0.15)
+
+        self.assertTrue(self.con.is_closed())
+

@@ -591,7 +591,15 @@ cdef class BaseProtocol(CoreProtocol):
         return not self.closing and self.con_status == CONNECTION_OK
 
     def abort(self):
+        # Always finish pending cancel waiters. close() sets closing=True
+        # before awaiting them, so a later abort() must still unblock
+        # those futures and drop the transport.
+        self._complete_cancel_waiters()
         if self.closing:
+            if self.transport is not None:
+                transport = self.transport
+                self.transport = None
+                transport.abort()
             return
         self.closing = True
         self._handle_waiter_on_connection_lost(None)
@@ -604,25 +612,24 @@ cdef class BaseProtocol(CoreProtocol):
             return
 
         self.closing = True
+        timeout = self._get_timeout_impl(timeout)
 
-        if self.cancel_sent_waiter is not None:
-            await self.cancel_sent_waiter
-            self.cancel_sent_waiter = None
-
-        if self.cancel_waiter is not None:
-            await self.cancel_waiter
-
-        if self.waiter is not None:
-            # If there is a query running, cancel it
-            self._request_cancel()
-            await self.cancel_sent_waiter
-            self.cancel_sent_waiter = None
-            if self.cancel_waiter is not None:
-                await self.cancel_waiter
+        try:
+            if timeout is None:
+                await self._drain_cancels()
+            else:
+                await asyncio.wait_for(self._drain_cancels(), timeout)
+        except asyncio.TimeoutError:
+            # Server never acknowledged the cancel. Abort rather than
+            # hanging on cancel_waiter until the transport dies.
+            self._complete_cancel_waiters()
+            if self.transport is not None:
+                transport = self.transport
+                self.transport = None
+                transport.abort()
+            return
 
         assert self.waiter is None
-
-        timeout = self._get_timeout_impl(timeout)
 
         # Ask the server to terminate the connection and wait for it
         # to drop.
@@ -637,7 +644,9 @@ cdef class BaseProtocol(CoreProtocol):
             pass
         finally:
             self.waiter = None
-            self.transport.abort()
+            if self.transport is not None:
+                self.transport.abort()
+                self.transport = None
 
     def _request_cancel(self):
         self.cancel_waiter = self.create_future()
@@ -686,6 +695,21 @@ cdef class BaseProtocol(CoreProtocol):
     def _create_future_fallback(self):
         return asyncio.Future(loop=self.loop)
 
+    cdef _complete_cancel_waiters(self):
+        if self.cancel_sent_waiter is not None and not self.cancel_sent_waiter.done():
+            self.cancel_sent_waiter.set_result(None)
+        self.cancel_sent_waiter = None
+        if self.cancel_waiter is not None and not self.cancel_waiter.done():
+            self.cancel_waiter.set_result(None)
+        self.cancel_waiter = None
+
+    async def _drain_cancels(self):
+        await self._wait_for_cancellation()
+        if self.waiter is not None:
+            # If there is a query running, cancel it
+            self._request_cancel()
+            await self._wait_for_cancellation()
+
     cdef _handle_waiter_on_connection_lost(self, cause):
         if self.waiter is not None and not self.waiter.done():
             exc = apg_exc.ConnectionDoesNotExistError(
@@ -695,6 +719,8 @@ cdef class BaseProtocol(CoreProtocol):
                 exc.__cause__ = cause
             self.waiter.set_exception(exc)
         self.waiter = None
+        self._complete_cancel_waiters()
+
 
     cdef _set_server_parameter(self, name, val):
         self.settings.add_setting(name, val)
@@ -940,6 +966,7 @@ cdef class BaseProtocol(CoreProtocol):
                 else:
                     self.waiter.set_exception(exc)
             self.waiter = None
+            self._complete_cancel_waiters()
         else:
             # The connection was lost because it was
             # terminated or due to another error;
