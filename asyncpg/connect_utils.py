@@ -1052,11 +1052,25 @@ async def _connect_addr(
     # first attempt
     try:
         return await __connect_addr(params, True, *args)
-    except _RetryConnectSignal:
-        pass
+    except _RetryConnectSignal as retry_exc:
+        first_error = retry_exc.__cause__
+        assert first_error is not None
 
     # second attempt
-    return await __connect_addr(params_retry, False, *args)
+    try:
+        return await __connect_addr(params_retry, False, *args)
+    except (
+        exceptions.InvalidAuthorizationSpecificationError,
+        exceptions.ConnectionDoesNotExistError,
+    ) as second_error:
+        # If the preferred attempt produced a useful authentication error,
+        # do not hide it behind a generic rejection from the fallback mode.
+        if (
+            isinstance(first_error, exceptions.InvalidPasswordError)
+            and not isinstance(second_error, exceptions.InvalidPasswordError)
+        ):
+            raise first_error from None
+        raise
 
 
 class _RetryConnectSignal(Exception):
@@ -1103,14 +1117,9 @@ async def __connect_addr(
     except (
         exceptions.InvalidAuthorizationSpecificationError,
         exceptions.ConnectionDoesNotExistError,  # seen on Windows
-    ) as exc: 
+    ) as exc:
         tr.close()
-        
-        # Do not retry on wrong password (28P01) — the issue is credentials,
-        # not SSL negotiation. Only pg_hba.conf rejections (28000) warrant a retry.
-        if isinstance(exc, exceptions.InvalidPasswordError):
-            raise
-        
+
         # retry=True here is a redundant check because we don't want to
         # accidentally raise the internal _RetryConnectSignal to the user
         if retry and (
@@ -1122,7 +1131,7 @@ async def __connect_addr(
             #   2. First attempt with sslmode=prefer, ssl=ctx failed while the
             #      server claimed to support SSL (returning "S" for SSLRequest)
             #      (likely because pg_hba.conf rejected the connection)
-            raise _RetryConnectSignal()
+            raise _RetryConnectSignal() from exc
 
         else:
             # but will NOT retry if:
