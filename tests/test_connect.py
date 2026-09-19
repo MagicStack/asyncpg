@@ -2289,6 +2289,78 @@ class TestNoSSLConnection(BaseTestSSLConnection):
         await pool.close()
 
 
+class TestConnectErrorHint(unittest.IsolatedAsyncioTestCase):
+    """Regression tests for the connect error hint (#1342)."""
+
+    async def _connect(self, *, host='127.0.0.1', port=5432, **kwargs):
+        return await connect_utils._connect(
+            loop=asyncio.get_running_loop(),
+            connection_class=object,  # type: ignore[arg-type]
+            record_class=object,  # type: ignore[arg-type]
+            dsn=None,
+            host=host,
+            port=port,
+            user='postgres',
+            password=None,
+            passfile=None,
+            service=None,
+            servicefile=None,
+            ssl=None,
+            direct_tls=None,
+            database=None,
+            server_settings=None,
+            command_timeout=None,
+            statement_cache_size=100,
+            max_cached_statement_lifetime=300,
+            max_cacheable_statement_size=1024 * 100,
+            target_session_attrs=None,
+            krbsrvname=None,
+            gsslib=None,
+            **kwargs,
+        )
+
+    async def test_connect_error_includes_address_hint(self):
+        # A refused connection must not be re-raised verbatim: the error is
+        # identical whether the server is not running or is simply listening
+        # on a different port, so the message should name the address tried.
+        async def fake_connect_addr(*, addr, loop, params, config,
+                                    connection_class, record_class):
+            raise ConnectionRefusedError(
+                111, 'Connect call failed', addr[0], addr[1])
+
+        with unittest.mock.patch.object(
+            connect_utils, '_connect_addr', fake_connect_addr
+        ):
+            with self.assertRaises(ConnectionRefusedError) as cm:
+                await self._connect()
+
+        self.assertIn(
+            'verify that PostgreSQL is running and listening on '
+            '127.0.0.1:5432',
+            str(cm.exception),
+        )
+        # The original exception is preserved as the cause.
+        self.assertIsInstance(cm.exception.__cause__, ConnectionRefusedError)
+
+    async def test_connect_error_hint_for_unix_socket(self):
+        async def fake_connect_addr(*, addr, loop, params, config,
+                                    connection_class, record_class):
+            raise FileNotFoundError(2, 'No such file or directory')
+
+        with unittest.mock.patch.object(
+            connect_utils, '_connect_addr', fake_connect_addr
+        ):
+            with self.assertRaises(FileNotFoundError) as cm:
+                await self._connect(
+                    host='/var/run/postgresql', port=5432)
+
+        self.assertIn(
+            'verify that PostgreSQL is running and listening on '
+            '/var/run/postgresql/.s.PGSQL.5432',
+            str(cm.exception),
+        )
+
+
 class TestConnectionGC(tb.ClusterTestCase):
 
     async def _run_no_explicit_close_test(self):
