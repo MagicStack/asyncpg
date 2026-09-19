@@ -1001,7 +1001,7 @@ class TestPool(tb.ConnectedTestCase):
         await task
 
         # Check that connection_lost has released the pool holder.
-        conn = await pool.acquire(timeout=0.1)
+        conn = await pool.acquire(timeout=POOL_NOMINAL_TIMEOUT)
         await pool.release(conn)
 
 
