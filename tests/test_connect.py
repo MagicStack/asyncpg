@@ -1940,6 +1940,55 @@ class TestSSLConnection(BaseTestSSLConnection):
             await verify_fails('verify-full',
                                exn_type=ssl.SSLError)
 
+    async def test_sslmode_preserves_password_error(self):
+        await self.con.execute(
+            "ALTER ROLE ssl_user PASSWORD 'correct_password'")
+
+        cases = (
+            ('prefer', 'hostssl', 'hostnossl', False),
+            ('allow', 'hostnossl', 'hostssl', True),
+        )
+        for sslmode, first_type, fallback_type, fallback_is_ssl in cases:
+            with self.subTest(sslmode=sslmode):
+                self.cluster.reset_hba()
+                for address in ('127.0.0.0/24', '::1/128'):
+                    self.cluster.add_hba_entry(
+                        type=first_type,
+                        address=ipaddress.ip_network(address),
+                        database='postgres', user='ssl_user',
+                        auth_method='password')
+                self.cluster.reload()
+
+                connect_args = dict(
+                    host='localhost',
+                    database='postgres',
+                    user='ssl_user',
+                    password='wrong_password',
+                    ssl=sslmode,
+                )
+
+                with self.assertRaisesRegex(
+                    asyncpg.InvalidPasswordError,
+                    'password authentication failed',
+                ):
+                    await self.connect(**connect_args)
+
+                # A password failure in the preferred mode must not prevent
+                # a valid, differently-authenticated fallback connection.
+                for address in ('127.0.0.0/24', '::1/128'):
+                    self.cluster.add_hba_entry(
+                        type=fallback_type,
+                        address=ipaddress.ip_network(address),
+                        database='postgres', user='ssl_user',
+                        auth_method='trust')
+                self.cluster.reload()
+
+                con = await self.connect(**connect_args)
+                try:
+                    self.assertEqual(con._protocol.is_ssl, fallback_is_ssl)
+                finally:
+                    await con.close()
+
     async def test_ssl_connection_default_context(self):
         # XXX: uvloop artifact
         old_handler = self.loop.get_exception_handler()
