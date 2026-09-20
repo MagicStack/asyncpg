@@ -7,20 +7,16 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
 import functools
 import inspect
 import logging
 import time
+import warnings
+from collections.abc import Awaitable, Callable
 from types import TracebackType
 from typing import Any, Optional, Type
-import warnings
 
-from . import compat
-from . import connection
-from . import exceptions
-from . import protocol
-
+from . import compat, connection, exceptions, protocol
 
 logger = logging.getLogger(__name__)
 
@@ -338,27 +334,46 @@ class Pool:
     """
 
     __slots__ = (
-        '_queue', '_loop', '_minsize', '_maxsize',
-        '_init', '_connect', '_reset', '_connect_args', '_connect_kwargs',
-        '_holders', '_initialized', '_initializing', '_closing',
-        '_closed', '_connection_class', '_record_class', '_generation',
-        '_setup', '_max_queries', '_max_inactive_connection_lifetime'
+        "_queue",
+        "_loop",
+        "_minsize",
+        "_maxsize",
+        "_init",
+        "_connect",
+        "_reset",
+        "_connect_args",
+        "_connect_kwargs",
+        "_holders",
+        "_initialized",
+        "_initializing",
+        "_closing",
+        "_closed",
+        "_connection_class",
+        "_record_class",
+        "_generation",
+        "_setup",
+        "_max_queries",
+        "_max_inactive_connection_lifetime",
+        "_pool_timeout",
     )
 
-    def __init__(self, *connect_args,
-                 min_size,
-                 max_size,
-                 max_queries,
-                 max_inactive_connection_lifetime,
-                 connect=None,
-                 setup=None,
-                 init=None,
-                 reset=None,
-                 loop,
-                 connection_class,
-                 record_class,
-                 **connect_kwargs):
-
+    def __init__(
+        self,
+        *connect_args,
+        min_size,
+        max_size,
+        max_queries,
+        max_inactive_connection_lifetime,
+        pool_timeout=None,
+        connect=None,
+        setup=None,
+        init=None,
+        reset=None,
+        loop,
+        connection_class,
+        record_class,
+        **connect_kwargs,
+    ):
         if len(connect_args) > 1:
             warnings.warn(
                 "Passing multiple positional arguments to asyncpg.Pool "
@@ -388,6 +403,11 @@ class Pool:
             raise ValueError(
                 'max_inactive_connection_lifetime is expected to be greater '
                 'or equal to zero')
+
+        if pool_timeout is not None and pool_timeout <= 0:
+            raise ValueError(
+                "pool_timeout is expected to be greater than zero or None"
+            )
 
         if not issubclass(connection_class, connection.Connection):
             raise TypeError(
@@ -423,8 +443,10 @@ class Pool:
         self._reset = reset
 
         self._max_queries = max_queries
-        self._max_inactive_connection_lifetime = \
+        self._max_inactive_connection_lifetime = (
             max_inactive_connection_lifetime
+        )
+        self._pool_timeout = pool_timeout
 
     async def _async__init__(self):
         if self._initialized:
@@ -578,7 +600,7 @@ class Pool:
         self,
         query: str,
         *args,
-        timeout: Optional[float]=None,
+        timeout: Optional[float] = None,
     ) -> str:
         """Execute an SQL command (or commands).
 
@@ -596,7 +618,7 @@ class Pool:
         command: str,
         args,
         *,
-        timeout: Optional[float]=None,
+        timeout: Optional[float] = None,
     ):
         """Execute an SQL *command* for each sequence of arguments in *args*.
 
@@ -853,6 +875,7 @@ class Pool:
         """Acquire a database connection from the pool.
 
         :param float timeout: A timeout for acquiring a Connection.
+            If not specified, defaults to the pool's *pool_timeout*.
         :return: An instance of :class:`~asyncpg.connection.Connection`.
 
         Can be used in an ``await`` expression or with an ``async with`` block.
@@ -892,11 +915,16 @@ class Pool:
             raise exceptions.InterfaceError('pool is closing')
         self._check_init()
 
-        if timeout is None:
+        # Use pool_timeout as fallback if no timeout specified
+        effective_timeout = timeout or self._pool_timeout
+
+        if effective_timeout is None:
             return await _acquire_impl()
         else:
             return await compat.wait_for(
-                _acquire_impl(), timeout=timeout)
+                _acquire_impl(),
+                timeout=effective_timeout
+            )
 
     async def release(self, connection, *, timeout=None):
         """Release a database connection back to the pool.
@@ -906,7 +934,8 @@ class Pool:
         :param float timeout:
             A timeout for releasing the connection.  If not specified, defaults
             to the timeout provided in the corresponding call to the
-            :meth:`Pool.acquire() <asyncpg.pool.Pool.acquire>` method.
+            :meth:`Pool.acquire() <asyncpg.pool.Pool.acquire>` method, or
+            to the pool's *pool_timeout* if no acquire timeout was set.
 
         .. versionchanged:: 0.14.0
             Added the *timeout* parameter.
@@ -929,7 +958,7 @@ class Pool:
 
         ch = connection._holder
         if timeout is None:
-            timeout = ch._timeout
+            timeout = ch._timeout or self._pool_timeout
 
         # Use asyncio.shield() to guarantee that task cancellation
         # does not prevent the connection from being returned to the
@@ -1065,26 +1094,32 @@ class PoolAcquireContext:
         self.done = True
         con = self.connection
         self.connection = None
-        await self.pool.release(con)
+        # Use the acquire timeout if set, otherwise fall back to pool_timeout
+        release_timeout = self.timeout or self.pool._pool_timeout
+        await self.pool.release(con, timeout=release_timeout)
 
     def __await__(self):
         self.done = True
         return self.pool._acquire(self.timeout).__await__()
 
 
-def create_pool(dsn=None, *,
-                min_size=10,
-                max_size=10,
-                max_queries=50000,
-                max_inactive_connection_lifetime=300.0,
-                connect=None,
-                setup=None,
-                init=None,
-                reset=None,
-                loop=None,
-                connection_class=connection.Connection,
-                record_class=protocol.Record,
-                **connect_kwargs):
+def create_pool(
+    dsn=None,
+    *,
+    min_size=10,
+    max_size=10,
+    max_queries=50000,
+    max_inactive_connection_lifetime=300.0,
+    pool_timeout=None,
+    connect=None,
+    setup=None,
+    init=None,
+    reset=None,
+    loop=None,
+    connection_class=connection.Connection,
+    record_class=protocol.Record,
+    **connect_kwargs,
+):
     r"""Create a connection pool.
 
     Can be used either with an ``async with`` block:
@@ -1160,6 +1195,11 @@ def create_pool(dsn=None, *,
     :param float max_inactive_connection_lifetime:
         Number of seconds after which inactive connections in the
         pool will be closed.  Pass ``0`` to disable this mechanism.
+
+    :param float pool_timeout:
+        Default timeout for pool operations (connection acquire and release).
+        If not specified, pool operations may hang indefinitely. Individual
+        operations can override this with their own timeout parameters.
 
     :param coroutine connect:
         A coroutine that is called instead of
@@ -1238,6 +1278,7 @@ def create_pool(dsn=None, *,
         min_size=min_size,
         max_size=max_size,
         max_queries=max_queries,
+        pool_timeout=pool_timeout,
         loop=loop,
         connect=connect,
         setup=setup,
