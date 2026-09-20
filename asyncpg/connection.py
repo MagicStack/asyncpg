@@ -2251,6 +2251,15 @@ async def connect(dsn=None, *,
         The default is ``'prefer'``: try an SSL connection and fallback to
         non-SSL connection if that fails.
 
+        With ``'allow'`` and ``'prefer'``, a server error before
+        ``AuthenticationOk`` permits one retry using the other transport.
+
+        Errors in response to SSLRequest, timeouts, cancellation, client-side
+        authentication errors, and errors after ``AuthenticationOk`` do not
+        trigger transport retries. A server reporting that it cannot accept
+        connections yet (SQLSTATE ``57P03``) before ``AuthenticationOk`` causes
+        asyncpg to try the next host.
+
         .. note::
 
            *ssl* is ignored for Unix domain socket communication.
@@ -2302,7 +2311,8 @@ async def connect(dsn=None, *,
 
     :param bool direct_tls:
         Pass ``True`` to skip PostgreSQL STARTTLS mode and perform a direct
-        SSL connection. Must be used alongside ``ssl`` param.
+        SSL connection. Requires ``ssl='require'``, ``'verify-ca'``,
+        ``'verify-full'``, ``True``, or an explicit ``SSLContext``.
 
     :param dict server_settings:
         An optional dict of server runtime parameters.  Refer to
@@ -2416,6 +2426,12 @@ async def connect(dsn=None, *,
 
     .. versionchanged:: 0.31.0
        Added the *servicefile* and *service* parameters.
+
+    .. versionchanged:: 0.32.0
+       ``direct_tls=True`` requires an SSL mode of ``'require'`` or higher,
+       ``ssl=True``, or an explicit ``SSLContext``. Other values
+       (``'disable'``, ``'allow'``, and ``'prefer'``) will raise a
+       ``ClientConfigurationError``.
 
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:

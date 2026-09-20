@@ -6,6 +6,7 @@
 
 
 import asyncio
+import contextlib
 import socket
 import threading
 import typing
@@ -34,6 +35,7 @@ class TCPFuzzingProxy:
         self.connections = {}
         self.sock = None
         self.listen_task = None
+        self.connection_factory = Connection
 
     async def _wait(self, work):
         work_task = asyncio.ensure_future(work)
@@ -98,11 +100,13 @@ class TCPFuzzingProxy:
         try:
             await self.listen_task
         finally:
+            tasks = list(self.connections.values())
             for c in list(self.connections):
                 c.close()
-            await asyncio.sleep(0.01)
+            await asyncio.gather(*tasks, return_exceptions=True)
             if hasattr(self.loop, 'remove_reader'):
-                self.loop.remove_reader(self.sock.fileno())
+                with contextlib.suppress(NotImplementedError):
+                    self.loop.remove_reader(self.sock.fileno())
             self.sock.close()
 
     async def listen(self):
@@ -119,7 +123,7 @@ class TCPFuzzingProxy:
             except StopServer:
                 break
 
-            conn = Connection(client_sock, backend_sock, self)
+            conn = self.connection_factory(client_sock, backend_sock, self)
             conn_task = self.loop.create_task(conn.handle())
             self.connections[conn] = conn_task
 
@@ -141,13 +145,13 @@ class TCPFuzzingProxy:
         self.restore_connectivity()
 
     def _close_connection(self, connection):
-        conn_task = self.connections.pop(connection, None)
+        conn_task = self.connections.get(connection)
         if conn_task is not None:
             conn_task.cancel()
 
     def close_all_connections(self):
         for conn in list(self.connections):
-            self.loop.call_soon_threadsafe(self._close_connection, conn)
+            self.loop.call_soon_threadsafe(conn.close)
 
 
 class Connection:
@@ -161,6 +165,27 @@ class Connection:
         self.proxy_to_backend_task = None
         self.proxy_from_backend_task = None
         self.is_closed = False
+        self.client_reader = None
+        self.client_writer = None
+
+    async def prepare(self):
+        """Optionally negotiate or inject faults before forwarding bytes."""
+        return True
+
+    async def use_client_stream(self, ssl_context=None):
+        """Wrap the accepted socket in a stream, optionally with direct TLS."""
+        self.client_reader = asyncio.StreamReader()
+        protocol = asyncio.StreamReaderProtocol(self.client_reader)
+        transport, _ = await self.loop.connect_accepted_socket(
+            lambda: protocol, self.client_sock, ssl=ssl_context)
+        self.client_writer = asyncio.StreamWriter(
+            transport, protocol, self.client_reader, self.loop)
+
+    async def start_tls(self, ssl_context):
+        writer = self.client_writer
+        writer._transport = await self.loop.start_tls(
+            writer.transport, writer._protocol, ssl_context, server_side=True)
+        writer._protocol._over_ssl = True
 
     def close(self):
         if self.is_closed:
@@ -170,48 +195,72 @@ class Connection:
 
         if self.proxy_to_backend_task is not None:
             self.proxy_to_backend_task.cancel()
-            self.proxy_to_backend_task = None
 
         if self.proxy_from_backend_task is not None:
             self.proxy_from_backend_task.cancel()
-            self.proxy_from_backend_task = None
 
         self.proxy._close_connection(self)
 
     async def handle(self):
-        self.proxy_to_backend_task = asyncio.ensure_future(
-            self.proxy_to_backend())
-
-        self.proxy_from_backend_task = asyncio.ensure_future(
-            self.proxy_from_backend())
-
         try:
+            if not await self.prepare():
+                return
+
+            self.proxy_to_backend_task = asyncio.ensure_future(
+                self.proxy_to_backend())
+            self.proxy_from_backend_task = asyncio.ensure_future(
+                self.proxy_from_backend())
+
             await asyncio.wait(
                 [self.proxy_to_backend_task, self.proxy_from_backend_task],
                 return_when=asyncio.FIRST_COMPLETED)
 
+        except ConnectionError:
+            pass
+
         finally:
+            # Relay completion can schedule close() while cleanup is awaiting
+            # its children. Do not let that callback cancel cleanup itself.
+            self.is_closed = True
             if self.proxy_to_backend_task is not None:
                 self.proxy_to_backend_task.cancel()
 
             if self.proxy_from_backend_task is not None:
                 self.proxy_from_backend_task.cancel()
 
+            await asyncio.gather(*(
+                task for task in (self.proxy_to_backend_task,
+                                  self.proxy_from_backend_task)
+                if task is not None
+            ), return_exceptions=True)
+
             # Asyncio fails to properly remove the readers and writers
             # when the task doing recv() or send() is cancelled, so
             # we must remove the readers and writers manually before
             # closing the sockets.
-            self.loop.remove_reader(self.client_sock.fileno())
-            self.loop.remove_writer(self.client_sock.fileno())
-            self.loop.remove_reader(self.backend_sock.fileno())
-            self.loop.remove_writer(self.backend_sock.fileno())
-
-            self.client_sock.close()
-            self.backend_sock.close()
+            sockets = [self.backend_sock]
+            if self.client_writer is None:
+                sockets.append(self.client_sock)
+            else:
+                self.client_writer.close()
+                with contextlib.suppress(ConnectionError):
+                    await self.client_writer.wait_closed()
+            for sock in sockets:
+                if sock.fileno() < 0:
+                    continue
+                # ProactorEventLoop has no reader/writer registration API.
+                with contextlib.suppress(NotImplementedError):
+                    self.loop.remove_reader(sock.fileno())
+                    self.loop.remove_writer(sock.fileno())
+                sock.close()
+            self.proxy.connections.pop(self, None)
 
     async def _read(self, sock, n):
-        read_task = asyncio.ensure_future(
-            self.loop.sock_recv(sock, n))
+        if sock is self.client_sock and self.client_reader is not None:
+            read = self.client_reader.read(n)
+        else:
+            read = self.loop.sock_recv(sock, n)
+        read_task = asyncio.ensure_future(read)
         conn_event_task = asyncio.ensure_future(
             self.connectivity_loss.wait())
 
@@ -230,10 +279,16 @@ class Connection:
                     read_task.cancel()
                 if not conn_event_task.done():
                     conn_event_task.cancel()
+                await asyncio.gather(read_task, conn_event_task,
+                                     return_exceptions=True)
 
     async def _write(self, sock, data):
-        write_task = asyncio.ensure_future(
-            self.loop.sock_sendall(sock, data))
+        if sock is self.client_sock and self.client_writer is not None:
+            self.client_writer.write(data)
+            write = self.client_writer.drain()
+        else:
+            write = self.loop.sock_sendall(sock, data)
+        write_task = asyncio.ensure_future(write)
         conn_event_task = asyncio.ensure_future(
             self.connectivity_loss.wait())
 
@@ -252,6 +307,8 @@ class Connection:
                     write_task.cancel()
                 if not conn_event_task.done():
                     conn_event_task.cancel()
+                await asyncio.gather(write_task, conn_event_task,
+                                     return_exceptions=True)
 
     async def proxy_to_backend(self):
         buf = None

@@ -969,6 +969,7 @@ cdef class BaseProtocol(CoreProtocol):
 
     def connection_made(self, transport):
         self.transport = transport
+        self._is_ssl = transport.get_extra_info('ssl_object') is not None
 
         sock = transport.get_extra_info('socket')
         if (sock is not None and
