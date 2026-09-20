@@ -280,6 +280,9 @@ cdef class BaseProtocol(CoreProtocol):
 
         waiter = self._new_waiter(timeout)
         try:
+            if not state.prepared:
+                self._send_parse_message(state.name, state.query)
+
             self._bind(
                 portal_name,
                 state.name,
