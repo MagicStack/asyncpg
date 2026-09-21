@@ -9,7 +9,13 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509 import oid
 
 
-def _new_cert(issuer=None, is_issuer=False, serial_number=None, **subject):
+def _new_cert(
+    issuer=None,
+    is_issuer=False,
+    is_client=False,
+    serial_number=None,
+    **subject,
+):
     backend = backends.default_backend()
     private_key = rsa.generate_private_key(
         public_exponent=65537, key_size=4096, backend=backend
@@ -85,6 +91,11 @@ def _new_cert(issuer=None, is_issuer=False, serial_number=None, **subject):
             )
         )
     else:
+        extended_key_usage = (
+            oid.ExtendedKeyUsageOID.CLIENT_AUTH
+            if is_client
+            else oid.ExtendedKeyUsageOID.SERVER_AUTH
+        )
         builder = (
             builder.add_extension(
                 x509.KeyUsage(
@@ -105,11 +116,7 @@ def _new_cert(issuer=None, is_issuer=False, serial_number=None, **subject):
                 critical=True,
             )
             .add_extension(
-                x509.ExtendedKeyUsage([oid.ExtendedKeyUsageOID.SERVER_AUTH]),
-                critical=False,
-            )
-            .add_extension(
-                x509.SubjectAlternativeName([x509.DNSName("localhost")]),
+                x509.ExtendedKeyUsage([extended_key_usage]),
                 critical=False,
             )
             .add_extension(
@@ -121,6 +128,11 @@ def _new_cert(issuer=None, is_issuer=False, serial_number=None, **subject):
                 critical=False,
             )
         )
+        if not is_client:
+            builder = builder.add_extension(
+                x509.SubjectAlternativeName([x509.DNSName("localhost")]),
+                critical=False,
+            )
     certificate = builder.sign(
         private_key=signing_key,
         algorithm=hashes.SHA256(),
@@ -129,13 +141,12 @@ def _new_cert(issuer=None, is_issuer=False, serial_number=None, **subject):
     return certificate, private_key
 
 
-def _write_cert(path, cert_key_pair, password=None):
-    certificate, private_key = cert_key_pair
+def _write_key(path, private_key, password=None):
     if password:
         encryption = serialization.BestAvailableEncryption(password)
     else:
         encryption = serialization.NoEncryption()
-    with open(path + ".key.pem", "wb") as f:
+    with open(path, "wb") as f:
         f.write(
             private_key.private_bytes(
                 encoding=serialization.Encoding.PEM,
@@ -143,6 +154,11 @@ def _write_cert(path, cert_key_pair, password=None):
                 encryption_algorithm=encryption,
             )
         )
+
+
+def _write_cert(path, cert_key_pair, password=None):
+    certificate, private_key = cert_key_pair
+    _write_key(path + ".key.pem", private_key, password)
     with open(path + ".cert.pem", "wb") as f:
         f.write(
             certificate.public_bytes(
@@ -158,10 +174,18 @@ def new_ca(path, **subject):
 
 
 def new_cert(
-    path, ca_cert_key_pair, password=None, is_issuer=False, **subject
+    path,
+    ca_cert_key_pair,
+    password=None,
+    is_issuer=False,
+    is_client=False,
+    **subject,
 ):
     cert_key_pair = _new_cert(
-        issuer=ca_cert_key_pair, is_issuer=is_issuer, **subject
+        issuer=ca_cert_key_pair,
+        is_issuer=is_issuer,
+        is_client=is_client,
+        **subject,
     )
     _write_cert(path, cert_key_pair, password)
     return cert_key_pair
@@ -210,6 +234,30 @@ def main():
         serial_number=4096,
     )
     new_crl('server', ca, server)
+
+    client_ca = new_ca(
+        "client_ca",
+        country_name="CA",
+        state_or_province_name="Ontario",
+        locality_name="Toronto",
+        organization_name="MagicStack Inc.",
+        organizational_unit_name="asyncpg tests",
+        common_name="asyncpg test client CA",
+        email_address="hello@magic.io",
+    )
+    client = new_cert(
+        "client",
+        client_ca,
+        is_client=True,
+        country_name="CA",
+        state_or_province_name="Ontario",
+        locality_name="Toronto",
+        organization_name="MagicStack Inc.",
+        organizational_unit_name="asyncpg tests",
+        common_name="ssl_user",
+        email_address="hello@magic.io",
+    )
+    _write_key("client.key.protected.pem", client[1], b"secRet")
 
 
 if __name__ == "__main__":
