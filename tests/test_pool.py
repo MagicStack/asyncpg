@@ -1015,6 +1015,40 @@ class TestPool(tb.ConnectedTestCase):
         conn = await pool.acquire(timeout=POOL_NOMINAL_TIMEOUT)
         await pool.release(conn)
 
+    async def test_pool_release_after_protocol_abort(self):
+        pool = await self.create_pool(min_size=1, max_size=1)
+
+        conn = await pool.acquire()
+        raw_conn = conn._con
+        holder = conn._holder
+        terminated = asyncio.Event()
+        conn.add_termination_listener(lambda _: terminated.set())
+        self.assertEqual(await conn.fetchval('SELECT 1'), 1)
+        stmt = next(iter(raw_conn._stmt_cache.iter_statements()))
+
+        raw_conn._protocol.abort()
+
+        await pool.release(conn)
+
+        # Releasing an aborted connection must finish connection cleanup.
+        await asyncio.wait_for(terminated.wait(), timeout=1.0)
+        self.assertTrue(stmt.closed)
+        self.assertEqual(len(raw_conn._stmt_cache), 0)
+        self.assertIsNone(holder._con)
+        self.assertIsNone(holder._in_use)
+        self.assertIsNone(conn._con)
+
+        # Repeated release must not return the holder to the queue twice.
+        await pool.release(conn)
+        self.assertEqual(pool._queue.qsize(), 1)
+
+        # The holder must reconnect and support queries after the abort.
+        conn2 = await pool.acquire(timeout=1.0)
+        self.assertIsNot(conn2._con, raw_conn)
+        self.assertEqual(await conn2.fetchval('SELECT 1'), 1)
+        await pool.release(conn2)
+        await pool.close()
+
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')
 class TestPoolReconnectWithTargetSessionAttrs(tb.ClusterTestCase):

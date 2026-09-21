@@ -199,8 +199,10 @@ class PoolConnectionHolder:
                 'a free connection holder')
 
         if self._con.is_closed():
-            # When closing, pool connections perform the necessary
-            # cleanup, so we don't have to do anything else here.
+            # A protocol abort may close the connection without running
+            # Connection._cleanup().  Terminate it to finish cleanup and
+            # return the holder to the pool via _release_on_close().
+            self._con.terminate()
             return
 
         self._timeout = None
