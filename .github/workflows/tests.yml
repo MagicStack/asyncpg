@@ -17,13 +17,18 @@ jobs:
     # job.
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.14t"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.14t", "3.15", "3.15t"]
         os: [ubuntu-latest, macos-latest, windows-latest]
         loop: [asyncio, uvloop]
         exclude:
           # uvloop does not support windows
           - loop: uvloop
             os: windows-latest
+          # The test dependency group excludes uvloop on Python 3.15.
+          - loop: uvloop
+            python-version: "3.15"
+          - loop: uvloop
+            python-version: "3.15t"
 
     runs-on: ${{ matrix.os }}
 
@@ -65,6 +70,9 @@ jobs:
       if: "!steps.release.outputs.is_release"
       with:
         python-version: ${{ matrix.python-version }}
+        # Track the latest 3.15 build, including prereleases before GA.
+        allow-prereleases: ${{ startsWith(matrix.python-version, '3.15') }}
+        check-latest: ${{ startsWith(matrix.python-version, '3.15') }}
 
     - name: Install Python Deps
       if: "!steps.release.outputs.is_release"
