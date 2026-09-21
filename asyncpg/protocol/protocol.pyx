@@ -612,41 +612,41 @@ cdef class BaseProtocol(CoreProtocol):
             return
 
         self.closing = True
-        timeout = self._get_timeout_impl(timeout)
-
+        close_waiter = None
         try:
-            if timeout is None:
+            timeout = self._get_timeout_impl(timeout)
+            # Cancellation and the final disconnect share one deadline.
+            async with compat.timeout(timeout):
                 await self._drain_cancels()
-            else:
-                await asyncio.wait_for(self._drain_cancels(), timeout)
-        except asyncio.TimeoutError:
-            # Server never acknowledged the cancel. Abort rather than
-            # hanging on cancel_waiter until the transport dies.
-            self._complete_cancel_waiters()
+
+                # Transport loss completes the cancellation futures too.
+                # There will be no further disconnect notification to await.
+                if self.con_status != CONNECTION_OK:
+                    return
+
+                assert self.waiter is None
+
+                # The timeout context also covers errors while sending
+                # Terminate; do not start a separate query timeout timer.
+                close_waiter = self._new_waiter(None)
+                self._terminate()
+                try:
+                    await close_waiter
+                except ConnectionResetError:
+                    # On Windows the transport may raise this instead of
+                    # calling protocol.connection_lost().
+                    pass
+        finally:
+            if close_waiter is not None and not close_waiter.done():
+                close_waiter.cancel()
+            if self.timeout_handle is not None:
+                self.timeout_handle.cancel()
+                self.timeout_handle = None
+            self._handle_waiter_on_connection_lost(None)
             if self.transport is not None:
                 transport = self.transport
                 self.transport = None
                 transport.abort()
-            return
-
-        assert self.waiter is None
-
-        # Ask the server to terminate the connection and wait for it
-        # to drop.
-        self.waiter = self._new_waiter(timeout)
-        self._terminate()
-        try:
-            await self.waiter
-        except ConnectionResetError:
-            # There appears to be a difference in behaviour of asyncio
-            # in Windows, where, instead of calling protocol.connection_lost()
-            # a ConnectionResetError will be thrown into the task.
-            pass
-        finally:
-            self.waiter = None
-            if self.transport is not None:
-                self.transport.abort()
-                self.transport = None
 
     def _request_cancel(self):
         self.cancel_waiter = self.create_future()
@@ -696,7 +696,8 @@ cdef class BaseProtocol(CoreProtocol):
         return asyncio.Future(loop=self.loop)
 
     cdef _complete_cancel_waiters(self):
-        if self.cancel_sent_waiter is not None and not self.cancel_sent_waiter.done():
+        if (self.cancel_sent_waiter is not None and
+                not self.cancel_sent_waiter.done()):
             self.cancel_sent_waiter.set_result(None)
         self.cancel_sent_waiter = None
         if self.cancel_waiter is not None and not self.cancel_waiter.done():
@@ -720,7 +721,6 @@ cdef class BaseProtocol(CoreProtocol):
             self.waiter.set_exception(exc)
         self.waiter = None
         self._complete_cancel_waiters()
-
 
     cdef _set_server_parameter(self, name, val):
         self.settings.add_setting(name, val)
