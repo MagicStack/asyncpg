@@ -234,16 +234,31 @@ class TestCloseTimeoutPendingCancel(tb.ClusterTestCase):
                         self.assertFalse(con._cancellations)
 
     async def test_close_has_one_timeout_budget(self):
-        con = await self.connect()
+        terminate_sent = asyncio.Event()
+
+        class NoTerminateProtocol(connect_utils.protocol.Protocol):
+            def connection_made(self, transport):
+                def write(data):
+                    if bytes(data) == b'X\x00\x00\x00\x04':
+                        terminate_sent.set()
+                    else:
+                        transport.write(data)
+
+                # Keep the server connected after Terminate. Pausing reads
+                # does not suppress disconnects on Windows' Proactor loop.
+                wrapped = mock.Mock(wraps=transport)
+                wrapped.write.side_effect = write
+                super().connection_made(wrapped)
+
+        with mock.patch.object(connect_utils.protocol, 'Protocol',
+                               NoTerminateProtocol):
+            con = await self.connect()
         proto = con._protocol
         drain_cancels = proto._drain_cancels
 
         async def delayed_drain():
             await asyncio.sleep(0.3)
             await drain_cancels()
-            # Hold back the final disconnect notification after cancellation
-            # completes, so both phases consume part of the timeout budget.
-            con._transport.pause_reading()
 
         try:
             with self.assertRaises(asyncio.TimeoutError):
@@ -252,6 +267,7 @@ class TestCloseTimeoutPendingCancel(tb.ClusterTestCase):
                 with self.assertRaises(asyncio.TimeoutError), \
                         self.assertRunUnder(0.7):
                     await con.close(timeout=0.5)
+            self.assertTrue(terminate_sent.is_set())
             self.assertTrue(con._transport.is_closing())
         finally:
             con.terminate()
