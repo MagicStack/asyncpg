@@ -1,3 +1,4 @@
+import argparse
 import datetime
 import os
 
@@ -9,24 +10,30 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509 import oid
 
 
-def _new_cert(
-    issuer=None,
-    is_issuer=False,
-    is_client=False,
-    serial_number=None,
-    **subject,
-):
-    backend = backends.default_backend()
-    private_key = rsa.generate_private_key(
-        public_exponent=65537, key_size=4096, backend=backend
-    )
-    public_key = private_key.public_key()
-    subject = x509.Name(
+def _new_subject(**subject):
+    return x509.Name(
         [
             x509.NameAttribute(getattr(oid.NameOID, key.upper()), value)
             for key, value in subject.items()
         ]
     )
+
+
+def _new_cert(
+    issuer=None,
+    is_issuer=False,
+    is_client=False,
+    private_key=None,
+    serial_number=None,
+    **subject,
+):
+    backend = backends.default_backend()
+    if private_key is None:
+        private_key = rsa.generate_private_key(
+            public_exponent=65537, key_size=4096, backend=backend
+        )
+    public_key = private_key.public_key()
+    subject = _new_subject(**subject)
     builder = (
         x509.CertificateBuilder()
         .subject_name(subject)
@@ -156,6 +163,18 @@ def _write_key(path, private_key, password=None):
         )
 
 
+def _load_key(path, password=None):
+    try:
+        with open(path, "rb") as f:
+            return serialization.load_pem_private_key(
+                f.read(),
+                password=password,
+                backend=backends.default_backend(),
+            )
+    except FileNotFoundError:
+        return None
+
+
 def _write_cert(path, cert_key_pair, password=None):
     certificate, private_key = cert_key_pair
     _write_key(path + ".key.pem", private_key, password)
@@ -167,8 +186,12 @@ def _write_cert(path, cert_key_pair, password=None):
         )
 
 
-def new_ca(path, **subject):
-    cert_key_pair = _new_cert(is_issuer=True, **subject)
+def new_ca(path, private_key=None, **subject):
+    cert_key_pair = _new_cert(
+        is_issuer=True,
+        private_key=private_key,
+        **subject,
+    )
     _write_cert(path, cert_key_pair)
     return cert_key_pair
 
@@ -179,16 +202,32 @@ def new_cert(
     password=None,
     is_issuer=False,
     is_client=False,
+    private_key=None,
     **subject,
 ):
     cert_key_pair = _new_cert(
         issuer=ca_cert_key_pair,
         is_issuer=is_issuer,
         is_client=is_client,
+        private_key=private_key,
         **subject,
     )
     _write_cert(path, cert_key_pair, password)
     return cert_key_pair
+
+
+def new_csr(path, private_key, **subject):
+    request = (
+        x509.CertificateSigningRequestBuilder()
+        .subject_name(_new_subject(**subject))
+        .sign(
+            private_key,
+            hashes.SHA256(),
+            backends.default_backend(),
+        )
+    )
+    with open(path + ".csr.pem", "wb") as f:
+        f.write(request.public_bytes(serialization.Encoding.PEM))
 
 
 def new_crl(path, issuer, cert):
@@ -211,9 +250,15 @@ def new_crl(path, issuer, cert):
         f.write(crl.public_bytes(encoding=serialization.Encoding.PEM))
 
 
-def main():
+def main(*, rotate_keys=False):
+    def existing_key(path):
+        if rotate_keys:
+            return None
+        return _load_key(path)
+
     ca = new_ca(
         "ca",
+        private_key=existing_key("ca.key.pem"),
         country_name="CA",
         state_or_province_name="Ontario",
         locality_name="Toronto",
@@ -225,6 +270,7 @@ def main():
     server = new_cert(
         "server",
         ca,
+        private_key=existing_key("server.key.pem"),
         country_name="CA",
         state_or_province_name="Ontario",
         organization_name="MagicStack Inc.",
@@ -237,6 +283,7 @@ def main():
 
     client_ca = new_ca(
         "client_ca",
+        private_key=existing_key("client_ca.key.pem"),
         country_name="CA",
         state_or_province_name="Ontario",
         locality_name="Toronto",
@@ -245,10 +292,7 @@ def main():
         common_name="asyncpg test client CA",
         email_address="hello@magic.io",
     )
-    client = new_cert(
-        "client",
-        client_ca,
-        is_client=True,
+    client_subject = dict(
         country_name="CA",
         state_or_province_name="Ontario",
         locality_name="Toronto",
@@ -257,8 +301,23 @@ def main():
         common_name="ssl_user",
         email_address="hello@magic.io",
     )
+    client = new_cert(
+        "client",
+        client_ca,
+        is_client=True,
+        private_key=existing_key("client.key.pem"),
+        **client_subject,
+    )
+    new_csr("client", client[1], **client_subject)
     _write_key("client.key.protected.pem", client[1], b"secRet")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--rotate-keys",
+        action="store_true",
+        help="generate new private keys instead of reusing existing key files",
+    )
+    args = parser.parse_args()
+    main(rotate_keys=args.rotate_keys)
