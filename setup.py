@@ -37,6 +37,11 @@ if platform.uname().system != 'Windows':
     # Link against libm (math library) for functions like log10()
     LDFLAGS.extend(['-lm'])
 
+if platform.uname().system == 'FreeBSD':
+    # Cython's thread-safe module state lookup uses the C11 threads API on
+    # CPython 3.12+.  FreeBSD provides that API in libstdthreads.
+    LDFLAGS.extend(['-lstdthreads'])
+
 
 _ROOT = pathlib.Path(__file__).parent
 
