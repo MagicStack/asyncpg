@@ -719,20 +719,31 @@ class TestPool(tb.ConnectedTestCase):
     async def test_pool_max_inactive_time_05(self):
         # Test that idle never-acquired connections abide by
         # the max inactive lifetime.
+        connections = {}
+
+        async def init(con):
+            terminated = asyncio.Event()
+            connections[con] = terminated
+            con.add_termination_listener(lambda _: terminated.set())
+
         async with self.create_pool(
                 database='postgres', min_size=2, max_size=2,
+                init=init,
                 max_inactive_connection_lifetime=0.2) as pool:
 
-            self.assertIsNotNone(pool._holders[0]._con)
-            self.assertIsNotNone(pool._holders[1]._con)
+            # A connection may expire while the remaining connections are
+            # still being initialized, so observe termination from init().
+            self.assertEqual(len(connections), 2)
 
-            await pool.execute('SELECT pg_sleep(0.3)')
-            await asyncio.sleep(0.3)
+            await asyncio.wait_for(
+                asyncio.gather(*(event.wait()
+                                 for event in connections.values())),
+                timeout=5)
 
-            self.assertIs(pool._holders[0]._con, None)
-            # The connection in the second holder was never used,
-            # but should be closed nonetheless.
-            self.assertIs(pool._holders[1]._con, None)
+            for con in connections:
+                self.assertTrue(con.is_closed())
+            for holder in pool._holders:
+                self.assertIsNone(holder._con)
 
     async def test_pool_handles_inactive_connection_errors(self):
         pool = await self.create_pool(database='postgres',
@@ -1001,8 +1012,42 @@ class TestPool(tb.ConnectedTestCase):
         await task
 
         # Check that connection_lost has released the pool holder.
-        conn = await pool.acquire(timeout=0.1)
+        conn = await pool.acquire(timeout=POOL_NOMINAL_TIMEOUT)
         await pool.release(conn)
+
+    async def test_pool_release_after_protocol_abort(self):
+        pool = await self.create_pool(min_size=1, max_size=1)
+
+        conn = await pool.acquire()
+        raw_conn = conn._con
+        holder = conn._holder
+        terminated = asyncio.Event()
+        conn.add_termination_listener(lambda _: terminated.set())
+        self.assertEqual(await conn.fetchval('SELECT 1'), 1)
+        stmt = next(iter(raw_conn._stmt_cache.iter_statements()))
+
+        raw_conn._protocol.abort()
+
+        await pool.release(conn)
+
+        # Releasing an aborted connection must finish connection cleanup.
+        await asyncio.wait_for(terminated.wait(), timeout=1.0)
+        self.assertTrue(stmt.closed)
+        self.assertEqual(len(raw_conn._stmt_cache), 0)
+        self.assertIsNone(holder._con)
+        self.assertIsNone(holder._in_use)
+        self.assertIsNone(conn._con)
+
+        # Repeated release must not return the holder to the queue twice.
+        await pool.release(conn)
+        self.assertEqual(pool._queue.qsize(), 1)
+
+        # The holder must reconnect and support queries after the abort.
+        conn2 = await pool.acquire(timeout=1.0)
+        self.assertIsNot(conn2._con, raw_conn)
+        self.assertEqual(await conn2.fetchval('SELECT 1'), 1)
+        await pool.release(conn2)
+        await pool.close()
 
 
 @unittest.skipIf(os.environ.get('PGHOST'), 'unmanaged cluster')

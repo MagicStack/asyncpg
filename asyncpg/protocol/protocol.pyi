@@ -104,6 +104,7 @@ class PreparedStatementState(Generic[_Record]):
     def __reduce__(self) -> Any: ...
 
 class CoreProtocol:
+    _auth_received: bool
     backend_pid: Any
     backend_secret: Any
     __pyx_vtable__: Any

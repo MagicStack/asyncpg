@@ -33,6 +33,9 @@ from . import exceptions
 from . import protocol
 
 
+_SSL_REQUEST_CODE = 80877103
+
+
 class SSLMode(enum.IntEnum):
     disable = 0
     allow = 1
@@ -811,8 +814,14 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
     elif ssl is True:
         ssl = ssl_module.create_default_context()
         sslmode = SSLMode.verify_full
+    elif isinstance(ssl, ssl_module.SSLContext):
+        sslmode = SSLMode.require
     else:
         sslmode = SSLMode.disable
+
+    if sslneg is SSLNegotiation.direct and sslmode < SSLMode.require:
+        raise exceptions.ClientConfigurationError(
+            'direct TLS requires sslmode=require, verify-ca, or verify-full')
 
     if server_settings is not None and (
             not isinstance(server_settings, dict) or
@@ -924,6 +933,8 @@ class TLSUpgradeProto(asyncio.Protocol):
         self.ssl_is_advisory = ssl_is_advisory
 
     def data_received(self, data: bytes) -> None:
+        if self.on_data.done():
+            return
         if data == b'S':
             self.on_data.set_result(True)
         elif (self.ssl_is_advisory and
@@ -934,6 +945,13 @@ class TLSUpgradeProto(asyncio.Protocol):
             # sslmode=prefer. But be extra sure to disallow insecure
             # connections when the ssl context asks for real security.
             self.on_data.set_result(False)
+        elif data.startswith(b'E'):
+            # Never trust or expose pre-TLS ErrorResponse fields
+            # (including SQLSTATE). See CVE-2024-10977.
+            self.on_data.set_exception(ConnectionError(
+                f'PostgreSQL server at "{self.host}:{self.port}": '
+                'server sent an error response during SSL exchange; '
+                'check the server logs for details'))
         else:
             self.on_data.set_exception(
                 ConnectionError(
@@ -964,6 +982,7 @@ async def _create_ssl_connection(
     loop: asyncio.AbstractEventLoop,
     ssl_context: ssl_module.SSLContext,
     ssl_is_advisory: bool = False,
+    retry: bool = False,
 ) -> typing.Tuple[asyncio.Transport, _ProctolFactoryR]:
 
     tr, pr = await loop.create_connection(
@@ -971,7 +990,7 @@ async def _create_ssl_connection(
                                 ssl_context, ssl_is_advisory),
         host, port)
 
-    tr.write(struct.pack('!ll', 8, 80877103))  # SSLRequest message.
+    tr.write(struct.pack('!ll', 8, _SSL_REQUEST_CODE))  # SSLRequest message.
 
     try:
         do_ssl_upgrade = await pr.on_data
@@ -984,16 +1003,22 @@ async def _create_ssl_connection(
             try:
                 new_tr = await loop.start_tls(
                     tr, pr, ssl_context, server_hostname=host)
-                assert new_tr is not None
-            except (Exception, asyncio.CancelledError):
+                if new_tr is None:
+                    raise ConnectionError('connection closed during TLS '
+                                          'handshake')
+            except (Exception, asyncio.CancelledError) as exc:
                 tr.close()
+                if retry and isinstance(exc, OSError) and not isinstance(
+                    exc, asyncio.TimeoutError
+                ):
+                    raise _RetryConnectSignal() from exc
                 raise
         else:
             new_tr = tr
 
         pg_proto = protocol_factory()
-        pg_proto.is_ssl = do_ssl_upgrade
         pg_proto.connection_made(new_tr)
+        pg_proto.is_ssl = do_ssl_upgrade
         new_tr.set_protocol(pg_proto)
 
         return new_tr, pg_proto
@@ -1014,8 +1039,11 @@ async def _create_ssl_connection(
             new_tr, pg_proto = await conn_factory(sock=sock)
             pg_proto.is_ssl = do_ssl_upgrade
             return new_tr, pg_proto
-        except (Exception, asyncio.CancelledError):
+        except (Exception, asyncio.CancelledError) as exc:
             sock.close()
+            if (retry and do_ssl_upgrade and isinstance(exc, OSError)
+                    and not isinstance(exc, asyncio.TimeoutError)):
+                raise _RetryConnectSignal() from exc
             raise
 
 
@@ -1040,7 +1068,9 @@ async def _connect_addr(
     args = (addr, loop, config, connection_class, record_class, params_input)
 
     # prepare the params (which attempt has ssl) for the 2 attempts
-    if params.sslmode == SSLMode.allow:
+    if isinstance(addr, str):
+        return await __connect_addr(params, False, *args)
+    elif params.sslmode == SSLMode.allow:
         params_retry = params
         params = params._replace(ssl=None)
     elif params.sslmode == SSLMode.prefer:
@@ -1052,14 +1082,37 @@ async def _connect_addr(
     # first attempt
     try:
         return await __connect_addr(params, True, *args)
-    except _RetryConnectSignal:
-        pass
+    except _RetryConnectSignal as retry_exc:
+        first_error = retry_exc.__cause__
+        assert first_error is not None
 
     # second attempt
-    return await __connect_addr(params_retry, False, *args)
+    try:
+        return await __connect_addr(params_retry, False, *args)
+    except _NextHostSignal as exc:
+        # The server error will be unwrapped by _connect on host exhaustion.
+        exc.__cause__.__cause__ = first_error
+        raise
+    except (Exception, asyncio.CancelledError) as second_error:
+        # If the preferred attempt produced a useful authentication error,
+        # do not hide it behind a generic rejection from the fallback mode.
+        if (
+            isinstance(first_error, exceptions.InvalidPasswordError)
+            and not isinstance(second_error, exceptions.InvalidPasswordError)
+            and isinstance(second_error, (
+                exceptions.InvalidAuthorizationSpecificationError,
+                exceptions.ConnectionDoesNotExistError,
+            ))
+        ):
+            raise first_error from None
+        raise second_error from first_error
 
 
 class _RetryConnectSignal(Exception):
+    pass
+
+
+class _NextHostSignal(Exception):
     pass
 
 
@@ -1092,7 +1145,8 @@ async def __connect_addr(
     elif params.ssl:
         connector = _create_ssl_connection(
             proto_factory, *addr, loop=loop, ssl_context=params.ssl,
-            ssl_is_advisory=params.sslmode == SSLMode.prefer)
+            ssl_is_advisory=params.sslmode == SSLMode.prefer,
+            retry=retry and params.sslmode == SSLMode.prefer)
     else:
         connector = loop.create_connection(proto_factory, *addr)
 
@@ -1100,34 +1154,23 @@ async def __connect_addr(
 
     try:
         await connected
-    except (
-        exceptions.InvalidAuthorizationSpecificationError,
-        exceptions.ConnectionDoesNotExistError,  # seen on Windows
-    ):
+    except exceptions.PostgresError as exc:
         tr.close()
 
-        # retry=True here is a redundant check because we don't want to
-        # accidentally raise the internal _RetryConnectSignal to the user
-        if retry and (
+        if not pr._auth_received and isinstance(
+            exc, exceptions.CannotConnectNowError
+        ):
+            raise _NextHostSignal() from exc
+
+        # Only retry before AuthenticationOk, and only if the other transport
+        # has not been tried. This includes ConnectionDoesNotExistError,
+        # which is needed for Windows compatibility.
+        if retry and not pr._auth_received and (
             params.sslmode == SSLMode.allow and not pr.is_ssl or
             params.sslmode == SSLMode.prefer and pr.is_ssl
         ):
-            # Trigger retry when:
-            #   1. First attempt with sslmode=allow, ssl=None failed
-            #   2. First attempt with sslmode=prefer, ssl=ctx failed while the
-            #      server claimed to support SSL (returning "S" for SSLRequest)
-            #      (likely because pg_hba.conf rejected the connection)
-            raise _RetryConnectSignal()
-
-        else:
-            # but will NOT retry if:
-            #   1. First attempt with sslmode=prefer failed but the server
-            #      doesn't support SSL (returning 'N' for SSLRequest), because
-            #      we already tried to connect without SSL thru ssl_is_advisory
-            #   2. Second attempt with sslmode=prefer, ssl=None failed
-            #   3. Second attempt with sslmode=allow, ssl=ctx failed
-            #   4. Any other sslmode
-            raise
+            raise _RetryConnectSignal() from exc
+        raise
 
     except (Exception, asyncio.CancelledError):
         tr.close()
@@ -1229,6 +1272,8 @@ async def _connect(*, loop, connection_class, record_class, **kwargs):
                     break
             except OSError as ex:
                 last_error = ex
+            except _NextHostSignal as ex:
+                last_error = ex.__cause__
         else:
             if target_attr == SessionAttribute.prefer_standby and candidates:
                 chosen_connection = random.choice(candidates)
