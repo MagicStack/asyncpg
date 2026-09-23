@@ -288,6 +288,16 @@ class TestRecord(tb.ConnectedTestCase):
             self.assertEqual(r.get('nonexistent'), None)
             self.assertEqual(r.get('nonexistent', 'default'), 'default')
 
+    def test_record_get_invalid_args(self):
+        r = Record(R_AB, (42, 43))
+        with self.checkref(r):
+            with self.assertRaises(TypeError):
+                r.get()
+            with self.assertRaises(TypeError):
+                r.get('a', 2, 3)
+            with self.assertRaises(TypeError):
+                r.get(default=2)
+
     def test_record_not_pickleable(self):
         r = Record(R_A, (42,))
         with self.assertRaises(Exception):

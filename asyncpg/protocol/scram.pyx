@@ -68,7 +68,7 @@ cdef class SCRAMAuthentication:
     SCRAM-SHA-256-PLUS) but to do some ongoing discussion, there is a conscious
     decision by several driver authors to not support it as of yet. As such, the
     channel binding parameter is hard-coded to "n" for now, but can be updated
-    to support other channel binding methos in the future
+    to support other channel binding methods in the future
     """
     AUTHENTICATION_METHODS = [b"SCRAM-SHA-256"]
     DEFAULT_CLIENT_NONCE_BYTES = 24

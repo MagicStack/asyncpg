@@ -70,6 +70,7 @@ cdef class BaseProtocol(CoreProtocol):
     cdef _on_result__copy_in(self, object waiter)
 
     cdef _handle_waiter_on_connection_lost(self, cause)
+    cdef _complete_cancel_waiters(self)
 
     cdef _dispatch_result(self)
 
