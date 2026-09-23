@@ -674,9 +674,19 @@ cdef class BaseProtocol(CoreProtocol):
 
     cdef _handle_waiter_on_connection_lost(self, cause):
         if self.waiter is not None and not self.waiter.done():
-            exc = apg_exc.ConnectionDoesNotExistError(
-                'connection was closed in the middle of '
-                'operation')
+            msg = 'connection was closed in the middle of operation'
+            if (self.result_type == RESULT_FAILED and
+                    isinstance(self.result, dict)):
+                # The server sent an ErrorResponse and then closed the
+                # connection without a ReadyForQuery (a FATAL error, or
+                # pgbouncer's query_wait_timeout).  Do not lose it.
+                server_exc = apg_exc_base.PostgresError.new(
+                    self.result, query=self.last_query)
+                if cause is not None:
+                    server_exc.__cause__ = cause
+                cause = server_exc
+                msg = '{}: {}'.format(msg, server_exc.args[0])
+            exc = apg_exc.ConnectionDoesNotExistError(msg)
             if cause is not None:
                 exc.__cause__ = cause
             self.waiter.set_exception(exc)
