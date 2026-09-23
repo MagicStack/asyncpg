@@ -32,6 +32,7 @@ cdef class CoreProtocol:
         self.auth_msg = None
         self.con_params = con_params
         self.con_status = CONNECTION_BAD
+        self._auth_received = False
         self.state = PROTOCOL_IDLE
         self.xact_status = PQTRANS_IDLE
         self.encoding = 'utf-8'
@@ -313,6 +314,10 @@ cdef class CoreProtocol:
             # ErrorResponse
             self._parse_msg_error_response(True)
 
+        elif mtype == b'1':
+            # ParseComplete, in case `_bind()` is reparsing
+            self.buffer.discard_message()
+
         elif mtype == b'2':
             # BindComplete
             self.buffer.discard_message()
@@ -569,6 +574,7 @@ cdef class CoreProtocol:
 
         if status == AUTH_SUCCESSFUL:
             # AuthenticationOk
+            self._auth_received = True
             self.result_type = RESULT_OK
 
         elif status == AUTH_REQUIRED_PASSWORD:

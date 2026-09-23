@@ -402,7 +402,7 @@ class ProxiedClusterTestCase(ClusterTestCase):
             host = '127.0.0.1'
         cls.proxy = fuzzer.TCPFuzzingProxy(
             backend_host=host,
-            backend_port=conn_spec['port'],
+            backend_port=int(conn_spec['port']),
         )
         cls.proxy.start()
 

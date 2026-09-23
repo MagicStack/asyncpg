@@ -784,6 +784,55 @@ class TestCopyTo(tb.ConnectedTestCase):
         finally:
             con.terminate()
 
+    async def test_copy_records_to_table_stmt_cache(self):
+        # The introspection statement must be taken from the statement
+        # cache, otherwise every call pays for an extra round-trip.
+        await self.con.execute('''
+            CREATE TABLE copytab_cache(a text, b int);
+        ''')
+
+        try:
+            intro_query = 'SELECT "a", "b" FROM "copytab_cache" LIMIT 1'
+            cache_key = (intro_query, asyncpg.Record, False)
+
+            res = await self.con.copy_records_to_table(
+                'copytab_cache', records=[('a', 1)], columns=['a', 'b'])
+            self.assertEqual(res, 'COPY 1')
+
+            entry = self.con._stmt_cache.get(cache_key, promote=False)
+            self.assertIsNotNone(entry)
+
+            res = await self.con.copy_records_to_table(
+                'copytab_cache', records=[('b', 2)], columns=['a', 'b'])
+            self.assertEqual(res, 'COPY 1')
+
+            self.assertIs(
+                self.con._stmt_cache.get(cache_key, promote=False), entry)
+
+        finally:
+            await self.con.execute('DROP TABLE copytab_cache')
+
+    @tb.with_connection_options(statement_cache_size=0)
+    async def test_copy_records_to_table_no_stmt_cache(self):
+        await self.con.execute('''
+            CREATE TABLE copytab_nocache(a text, b int);
+        ''')
+
+        try:
+            for i in range(3):
+                res = await self.con.copy_records_to_table(
+                    'copytab_nocache', records=[('a', i)])
+                self.assertEqual(res, 'COPY 1')
+
+            # No named statements must be used when the cache is disabled.
+            self.assertEqual(
+                await self.con.fetchval(
+                    'SELECT count(*) FROM pg_prepared_statements'),
+                0)
+
+        finally:
+            await self.con.execute('DROP TABLE copytab_nocache')
+
     async def test_copy_records_to_table_no_binary_codec(self):
         await self.con.execute('''
             CREATE TABLE copytab(a uuid);

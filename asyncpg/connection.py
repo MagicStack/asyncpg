@@ -1116,7 +1116,7 @@ class Connection(metaclass=ConnectionMeta):
         intro_query = 'SELECT {cols} FROM {tab} LIMIT 1'.format(
             tab=tabname, cols=col_list)
 
-        intro_ps = await self.prepare(intro_query)
+        intro_ps = await self._prepare(intro_query, use_cache=True)
 
         cond = self._format_copy_where(where)
         opts = '(FORMAT binary)'
@@ -1520,7 +1520,7 @@ class Connection(metaclass=ConnectionMeta):
 
     def terminate(self):
         """Terminate the connection without waiting for pending data."""
-        if not self.is_closed():
+        if not self._aborted and self._protocol is not None:
             self._abort()
         self._cleanup()
 
@@ -1573,8 +1573,9 @@ class Connection(metaclass=ConnectionMeta):
     def _abort(self):
         # Put the connection into the aborted state.
         self._aborted = True
-        self._protocol.abort()
-        self._protocol = None
+        if self._protocol is not None:
+            self._protocol.abort()
+            self._protocol = None
 
     def _cleanup(self):
         self._call_termination_listeners()
@@ -1595,8 +1596,9 @@ class Connection(metaclass=ConnectionMeta):
     def _clean_tasks(self):
         # Wrap-up any remaining tasks associated with this connection.
         if self._cancellations:
+            current = asyncio.current_task(self._loop)
             for fut in self._cancellations:
-                if not fut.done():
+                if fut is not current and not fut.done():
                     fut.cancel()
             self._cancellations.clear()
 
@@ -1649,37 +1651,42 @@ class Connection(metaclass=ConnectionMeta):
             # so we ignore the timeout.
             await self._protocol.close_statement(stmt, protocol.NO_TIMEOUT)
 
-    async def _cancel(self, waiter):
+    async def _cancel(self, waiter, cancel_waiter=None):
         try:
-            # Open new connection to the server
-            await connect_utils._cancel(
-                loop=self._loop, addr=self._addr, params=self._params,
-                backend_pid=self._protocol.backend_pid,
-                backend_secret=self._protocol.backend_secret)
-        except ConnectionResetError as ex:
-            # On some systems Postgres will reset the connection
-            # after processing the cancellation command.
-            if not waiter.done():
-                waiter.set_exception(ex)
+            async with compat.timeout(self._config.command_timeout):
+                try:
+                    await connect_utils._cancel(
+                        loop=self._loop, addr=self._addr, params=self._params,
+                        backend_pid=self._protocol.backend_pid,
+                        backend_secret=self._protocol.backend_secret)
+                except ConnectionResetError:
+                    # Some servers reset the auxiliary connection after
+                    # receiving the CancelRequest.  The original connection
+                    # still has to acknowledge the cancelled query.
+                    pass
+
+                if not waiter.done():
+                    waiter.set_result(None)
+                if cancel_waiter is not None:
+                    await asyncio.shield(cancel_waiter)
         except asyncio.CancelledError:
-            # There are two scenarios in which the cancellation
-            # itself will be cancelled: 1) the connection is being closed,
-            # 2) the event loop is being shut down.
-            # In either case we do not care about the propagation of
-            # the CancelledError, and don't want the loop to warn about
-            # an unretrieved exception.
+            # Teardown can cancel this background task.  Its waiters are
+            # completed in finally, without leaking CancelledError.
             pass
-        except (Exception, asyncio.CancelledError) as ex:
-            if not waiter.done():
-                waiter.set_exception(ex)
+        except Exception:
+            if not self._aborted:
+                # A failed CancelRequest leaves the original connection's
+                # protocol state uncertain.  It cannot be reused safely.
+                self.terminate()
         finally:
             self._cancellations.discard(
                 asyncio.current_task(self._loop))
             if not waiter.done():
                 waiter.set_result(None)
 
-    def _cancel_current_command(self, waiter):
-        self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
+    def _cancel_current_command(self, waiter, cancel_waiter=None):
+        self._cancellations.add(self._loop.create_task(
+            self._cancel(waiter, cancel_waiter)))
 
     def _process_log_message(self, fields, last_query):
         if not self._log_listeners:
@@ -2251,6 +2258,15 @@ async def connect(dsn=None, *,
         The default is ``'prefer'``: try an SSL connection and fallback to
         non-SSL connection if that fails.
 
+        With ``'allow'`` and ``'prefer'``, a server error before
+        ``AuthenticationOk`` permits one retry using the other transport.
+
+        Errors in response to SSLRequest, timeouts, cancellation, client-side
+        authentication errors, and errors after ``AuthenticationOk`` do not
+        trigger transport retries. A server reporting that it cannot accept
+        connections yet (SQLSTATE ``57P03``) before ``AuthenticationOk`` causes
+        asyncpg to try the next host.
+
         .. note::
 
            *ssl* is ignored for Unix domain socket communication.
@@ -2302,7 +2318,8 @@ async def connect(dsn=None, *,
 
     :param bool direct_tls:
         Pass ``True`` to skip PostgreSQL STARTTLS mode and perform a direct
-        SSL connection. Must be used alongside ``ssl`` param.
+        SSL connection. Requires ``ssl='require'``, ``'verify-ca'``,
+        ``'verify-full'``, ``True``, or an explicit ``SSLContext``.
 
     :param dict server_settings:
         An optional dict of server runtime parameters.  Refer to
@@ -2416,6 +2433,12 @@ async def connect(dsn=None, *,
 
     .. versionchanged:: 0.31.0
        Added the *servicefile* and *service* parameters.
+
+    .. versionchanged:: 0.32.0
+       ``direct_tls=True`` requires an SSL mode of ``'require'`` or higher,
+       ``ssl=True``, or an explicit ``SSLContext``. Other values
+       (``'disable'``, ``'allow'``, and ``'prefer'``) will raise a
+       ``ClientConfigurationError``.
 
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:

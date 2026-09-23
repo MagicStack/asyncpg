@@ -11,7 +11,6 @@ from collections.abc import Awaitable, Callable
 import functools
 import inspect
 import logging
-import time
 from types import TracebackType
 from typing import Any, Optional, Type
 import warnings
@@ -199,8 +198,10 @@ class PoolConnectionHolder:
                 'a free connection holder')
 
         if self._con.is_closed():
-            # When closing, pool connections perform the necessary
-            # cleanup, so we don't have to do anything else here.
+            # A protocol abort may close the connection without running
+            # Connection._cleanup().  Terminate it to finish cleanup and
+            # return the holder to the pool via _release_on_close().
+            self._con.terminate()
             return
 
         self._timeout = None
@@ -224,12 +225,17 @@ class PoolConnectionHolder:
             if self._con._protocol._is_cancelling():
                 # If the connection is in cancellation state,
                 # wait for the cancellation
-                started = time.monotonic()
-                await compat.wait_for(
-                    self._con._protocol._wait_for_cancellation(),
+                budget = await self._con._protocol._wait_for_cancellation(
                     budget)
-                if budget is not None:
-                    budget -= time.monotonic() - started
+
+            # The background cancellation may have timed out and terminated
+            # the connection while we were waiting.  In that case cleanup
+            # has already returned the holder to the pool.
+            if self._con is None:
+                return
+            if self._con.is_closed():
+                self._con.terminate()
+                return
 
             if self._pool._reset is not None:
                 async with compat.timeout(budget):
@@ -244,7 +250,8 @@ class PoolConnectionHolder:
             try:
                 # An exception in `reset` is most likely caused by
                 # an IO error, so terminate the connection.
-                self._con.terminate()
+                if self._con is not None:
+                    self._con.terminate()
             finally:
                 raise ex
 
