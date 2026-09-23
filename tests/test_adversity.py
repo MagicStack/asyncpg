@@ -20,6 +20,28 @@ from asyncpg import _testbase as tb
     'not compatible with ProactorEventLoop which is default in Python 3.8+')
 class TestConnectionLoss(tb.ProxiedClusterTestCase):
     @tb.with_timeout(30.0)
+    async def test_cancel_request_times_out_during_network_loss(self):
+        con = await self.connect(command_timeout=0.2)
+        try:
+            self.proxy.trigger_connectivity_loss()
+            loss_started = asyncio.run_coroutine_threadsafe(
+                self.proxy.connectivity_loss.wait(), self.proxy.loop)
+            await asyncio.wait_for(asyncio.wrap_future(loss_started), 1)
+
+            with self.assertRaises(asyncio.TimeoutError):
+                await con.execute('SELECT 1')
+            self.assertTrue(con._cancellations)
+
+            async def wait_until_closed():
+                while not con.is_closed():
+                    await asyncio.sleep(0.005)
+
+            await asyncio.wait_for(wait_until_closed(), 1)
+        finally:
+            self.proxy.restore_connectivity()
+            con.terminate()
+
+    @tb.with_timeout(30.0)
     async def test_connection_close_timeout(self):
         con = await self.connect()
         self.proxy.trigger_connectivity_loss()

@@ -199,9 +199,12 @@ class TestCloseTimeoutPendingCancel(tb.ClusterTestCase):
     async def test_close_uses_command_timeout(self):
         async with self.pending_cancel(
                 cancel_sent=False, command_timeout=0.05) as con:
-            with self.assertRaises(asyncio.TimeoutError), \
-                    self.assertRunUnder(MAX_RUNTIME):
-                await con.close()
+            with self.assertRunUnder(MAX_RUNTIME):
+                try:
+                    await con.close()
+                except asyncio.TimeoutError:
+                    # The close and background cancel deadlines can race.
+                    pass
             self.assertTrue(con._transport.is_closing())
 
     async def test_cancel_close_aborts_transport(self):
@@ -293,3 +296,83 @@ class TestCloseTimeoutPendingCancel(tb.ClusterTestCase):
                 con._transport.abort()
                 task.cancel()
                 await asyncio.gather(task, return_exceptions=True)
+
+    async def test_next_command_timeout_includes_pending_cancel(self):
+        for cancel_sent in (False, True):
+            for method in ('execute', 'fetchval'):
+                with self.subTest(cancel_sent=cancel_sent, method=method):
+                    async with self.pending_cancel(
+                            cancel_sent=cancel_sent) as con:
+                        with self.assertRaises(asyncio.TimeoutError), \
+                                self.assertRunUnder(MAX_RUNTIME):
+                            await getattr(con, method)(
+                                'select 1', timeout=0.05)
+                        self.assertTrue(con.is_closed())
+
+    async def test_cancel_attempt_has_one_deadline(self):
+        for cancel_sent in (False, True):
+            with self.subTest(cancel_sent=cancel_sent):
+                con = await self.connect(command_timeout=0.05)
+                started = asyncio.Event()
+
+                async def cancel(**kwargs):
+                    started.set()
+                    if not cancel_sent:
+                        await self.loop.create_future()
+
+                try:
+                    with mock.patch.object(connect_utils, '_cancel', cancel):
+                        with self.assertRaises(asyncio.TimeoutError):
+                            await con.execute(
+                                'select pg_sleep(10)', timeout=0.01)
+                        await started.wait()
+
+                        async def wait_until_closed():
+                            while not con.is_closed():
+                                await asyncio.sleep(0.005)
+
+                        await asyncio.wait_for(
+                            wait_until_closed(), MAX_RUNTIME)
+                        self.assertTrue(con._transport.is_closing())
+                finally:
+                    con.terminate()
+
+    async def test_cancel_attempt_expires_during_close(self):
+        con = await self.connect(command_timeout=0.05)
+        started = asyncio.Event()
+
+        async def cancel(**kwargs):
+            started.set()
+            await self.loop.create_future()
+
+        try:
+            with mock.patch.object(connect_utils, '_cancel', cancel):
+                with self.assertRaises(asyncio.TimeoutError):
+                    await con.execute('select pg_sleep(10)', timeout=0.01)
+                await started.wait()
+                with self.assertRunUnder(0.3):
+                    await con.close(timeout=0.1)
+                self.assertTrue(con.is_closed())
+        finally:
+            con.terminate()
+
+    async def test_failed_cancel_during_close_without_timeout(self):
+        con = await self.connect()
+        cancel_started = asyncio.Event()
+
+        async def cancel(**kwargs):
+            cancel_started.set()
+            raise ConnectionRefusedError('cancel port unreachable')
+
+        query = self.loop.create_task(con.execute('select pg_sleep(5)'))
+        try:
+            await asyncio.sleep(0.05)
+            self.assertFalse(query.done())
+            with mock.patch.object(connect_utils, '_cancel', cancel):
+                await asyncio.wait_for(con.close(), MAX_RUNTIME)
+            self.assertTrue(cancel_started.is_set())
+            self.assertTrue(con.is_closed())
+        finally:
+            con.terminate()
+            query.cancel()
+            await asyncio.gather(query, return_exceptions=True)

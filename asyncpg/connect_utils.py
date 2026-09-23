@@ -1310,29 +1310,31 @@ async def _cancel(*, loop, addr, params: _ConnectionParameters,
             if not self.on_disconnect.done():
                 self.on_disconnect.set_result(True)
 
-    if isinstance(addr, str):
-        tr, pr = await loop.create_unix_connection(CancelProto, addr)
-    else:
-        if params.ssl and params.sslmode != SSLMode.allow:
-            tr, pr = await _create_ssl_connection(
-                CancelProto,
-                *addr,
-                loop=loop,
-                ssl_context=params.ssl,
-                ssl_is_advisory=params.sslmode == SSLMode.prefer)
-        else:
-            tr, pr = await loop.create_connection(
-                CancelProto, *addr)
-            _set_nodelay(_get_socket(tr))
-
-    # Pack a CancelRequest message
-    msg = struct.pack('!llll', 16, 80877102, backend_pid, backend_secret)
-
+    tr = None
     try:
+        if isinstance(addr, str):
+            tr, pr = await loop.create_unix_connection(CancelProto, addr)
+        else:
+            if params.ssl and params.sslmode != SSLMode.allow:
+                tr, pr = await _create_ssl_connection(
+                    CancelProto,
+                    *addr,
+                    loop=loop,
+                    ssl_context=params.ssl,
+                    ssl_is_advisory=params.sslmode == SSLMode.prefer)
+            else:
+                tr, pr = await loop.create_connection(
+                    CancelProto, *addr)
+                _set_nodelay(_get_socket(tr))
+
+        # Pack a CancelRequest message
+        msg = struct.pack('!llll', 16, 80877102, backend_pid, backend_secret)
+
         tr.write(msg)
         await pr.on_disconnect
     finally:
-        tr.close()
+        if tr is not None:
+            tr.close()
 
 
 def _get_socket(transport):
