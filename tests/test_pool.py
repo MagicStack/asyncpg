@@ -14,9 +14,11 @@ import random
 import textwrap
 import time
 import unittest
+from unittest import mock
 
 import asyncpg
 from asyncpg import _testbase as tb
+from asyncpg import connect_utils
 from asyncpg import connection as pg_connection
 from asyncpg import pool as pg_pool
 from asyncpg import cluster as pg_cluster
@@ -36,9 +38,9 @@ class SlowResetConnection(pg_connection.Connection):
 
 class SlowCancelConnection(pg_connection.Connection):
     """Connection class to simulate races with Connection._cancel()."""
-    async def _cancel(self, waiter):
+    async def _cancel(self, waiter, cancel_waiter=None):
         await asyncio.sleep(0.2)
-        return await super()._cancel(waiter)
+        return await super()._cancel(waiter, cancel_waiter)
 
 
 class TestPool(tb.ConnectedTestCase):
@@ -470,6 +472,47 @@ class TestPool(tb.ConnectedTestCase):
         await asyncio.sleep(0.5)
         # Check that the connection has been returned to the pool.
         self.assertEqual(pool._queue.qsize(), 1)
+
+    async def test_pool_release_timeout_during_cancellation(self):
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1)
+        con = await pool.acquire()
+        cancel_started = asyncio.Event()
+
+        async def cancel(**kwargs):
+            cancel_started.set()
+            await self.loop.create_future()
+
+        with mock.patch.object(connect_utils, '_cancel', cancel):
+            with self.assertRaises(asyncio.TimeoutError):
+                await con.execute('SELECT pg_sleep(10)', timeout=0.01)
+            await cancel_started.wait()
+
+            with self.assertRaises(asyncio.TimeoutError):
+                await pool.release(con, timeout=0.05)
+
+        async with pool.acquire(timeout=1) as replacement:
+            self.assertEqual(await replacement.fetchval('SELECT 1'), 1)
+
+    async def test_pool_release_after_background_cancel_timeout(self):
+        pool = await self.create_pool(database='postgres',
+                                      min_size=1, max_size=1,
+                                      command_timeout=0.1)
+        con = await pool.acquire()
+        cancel_started = asyncio.Event()
+
+        async def cancel(**kwargs):
+            cancel_started.set()
+            await self.loop.create_future()
+
+        with mock.patch.object(connect_utils, '_cancel', cancel):
+            with self.assertRaises(asyncio.TimeoutError):
+                await con.execute('SELECT pg_sleep(10)', timeout=0.01)
+            await cancel_started.wait()
+            await asyncio.wait_for(pool.release(con), 1)
+
+        async with pool.acquire(timeout=1) as replacement:
+            self.assertEqual(await replacement.fetchval('SELECT 1'), 1)
 
     async def test_pool_no_acquire_deadlock(self):
         async with self.create_pool(database='postgres',

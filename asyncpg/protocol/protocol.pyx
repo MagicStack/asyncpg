@@ -141,14 +141,10 @@ cdef class BaseProtocol(CoreProtocol):
                       PreparedStatementState state=None,
                       ignore_custom_codec=False,
                       record_class):
-        if self.cancel_waiter is not None:
-            await self.cancel_waiter
-        if self.cancel_sent_waiter is not None:
-            await self.cancel_sent_waiter
-            self.cancel_sent_waiter = None
+        timeout = self._get_timeout_impl(timeout)
+        timeout = await self._wait_for_cancellation(timeout)
 
         self._check_state()
-        timeout = self._get_timeout_impl(timeout)
 
         waiter = self._new_waiter(timeout)
         try:
@@ -173,14 +169,10 @@ cdef class BaseProtocol(CoreProtocol):
         return_extra: bool,
         timeout,
     ):
-        if self.cancel_waiter is not None:
-            await self.cancel_waiter
-        if self.cancel_sent_waiter is not None:
-            await self.cancel_sent_waiter
-            self.cancel_sent_waiter = None
+        timeout = self._get_timeout_impl(timeout)
+        timeout = await self._wait_for_cancellation(timeout)
 
         self._check_state()
-        timeout = self._get_timeout_impl(timeout)
         args_buf = state._encode_bind_msg(args)
 
         waiter = self._new_waiter(timeout)
@@ -212,14 +204,10 @@ cdef class BaseProtocol(CoreProtocol):
         timeout,
         return_rows: bool,
     ):
-        if self.cancel_waiter is not None:
-            await self.cancel_waiter
-        if self.cancel_sent_waiter is not None:
-            await self.cancel_sent_waiter
-            self.cancel_sent_waiter = None
+        timeout = self._get_timeout_impl(timeout)
+        timeout = await self._wait_for_cancellation(timeout)
 
         self._check_state()
-        timeout = self._get_timeout_impl(timeout)
         timer = Timer(timeout)
 
         # Make sure the argument sequence is encoded lazily with
@@ -268,14 +256,10 @@ cdef class BaseProtocol(CoreProtocol):
     async def bind(self, PreparedStatementState state, args,
                    str portal_name, timeout):
 
-        if self.cancel_waiter is not None:
-            await self.cancel_waiter
-        if self.cancel_sent_waiter is not None:
-            await self.cancel_sent_waiter
-            self.cancel_sent_waiter = None
+        timeout = self._get_timeout_impl(timeout)
+        timeout = await self._wait_for_cancellation(timeout)
 
         self._check_state()
-        timeout = self._get_timeout_impl(timeout)
         args_buf = state._encode_bind_msg(args)
 
         waiter = self._new_waiter(timeout)
@@ -300,14 +284,10 @@ cdef class BaseProtocol(CoreProtocol):
                       str portal_name, int limit, return_extra,
                       timeout):
 
-        if self.cancel_waiter is not None:
-            await self.cancel_waiter
-        if self.cancel_sent_waiter is not None:
-            await self.cancel_sent_waiter
-            self.cancel_sent_waiter = None
+        timeout = self._get_timeout_impl(timeout)
+        timeout = await self._wait_for_cancellation(timeout)
 
         self._check_state()
-        timeout = self._get_timeout_impl(timeout)
 
         waiter = self._new_waiter(timeout)
         try:
@@ -327,14 +307,10 @@ cdef class BaseProtocol(CoreProtocol):
 
     async def close_portal(self, str portal_name, timeout):
 
-        if self.cancel_waiter is not None:
-            await self.cancel_waiter
-        if self.cancel_sent_waiter is not None:
-            await self.cancel_sent_waiter
-            self.cancel_sent_waiter = None
+        timeout = self._get_timeout_impl(timeout)
+        timeout = await self._wait_for_cancellation(timeout)
 
         self._check_state()
-        timeout = self._get_timeout_impl(timeout)
 
         waiter = self._new_waiter(timeout)
         try:
@@ -348,17 +324,10 @@ cdef class BaseProtocol(CoreProtocol):
             return await waiter
 
     async def query(self, query, timeout):
-        if self.cancel_waiter is not None:
-            await self.cancel_waiter
-        if self.cancel_sent_waiter is not None:
-            await self.cancel_sent_waiter
-            self.cancel_sent_waiter = None
+        timeout = self._get_timeout(timeout)
+        timeout = await self._wait_for_cancellation(timeout)
 
         self._check_state()
-        # query() needs to call _get_timeout instead of _get_timeout_impl
-        # for consistent validation, as it is called differently from
-        # prepare/bind/execute methods.
-        timeout = self._get_timeout(timeout)
 
         waiter = self._new_waiter(timeout)
         try:
@@ -372,15 +341,11 @@ cdef class BaseProtocol(CoreProtocol):
             return await waiter
 
     async def copy_out(self, copy_stmt, sink, timeout):
-        if self.cancel_waiter is not None:
-            await self.cancel_waiter
-        if self.cancel_sent_waiter is not None:
-            await self.cancel_sent_waiter
-            self.cancel_sent_waiter = None
+        timeout = self._get_timeout_impl(timeout)
+        timeout = await self._wait_for_cancellation(timeout)
 
         self._check_state()
 
-        timeout = self._get_timeout_impl(timeout)
         timer = Timer(timeout)
 
         # The copy operation is guarded by a single timeout
@@ -431,15 +396,11 @@ cdef class BaseProtocol(CoreProtocol):
             ssize_t num_cols
             Codec codec
 
-        if self.cancel_waiter is not None:
-            await self.cancel_waiter
-        if self.cancel_sent_waiter is not None:
-            await self.cancel_sent_waiter
-            self.cancel_sent_waiter = None
+        timeout = self._get_timeout_impl(timeout)
+        timeout = await self._wait_for_cancellation(timeout)
 
         self._check_state()
 
-        timeout = self._get_timeout_impl(timeout)
         timer = Timer(timeout)
 
         waiter = self._new_waiter(timer.get_remaining_budget())
@@ -563,11 +524,8 @@ cdef class BaseProtocol(CoreProtocol):
         return status_msg
 
     async def close_statement(self, PreparedStatementState state, timeout):
-        if self.cancel_waiter is not None:
-            await self.cancel_waiter
-        if self.cancel_sent_waiter is not None:
-            await self.cancel_sent_waiter
-            self.cancel_sent_waiter = None
+        timeout = self._get_timeout_impl(timeout)
+        timeout = await self._wait_for_cancellation(timeout)
 
         self._check_state()
 
@@ -576,7 +534,6 @@ cdef class BaseProtocol(CoreProtocol):
                 'cannot close prepared statement; refs == {} != 0'.format(
                     state.refs))
 
-        timeout = self._get_timeout_impl(timeout)
         waiter = self._new_waiter(timeout)
         try:
             self._close(state.name, False)  # network op
@@ -624,7 +581,7 @@ cdef class BaseProtocol(CoreProtocol):
 
                 # Transport loss completes the cancellation futures too.
                 # There will be no further disconnect notification to await.
-                if self.con_status != CONNECTION_OK:
+                if self.con_status != CONNECTION_OK or self.transport is None:
                     return
 
                 assert self.waiter is None
@@ -659,7 +616,8 @@ cdef class BaseProtocol(CoreProtocol):
         if con is not None:
             # if 'con' is None it means that the connection object has been
             # garbage collected and that the transport will soon be aborted.
-            con._cancel_current_command(self.cancel_sent_waiter)
+            con._cancel_current_command(
+                self.cancel_sent_waiter, self.cancel_waiter)
         else:
             self.loop.call_exception_handler({
                 'message': 'asyncpg.Protocol has no reference to its '
@@ -770,12 +728,33 @@ cdef class BaseProtocol(CoreProtocol):
             self.cancel_sent_waiter is not None
         )
 
-    async def _wait_for_cancellation(self):
-        if self.cancel_sent_waiter is not None:
-            await self.cancel_sent_waiter
-            self.cancel_sent_waiter = None
-        if self.cancel_waiter is not None:
-            await self.cancel_waiter
+    async def _wait_for_cancellation(self, timeout=None):
+        if not self._is_cancelling():
+            return timeout
+
+        started = self.loop.time()
+        try:
+            async with compat.timeout(timeout):
+                if self.cancel_sent_waiter is not None:
+                    await asyncio.shield(self.cancel_sent_waiter)
+                    self.cancel_sent_waiter = None
+                if self.cancel_waiter is not None:
+                    await asyncio.shield(self.cancel_waiter)
+        except asyncio.TimeoutError:
+            # The old query may still be running.  A new query cannot use
+            # this connection unless the cancellation is acknowledged.
+            con = self.get_connection()
+            if con is not None:
+                con.terminate()
+            else:
+                self.abort()
+            raise
+
+        if timeout is not None:
+            timeout -= self.loop.time() - started
+            if timeout <= 0:
+                raise asyncio.TimeoutError()
+        return timeout
 
     cdef _coreproto_error(self):
         try:
