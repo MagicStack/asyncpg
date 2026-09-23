@@ -53,8 +53,8 @@ a need to run the same query again.
    or :meth:`~Connection.fetchval` methods.  :meth:`~Connection.execute`
    also uses the cache when query arguments are provided.
 
-   To confirm that an ``INSERT`` succeeded, inspect the command status string
-   returned by :meth:`~Connection.execute`:
+   To confirm that a single row was inserted, inspect the command status
+   string returned by :meth:`~Connection.execute`:
 
    .. code-block:: pycon
 
@@ -63,7 +63,7 @@ a need to run the same query again.
       >>> assert result == 'INSERT 0 1'
 
    An ``INSERT 0 0`` status is a legitimate result for queries that insert
-   zero rows (for example, ``INSERT INTO foo (SELECT * WHERE false)``).
+   zero rows (for example, ``INSERT INTO mytab (a) SELECT 1 WHERE false``).
 
 .. warning::
 
