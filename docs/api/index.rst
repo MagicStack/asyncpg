@@ -50,7 +50,20 @@ a need to run the same query again.
 
    asyncpg automatically maintains a small LRU cache for queries executed
    during calls to the :meth:`~Connection.fetch`, :meth:`~Connection.fetchrow`,
-   or :meth:`~Connection.fetchval` methods.
+   or :meth:`~Connection.fetchval` methods.  :meth:`~Connection.execute`
+   also uses the cache when query arguments are provided.
+
+   To confirm that a single row was inserted, inspect the command status
+   string returned by :meth:`~Connection.execute`:
+
+   .. code-block:: pycon
+
+      >>> result = await con.execute(
+      ...     'INSERT INTO mytab (a) VALUES ($1)', 1)
+      >>> assert result == 'INSERT 0 1'
+
+   An ``INSERT 0 0`` status is a legitimate result for queries that insert
+   zero rows (for example, ``INSERT INTO mytab (a) SELECT 1 WHERE false``).
 
 .. warning::
 
