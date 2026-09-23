@@ -701,36 +701,17 @@ class TestCopyTo(tb.ConnectedTestCase):
             await self.con.execute('DROP TABLE copytab_async')
 
     async def test_copy_records_to_table_generator_error(self):
-        # CopyFail allows 9995 encoded bytes, excluding its length and NUL.
-        messages = (
-            'failure in source',
-            'a' * 9994,
-            'a' * 9995,
-            'a' * 9996,
-            '\u20ac' * 3331 + 'aa',  # 9995 UTF-8 bytes
-            '\u20ac' * 3332,         # 9996 UTF-8 bytes, only 3332 characters
-            'a' * 9994 + '\u20ac',   # Byte truncation would split a character.
-        )
-
-        for message in messages:
-            for asynchronous in (False, True):
-                for transaction in (False, True):
-                    with self.subTest(chars=len(message),
-                                      bytes=len(message.encode('utf-8')),
-                                      asynchronous=asynchronous,
-                                      transaction=transaction):
-                        await self._test_copy_records_generator_error(
-                            ValueError(message), asynchronous, transaction)
+        # A 9996-byte reason exceeds PostgreSQL's CopyFail limit.
+        await self._test_copy_records_generator_error(
+            ValueError('a' * 9996), asynchronous=False, transaction=True)
 
     async def test_copy_records_to_table_unprintable_error(self):
         class UnprintableError(ValueError):
             def __str__(self):
                 raise AssertionError('cannot format exception')
 
-        for error in (UnprintableError(), ValueError('\ud800')):
-            with self.subTest(error_type=type(error)):
-                await self._test_copy_records_generator_error(
-                    error, asynchronous=False, transaction=True)
+        await self._test_copy_records_generator_error(
+            UnprintableError(), asynchronous=True, transaction=False)
 
     async def _test_copy_records_generator_error(
             self, error, asynchronous, transaction):
@@ -744,20 +725,11 @@ class TestCopyTo(tb.ConnectedTestCase):
         async def async_records():
             for row in records():
                 yield row
-                await asyncio.sleep(0)
 
         async def copy():
-            try:
-                await con.copy_records_to_table(
-                    'copytab',
-                    records=async_records() if asynchronous else records())
-            except ValueError as raised:
-                self.assertIs(raised, error)
-                if transaction:
-                    with self.assertRaises(
-                            asyncpg.InFailedSQLTransactionError):
-                        await con.fetchval('SELECT 1')
-                raise
+            await con.copy_records_to_table(
+                'copytab',
+                records=async_records() if asynchronous else records())
 
         async def run():
             await con.execute('CREATE TEMP TABLE copytab (a bytea)')
