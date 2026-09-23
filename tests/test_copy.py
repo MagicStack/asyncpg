@@ -700,6 +700,62 @@ class TestCopyTo(tb.ConnectedTestCase):
         finally:
             await self.con.execute('DROP TABLE copytab_async')
 
+    async def test_copy_records_to_table_generator_error(self):
+        # A 9996-byte reason exceeds PostgreSQL's CopyFail limit.
+        await self._test_copy_records_generator_error(
+            ValueError('a' * 9996), asynchronous=False, transaction=True)
+
+    async def test_copy_records_to_table_unprintable_error(self):
+        class UnprintableError(ValueError):
+            def __str__(self):
+                raise AssertionError('cannot format exception')
+
+        await self._test_copy_records_generator_error(
+            UnprintableError(), asynchronous=True, transaction=False)
+
+    async def _test_copy_records_generator_error(
+            self, error, asynchronous, transaction):
+        con = await self.connect()
+
+        def records():
+            # Flush a CopyData message before the generator fails.
+            yield (b'x' * 524288,)
+            raise error
+
+        async def async_records():
+            for row in records():
+                yield row
+
+        async def copy():
+            await con.copy_records_to_table(
+                'copytab',
+                records=async_records() if asynchronous else records())
+
+        async def run():
+            await con.execute('CREATE TEMP TABLE copytab (a bytea)')
+            with self.assertRaises(ValueError) as caught:
+                if transaction:
+                    async with con.transaction():
+                        await copy()
+                else:
+                    await copy()
+            self.assertIs(caught.exception, error)
+            self.assertFalse(con.is_in_transaction())
+            self.assertEqual(
+                await con.fetchval('SELECT count(*) FROM copytab'), 0)
+            self.assertEqual(await con.copy_records_to_table(
+                'copytab', records=[(b'recovered',)]), 'COPY 1')
+            self.assertEqual(
+                await con.fetchval('SELECT a FROM copytab'), b'recovered')
+            await con.close()
+
+        try:
+            # Bound recovery and close as well as COPY itself: cancellation
+            # completion used to hang after an oversized CopyFail message.
+            await asyncio.wait_for(run(), timeout=5)
+        finally:
+            con.terminate()
+
     async def test_copy_records_to_table_stmt_cache(self):
         # The introspection statement must be taken from the statement
         # cache, otherwise every call pays for an extra round-trip.
