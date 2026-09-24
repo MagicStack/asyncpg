@@ -692,6 +692,7 @@ record_get(PyObject *self, PyTypeObject *defcls, PyObject *const *args,
         PyErr_Format(PyExc_TypeError,
                      "Record.get() expected 1 or 2 arguments, got %zd",
                      nargs);
+        return NULL;
     }
 
     if (kwnames != NULL && PyTuple_GET_SIZE(kwnames) != 0) {

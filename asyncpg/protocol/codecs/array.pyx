@@ -374,7 +374,7 @@ cdef _nested_array_decode(ConnectionSettings settings,
         # loop expects this.
         cpython.Py_INCREF(elem)
 
-        # Iterate over array dimentions and put the element in
+        # Iterate over array dimensions and put the element in
         # the correctly nested sublist.
         for j in reversed(range(ndims)):
             if indexes[j] == 0:
@@ -393,7 +393,7 @@ cdef _nested_array_decode(ConnectionSettings settings,
             if indexes[j] == dims[j] and j != 0:
                 # This array level is full, continue the
                 # ascent in the dimensions so that this level
-                # sublist will be appened to the parent list.
+                # sublist will be appended to the parent list.
                 elem = stride
                 # Reset the index, this will cause the
                 # new list to be allocated on the next

@@ -159,3 +159,22 @@ class TestCursor(tb.ConnectedTestCase):
             st = await self.con.cursor('SELECT generate_series(0, 100)')
             await st.forward(42)
             self.assertEqual(await st.fetchrow(), (42,))
+
+    @tb.with_connection_options(statement_cache_size=0)
+    async def test_cursor_05_unnamed_statement_reparsed(self):
+        await self.con.execute(
+            "CREATE TYPE cursor_05_t AS ENUM ('foo', 'bar')"
+        )
+        try:
+            async with self.con.transaction():
+                # Enum introspection replaces the unnamed statement on the
+                # server, so opening the cursor must re-parse it first.
+                st = await self.con.prepare('''
+                    SELECT $1::int, $2::int, 'foo'::cursor_05_t
+                ''')
+                self.assertEqual(st.get_name(), '')
+
+                cur = await st.cursor(1, 2)
+                self.assertEqual(await cur.fetch(1), [(1, 2, 'foo')])
+        finally:
+            await self.con.execute('DROP TYPE cursor_05_t')
