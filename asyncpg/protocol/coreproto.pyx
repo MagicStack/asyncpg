@@ -675,7 +675,7 @@ cdef class CoreProtocol:
             WriteBuffer msg
 
         msg = WriteBuffer.new_message(b'p')
-        msg.write_bytestring(self.password.encode(self.encoding))
+        msg.write_bytestring((self.password or '').encode(self.encoding))
         msg.end_message()
 
         return msg
