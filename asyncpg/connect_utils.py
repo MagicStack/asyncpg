@@ -35,6 +35,9 @@ from . import protocol
 
 _SSL_REQUEST_CODE = 80877103
 
+# Required by PostgreSQL 17+ for direct TLS connections.
+_ALPN_PROTOCOLS = ['postgresql']
+
 
 class SSLMode(enum.IntEnum):
     disable = 0
@@ -811,8 +814,11 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     ssl_max_protocol_version
                 )
 
+            ssl.set_alpn_protocols(_ALPN_PROTOCOLS)
+
     elif ssl is True:
         ssl = ssl_module.create_default_context()
+        ssl.set_alpn_protocols(_ALPN_PROTOCOLS)
         sslmode = SSLMode.verify_full
     elif isinstance(ssl, ssl_module.SSLContext):
         sslmode = SSLMode.require

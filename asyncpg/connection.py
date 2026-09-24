@@ -2337,6 +2337,10 @@ async def connect(dsn=None, *,
         Pass ``True`` to skip PostgreSQL STARTTLS mode and perform a direct
         SSL connection. Requires ``ssl='require'``, ``'verify-ca'``,
         ``'verify-full'``, ``True``, or an explicit ``SSLContext``.
+        PostgreSQL 17+ requires the ``postgresql`` ALPN protocol for direct
+        SSL connections: asyncpg sets it on the contexts it creates, but an
+        explicit ``SSLContext`` must set it with
+        ``ctx.set_alpn_protocols(['postgresql'])``.
 
     :param dict server_settings:
         An optional dict of server runtime parameters.  Refer to
@@ -2456,6 +2460,8 @@ async def connect(dsn=None, *,
        ``ssl=True``, or an explicit ``SSLContext``. Other values
        (``'disable'``, ``'allow'``, and ``'prefer'``) will raise a
        ``ClientConfigurationError``.
+       SSL contexts created by asyncpg now set the ``postgresql`` ALPN
+       protocol, which PostgreSQL 17+ requires for direct SSL connections.
 
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:

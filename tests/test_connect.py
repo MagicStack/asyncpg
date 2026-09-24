@@ -2331,6 +2331,20 @@ class TestSSLConnection(BaseTestSSLConnection):
         self.assertEqual(ctx.verify_mode, ssl.CERT_NONE)
         self.assertFalse(ctx.check_hostname)
 
+    async def test_direct_tls_native(self):
+        if self.cluster.get_pg_version() < (17, 0):
+            self.skipTest('native direct TLS requires PostgreSQL 17+')
+
+        for mode in ('require', 'verify-ca', 'verify-full', True):
+            with self.subTest(mode=mode):
+                with unittest.mock.patch.dict(os.environ, {
+                    'SSL_CERT_FILE': SSL_CA_CERT_FILE,
+                }):
+                    await self._test_works(
+                        dsn='postgresql://ssl_user@localhost/postgres'
+                            '?sslrootcert=' + SSL_CA_CERT_FILE,
+                        ssl=mode, direct_tls=True, expected_ssl=True)
+
     async def test_direct_tls_configuration_sources(self):
         base_dsn = 'postgresql://ssl_user@localhost/postgres'
 
