@@ -814,11 +814,13 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     ssl_max_protocol_version
                 )
 
-            ssl.set_alpn_protocols(_ALPN_PROTOCOLS)
+            if ssl_module.HAS_ALPN:
+                ssl.set_alpn_protocols(_ALPN_PROTOCOLS)
 
     elif ssl is True:
         ssl = ssl_module.create_default_context()
-        ssl.set_alpn_protocols(_ALPN_PROTOCOLS)
+        if ssl_module.HAS_ALPN:
+            ssl.set_alpn_protocols(_ALPN_PROTOCOLS)
         sslmode = SSLMode.verify_full
     elif isinstance(ssl, ssl_module.SSLContext):
         sslmode = SSLMode.require
