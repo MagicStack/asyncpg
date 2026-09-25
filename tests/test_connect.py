@@ -1267,6 +1267,46 @@ class TestConnectParams(tb.TestCase):
         for testcase in self.TESTS:
             self.run_testcase(testcase)
 
+    def test_connect_params_coerces_str_subclasses(self):
+        # user/database/server_settings are later written by pgproto's
+        # WriteBuffer.write_str(), which is typed to accept exactly `str`
+        # and rejects str subclasses (e.g. enum.StrEnum members) even
+        # though isinstance(x, str) is True for them. _parse_connect_dsn_
+        # and_args must coerce these to plain str so such values are
+        # safely accepted instead of blowing up deep in the protocol
+        # layer. See #1340.
+        class SUser(str):
+            pass
+
+        class SDb(str):
+            pass
+
+        class SKey(str):
+            pass
+
+        class SVal(str):
+            pass
+
+        user = SUser('someuser')
+        database = SDb('somedb')
+        server_settings = {SKey('application_name'): SVal('someapp')}
+
+        self.assertIsInstance(user, str)
+        self.assertNotEqual(type(user), str)
+
+        _, params = connect_utils._parse_connect_dsn_and_args(
+            dsn=None, host=None, port=None, user=user, password=None,
+            passfile=None, database=database, ssl=None,
+            direct_tls=False, server_settings=server_settings,
+            target_session_attrs=None, krbsrvname=None, gsslib=None,
+            service=None, servicefile=None)
+
+        self.assertEqual(type(params.user), str)
+        self.assertEqual(type(params.database), str)
+        for k, v in params.server_settings.items():
+            self.assertEqual(type(k), str)
+            self.assertEqual(type(v), str)
+
     def test_connect_connection_service_file(self):
         connection_service_file = tempfile.NamedTemporaryFile(
             'w+t', delete=False)
