@@ -25,6 +25,15 @@ class SlowIntrospectionConnection(apg_con.Connection):
         return await super()._introspect_types(*args, **kwargs)
 
 
+class CountingIntrospectionConnection(apg_con.Connection):
+    """Connection class to assert when type introspection is skipped."""
+    introspect_count = 0
+
+    async def _introspect_types(self, *args, **kwargs):
+        self.introspect_count += 1
+        return await super()._introspect_types(*args, **kwargs)
+
+
 class TestIntrospection(tb.ConnectedTestCase):
     @classmethod
     def setUpClass(cls):
@@ -77,6 +86,29 @@ class TestIntrospection(tb.ConnectedTestCase):
 
         with self.assertRunUnder(MAX_RUNTIME):
             await self.con.fetchval('SELECT $1::int[]', [1, 2])
+
+    async def test_varchar_array_does_not_introspect(self):
+        conn = await self.connect(
+            connection_class=CountingIntrospectionConnection)
+        try:
+            cases = [
+                ['a', 'b'],
+                [None, 'b'],
+                [],
+                [['a', 'b'], ['c', 'd']],
+            ]
+
+            for case in cases:
+                result = await conn.fetchval('SELECT $1::varchar[]', case)
+                self.assertEqual(result, case)
+
+            result = await conn.fetchval(
+                "SELECT ARRAY['a', 'b']::varchar[]")
+            self.assertEqual(result, ['a', 'b'])
+
+            self.assertEqual(conn.introspect_count, 0)
+        finally:
+            await conn.close()
 
     @tb.with_connection_options(statement_cache_size=0)
     async def test_introspection_no_stmt_cache_01(self):
