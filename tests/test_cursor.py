@@ -109,6 +109,17 @@ class TestCursor(tb.ConnectedTestCase):
                                     'cursor cannot be created.*transaction'):
             await st.cursor()
 
+    async def test_cursor_external_transaction(self):
+        await self.con.execute('BEGIN')
+        try:
+            st = await self.con.prepare('SELECT generate_series(0, 2)')
+            cur = await st.cursor()
+            self.assertEqual(
+                await cur.fetch(10),
+                [(0,), (1,), (2,)])
+        finally:
+            await self.con.execute('ROLLBACK')
+
     async def test_cursor_02(self):
         st = await self.con.prepare('SELECT generate_series(0, 20)')
         async with self.con.transaction():
