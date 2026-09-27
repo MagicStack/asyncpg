@@ -1932,8 +1932,10 @@ class Connection(metaclass=ConnectionMeta):
         .. versionadded:: 0.29.0
         """
         self.add_query_logger(callback)
-        yield
-        self.remove_query_logger(callback)
+        try:
+            yield
+        finally:
+            self.remove_query_logger(callback)
 
     @contextlib.contextmanager
     def _time_and_log(self, query, args, timeout):
