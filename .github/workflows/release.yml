@@ -101,7 +101,7 @@ jobs:
               && cibuildwheel --print-build-identifiers --platform windows --archs x86,AMD64 | jq -nRc '{"only": inputs, "os": "windows-2025"}'
             } | jq -sc
           )
-          echo "include=$MATRIX_INCLUDE" >> $GITHUB_OUTPUT
+          echo "include=$MATRIX_INCLUDE" >> "$GITHUB_OUTPUT"
 
   build-wheels:
     needs: build-wheels-matrix
@@ -230,7 +230,7 @@ jobs:
       id: relver
       run: |
         set -e
-        echo "version=$(cat dist/VERSION)" >> $GITHUB_OUTPUT
+        echo "version=$(cat dist/VERSION)" >> "$GITHUB_OUTPUT"
         rm dist/VERSION
 
     - name: Merge and tag the PR

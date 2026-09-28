@@ -67,7 +67,7 @@ jobs:
       run: |
         POSTGRES_FORMULA="postgresql@18"
         brew install "$POSTGRES_FORMULA"
-        echo "$(brew --prefix "$POSTGRES_FORMULA")/bin" >> $GITHUB_PATH
+        echo "$(brew --prefix "$POSTGRES_FORMULA")/bin" >> "$GITHUB_PATH"
 
     - name: Set up Kerberos
       if: "!steps.release.outputs.is_release && startsWith(matrix.os, 'ubuntu')"
@@ -136,6 +136,7 @@ jobs:
       uses: astral-sh/setup-uv@v7
       if: "!steps.release.outputs.is_release"
       with:
+        python-version: "3.14"
         activate-environment: true
 
     - name: Install Python Deps
