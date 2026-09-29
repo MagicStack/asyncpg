@@ -66,6 +66,31 @@ class TestCancellation(tb.ConnectedTestCase):
                 async with self.con.transaction():
                     await test()
 
+    async def test_cancellation_executemany_01(self):
+        # Larger than one 128KB execute batch, so cancel lands in the
+        # write loop instead of after the server has the whole command.
+        payload = 'x' * 200
+        args = [(i, payload) for i in range(20000)]
+        await self.con.execute(
+            'CREATE TEMP TABLE executemany_cancel (id int, payload text)'
+        )
+
+        task = self.loop.create_task(
+            self.con.executemany(
+                'INSERT INTO executemany_cancel (id, payload) '
+                'VALUES ($1, $2)',
+                args,
+            )
+        )
+        await asyncio.sleep(0.01)
+        task.cancel()
+
+        with self.assertRunUnder(5):
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+
+        self.assertTrue(self.con.is_closed())
+
     async def test_cancellation_02(self):
         st = await self.con.prepare('SELECT 1')
         task = self.loop.create_task(st.fetch())

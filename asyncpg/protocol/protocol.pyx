@@ -247,11 +247,24 @@ cdef class BaseProtocol(CoreProtocol):
         except asyncio.TimeoutError as e:
             self._bind_execute_many_fail(e)  # network op
 
+        except asyncio.CancelledError as ex:
+            # CancelledError is a BaseException, so the handler below
+            # never sees it. The server is still waiting for the rest of
+            # the batch; abort instead of blocking on that waiter.
+            waiter.set_exception(ex)
+            self._coreproto_error()
+
         except Exception as ex:
             waiter.set_exception(ex)
             self._coreproto_error()
         finally:
-            return await waiter
+            try:
+                return await waiter
+            except asyncio.CancelledError as ex:
+                if not waiter.done():
+                    waiter.set_exception(ex)
+                self._coreproto_error()
+                raise
 
     async def bind(self, PreparedStatementState state, args,
                    str portal_name, timeout):
