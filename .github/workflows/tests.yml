@@ -14,7 +14,70 @@ concurrency:  # https://stackoverflow.com/questions/66335225#comment133398800_72
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  classify-tests:
+    runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: read
+    outputs:
+      is_release: ${{ steps.version.outputs.is_release }}
+    steps:
+    - name: Check for a version PR
+      id: version
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+      with:
+        script: |
+          let isRelease = false;
+          if (context.eventName === 'pull_request') {
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              ...context.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+            isRelease = files.some(({filename}) => filename === 'asyncpg/_version.py');
+          }
+          core.setOutput('is_release', isRelease ? 'true' : 'false');
+
+  lint-and-type-check:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        submodules: true
+        persist-credentials: false
+
+    - name: Set up Python
+      uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
+      with:
+        python-version: "3.14"
+        activate-environment: true
+
+    - name: Set up Kerberos
+      run: .github/workflows/install-krb5.sh
+
+    - name: Install lint and type-check dependencies
+      run: uv pip install -e . --group test
+
+    - name: Run flake8
+      run: flake8 asyncpg tests
+
+    - name: Run mypy
+      run: mypy asyncpg
+
+    - name: Audit GitHub Actions workflows
+      uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482  # v0.6.4
+      env:
+        GH_TOKEN: ${{ github.token }}
+      with:
+        token: ${{ github.token }}
+        online-audits: true
+        advanced-security: false
+        annotations: true
+
   test-platforms:
+    needs: classify-tests
+    if: needs.classify-tests.outputs.is_release != 'true'
     # NOTE: this matrix is for testing various combinations of Python and OS
     # versions on the system-installed PostgreSQL version (which is usually
     # fairly recent). For a PostgreSQL version matrix see the test-postgres
@@ -46,52 +109,41 @@ jobs:
         shell: bash
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         fetch-depth: 50
         submodules: true
         persist-credentials: false
 
-    - name: Check if release PR.
-      uses: edgedb/action-release/validate-pr@master
-      id: release
-      with:
-        github_token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
-        missing_version_ok: yes
-        version_file: asyncpg/_version.py
-        version_line_pattern: |
-          __version__(?:\s*:\s*typing\.Final)?\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
-
     - name: Set up PostgreSQL
-      if: "!steps.release.outputs.is_release && startsWith(matrix.os, 'macos')"
+      if: startsWith(matrix.os, 'macos')
       run: |
         POSTGRES_FORMULA="postgresql@18"
         brew install "$POSTGRES_FORMULA"
         echo "$(brew --prefix "$POSTGRES_FORMULA")/bin" >> "$GITHUB_PATH"
 
     - name: Set up Kerberos
-      if: "!steps.release.outputs.is_release && startsWith(matrix.os, 'ubuntu')"
+      if: startsWith(matrix.os, 'ubuntu')
       run: .github/workflows/install-krb5.sh
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: astral-sh/setup-uv@v7
-      if: "!steps.release.outputs.is_release"
+      uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
       with:
         python-version: ${{ matrix.python-version }}
         activate-environment: true
 
     - name: Install Python Deps
-      if: "!steps.release.outputs.is_release"
       run: |
         uv pip install -e . --group test
 
     - name: Test
-      if: "!steps.release.outputs.is_release"
       env:
         USE_UVLOOP: ${{ matrix.loop == 'uvloop' && '1' || '' }}
       run: python -m unittest -v tests.suite
 
   test-postgres:
+    needs: classify-tests
+    if: needs.classify-tests.outputs.is_release != 'true'
     strategy:
       matrix:
         postgres-version: ["9.5", "9.6", "10", "11", "12", "13", "14", "15", "16", "17", "18"]
@@ -101,24 +153,13 @@ jobs:
     permissions: {}
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         fetch-depth: 50
         submodules: true
         persist-credentials: false
 
-    - name: Check if release PR.
-      uses: edgedb/action-release/validate-pr@master
-      id: release
-      with:
-        github_token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
-        missing_version_ok: yes
-        version_file: asyncpg/_version.py
-        version_line_pattern: |
-          __version__(?:\s*:\s*typing\.Final)?\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
-
     - name: Set up PostgreSQL
-      if: "!steps.release.outputs.is_release"
       env:
         PGVERSION: ${{ matrix.postgres-version }}
         DISTRO_NAME: focal
@@ -129,23 +170,19 @@ jobs:
           >> "${GITHUB_ENV}"
 
     - name: Set up Kerberos
-      if: "!steps.release.outputs.is_release"
       run: .github/workflows/install-krb5.sh
 
     - name: Set up Python
-      uses: astral-sh/setup-uv@v7
-      if: "!steps.release.outputs.is_release"
+      uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
       with:
         python-version: "3.14"
         activate-environment: true
 
     - name: Install Python Deps
-      if: "!steps.release.outputs.is_release"
       run: |
         uv pip install -e . --group test
 
     - name: Test
-      if: "!steps.release.outputs.is_release"
       env:
         PGVERSION: ${{ matrix.postgres-version }}
       run: |
@@ -155,9 +192,26 @@ jobs:
   # targeted by branch policies.
   regression-tests:
     name: "Regression Tests"
-    needs: [test-platforms, test-postgres]
+    needs: [classify-tests, lint-and-type-check, test-platforms, test-postgres]
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
     permissions: {}
 
     steps:
-      - run: echo OK
+      - name: Check required jobs
+        env:
+          CLASSIFY_RESULT: ${{ needs.classify-tests.result }}
+          RELEASE_PR: ${{ needs.classify-tests.outputs.is_release }}
+          LINT_RESULT: ${{ needs.lint-and-type-check.result }}
+          PLATFORMS_RESULT: ${{ needs.test-platforms.result }}
+          POSTGRES_RESULT: ${{ needs.test-postgres.result }}
+        run: |
+          test "$CLASSIFY_RESULT" = success
+          test "$LINT_RESULT" = success
+          if [ "$RELEASE_PR" = true ]; then
+            test "$PLATFORMS_RESULT" = skipped
+            test "$POSTGRES_RESULT" = skipped
+          else
+            test "$PLATFORMS_RESULT" = success
+            test "$POSTGRES_RESULT" = success
+          fi
