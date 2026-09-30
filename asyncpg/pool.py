@@ -14,6 +14,7 @@ import logging
 from types import TracebackType
 from typing import Any, Optional, Type
 import warnings
+import weakref
 
 from . import compat
 from . import connection
@@ -22,6 +23,24 @@ from . import protocol
 
 
 logger = logging.getLogger(__name__)
+
+
+class _PoolConnectionHolderQueue(asyncio.LifoQueue):
+    """Prefer live connections, with LIFO ordering within each group."""
+
+    def _get(self):
+        for i in range(len(self._queue) - 1, -1, -1):
+            if self._queue[i].is_connected():
+                return self._queue.pop(i)
+        return super()._get()
+
+    def get_disconnected_nowait(self):
+        for i in range(len(self._queue) - 1, -1, -1):
+            if not self._queue[i].is_connected():
+                holder = self._queue.pop(i)
+                self._wakeup_next(self._putters)
+                return holder
+        raise asyncio.QueueEmpty
 
 
 class PoolConnectionProxyMeta(type):
@@ -114,7 +133,7 @@ class PoolConnectionHolder:
                  '_max_queries', '_setup',
                  '_max_inactive_time', '_in_use',
                  '_inactive_callback', '_timeout',
-                 '_generation')
+                 '_generation', '__weakref__')
 
     def __init__(
         self,
@@ -149,8 +168,18 @@ class PoolConnectionHolder:
                 'PoolConnectionHolder.connect() called while another '
                 'connection already exists')
 
-        self._con = await self._pool._get_new_connection()
-        self._generation = self._pool._generation
+        generation = self._pool._generation
+        con = await self._pool._get_new_connection()
+        if self._pool.is_closing():
+            await con.close()
+            raise exceptions.InterfaceError('pool is closing')
+        if con.is_closed():
+            raise exceptions.ConnectionDoesNotExistError(
+                'connection was closed during pool initialization')
+        self._con = con
+        # Notify live holders without keeping an abandoned pool alive.
+        con._pool_holder = weakref.ref(self)
+        self._generation = generation
         self._maybe_cancel_inactive_callback()
         self._setup_inactive_callback()
 
@@ -299,19 +328,23 @@ class PoolConnectionHolder:
             raise exceptions.InternalClientError(
                 'attempting to deactivate an acquired connection')
 
+        self._inactive_callback = None
         if self._con is not None:
+            if (self.is_connected() and not self._pool.is_closing() and
+                    self._pool.get_size() <= self._pool.get_min_size()):
+                # A floor connection needs no further inactivity checks.
+                # Acquiring and releasing it will arm a new timer.
+                return
+
             # The connection is idle and not in use, so it's fine to
             # use terminate() instead of close().
             self._con.terminate()
-            # Must call clear_connection, because _deactivate_connection
-            # is called when the connection is *not* checked out, and
-            # so terminate() above will not call the below.
-            self._release_on_close()
 
     def _release_on_close(self) -> None:
         self._maybe_cancel_inactive_callback()
         self._release()
         self._con = None
+        self._pool._schedule_min_size_maintenance()
 
     def _release(self) -> None:
         """Release this connection holder."""
@@ -345,14 +378,16 @@ class Pool:
     """
 
     __slots__ = (
-        '_queue', '_loop', '_minsize', '_maxsize',
+        '_queue', '_loop', '_initsize', '_minsize', '_maxsize',
         '_init', '_connect', '_reset', '_connect_args', '_connect_kwargs',
         '_holders', '_initialized', '_initializing', '_closing',
         '_closed', '_connection_class', '_record_class', '_generation',
-        '_setup', '_max_queries', '_max_inactive_connection_lifetime'
+        '_setup', '_max_queries', '_max_inactive_connection_lifetime',
+        '_maintenance_task',
     )
 
     def __init__(self, *connect_args,
+                 init_size=None,
                  min_size,
                  max_size,
                  max_queries,
@@ -388,6 +423,19 @@ class Pool:
         if min_size > max_size:
             raise ValueError('min_size is greater than max_size')
 
+        if init_size is None:
+            init_size = min_size
+
+        if init_size < 0:
+            raise ValueError(
+                'init_size is expected to be greater or equal to zero')
+
+        if init_size > max_size:
+            raise ValueError('init_size is greater than max_size')
+
+        if init_size < min_size:
+            raise ValueError('init_size is smaller than min_size')
+
         if max_queries <= 0:
             raise ValueError('max_queries is expected to be greater than zero')
 
@@ -406,6 +454,7 @@ class Pool:
                 'record_class is expected to be a subclass of '
                 'asyncpg.Record, got {!r}'.format(record_class))
 
+        self._initsize = init_size
         self._minsize = min_size
         self._maxsize = max_size
 
@@ -420,6 +469,7 @@ class Pool:
         self._closing = False
         self._closed = False
         self._generation = 0
+        self._maintenance_task = None
 
         self._connect = connect if connect is not None else connection.connect
         self._connect_args = connect_args
@@ -445,12 +495,19 @@ class Pool:
         try:
             await self._initialize()
             return self
+        except (Exception, asyncio.CancelledError):
+            # Failed initialization must not leave warm connections behind.
+            self._closed = True
+            for holder in self._holders:
+                holder.terminate()
+            raise
         finally:
             self._initializing = False
             self._initialized = True
+            self._schedule_min_size_maintenance()
 
     async def _initialize(self):
-        self._queue = asyncio.LifoQueue(maxsize=self._maxsize)
+        self._queue = _PoolConnectionHolderQueue(maxsize=self._maxsize)
         for _ in range(self._maxsize):
             ch = PoolConnectionHolder(
                 self,
@@ -461,7 +518,7 @@ class Pool:
             self._holders.append(ch)
             self._queue.put_nowait(ch)
 
-        if self._minsize:
+        if self._initsize:
             # Since we use a LIFO queue, the first items in the queue will be
             # the last ones in `self._holders`.  We want to pre-connect the
             # first few connections in the queue, therefore we want to walk
@@ -472,15 +529,57 @@ class Pool:
             first_ch = self._holders[-1]  # type: PoolConnectionHolder
             await first_ch.connect()
 
-            if self._minsize > 1:
+            if self._initsize > 1:
                 connect_tasks = []
                 for i, ch in enumerate(reversed(self._holders[:-1])):
-                    # `minsize - 1` because we already have first_ch
-                    if i >= self._minsize - 1:
+                    # `initsize - 1` because we already have first_ch
+                    if i >= self._initsize - 1:
                         break
                     connect_tasks.append(ch.connect())
 
                 await asyncio.gather(*connect_tasks)
+
+    def _schedule_min_size_maintenance(self):
+        if (not self._initialized or self._initializing or self.is_closing()
+                or not self._minsize or self._maintenance_task is not None):
+            return
+        if self.get_size() < self._minsize:
+            self._maintenance_task = self._loop.create_task(
+                self._maintain_min_size())
+
+    async def _maintain_min_size(self):
+        retry_delay = 1.0
+        try:
+            while not self.is_closing() and self.get_size() < self._minsize:
+                try:
+                    holder = self._queue.get_disconnected_nowait()
+                except asyncio.QueueEmpty:
+                    # Acquirers are already connecting the remaining holders.
+                    return
+
+                failed = False
+                try:
+                    if holder._con is not None:
+                        holder.terminate()
+                    await holder.connect()
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    if self.is_closing():
+                        return
+                    failed = True
+                    logger.warning('Failed to restore the pool connection '
+                                   'floor; retrying', exc_info=True)
+                finally:
+                    self._queue.put_nowait(holder)
+
+                if failed:
+                    await asyncio.sleep(retry_delay)
+                    retry_delay = min(retry_delay * 2, 60.0)
+                else:
+                    retry_delay = 1.0
+        finally:
+            self._maintenance_task = None
 
     def is_closing(self):
         """Return ``True`` if the pool is closing or is closed.
@@ -496,10 +595,21 @@ class Pool:
         """
         return sum(h.is_connected() for h in self._holders)
 
+    def get_init_size(self):
+        """Return the initial number of connections in this pool.
+
+        .. versionadded:: 0.32.0
+        """
+        return self._initsize
+
     def get_min_size(self):
         """Return the minimum number of connections in this pool.
 
         .. versionadded:: 0.25.0
+
+        .. versionchanged:: 0.32.0
+            The parameter now controls the connection floor rather than the
+            initial pool size (see ``init_size``).
         """
         return self._minsize
 
@@ -888,6 +998,7 @@ class Pool:
                 proxy = await ch.acquire()  # type: PoolConnectionProxy
             except (Exception, asyncio.CancelledError):
                 self._queue.put_nowait(ch)
+                self._schedule_min_size_maintenance()
                 raise
             else:
                 # Record the timeout, as we will apply it by default
@@ -967,6 +1078,12 @@ class Pool:
 
         warning_callback = None
         try:
+            if self._maintenance_task is not None:
+                self._maintenance_task.cancel()
+                await asyncio.gather(
+                    self._maintenance_task, return_exceptions=True)
+                self._maintenance_task = None
+
             warning_callback = self._loop.call_later(
                 60, self._warn_on_long_close)
 
@@ -999,9 +1116,11 @@ class Pool:
         if self._closed:
             return
         self._check_init()
+        self._closed = True
+        if self._maintenance_task is not None:
+            self._maintenance_task.cancel()
         for ch in self._holders:
             ch.terminate()
-        self._closed = True
 
     async def expire_connections(self):
         """Expire all currently open connections.
@@ -1080,6 +1199,7 @@ class PoolAcquireContext:
 
 
 def create_pool(dsn=None, *,
+                init_size=None,
                 min_size=10,
                 max_size=10,
                 max_queries=50000,
@@ -1154,8 +1274,15 @@ def create_pool(dsn=None, *,
         the connections in this pool.  Must be a subclass of
         :class:`~asyncpg.Record`.
 
+    :param int init_size:
+        Number of connections the pool will be initialized with.  Defaults
+        to *min_size*.  Must be between *min_size* and *max_size*.
+
     :param int min_size:
-        Number of connection the pool will be initialized with.
+        Minimum number of connections retained during idle periods.  Closed
+        connections are replaced in the background to restore this floor.
+        The pool may temporarily fall below it while reconnecting or while
+        the server is unavailable.  Pass ``0`` to allow the pool to drain.
 
     :param int max_size:
         Max number of connections in the pool.
@@ -1166,7 +1293,8 @@ def create_pool(dsn=None, *,
 
     :param float max_inactive_connection_lifetime:
         Number of seconds after which inactive connections in the
-        pool will be closed.  Pass ``0`` to disable this mechanism.
+        pool above *min_size* will be closed.  Pass ``0`` to disable this
+        mechanism.
 
     :param coroutine connect:
         A coroutine that is called instead of
@@ -1237,11 +1365,17 @@ def create_pool(dsn=None, *,
 
     .. versionchanged:: 0.30.0
        Added the *connect* and *reset* parameters.
+
+    .. versionchanged:: 0.32.0
+       The *min_size* parameter now defines the connection floor.  The former
+       role of *min_size* — setting the initial pool size — is now handled by
+       the new *init_size* parameter, which defaults to *min_size*.
     """
     return Pool(
         dsn,
         connection_class=connection_class,
         record_class=record_class,
+        init_size=init_size,
         min_size=min_size,
         max_size=max_size,
         max_queries=max_queries,

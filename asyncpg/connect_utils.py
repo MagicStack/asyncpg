@@ -1158,7 +1158,16 @@ async def __connect_addr(
     else:
         connector = loop.create_connection(proto_factory, *addr)
 
-    tr, pr = await connector
+    try:
+        tr, pr = await connector
+    except (Exception, asyncio.CancelledError):
+        # The protocol can exist before create_connection() returns.  If
+        # that operation is cancelled, nobody will await authentication.
+        if not connected.done():
+            connected.cancel()
+        elif not connected.cancelled():
+            connected.exception()
+        raise
 
     try:
         await connected

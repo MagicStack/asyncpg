@@ -54,6 +54,7 @@ class Connection(metaclass=ConnectionMeta):
                  '_intro_query', '_reset_query', '_proxy',
                  '_stmt_exclusive_section', '_config', '_params', '_addr',
                  '_log_listeners', '_termination_listeners', '_cancellations',
+                 '_pool_holder',
                  '_source_traceback', '_query_loggers', '__weakref__')
 
     def __init__(self, protocol, transport, loop,
@@ -105,6 +106,7 @@ class Connection(metaclass=ConnectionMeta):
 
         self._reset_query = None
         self._proxy = None
+        self._pool_holder = None
 
         # Used to serialize operations that might involve anonymous
         # statements.  Specifically, we want to make the following
@@ -134,6 +136,10 @@ class Connection(metaclass=ConnectionMeta):
 
             warnings.warn(msg, ResourceWarning)
             if not self._loop.is_closed():
+                # A weak holder reference may still be live during GC.
+                # Finalization must not notify the pool and restart
+                # maintenance.
+                self._pool_holder = None
                 self.terminate()
 
     async def add_listener(self, channel, callback):
@@ -1599,10 +1605,11 @@ class Connection(metaclass=ConnectionMeta):
         # Free the resources associated with this connection.
         # This must be called when a connection is terminated.
 
-        if self._proxy is not None:
-            # Connection is a member of a pool, so let the pool
-            # know that this connection is dead.
-            self._proxy._holder._release_on_close()
+        if self._pool_holder is not None:
+            # Idle connections have no proxy, but still belong to a holder.
+            holder, self._pool_holder = self._pool_holder(), None
+            if holder is not None and holder._con is self:
+                holder._release_on_close()
 
         self._mark_stmts_as_closed()
         self._listeners.clear()

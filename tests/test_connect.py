@@ -1671,6 +1671,28 @@ gsslib=sspi
 
 class TestConnection(tb.ConnectedTestCase):
 
+    async def test_connection_cancelled_during_transport_setup(self):
+        for connection_lost_first in (False, True):
+            with self.subTest(connection_lost_first=connection_lost_first):
+                async def interrupted_connector(factory, *args, **kwargs):
+                    proto = factory()
+                    if connection_lost_first:
+                        proto.connection_lost(None)
+                    else:
+                        self.loop.call_soon(proto.connection_lost, None)
+                    raise asyncio.CancelledError
+
+                with unittest.mock.patch.object(
+                    self.loop, 'create_connection', interrupted_connector,
+                ):
+                    with self.assertRaises(asyncio.CancelledError):
+                        await self.connect(host='127.0.0.1', ssl=False)
+
+                # Authentication must not report an unobserved failure after
+                # cancellation, even if the transport closes afterwards.
+                await asyncio.sleep(0)
+                gc.collect()
+
     async def test_connection_isinstance(self):
         self.assertTrue(isinstance(self.con, pg_connection.Connection))
         self.assertTrue(isinstance(self.con, object))
