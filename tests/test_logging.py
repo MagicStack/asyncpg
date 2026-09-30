@@ -49,3 +49,15 @@ class TestQueryLogging(tb.ConnectedTestCase):
             type(log.records[0].exception),
             exceptions.UndefinedColumnError
         )
+
+    async def test_logging_context_removed_on_error(self):
+        log = LogCollector()
+        with self.assertRaises(exceptions.UndefinedColumnError):
+            with self.con.query_logger(log):
+                await self.con.execute("SELECT x")
+
+        self.assertEqual(len(self.con._query_loggers), 0)
+
+        await self.con.execute("SELECT 1")
+        await asyncio.sleep(0)  # wait for logging
+        self.assertEqual(len(log.records), 1)

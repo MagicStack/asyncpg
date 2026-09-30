@@ -98,6 +98,32 @@ class TestExecuteScript(tb.ConnectedTestCase):
 
         self.con.terminate()
 
+    async def test_execute_script_interrupted_by_server(self):
+        # The server reports why it is closing the connection with an
+        # ErrorResponse and then closes it without a ReadyForQuery (this
+        # is also what pgbouncer does on query_wait_timeout).  The reported
+        # error must not be lost.
+        pid = await self.con.fetchval('SELECT pg_backend_pid()')
+        fut = self.loop.create_task(
+            self.con.execute('''SELECT pg_sleep(10)'''))
+
+        await asyncio.sleep(0.2)
+
+        other = await self.connect()
+        try:
+            await other.execute('SELECT pg_terminate_backend($1)', pid)
+        finally:
+            await other.close()
+
+        with self.assertRaisesRegex(
+                asyncpg.ConnectionDoesNotExistError,
+                'closed in the middle of operation: '
+                'terminating connection'):
+            await fut
+
+        exc = fut.exception()
+        self.assertIsInstance(exc.__cause__, exceptions.AdminShutdownError)
+
 
 class TestExecuteMany(tb.ConnectedTestCase):
     def setUp(self):

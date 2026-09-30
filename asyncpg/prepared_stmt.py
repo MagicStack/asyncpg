@@ -128,7 +128,7 @@ class PreparedStatement(connresource.ConnectionResource):
 
         :param args: Query arguments.
         :param analyze: If ``True``, the statement will be executed and
-                        the run time statitics added to the return value.
+                        the run time statistics added to the return value.
 
         :return: An object representing the execution plan.  This value
                  is actually a deserialized JSON output of the SQL

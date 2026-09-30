@@ -1,102 +1,146 @@
 name: Release
 
 on:
+  workflow_dispatch:
   pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
     branches:
       - "master"
       - "ci"
       - "[0-9]+.[0-9x]+*"
-    paths:
-      - "asyncpg/_version.py"
+
+permissions:
+  contents: read
 
 jobs:
-  validate-release-request:
-    runs-on: ubuntu-latest
+  classify-release:
+    runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: read
+    outputs:
+      mode: ${{ steps.mode.outputs.mode }}
     steps:
-    - name: Validate release PR
-      uses: edgedb/action-release/validate-pr@master
-      id: checkver
+    - name: Select release mode
+      id: mode
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
       with:
-        require_team: Release Managers
-        require_approval: no
-        github_token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
-        version_file: asyncpg/_version.py
-        version_line_pattern: |
-          __version__(?:\s*:\s*typing\.Final)?\s*=\s*(?:['"])([[:PEP440:]])(?:['"])
+        script: |
+          let mode = 'skip';
 
-    - name: Stop if not approved
-      if: steps.checkver.outputs.approved != 'true'
-      run: |
-        echo ::error::PR is not approved yet.
-        exit 1
+          if (context.eventName === 'workflow_dispatch') {
+            mode = 'dry_run';
+          } else {
+            const { action, label, pull_request: pr } = context.payload;
+            if (action === 'labeled' || action === 'unlabeled') {
+              // Ignore unrelated label changes and do not release on removal.
+              if (action === 'labeled' && label.name === 'release-dry-run') {
+                mode = 'dry_run';
+              }
+            } else if (pr.labels.some(({ name }) => name === 'release-dry-run')) {
+              mode = 'dry_run';
+            } else {
+              // Preserve the previous version-file filter for ordinary PRs.
+              const files = await github.paginate(github.rest.pulls.listFiles, {
+                ...context.repo,
+                pull_number: pr.number,
+                per_page: 100,
+              });
+              if (files.some(({ filename }) => filename === 'asyncpg/_version.py')) {
+                mode = 'release';
+              }
+            }
+          }
 
-    - name: Store release version for later use
-      env:
-        VERSION: ${{ steps.checkver.outputs.version }}
-      run: |
-        mkdir -p dist/
-        echo "${VERSION}" > dist/VERSION
-
-    - uses: actions/upload-artifact@v4
-      with:
-        name: dist-version
-        path: dist/VERSION
+          core.setOutput('mode', mode);
+          core.info(`Release mode: ${mode}`);
 
   build-sdist:
-    needs: validate-release-request
-    runs-on: ubuntu-latest
+    needs: classify-release
+    if: needs.classify-release.outputs.mode != 'skip'
+    runs-on: ubuntu-24.04
 
     env:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         fetch-depth: 50
         submodules: true
         persist-credentials: false
 
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
         python-version: "3.x"
 
     - name: Build source distribution
       run: |
-        pip install -U setuptools wheel pip
-        python setup.py sdist
+        pip install -U setuptools wheel build
+        python -m build --sdist
 
-    - uses: actions/upload-artifact@v4
+    - name: Store release version
+      run: |
+        python - <<'PY'
+        import re
+        from pathlib import Path
+
+        source = Path('asyncpg/_version.py').read_text()
+        match = re.search(
+            r'''^__version__(?:\s*:\s*typing\.Final)?\s*=\s*['"]([^'"]+)['"]''',
+            source,
+            re.MULTILINE,
+        )
+        if match is None:
+            raise RuntimeError('Could not read the release version')
+        Path('dist/VERSION').write_text(match.group(1) + '\n')
+        PY
+
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       with:
         name: dist-sdist
-        path: dist/*.tar.*
+        path: dist/
 
   build-wheels-matrix:
-    needs: validate-release-request
-    runs-on: ubuntu-latest
+    needs: classify-release
+    if: needs.classify-release.outputs.mode != 'skip'
+    runs-on: ubuntu-24.04
     outputs:
       include: ${{ steps.set-matrix.outputs.include }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.x"
-      - run: pip install cibuildwheel==3.3.0
-      - id: set-matrix
+      - name: Install cibuildwheel
+        run: pip install cibuildwheel==4.2.1
+      - name: Build cibuildwheel matrix
+        id: set-matrix
+        env:
+          # skipping pypy for now
+          CIBW_SKIP: >
+            pp*
         run: |
+          set -euo pipefail
           MATRIX_INCLUDE=$(
             {
-              cibuildwheel --print-build-identifiers --platform linux --archs x86_64,aarch64 | grep cp |  jq -nRc '{"only": inputs, "os": "ubuntu-latest"}' \
-              && cibuildwheel --print-build-identifiers --platform macos --archs x86_64,arm64 | grep cp |  jq -nRc '{"only": inputs, "os": "macos-latest"}' \
-              && cibuildwheel --print-build-identifiers --platform windows --archs x86,AMD64 | grep cp |  jq -nRc '{"only": inputs, "os": "windows-latest"}'
+              cibuildwheel --print-build-identifiers --platform linux --archs x86_64 | jq -nRc '{"only": inputs, "os": "ubuntu-24.04"}' \
+              && cibuildwheel --print-build-identifiers --platform linux --archs aarch64 | jq -nRc '{"only": inputs, "os": "ubuntu-24.04-arm"}' \
+              && cibuildwheel --print-build-identifiers --platform macos --archs x86_64 | jq -nRc '{"only": inputs, "os": "macos-15-intel"}' \
+              && cibuildwheel --print-build-identifiers --platform macos --archs arm64 | jq -nRc '{"only": inputs, "os": "macos-15"}' \
+              && cibuildwheel --print-build-identifiers --platform windows --archs x86,AMD64 | jq -nRc '{"only": inputs, "os": "windows-2025"}' \
+              && cibuildwheel --print-build-identifiers --platform windows --archs ARM64 | jq -nRc '{"only": inputs, "os": "windows-11-arm"}'
             } | jq -sc
           )
-          echo "include=$MATRIX_INCLUDE" >> $GITHUB_OUTPUT
+          echo "Wheel matrix entries: $(jq 'length' <<< "$MATRIX_INCLUDE")"
+          test "$(jq 'length' <<< "$MATRIX_INCLUDE")" -gt 0
+          echo "include=$MATRIX_INCLUDE" >> "$GITHUB_OUTPUT"
 
   build-wheels:
     needs: build-wheels-matrix
+    if: ${{ !cancelled() && needs.build-wheels-matrix.result == 'success' }}
     runs-on: ${{ matrix.os }}
     name: Build ${{ matrix.only }}
 
@@ -113,54 +157,79 @@ jobs:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         fetch-depth: 50
         submodules: true
         persist-credentials: false
 
+    - name: Install PostgreSQL for Windows ARM64 tests
+      if: matrix.os == 'windows-11-arm'
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $archive = Join-Path $env:RUNNER_TEMP 'postgresql.zip'
+        $destination = Join-Path $env:RUNNER_TEMP 'postgresql'
+        curl.exe --fail --location --silent --show-error --retry 3 `
+          --output $archive `
+          https://get.enterprisedb.com/postgresql/postgresql-17.6-1-windows-x64-binaries.zip
+        if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL download failed' }
+        Expand-Archive -LiteralPath $archive -DestinationPath $destination
+        $pgCtl = Get-ChildItem $destination -Filter pg_ctl.exe -Recurse |
+          Select-Object -First 1
+        if (-not $pgCtl) { throw 'PostgreSQL archive has no pg_ctl.exe' }
+        & $pgCtl.FullName --version
+        "PGINSTALLATION=$($pgCtl.DirectoryName)" >> $env:GITHUB_ENV
+
     - name: Set up QEMU
       if: runner.os == 'Linux'
-      uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392  # v3.6.0
+      uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1  # v4.4.0
 
-    - uses: pypa/cibuildwheel@63fd63b352a9a8bdcc24791c9dbee952ee9a8abc  # v3.3.0
+    - uses: pypa/cibuildwheel@e090b81e30c4d855ea63bf4b6e59204c09a101ae  # v4.2.1
       with:
         only: ${{ matrix.only }}
       env:
         CIBW_BUILD_VERBOSITY: 1
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       with:
         name: dist-wheels-${{ matrix.only }}
         path: wheelhouse/*.whl
 
   merge-artifacts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [build-sdist, build-wheels]
+    if: >-
+      ${{ !cancelled() && needs.build-sdist.result == 'success' &&
+          needs.build-wheels.result == 'success' }}
     steps:
       - name: Merge Artifacts
-        uses: actions/upload-artifact/merge@v4
+        uses: actions/upload-artifact/merge@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: dist
+          pattern: dist-*
           delete-merged: true
 
-  publish-docs:
-    needs: [build-sdist, build-wheels]
-    runs-on: ubuntu-latest
+  build-docs:
+    needs: [classify-release, build-sdist, build-wheels]
+    if: >-
+      ${{ !cancelled() && needs.build-sdist.result == 'success' &&
+          needs.build-wheels.result == 'success' }}
+    runs-on: ubuntu-24.04
 
     env:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
 
     steps:
     - name: Checkout source
-      uses: actions/checkout@v5
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         fetch-depth: 5
         submodules: true
         persist-credentials: false
 
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
         python-version: "3.x"
 
@@ -170,8 +239,15 @@ jobs:
         pip install -e .
         make htmldocs
 
+    - name: Upload docs preview
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+      with:
+        name: docs-preview
+        path: docs/_build/html/
+
     - name: Checkout gh-pages
-      uses: actions/checkout@v5
+      if: needs.classify-release.outputs.mode == 'dry_run'
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         fetch-depth: 5
         ref: gh-pages
@@ -179,23 +255,124 @@ jobs:
         persist-credentials: false
 
     - name: Sync docs
+      if: needs.classify-release.outputs.mode == 'dry_run'
       run: |
         rsync -a docs/_build/html/ docs/gh-pages/current/
 
-    - name: Commit and push docs
-      uses: magicstack/gha-commit-and-push@master
+    - name: Commit docs locally
+      if: needs.classify-release.outputs.mode == 'dry_run'
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
       with:
-        target_branch: gh-pages
-        workdir: docs/gh-pages
-        commit_message: Automatic documentation update
-        github_token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
-        ssh_key: ${{ secrets.RELEASE_BOT_SSH_KEY }}
-        gpg_key: ${{ secrets.RELEASE_BOT_GPG_KEY }}
-        gpg_key_id: "5C468778062D87BF!"
+        script: |
+          const path = require('node:path');
+          const cwd = path.join(process.env.GITHUB_WORKSPACE, 'docs/gh-pages');
+          await exec.exec('git', ['config', 'user.name', 'Release dry run'], {cwd});
+          await exec.exec('git', ['config', 'user.email',
+            'release-dry-run@users.noreply.github.com'], {cwd});
+          await exec.exec('git', ['config', 'commit.gpgsign', 'false'], {cwd});
+
+          await exec.exec('git', ['add', '-A', 'current'], {cwd});
+          const diff = await exec.getExecOutput('git', ['diff', '--cached', '--quiet'], {
+            cwd, ignoreReturnCode: true, silent: true,
+          });
+          if (diff.exitCode !== 0 && diff.exitCode !== 1) {
+            throw new Error('Could not inspect staged docs');
+          }
+          const commitArgs = ['commit', '-m', 'Automatic documentation update'];
+          if (diff.exitCode === 0) commitArgs.push('--allow-empty');
+          await exec.exec('git', commitArgs, {cwd});
+          await exec.exec('git', ['show', '--stat', '--oneline', 'HEAD'], {cwd});
+          core.info('Dry run: documentation commit was created locally; gh-pages was not pushed.');
+
+  dry-run-refs:
+    needs: [classify-release, merge-artifacts, build-docs]
+    if: >-
+      ${{ !cancelled() && needs.classify-release.outputs.mode == 'dry_run' &&
+          needs.merge-artifacts.result == 'success' &&
+          needs.build-docs.result == 'success' }}
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout release commit
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        fetch-depth: 2
+        persist-credentials: false
+
+    - name: Sign release tag locally
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+      with:
+        script: |
+          const fs = require('node:fs');
+          const os = require('node:os');
+          const path = require('node:path');
+          const {execFileSync} = require('node:child_process');
+          const cwd = process.env.GITHUB_WORKSPACE;
+          const pr = context.payload.pull_request;
+          // PR workflows check out GitHub's merge commit. Its second parent
+          // is the exact PR head that the live merge action signs and pushes.
+          const head = (await exec.getExecOutput('git', [
+            'rev-parse', pr ? 'HEAD^2' : 'HEAD',
+          ], {
+            cwd, silent: true,
+          })).stdout.trim();
+          if (pr && head !== pr.head.sha) {
+            throw new Error(`Checked out ${head}, expected PR head ${pr.head.sha}`);
+          }
+
+          const source = (await exec.getExecOutput('git', [
+            'show', `${head}:asyncpg/_version.py`,
+          ], {cwd, silent: true})).stdout;
+          const version = source.match(/^__version__(?:\s*:\s*typing\.Final)?\s*=\s*['"]([^'"]+)['"]/m)?.[1];
+          if (!version) throw new Error('Could not read the release version');
+          const tag = `v${version}`;
+          const message = pr
+            ? `${pr.title}\n\n${pr.body || ''}`
+            : `Dry run for ${context.ref}`;
+
+          // The live merge action signs the tag with the release key. Generate
+          // a disposable key here so fork PRs can exercise signing too.
+          const gnupgHome = fs.mkdtempSync(path.join(os.tmpdir(), 'release-dry-run-gpg-'));
+          fs.chmodSync(gnupgHome, 0o700);
+          const originalGnupgHome = process.env.GNUPGHOME;
+          try {
+            const env = {...process.env, GNUPGHOME: gnupgHome};
+            execFileSync('gpg', [
+              '--batch', '--pinentry-mode', 'loopback', '--passphrase', '',
+              '--quick-generate-key', 'Release dry run <release-dry-run@users.noreply.github.com>',
+              'ed25519', 'sign', '0',
+            ], {env});
+            const keys = execFileSync('gpg', ['--list-secret-keys', '--with-colons'], {
+              env, encoding: 'utf8',
+            });
+            const key = keys.split('\n').find(line => line.startsWith('fpr:'))?.split(':')[9];
+            if (!key) throw new Error('Could not identify the disposable signing key');
+            await exec.exec('git', ['config', 'user.name', 'Release dry run'], {cwd});
+            await exec.exec('git', ['config', 'user.email',
+              'release-dry-run@users.noreply.github.com'], {cwd});
+            await exec.exec('git', ['config', 'user.signingkey', key], {cwd});
+            process.env.GNUPGHOME = gnupgHome;
+            await exec.exec('git', ['tag', '--sign', '--file=-', tag, head], {
+              cwd, input: Buffer.from(message),
+            });
+            await exec.exec('git', ['tag', '--verify', tag], {cwd});
+            await exec.exec('git', ['show', '--no-patch', tag], {cwd});
+          } finally {
+            if (originalGnupgHome === undefined) {
+              delete process.env.GNUPGHOME;
+            } else {
+              process.env.GNUPGHOME = originalGnupgHome;
+            }
+            fs.rmSync(gnupgHome, {recursive: true, force: true});
+          }
+          core.info(`Dry run: signed ${tag} at ${head} locally; no refs were pushed.`);
 
   publish:
-    needs: [build-sdist, build-wheels, publish-docs]
-    runs-on: ubuntu-latest
+    needs: [classify-release, merge-artifacts, build-docs]
+    if: >-
+      ${{ !cancelled() && needs.classify-release.outputs.mode == 'release' &&
+          needs.merge-artifacts.result == 'success' &&
+          needs.build-docs.result == 'success' }}
+    runs-on: ubuntu-24.04
 
     environment:
       name: pypi
@@ -207,26 +384,88 @@ jobs:
       deployments: write
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         fetch-depth: 5
         submodules: false
         persist-credentials: false
 
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
       with:
         name: dist
         path: dist/
+
+    - name: Download docs preview
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+      with:
+        name: docs-preview
+        path: docs/_build/html/
+
+    - name: Checkout gh-pages
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        fetch-depth: 5
+        ref: gh-pages
+        path: docs/gh-pages
+        persist-credentials: false
+
+    - name: Sync docs
+      run: rsync -a docs/_build/html/ docs/gh-pages/current/
+
+    - name: Commit and push docs
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+      env:
+        RELEASE_BOT_GPG_KEY: ${{ secrets.RELEASE_BOT_GPG_KEY }}
+        RELEASE_BOT_GITHUB_TOKEN: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
+      with:
+        github-token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
+        script: |
+          const path = require('node:path');
+          const cwd = path.join(process.env.GITHUB_WORKSPACE, 'docs/gh-pages');
+          const bot = (await github.rest.users.getAuthenticated()).data;
+          await exec.exec('git', ['config', 'user.name', bot.name || bot.login], {cwd});
+          await exec.exec('git', ['config', 'user.email',
+            bot.email || `${bot.id}+${bot.login}@users.noreply.github.com`], {cwd});
+
+          if (process.env.RELEASE_BOT_GPG_KEY) {
+            await exec.exec('gpg', ['--batch', '--no-tty', '--import'], {
+              input: Buffer.from(process.env.RELEASE_BOT_GPG_KEY), silent: true,
+            });
+            await exec.exec('git', ['config', 'user.signingkey', '5C468778062D87BF!'], {cwd});
+            await exec.exec('git', ['config', 'commit.gpgsign', 'true'], {cwd});
+          }
+
+          await exec.exec('git', ['add', '-A', 'current'], {cwd});
+          const diff = await exec.getExecOutput('git', ['diff', '--cached', '--quiet'], {
+            cwd, ignoreReturnCode: true, silent: true,
+          });
+          if (diff.exitCode === 0) {
+            core.info('Documentation is unchanged.');
+            return;
+          }
+          if (diff.exitCode !== 1) throw new Error('Could not inspect staged docs');
+          await exec.exec('git', ['commit', '-m', 'Automatic documentation update'], {cwd});
+          const auth = Buffer.from(`x-access-token:${process.env.RELEASE_BOT_GITHUB_TOKEN}`)
+            .toString('base64');
+          await exec.exec('git', ['push', 'origin', 'HEAD:gh-pages'], {
+            cwd,
+            env: {
+              ...process.env,
+              GIT_CONFIG_COUNT: '1',
+              GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
+              GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${auth}`,
+            },
+          });
 
     - name: Extract Release Version
       id: relver
       run: |
         set -e
-        echo "version=$(cat dist/VERSION)" >> $GITHUB_OUTPUT
+        echo "version=$(cat dist/VERSION)" >> "$GITHUB_OUTPUT"
         rm dist/VERSION
 
     - name: Merge and tag the PR
-      uses: edgedb/action-release/merge@master
+      uses: edgedb/action-release/merge@334b0b816ca9c4f9b64188ba93122f896ca26fc1  # master
       with:
         github_token: ${{ secrets.RELEASE_BOT_GITHUB_TOKEN }}
         ssh_key: ${{ secrets.RELEASE_BOT_SSH_KEY }}
@@ -235,19 +474,27 @@ jobs:
         tag_name: v${{ steps.relver.outputs.version }}
 
     - name: Publish Github Release
-      uses: elprans/gh-action-create-release@master
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RELEASE_VERSION: ${{ steps.relver.outputs.version }}
+        RELEASE_TARGET: ${{ github.event.pull_request.base.ref }}
+        RELEASE_BODY: ${{ github.event.pull_request.body }}
       with:
-        tag_name: v${{ steps.relver.outputs.version }}
-        release_name: v${{ steps.relver.outputs.version }}
-        target: ${{ github.event.pull_request.base.ref }}
-        body: ${{ github.event.pull_request.body }}
+        script: |
+          await github.rest.repos.createRelease({
+            ...context.repo,
+            tag_name: `v${process.env.RELEASE_VERSION}`,
+            name: `v${process.env.RELEASE_VERSION}`,
+            target_commitish: process.env.RELEASE_TARGET,
+            body: process.env.RELEASE_BODY,
+            draft: false,
+            prerelease: false,
+          });
 
     - run: |
         ls -al dist/
 
     - name: Upload to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+      uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
       with:
         attestations: true

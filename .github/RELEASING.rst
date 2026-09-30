@@ -1,55 +1,57 @@
 Releasing asyncpg
 =================
 
-When making an asyncpg release follow the below checklist.
+The ``Release`` workflow builds and tests the source distribution and the
+Linux, macOS, and Windows wheel matrix, and builds the documentation. A live
+release also publishes the docs, merges and tags the release PR, creates a
+GitHub release, and uploads the distributions to PyPI.
 
-1. Remove the ``.dev0`` suffix from ``__version__`` in ``asyncpg/__init__.py``.
+Dry-run a release
+-----------------
 
-2. Make a release commit:
+Use either trigger to run the same builds without publishing anything:
 
-   .. code-block:: shell
+* Add the ``release-dry-run`` label to a PR targeting ``master``. The label
+  stays in effect for later commits to that PR, including commits that do not
+  change ``asyncpg/_version.py``. It also works for PRs from forks. Changes to
+  other labels do not trigger a dry run.
 
-      $ git commit -a -m "asyncpg vX.Y.0"
+* On GitHub, open **Actions > Release > Run workflow**, then select a
+  repository branch, including ``master``. Manual runs are always dry runs.
+  GitHub shows the **Run workflow** button once this workflow is on the
+  default branch.
 
-   Here, X.Y.0 is the ``__version__`` in ``asyncpg/__init__.py``.
+Find the ``dist`` and ``docs-preview`` downloads under **Artifacts** on the
+workflow run page. The wheels are built and tested by cibuildwheel. The
+``docs-preview`` artifact contains the built HTML documentation.
+Dry runs create a local documentation commit and a signed release tag on the
+selected commit with a disposable signing key. They log those local refs but
+do not push either one to GitHub.
 
-3. Force push into the "releases" branch on Github:
+Removing ``release-dry-run`` does not start a live release. Later commits to
+an unlabeled version PR follow the normal release process. If a live release
+run has already started, adding the label does not cancel that run; cancel it
+separately in Actions if needed.
 
-   .. code-block:: shell
+Publish a release
+-----------------
 
-      $ git push --force origin master:releases
-
-4. Wait for CI to make the release build.  If there are errors,
-   investigate, fix and repeat steps 2 through 4.
-
-5. Prepare the release changelog by cleaning and categorizing the output of
-   ``.github/release_log.py``.  Look at previous releases for examples
-   of changelog formatting:
-
-   .. code-block:: shell
+1. Update ``__version__`` in ``asyncpg/_version.py`` and prepare the release
+   changelog. ``.github/release_log.py`` can help gather changes since the
+   previous release tag::
 
       $ .github/release_log.py <previously-released-version-tag>
 
-6. Make an annotated, signed git tag and use the changelog as the tag
-   annotation:
+2. Open a PR to ``master`` with the version change. Without the dry-run label,
+   the ``Release`` workflow builds and tests the distributions and
+   documentation. Check the build results, then have a Release Manager approve
+   the pending ``pypi`` deployment using **Review deployments** on the
+   workflow run.
 
-   .. code-block:: shell
+3. After deployment approval, the workflow updates ``gh-pages``, merges and
+   tags the PR, creates the GitHub release, and uploads the distributions to
+   PyPI. Check these outputs after it finishes, then edit the GitHub release
+   notes as needed.
 
-      $ git tag -s vX.Y.0
-      <paste changelog>
-
-7. Push the release commit and the new tag to master on Github:
-
-   .. code-block:: shell
-
-      $ git push --follow-tags
-
-8. Wait for CI to publish the build to PyPI.
-
-9. Edit the release on Github and paste the same content you used for
-   the tag annotation (Github treats tag annotations as plain text,
-   rather than Markdown.)
-
-10. Open master for development by bumping the minor component of
-    ``__version__`` in ``asyncpg/__init__.py`` and appending the ``.dev0``
-    suffix.
+4. Open ``master`` for development by updating ``asyncpg/_version.py`` to the
+   next development version with a ``.dev0`` suffix.

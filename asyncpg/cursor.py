@@ -111,7 +111,7 @@ class BaseCursor(connresource.ConnectionResource):
             raise exceptions.InterfaceError(
                 'cursor: the prepared statement is closed')
 
-        if not self._connection._top_xact:
+        if not self._connection.is_in_transaction():
             raise exceptions.NoActiveSQLTransactionError(
                 'cursor cannot be created outside of a transaction')
 
