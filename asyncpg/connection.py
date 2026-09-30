@@ -1603,8 +1603,8 @@ class Connection(metaclass=ConnectionMeta):
 
         if self._pool_holder is not None:
             # Idle connections have no proxy, but still belong to a holder.
-            holder, self._pool_holder = self._pool_holder, None
-            if holder._con is self:
+            holder, self._pool_holder = self._pool_holder(), None
+            if holder is not None and holder._con is self:
                 holder._release_on_close()
 
         self._mark_stmts_as_closed()

@@ -901,6 +901,53 @@ class TestPool(tb.ConnectedTestCase):
                     gc.collect()
                     self.assertIsNone(ref())
 
+    async def test_pool_gc_does_not_restore_min_size(self):
+        for inactive_timeout in (0, 0.05):
+            with self.subTest(inactive_timeout=inactive_timeout):
+                connections = []
+                maintenance_pools = []
+
+                class WeakPool(pg_pool.Pool):
+                    async def _maintain_min_size(self):
+                        maintenance_pools.append(self)
+                        await super()._maintain_min_size()
+
+                async def connect(*args, **kwargs):
+                    con = await pg_connection.connect(*args, **kwargs)
+                    connections.append(weakref.ref(con))
+                    return con
+
+                pool = await tb.create_pool(
+                    **self.get_connection_spec(), pool_class=WeakPool,
+                    init_size=2, min_size=2, max_size=2, connect=connect,
+                    max_inactive_connection_lifetime=inactive_timeout,
+                )
+                ref = weakref.ref(pool)
+                try:
+                    if inactive_timeout:
+                        await asyncio.sleep(inactive_timeout * 2)
+                    self.assertTrue(all(h._inactive_callback is None
+                                        for h in pool._holders))
+                    del pool
+                    with self.assertWarnsRegex(ResourceWarning,
+                                               'unclosed connection'):
+                        gc.collect()
+
+                    # Give any incorrectly scheduled maintenance task time
+                    # to reconnect, then ensure no new connections appeared.
+                    await asyncio.sleep(0.1)
+                    self.assertFalse(maintenance_pools)
+                    self.assertEqual(len(connections), 2)
+                    self.assertIsNone(ref())
+                    self.assertTrue(all(con() is None for con in connections))
+                finally:
+                    remaining = ref()
+                    if remaining is not None:
+                        await remaining.close()
+                    for remaining in maintenance_pools:
+                        await remaining.close()
+                    maintenance_pools.clear()
+
     async def test_pool_min_size_restored_after_recycling(self):
         for cause in ('max_queries', 'expire', 'close', 'terminate'):
             with self.subTest(cause=cause):

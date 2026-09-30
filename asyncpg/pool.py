@@ -14,6 +14,7 @@ import logging
 from types import TracebackType
 from typing import Any, Optional, Type
 import warnings
+import weakref
 
 from . import compat
 from . import connection
@@ -132,7 +133,7 @@ class PoolConnectionHolder:
                  '_max_queries', '_setup',
                  '_max_inactive_time', '_in_use',
                  '_inactive_callback', '_timeout',
-                 '_generation')
+                 '_generation', '__weakref__')
 
     def __init__(
         self,
@@ -176,7 +177,8 @@ class PoolConnectionHolder:
             raise exceptions.ConnectionDoesNotExistError(
                 'connection was closed during pool initialization')
         self._con = con
-        con._pool_holder = self
+        # A collected pool must not be resurrected by connection cleanup.
+        con._pool_holder = weakref.ref(self)
         self._generation = generation
         self._maybe_cancel_inactive_callback()
         self._setup_inactive_callback()
