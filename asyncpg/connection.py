@@ -136,6 +136,10 @@ class Connection(metaclass=ConnectionMeta):
 
             warnings.warn(msg, ResourceWarning)
             if not self._loop.is_closed():
+                # A weak holder reference may still be live during GC.
+                # Finalization must not notify the pool and restart
+                # maintenance.
+                self._pool_holder = None
                 self.terminate()
 
     async def add_listener(self, channel, callback):

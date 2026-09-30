@@ -177,7 +177,7 @@ class PoolConnectionHolder:
             raise exceptions.ConnectionDoesNotExistError(
                 'connection was closed during pool initialization')
         self._con = con
-        # A collected pool must not be resurrected by connection cleanup.
+        # Notify live holders without keeping an abandoned pool alive.
         con._pool_holder = weakref.ref(self)
         self._generation = generation
         self._maybe_cancel_inactive_callback()
