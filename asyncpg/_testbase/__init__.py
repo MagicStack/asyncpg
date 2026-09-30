@@ -267,7 +267,7 @@ def _shutdown_cluster(cluster):
 
 
 def create_pool(dsn=None, *,
-                init_size=10,
+                init_size=None,
                 min_size=10,
                 max_size=10,
                 max_queries=50000,
@@ -368,10 +368,16 @@ class ClusterTestCase(TestCase):
         self._pools = []
 
     def tearDown(self):
-        super().tearDown()
+        maintenance_tasks = []
         for pool in self._pools:
             pool.terminate()
+            if pool._maintenance_task is not None:
+                maintenance_tasks.append(pool._maintenance_task)
+        if maintenance_tasks:
+            self.loop.run_until_complete(asyncio.gather(
+                *maintenance_tasks, return_exceptions=True))
         self._pools = []
+        super().tearDown()
 
     def create_pool(self, pool_class=pg_pool.Pool,
                     connection_class=pg_connection.Connection, **kwargs):
