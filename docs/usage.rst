@@ -411,6 +411,10 @@ To create a connection pool, use the
 The resulting :class:`Pool <asyncpg.pool.Pool>` object can then be used
 to borrow connections from the pool.
 
+When using ``async with pool.acquire() as connection``, the connection is
+released back to the pool automatically when the context exits.  There is no
+need to close the borrowed connection explicitly.
+
 Below is an example of how **asyncpg** can be used to implement a simple
 Web service that computes the requested power of two.
 
