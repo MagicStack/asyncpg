@@ -339,6 +339,11 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         else:
             dsn_user = dsn_password = ''
 
+        # An explicit `port` argument wins over the DSN, but a `port`
+        # query parameter overrides the port from the DSN host list,
+        # like in libpq.
+        explicit_port = port
+
         if not host and dsn_hostspec:
             host, port = _parse_hostlist(dsn_hostspec, port, unquote=True)
 
@@ -358,7 +363,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
 
             if 'port' in query:
                 val = query.pop('port')
-                if not port and val:
+                if not explicit_port and val:
                     port = [int(p) for p in val.split(',')]
 
             if 'host' in query:
