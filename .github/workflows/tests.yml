@@ -91,11 +91,6 @@ jobs:
           # uvloop does not support windows
           - loop: uvloop
             os: windows-2025
-          # The test dependency group excludes uvloop on Python 3.15.
-          - loop: uvloop
-            python-version: "3.15"
-          - loop: uvloop
-            python-version: "3.15t"
           # github does not provide 3.9 cpython for arm64 runners
           - python-version: "3.9"
             os: macos-15
