@@ -138,6 +138,10 @@ The table below shows the correspondence between PostgreSQL and Python types.
 | ``integer``,         |                                                     |
 | ``bigint``           |                                                     |
 +----------------------+-----------------------------------------------------+
+| ``oid8``             | :class:`int <python:int>`                           |
++----------------------+-----------------------------------------------------+
+| ``regdatabase``      | :class:`str <python:str>`                           |
++----------------------+-----------------------------------------------------+
 | ``numeric``          | :class:`Decimal <python:decimal.Decimal>`           |
 +----------------------+-----------------------------------------------------+
 | ``json``, ``jsonb``  | :class:`str <python:str>`                           |

@@ -23,6 +23,15 @@ _INVALIDOID = 0
 # postgresql/src/include/access/transam.h: FirstBootstrapObjectId
 _MAXBUILTINOID = 10000 - 1
 
+# Types removed from newer PostgreSQL versions that we still support.
+_LEGACY_TYPES = {
+    210: 'smgr',
+    702: 'abstime',
+    703: 'reltime',
+    704: 'tinterval',
+    2282: 'opaque',
+}
+
 # A list of alternative names for builtin types.
 _TYPE_ALIASES = {
     'smallint': 'int2',
@@ -78,9 +87,11 @@ async def runner(args):
     typemap = {}
     array_types = []
 
-    for pg_type in pg_types:
-        typeoid = pg_type['oid']
-        typename = pg_type['typname']
+    pg_types = _LEGACY_TYPES | {
+        pg_type['oid']: pg_type['typname'] for pg_type in pg_types
+    }
+
+    for typeoid, typename in sorted(pg_types.items()):
 
         defname = '{}OID'.format(typename.upper())
         defs.append('DEF {name} = {oid}'.format(name=defname, oid=typeoid))
@@ -91,11 +102,11 @@ async def runner(args):
 
         typemap[defname] = typename
 
-    buf += 'DEF MAXSUPPORTEDOID = {}\n\n'.format(pg_types[-1]['oid'])
+    buf += 'DEF MAXSUPPORTEDOID = {}\n\n'.format(max(pg_types))
 
     buf += '\n'.join(defs)
 
-    buf += '\n\ncdef ARRAY_TYPES = ({},)'.format(', '.join(array_types))
+    buf += '\n\nARRAY_TYPES = {{{}}}'.format(', '.join(array_types))
 
     f_typemap = ('{}: {!r}'.format(dn, n) for dn, n in sorted(typemap.items()))
     buf += '\n\nBUILTIN_TYPE_OID_MAP = {{\n    {}\n}}'.format(

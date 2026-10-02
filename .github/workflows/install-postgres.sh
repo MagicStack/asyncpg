@@ -22,7 +22,12 @@ if [[ $OSTYPE == linux* ]]; then
         apt-get install -y --no-install-recommends curl gnupg ca-certificates
         curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
         mkdir -p /etc/apt/sources.list.d/
-        echo "deb https://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME}-pgdg main" \
+        PGDG_COMPONENTS="main"
+        if [[ ${PGVERSION} == 19 ]]; then
+            # PostgreSQL beta packages live in a separate component.
+            PGDG_COMPONENTS+=" 19"
+        fi
+        echo "deb https://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME}-pgdg ${PGDG_COMPONENTS}" \
             >> /etc/apt/sources.list.d/pgdg.list
         apt-get update
         apt-get install -y --no-install-recommends \
