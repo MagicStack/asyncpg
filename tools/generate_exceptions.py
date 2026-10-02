@@ -76,6 +76,15 @@ def main():
     with open(args.errcodesfile, 'r') as errcodes_f:
         errcodes = errcodes_f.read()
 
+    # Removed in PostgreSQL 17, but still raised by older supported servers.
+    if not re.search(r'^72000\s', errcodes, re.MULTILINE):
+        errcodes = errcodes.replace(
+            'Section: Class F0',
+            'Section: Class 72 - Snapshot Failure\n\n'
+            '72000 E ERRCODE_SNAPSHOT_TOO_OLD snapshot_too_old\n\n'
+            'Section: Class F0',
+        )
+
     section_re = re.compile(r'^Section: .*')
 
     tpl = """\

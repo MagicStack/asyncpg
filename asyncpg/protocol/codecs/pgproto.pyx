@@ -235,7 +235,7 @@ cdef init_pseudo_codecs():
 
     # 64-bit OID types
     oid8_types = [
-        XID8OID,
+        XID8OID, OID8OID,
     ]
 
     for oid_type in oid8_types:
@@ -253,6 +253,7 @@ cdef init_pseudo_codecs():
         REGPROCOID, REGPROCEDUREOID, REGOPEROID, REGOPERATOROID,
         REGCLASSOID, REGTYPEOID, REGCONFIGOID, REGDICTIONARYOID,
         REGNAMESPACEOID, REGROLEOID, REFCURSOROID, REGCOLLATIONOID,
+        REGDATABASEOID,
     ]
 
     for reg_type in reg_types:

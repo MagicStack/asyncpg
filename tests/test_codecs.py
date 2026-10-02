@@ -461,7 +461,21 @@ type_samples = [
         0,
         10,
         4294967295
-    ])
+    ]),
+    ('oid8', 'oid8', (
+        0,
+        1,
+        2 ** 32,
+        2 ** 63,
+        2 ** 64 - 1,
+    ), (19, 0)),
+    ('regdatabase', 'regdatabase', (
+        'postgres',
+        'template0',
+        'template1',
+        '-',
+        '4294967295',
+    ), (19, 0)),
 ]
 
 
@@ -551,6 +565,38 @@ class TestCodecs(tb.ConnectedTestCase):
             self.assertIsNotNone(
                 codec,
                 'core type {} ({}) is unhandled'.format(typename, oid))
+
+    async def test_oid8(self):
+        if self.server_version < (19, 0):
+            self.skipTest('oid8 requires PostgreSQL 19 or later')
+
+        values = [0, 2 ** 32, 2 ** 63, 2 ** 64 - 1, None]
+        result = await self.con.fetchval('SELECT $1::oid8[]', values)
+        self.assertEqual(result, values)
+
+        for value in (-1, 2 ** 64, 2 ** 256):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(
+                        asyncpg.DataError, 'value out of uint64 range'):
+                    await self.con.fetchval('SELECT $1::oid8', value)
+
+        # A text fallback would accept this; the integer codec must reject it.
+        with self.assertRaises(asyncpg.DataError):
+            await self.con.fetchval('SELECT $1::oid8', '42')
+
+    async def test_regdatabase(self):
+        if self.server_version < (19, 0):
+            self.skipTest('regdatabase requires PostgreSQL 19 or later')
+
+        oid = await self.con.fetchval(
+            "SELECT oid FROM pg_database WHERE datname = 'postgres'")
+        result = await self.con.fetchval('SELECT $1::regdatabase', str(oid))
+        self.assertEqual(result, 'postgres')
+
+        result = await self.con.fetchval(
+            "SELECT current_database()::regdatabase")
+        self.assertEqual(result, await self.con.fetchval(
+            'SELECT current_database()'))
 
     async def test_void(self):
         res = await self.con.fetchval('select pg_sleep(0)')
