@@ -1295,15 +1295,11 @@ async def _connect(*, loop, connection_class, record_class, **kwargs):
             if target_attr == SessionAttribute.prefer_standby and candidates:
                 chosen_connection = random.choice(candidates)
     finally:
-
-        async def _close_candidates(conns, chosen):
-            await asyncio.gather(
-                *(c.close() for c in conns if c is not chosen),
-                return_exceptions=True
-            )
-        if candidates:
-            asyncio.create_task(
-                _close_candidates(candidates, chosen_connection))
+        # Do not wait for rejected hosts to disconnect: their cleanup must
+        # neither delay a successful connection nor outlive the event loop.
+        for c in candidates:
+            if c is not chosen_connection:
+                c.terminate()
 
     if chosen_connection:
         return chosen_connection
