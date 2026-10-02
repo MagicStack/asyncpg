@@ -1009,6 +1009,55 @@ class TestPool(tb.ConnectedTestCase):
             await self.wait_for_pool_size(pool, 1)
             self.assertEqual(await pool.fetchval('SELECT 42'), 42)
 
+    async def test_pool_min_size_backs_off_on_target_attribute_mismatch(self):
+        offline = False
+        attempts = 0
+        delays = asyncio.Queue()
+        resume = asyncio.Queue()
+        real_sleep = asyncio.sleep
+
+        async def connect(*args, **kwargs):
+            nonlocal attempts
+            if offline:
+                attempts += 1
+                raise asyncpg.TargetServerAttributeNotMatched(
+                    'primary temporarily unavailable')
+            return await pg_connection.connect(*args, **kwargs)
+
+        async def retry_sleep(delay):
+            if asyncio.current_task() is not pool._maintenance_task:
+                return await real_sleep(delay)
+            delays.put_nowait(delay)
+            await resume.get()
+
+        async with self.create_pool(
+            init_size=1, min_size=1, max_size=1, connect=connect,
+            target_session_attrs='primary',
+        ) as pool:
+            offline = True
+            with self.assertLogs('asyncpg.pool', level='WARNING') as logs, \
+                    mock.patch.object(pg_pool.asyncio, 'sleep', retry_sleep):
+                pool._holders[0]._con.terminate()
+                # Other tasks keep using the real sleep while maintenance
+                # retries are controlled by the test.
+                await asyncio.wait_for(asyncio.sleep(0), 5)
+                for i, expected in enumerate((1, 2, 4, 8, 16, 32, 60, 60), 1):
+                    delay = await asyncio.wait_for(delays.get(), 5)
+                    self.assertEqual(delay, expected)
+                    self.assertEqual(attempts, i)
+                    self.assertEqual(pool.get_size(), 0)
+                    self.assertEqual(pool._queue.qsize(), 1)
+                    if i < 8:
+                        resume.put_nowait(None)
+
+                offline = False
+                maintenance = pool._maintenance_task
+                resume.put_nowait(None)
+                await asyncio.wait_for(maintenance, 5)
+            self.assertEqual(len(logs.records), 8)
+            self.assertEqual(pool.get_size(), 1)
+            self.assertEqual(await pool.fetchval('SELECT 42'), 42)
+
     async def test_pool_floor_reconnect_honors_expired_generation(self):
         started = asyncio.Event()
         resume = asyncio.Event()
