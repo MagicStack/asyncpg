@@ -101,9 +101,10 @@ class TestCase(unittest.TestCase, metaclass=TestCaseMeta):
     def setUpClass(cls):
         if os.environ.get('USE_UVLOOP'):
             import uvloop
-            asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+            loop = uvloop.new_event_loop()
+        else:
+            loop = asyncio.new_event_loop()
 
-        loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
         cls.loop = loop
 
