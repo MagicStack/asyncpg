@@ -619,6 +619,14 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         raise exceptions.ClientConfigurationError(
             'could not determine database name to connect to')
 
+    # The startup packet is built by pgproto's WriteBuffer.write_str(),
+    # which is typed to accept exactly `str` and does not accept `str`
+    # subclasses (e.g. enum.StrEnum members, or third-party string-like
+    # types such as tomlkit's), even though `isinstance(x, str)` is True
+    # for them. Coerce here so any such value is safely accepted.
+    user = str(user)
+    database = str(database)
+
     if password is None:
         if passfile is None:
             passfile = os.getenv('PGPASSFILE')
@@ -838,6 +846,11 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         raise exceptions.ClientConfigurationError(
             'server_settings is expected to be None or '
             'a Dict[str, str]')
+    if server_settings is not None:
+        # See the comment above the `user`/`database` coercion: keys and
+        # values are also written via pgproto's write_str(), which rejects
+        # str subclasses.
+        server_settings = {str(k): str(v) for k, v in server_settings.items()}
 
     if target_session_attrs is None:
         target_session_attrs = os.getenv(
