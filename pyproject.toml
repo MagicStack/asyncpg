@@ -84,6 +84,7 @@ skip = "cp38-*"
 [tool.cibuildwheel.macos]
 before-all = ".github/workflows/install-postgres.sh"
 test-command = "python {project}/tests/__init__.py"
+environment = {MACOSX_DEPLOYMENT_TARGET="11"}
 
 [tool.cibuildwheel.windows]
 test-command = "python {project}\\tests\\__init__.py"
