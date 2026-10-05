@@ -1036,6 +1036,59 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'dsn_host_with_port_in_params',
+            'dsn': 'postgresql://user@host/db?port=6432',
+            'result': (
+                [('host', 6432)],
+                {
+                    'user': 'user',
+                    'database': 'db',
+                    'target_session_attrs': 'any',
+                }
+            )
+        },
+
+        {
+            'name': 'dsn_host_port_overridden_by_port_in_params',
+            'dsn': 'postgresql://user@host:5433/db?port=6432',
+            'result': (
+                [('host', 6432)],
+                {
+                    'user': 'user',
+                    'database': 'db',
+                    'target_session_attrs': 'any',
+                }
+            )
+        },
+
+        {
+            'name': 'dsn_multi_host_with_ports_in_params',
+            'dsn': 'postgresql://user@host1,host2/db?port=6432,6433',
+            'result': (
+                [('host1', 6432), ('host2', 6433)],
+                {
+                    'user': 'user',
+                    'database': 'db',
+                    'target_session_attrs': 'any',
+                }
+            )
+        },
+
+        {
+            'name': 'dsn_host_port_in_params_explicit_port_wins',
+            'dsn': 'postgresql://user@host/db?port=6432',
+            'port': 7000,
+            'result': (
+                [('host', 7000)],
+                {
+                    'user': 'user',
+                    'database': 'db',
+                    'target_session_attrs': 'any',
+                }
+            )
+        },
+
+        {
             'name': 'dsn_only_illegal_protocol',
             'dsn': 'pq:///dbname?host=/unix_sock/test&user=spam',
             'error': (ValueError, 'invalid DSN')
