@@ -85,7 +85,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.14t", "3.15", "3.15t"]
-        os: [ubuntu-24.04, macos-15, windows-2025]
+        os: [ubuntu-24.04, macos-26, windows-2025]
         loop: [asyncio, uvloop]
         exclude:
           # uvloop does not support windows
@@ -93,7 +93,7 @@ jobs:
             os: windows-2025
           # github does not provide 3.9 cpython for arm64 runners
           - python-version: "3.9"
-            os: macos-15
+            os: macos-26
 
     runs-on: ${{ matrix.os }}
 
