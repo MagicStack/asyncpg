@@ -7,12 +7,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>asyncpg.cursor &mdash; asyncpg Documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
-      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../_static/documentation_options.js?v=d63f172e"></script>
+      <script src="../../_static/documentation_options.js?v=4440c9c5"></script>
       <script src="../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
@@ -87,19 +87,19 @@
 <div class="viewcode-block" id="CursorFactory">
 <a class="viewcode-back" href="../../api/index.html#asyncpg.cursor.CursorFactory">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">CursorFactory</span><span class="p">(</span><span class="n">connresource</span><span class="o">.</span><span class="n">ConnectionResource</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A cursor interface for the results of a query.</span>
+<span class="w">    </span><span class="sd">"""A cursor interface for the results of a query.</span>
 
 <span class="sd">    A cursor interface can be used to initiate efficient traversal of the</span>
 <span class="sd">    results of a large query.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s1">&#39;_state&#39;</span><span class="p">,</span>
-        <span class="s1">&#39;_args&#39;</span><span class="p">,</span>
-        <span class="s1">&#39;_prefetch&#39;</span><span class="p">,</span>
-        <span class="s1">&#39;_query&#39;</span><span class="p">,</span>
-        <span class="s1">&#39;_timeout&#39;</span><span class="p">,</span>
-        <span class="s1">&#39;_record_class&#39;</span><span class="p">,</span>
+        <span class="s1">'_state'</span><span class="p">,</span>
+        <span class="s1">'_args'</span><span class="p">,</span>
+        <span class="s1">'_prefetch'</span><span class="p">,</span>
+        <span class="s1">'_query'</span><span class="p">,</span>
+        <span class="s1">'_timeout'</span><span class="p">,</span>
+        <span class="s1">'_record_class'</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
@@ -139,7 +139,7 @@
     <span class="k">def</span><span class="w"> </span><span class="fm">__await__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prefetch</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
-                <span class="s1">&#39;prefetch argument can only be specified for iterable cursor&#39;</span><span class="p">)</span>
+                <span class="s1">'prefetch argument can only be specified for iterable cursor'</span><span class="p">)</span>
         <span class="n">cursor</span> <span class="o">=</span> <span class="n">Cursor</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span>
@@ -159,12 +159,12 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">BaseCursor</span><span class="p">(</span><span class="n">connresource</span><span class="o">.</span><span class="n">ConnectionResource</span><span class="p">):</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s1">&#39;_state&#39;</span><span class="p">,</span>
-        <span class="s1">&#39;_args&#39;</span><span class="p">,</span>
-        <span class="s1">&#39;_portal_name&#39;</span><span class="p">,</span>
-        <span class="s1">&#39;_exhausted&#39;</span><span class="p">,</span>
-        <span class="s1">&#39;_query&#39;</span><span class="p">,</span>
-        <span class="s1">&#39;_record_class&#39;</span><span class="p">,</span>
+        <span class="s1">'_state'</span><span class="p">,</span>
+        <span class="s1">'_args'</span><span class="p">,</span>
+        <span class="s1">'_portal_name'</span><span class="p">,</span>
+        <span class="s1">'_exhausted'</span><span class="p">,</span>
+        <span class="s1">'_query'</span><span class="p">,</span>
+        <span class="s1">'_record_class'</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">record_class</span><span class="p">):</span>
@@ -181,27 +181,27 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_ready</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
-                <span class="s1">&#39;cursor: no associated prepared statement&#39;</span><span class="p">)</span>
+                <span class="s1">'cursor: no associated prepared statement'</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">closed</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
-                <span class="s1">&#39;cursor: the prepared statement is closed&#39;</span><span class="p">)</span>
+                <span class="s1">'cursor: the prepared statement is closed'</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_top_xact</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">is_in_transaction</span><span class="p">():</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">NoActiveSQLTransactionError</span><span class="p">(</span>
-                <span class="s1">&#39;cursor cannot be created outside of a transaction&#39;</span><span class="p">)</span>
+                <span class="s1">'cursor cannot be created outside of a transaction'</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_bind_exec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_ready</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
-                <span class="s1">&#39;cursor already has an open portal&#39;</span><span class="p">)</span>
+                <span class="s1">'cursor already has an open portal'</span><span class="p">)</span>
 
         <span class="n">con</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span>
         <span class="n">protocol</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_protocol</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">(</span><span class="s1">&#39;portal&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">(</span><span class="s1">'portal'</span><span class="p">)</span>
         <span class="n">buffer</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exhausted</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">bind_execute</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">buffer</span>
@@ -211,12 +211,12 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
-                <span class="s1">&#39;cursor already has an open portal&#39;</span><span class="p">)</span>
+                <span class="s1">'cursor already has an open portal'</span><span class="p">)</span>
 
         <span class="n">con</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span>
         <span class="n">protocol</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_protocol</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">(</span><span class="s1">&#39;portal&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">_get_unique_id</span><span class="p">(</span><span class="s1">'portal'</span><span class="p">)</span>
         <span class="n">buffer</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">,</span>
                                      <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span><span class="p">,</span>
                                      <span class="n">timeout</span><span class="p">)</span>
@@ -227,7 +227,7 @@
 
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
-                <span class="s1">&#39;cursor does not have an open portal&#39;</span><span class="p">)</span>
+                <span class="s1">'cursor does not have an open portal'</span><span class="p">)</span>
 
         <span class="n">protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_protocol</span>
         <span class="n">buffer</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exhausted</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
@@ -239,7 +239,7 @@
 
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
-                <span class="s1">&#39;cursor does not have an open portal&#39;</span><span class="p">)</span>
+                <span class="s1">'cursor does not have an open portal'</span><span class="p">)</span>
 
         <span class="n">protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_protocol</span>
         <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">close_portal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
@@ -248,18 +248,18 @@
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">attrs</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exhausted</span><span class="p">:</span>
-            <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;exhausted&#39;</span><span class="p">)</span>
-        <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>  <span class="c1"># to separate from id</span>
+            <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">'exhausted'</span><span class="p">)</span>
+        <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">''</span><span class="p">)</span>  <span class="c1"># to separate from id</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__module__</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;asyncpg.&#39;</span><span class="p">):</span>
-            <span class="n">mod</span> <span class="o">=</span> <span class="s1">&#39;asyncpg&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__module__</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'asyncpg.'</span><span class="p">):</span>
+            <span class="n">mod</span> <span class="o">=</span> <span class="s1">'asyncpg'</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">mod</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__module__</span>
 
-        <span class="k">return</span> <span class="s1">&#39;&lt;</span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1"> &quot;</span><span class="si">{!s:.30}</span><span class="s1">&quot; </span><span class="si">{}{:#x}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="k">return</span> <span class="s1">'&lt;</span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1"> "</span><span class="si">{!s:.30}</span><span class="s1">" </span><span class="si">{}{:#x}</span><span class="s1">&gt;'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
             <span class="n">mod</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">query</span><span class="p">,</span>
-            <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">attrs</span><span class="p">),</span> <span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+            <span class="s1">' '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">attrs</span><span class="p">),</span> <span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -269,7 +269,7 @@
 
 <span class="k">class</span><span class="w"> </span><span class="nc">CursorIterator</span><span class="p">(</span><span class="n">BaseCursor</span><span class="p">):</span>
 
-    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_buffer&#39;</span><span class="p">,</span> <span class="s1">&#39;_prefetch&#39;</span><span class="p">,</span> <span class="s1">&#39;_timeout&#39;</span><span class="p">)</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">'_buffer'</span><span class="p">,</span> <span class="s1">'_prefetch'</span><span class="p">,</span> <span class="s1">'_timeout'</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -285,7 +285,7 @@
 
         <span class="k">if</span> <span class="n">prefetch</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span>
-                <span class="s1">&#39;prefetch argument must be greater than zero&#39;</span><span class="p">)</span>
+                <span class="s1">'prefetch argument must be greater than zero'</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">deque</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_prefetch</span> <span class="o">=</span> <span class="n">prefetch</span>
@@ -326,7 +326,7 @@
 <div class="viewcode-block" id="Cursor">
 <a class="viewcode-back" href="../../api/index.html#asyncpg.cursor.Cursor">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Cursor</span><span class="p">(</span><span class="n">BaseCursor</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;An open *portal* into the results of a query.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""An open *portal* into the results of a query."""</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
 
@@ -347,15 +347,15 @@
 <a class="viewcode-back" href="../../api/index.html#asyncpg.cursor.Cursor.fetch">[docs]</a>
     <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">fetch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Return the next *n* rows as a list of :class:`Record` objects.</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""Return the next *n* rows as a list of :class:`Record` objects.</span>
 
 <span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 
 <span class="sd">        :return: A list of :class:`Record` instances.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_ready</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span><span class="s1">&#39;n must be greater than zero&#39;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span><span class="s1">'n must be greater than zero'</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exhausted</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[]</span>
         <span class="n">recs</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exec</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
@@ -368,12 +368,12 @@
 <a class="viewcode-back" href="../../api/index.html#asyncpg.cursor.Cursor.fetchrow">[docs]</a>
     <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">fetchrow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Return the next row.</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""Return the next row.</span>
 
 <span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 
 <span class="sd">        :return: A :class:`Record` instance.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_ready</span><span class="p">()</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exhausted</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
@@ -388,18 +388,18 @@
 <a class="viewcode-back" href="../../api/index.html#asyncpg.cursor.Cursor.forward">[docs]</a>
     <span class="nd">@connresource</span><span class="o">.</span><span class="n">guarded</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Skip over the next *n* rows.</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""Skip over the next *n* rows.</span>
 
 <span class="sd">        :param float timeout: Optional timeout value in seconds.</span>
 
 <span class="sd">        :return: A number of rows actually skipped over (&lt;= *n*).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_ready</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span><span class="s1">&#39;n must be greater than zero&#39;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">InterfaceError</span><span class="p">(</span><span class="s1">'n must be greater than zero'</span><span class="p">)</span>
 
         <span class="n">protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">_protocol</span>
-        <span class="n">status</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">&#39;MOVE FORWARD </span><span class="si">{:d}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">'MOVE FORWARD </span><span class="si">{:d}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
             <span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_portal_name</span><span class="p">),</span> <span class="n">timeout</span><span class="p">)</span>
 
         <span class="n">advanced</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">status</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">])</span>

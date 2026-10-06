@@ -7,12 +7,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>asyncpg.types &mdash; asyncpg Documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
-      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../_static/documentation_options.js?v=d63f172e"></script>
+      <script src="../../_static/documentation_options.js?v=4440c9c5"></script>
       <script src="../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
@@ -91,8 +91,8 @@
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="s1">&#39;Type&#39;</span><span class="p">,</span> <span class="s1">&#39;Attribute&#39;</span><span class="p">,</span> <span class="s1">&#39;Range&#39;</span><span class="p">,</span> <span class="s1">&#39;BitString&#39;</span><span class="p">,</span> <span class="s1">&#39;Point&#39;</span><span class="p">,</span> <span class="s1">&#39;Path&#39;</span><span class="p">,</span> <span class="s1">&#39;Polygon&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;Box&#39;</span><span class="p">,</span> <span class="s1">&#39;Line&#39;</span><span class="p">,</span> <span class="s1">&#39;LineSegment&#39;</span><span class="p">,</span> <span class="s1">&#39;Circle&#39;</span><span class="p">,</span> <span class="s1">&#39;ServerVersion&#39;</span><span class="p">,</span>
+    <span class="s1">'Type'</span><span class="p">,</span> <span class="s1">'Attribute'</span><span class="p">,</span> <span class="s1">'Range'</span><span class="p">,</span> <span class="s1">'BitString'</span><span class="p">,</span> <span class="s1">'Point'</span><span class="p">,</span> <span class="s1">'Path'</span><span class="p">,</span> <span class="s1">'Polygon'</span><span class="p">,</span>
+    <span class="s1">'Box'</span><span class="p">,</span> <span class="s1">'Line'</span><span class="p">,</span> <span class="s1">'LineSegment'</span><span class="p">,</span> <span class="s1">'Circle'</span><span class="p">,</span> <span class="s1">'ServerVersion'</span><span class="p">,</span>
 <span class="p">)</span>
 
 
@@ -106,12 +106,12 @@
 
 
 
-<span class="n">Type</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">&#39;Database data type.&#39;</span>
-<span class="n">Type</span><span class="o">.</span><span class="n">oid</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">&#39;OID of the type.&#39;</span>
-<span class="n">Type</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">&#39;Type name.  For example &quot;int2&quot;.&#39;</span>
+<span class="n">Type</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">'Database data type.'</span>
+<span class="n">Type</span><span class="o">.</span><span class="n">oid</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">'OID of the type.'</span>
+<span class="n">Type</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">'Type name.  For example "int2".'</span>
 <span class="n">Type</span><span class="o">.</span><span class="n">kind</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> \
-    <span class="s1">&#39;Type kind.  Can be &quot;scalar&quot;, &quot;array&quot;, &quot;composite&quot; or &quot;range&quot;.&#39;</span>
-<span class="n">Type</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">&#39;Name of the database schema that defines the type.&#39;</span>
+    <span class="s1">'Type kind.  Can be "scalar", "array", "composite" or "range".'</span>
+<span class="n">Type</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">'Name of the database schema that defines the type.'</span>
 
 
 <div class="viewcode-block" id="Attribute">
@@ -122,9 +122,9 @@
 
 
 
-<span class="n">Attribute</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">&#39;Database relation attribute.&#39;</span>
-<span class="n">Attribute</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">&#39;Attribute name.&#39;</span>
-<span class="n">Attribute</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">&#39;Attribute data type :class:`asyncpg.types.Type`.&#39;</span>
+<span class="n">Attribute</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">'Database relation attribute.'</span>
+<span class="n">Attribute</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">'Attribute name.'</span>
+<span class="n">Attribute</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">'Attribute data type :class:`asyncpg.types.Type`.'</span>
 
 
 <div class="viewcode-block" id="ServerVersion">
@@ -138,7 +138,7 @@
 
 
 
-<span class="n">ServerVersion</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">&#39;PostgreSQL server version tuple.&#39;</span>
+<span class="n">ServerVersion</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">'PostgreSQL server version tuple.'</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">_RangeValue</span><span class="p">(</span><span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
@@ -152,15 +152,15 @@
         <span class="o">...</span>
 
 
-<span class="n">_RV</span> <span class="o">=</span> <span class="n">typing</span><span class="o">.</span><span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;_RV&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">_RangeValue</span><span class="p">)</span>
+<span class="n">_RV</span> <span class="o">=</span> <span class="n">typing</span><span class="o">.</span><span class="n">TypeVar</span><span class="p">(</span><span class="s1">'_RV'</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">_RangeValue</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="Range">
 <a class="viewcode-back" href="../../api/index.html#asyncpg.types.Range">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Range</span><span class="p">(</span><span class="n">typing</span><span class="o">.</span><span class="n">Generic</span><span class="p">[</span><span class="n">_RV</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Immutable representation of PostgreSQL `range` type.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Immutable representation of PostgreSQL `range` type."""</span>
 
-    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_lower&#39;</span><span class="p">,</span> <span class="s1">&#39;_upper&#39;</span><span class="p">,</span> <span class="s1">&#39;_lower_inc&#39;</span><span class="p">,</span> <span class="s1">&#39;_upper_inc&#39;</span><span class="p">,</span> <span class="s1">&#39;_empty&#39;</span><span class="p">)</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">'_lower'</span><span class="p">,</span> <span class="s1">'_upper'</span><span class="p">,</span> <span class="s1">'_lower_inc'</span><span class="p">,</span> <span class="s1">'_upper_inc'</span><span class="p">,</span> <span class="s1">'_empty'</span><span class="p">)</span>
 
     <span class="n">_lower</span><span class="p">:</span> <span class="n">_RV</span> <span class="o">|</span> <span class="kc">None</span>
     <span class="n">_upper</span><span class="p">:</span> <span class="n">_RV</span> <span class="o">|</span> <span class="kc">None</span>
@@ -280,12 +280,12 @@
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_empty</span><span class="p">:</span>
-            <span class="n">desc</span> <span class="o">=</span> <span class="s1">&#39;empty&#39;</span>
+            <span class="n">desc</span> <span class="o">=</span> <span class="s1">'empty'</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower_inc</span><span class="p">:</span>
-                <span class="n">lb</span> <span class="o">=</span> <span class="s1">&#39;(&#39;</span>
+                <span class="n">lb</span> <span class="o">=</span> <span class="s1">'('</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">lb</span> <span class="o">=</span> <span class="s1">&#39;[&#39;</span>
+                <span class="n">lb</span> <span class="o">=</span> <span class="s1">'['</span>
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">lb</span> <span class="o">+=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">)</span>
@@ -293,16 +293,16 @@
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">ub</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_upper</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">ub</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+                <span class="n">ub</span> <span class="o">=</span> <span class="s1">''</span>
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper_inc</span><span class="p">:</span>
-                <span class="n">ub</span> <span class="o">+=</span> <span class="s1">&#39;)&#39;</span>
+                <span class="n">ub</span> <span class="o">+=</span> <span class="s1">')'</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">ub</span> <span class="o">+=</span> <span class="s1">&#39;]&#39;</span>
+                <span class="n">ub</span> <span class="o">+=</span> <span class="s1">']'</span>
 
-            <span class="n">desc</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">, </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">)</span>
+            <span class="n">desc</span> <span class="o">=</span> <span class="s1">'</span><span class="si">{}</span><span class="s1">, </span><span class="si">{}</span><span class="s1">'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="s1">&#39;&lt;Range </span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">desc</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s1">'&lt;Range </span><span class="si">{}</span><span class="s1">&gt;'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">desc</span><span class="p">)</span>
 
     <span class="fm">__str__</span> <span class="o">=</span> <span class="fm">__repr__</span></div>
 
