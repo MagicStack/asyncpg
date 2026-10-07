@@ -5,7 +5,7 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
-import asyncio
+from unittest import mock
 
 import asyncpg
 
@@ -185,14 +185,19 @@ class TestTransaction(tb.ConnectedTestCase):
     async def test_transaction_failed_begin(self):
         self.assertIsNone(self.con._top_xact)
 
-        # Make BEGIN fail by running it while another
-        # operation is in progress on the connection.
-        busy = asyncio.ensure_future(self.con.execute('SELECT pg_sleep(0.5)'))
-        await asyncio.sleep(0.1)
-        with self.assertRaisesRegex(asyncpg.InterfaceError,
-                                    'another operation is in progress'):
-            await self.con.transaction().start()
-        await busy
+        tr = self.con.transaction()
+        error = asyncpg.PostgresConnectionError(
+            'Timed-out waiting to acquire database connection.'
+        )
+
+        with mock.patch.object(
+            type(self.con), 'execute', side_effect=error
+        ) as execute:
+            with self.assertRaises(asyncpg.PostgresConnectionError) as caught:
+                await tr.start()
+
+            self.assertIs(caught.exception, error)
+            execute.assert_awaited_once_with('BEGIN;')
 
         self.assertIsNone(self.con._top_xact)
         self.assertFalse(self.con.is_in_transaction())
