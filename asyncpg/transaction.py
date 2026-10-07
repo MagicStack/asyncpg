@@ -146,6 +146,8 @@ class Transaction(connresource.ConnectionResource):
             await self._connection.execute(query)
         except BaseException:
             self._state = TransactionState.FAILED
+            if con._top_xact is self:
+                con._top_xact = None
             raise
         else:
             self._state = TransactionState.STARTED
