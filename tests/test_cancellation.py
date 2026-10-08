@@ -67,14 +67,15 @@ class TestCancellation(tb.ConnectedTestCase):
                     await test()
 
     async def test_cancellation_executemany_01(self):
-        # Larger than one 128KB execute batch, so cancel lands in the
-        # write loop instead of after the server has the whole command.
+        # Pause flow control after the first 128KB execute batch so the
+        # cancellation is guaranteed to land in the write loop.
         payload = 'x' * 200
         args = [(i, payload) for i in range(20000)]
         await self.con.execute(
             'CREATE TEMP TABLE executemany_cancel (id int, payload text)'
         )
 
+        self.con._protocol.pause_writing()
         task = self.loop.create_task(
             self.con.executemany(
                 'INSERT INTO executemany_cancel (id, payload) '
@@ -90,6 +91,30 @@ class TestCancellation(tb.ConnectedTestCase):
                 await task
 
         self.assertTrue(self.con.is_closed())
+
+    async def test_cancellation_executemany_waiter(self):
+        await self.con.execute(
+            'CREATE TEMP TABLE executemany_cancel_waiter '
+            '(id int, payload text)'
+        )
+
+        task = self.loop.create_task(
+            self.con.executemany(
+                'INSERT INTO executemany_cancel_waiter (id, payload) '
+                "VALUES ($1, (SELECT 'x' FROM pg_sleep(20)))",
+                [(1,)],
+            )
+        )
+        await asyncio.sleep(0)
+        self.assertFalse(task.done())
+        task.cancel()
+
+        with self.assertRunUnder(5):
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+
+        self.assertFalse(self.con.is_closed())
+        self.assertEqual(await self.con.fetchval('SELECT 42'), 42)
 
     async def test_cancellation_02(self):
         st = await self.con.prepare('SELECT 1')

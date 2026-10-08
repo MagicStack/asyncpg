@@ -258,13 +258,7 @@ cdef class BaseProtocol(CoreProtocol):
             waiter.set_exception(ex)
             self._coreproto_error()
         finally:
-            try:
-                return await waiter
-            except asyncio.CancelledError as ex:
-                if not waiter.done():
-                    waiter.set_exception(ex)
-                self._coreproto_error()
-                raise
+            return await waiter
 
     async def bind(self, PreparedStatementState state, args,
                    str portal_name, timeout):
