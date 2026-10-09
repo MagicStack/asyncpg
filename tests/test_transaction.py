@@ -5,6 +5,8 @@
 # the Apache 2.0 License: http://www.apache.org/licenses/LICENSE-2.0
 
 
+from unittest import mock
+
 import asyncpg
 
 from asyncpg import _testbase as tb
@@ -176,6 +178,34 @@ class TestTransaction(tb.ConnectedTestCase):
         with self.assertLoopErrorHandlerCalled(
                 'Resetting connection with an active transaction'):
             await self.con.reset()
+
+        self.assertIsNone(self.con._top_xact)
+        self.assertFalse(self.con.is_in_transaction())
+
+    async def test_transaction_failed_begin(self):
+        self.assertIsNone(self.con._top_xact)
+
+        tr = self.con.transaction()
+        error = asyncpg.PostgresConnectionError(
+            'Timed-out waiting to acquire database connection.'
+        )
+
+        with mock.patch.object(
+            type(self.con), 'execute', side_effect=error
+        ) as execute:
+            with self.assertRaises(asyncpg.PostgresConnectionError) as caught:
+                await tr.start()
+
+            self.assertIs(caught.exception, error)
+            execute.assert_awaited_once_with('BEGIN;')
+
+        self.assertIsNone(self.con._top_xact)
+        self.assertFalse(self.con.is_in_transaction())
+
+        # The next transaction must be a real top-level one.
+        async with self.con.transaction():
+            self.assertTrue(self.con.is_in_transaction())
+            await self.con.execute('SELECT 1')
 
         self.assertIsNone(self.con._top_xact)
         self.assertFalse(self.con.is_in_transaction())
