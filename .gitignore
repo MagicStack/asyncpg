@@ -32,9 +32,10 @@ docs/_build
 .coverage
 /.pytest_cache/
 /.eggs
-/.vscode
 /.zed
 /.mypy_cache
 /.venv*
 /.tox
 /compile_commands.json
+config.bat
+node_modules
