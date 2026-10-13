@@ -1369,6 +1369,95 @@ gsslib=sspi
                     }
                 )
             })
+            # Test service and servicefile passed as arguments, no dsn
+            self.run_testcase({
+                'service': 'test_service_dbname',
+                'servicefile': connection_service_file.name,
+                'result': (
+                    [('somehost', 5433)],
+                    {
+                        'user': 'admin',
+                        'password': 'test_password',
+                        'database': 'test_dbname',
+                        'target_session_attrs': 'primary',
+                        'krbsrvname': 'fakekrbsrvname',
+                        'gsslib': 'sspi',
+                    }
+                )
+            })
+            # Test service passed as an argument with PGSERVICEFILE, no dsn
+            self.run_testcase({
+                'service': 'test_service_dbname',
+                'env': {
+                    'PGSERVICEFILE': connection_service_file.name
+                },
+                'result': (
+                    [('somehost', 5433)],
+                    {
+                        'user': 'admin',
+                        'password': 'test_password',
+                        'database': 'test_dbname',
+                        'target_session_attrs': 'primary',
+                        'krbsrvname': 'fakekrbsrvname',
+                        'gsslib': 'sspi',
+                    }
+                )
+            })
+            # Test service selected by PGSERVICE, no dsn
+            self.run_testcase({
+                'env': {
+                    'PGSERVICE': 'test_service_dbname',
+                    'PGSERVICEFILE': connection_service_file.name
+                },
+                'result': (
+                    [('somehost', 5433)],
+                    {
+                        'user': 'admin',
+                        'password': 'test_password',
+                        'database': 'test_dbname',
+                        'target_session_attrs': 'primary',
+                        'krbsrvname': 'fakekrbsrvname',
+                        'gsslib': 'sspi',
+                    }
+                )
+            })
+            # Test that PGSERVICE also applies to a dsn without a service
+            self.run_testcase({
+                'dsn': 'postgresql:///test_dbname_dsn',
+                'env': {
+                    'PGSERVICE': 'test_service_dbname',
+                    'PGSERVICEFILE': connection_service_file.name
+                },
+                'result': (
+                    [('somehost', 5433)],
+                    {
+                        'user': 'admin',
+                        'password': 'test_password',
+                        'database': 'test_dbname_dsn',
+                        'target_session_attrs': 'primary',
+                        'krbsrvname': 'fakekrbsrvname',
+                        'gsslib': 'sspi',
+                    }
+                )
+            })
+            # Test that explicit arguments override the service file
+            self.run_testcase({
+                'service': 'test_service_dbname',
+                'servicefile': connection_service_file.name,
+                'host': 'otherhost',
+                'user': 'otheruser',
+                'result': (
+                    [('otherhost', 5433)],
+                    {
+                        'user': 'otheruser',
+                        'password': 'test_password',
+                        'database': 'test_dbname',
+                        'target_session_attrs': 'primary',
+                        'krbsrvname': 'fakekrbsrvname',
+                        'gsslib': 'sspi',
+                    }
+                )
+            })
         finally:
             os.unlink(connection_service_file.name)
 
