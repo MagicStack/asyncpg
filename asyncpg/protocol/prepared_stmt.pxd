@@ -21,7 +21,7 @@ cdef class PreparedStatementState:
 
         ConnectionSettings settings
 
-        int16_t      args_num
+        uint16_t     args_num
         bint         have_text_args
         tuple        args_codecs
 

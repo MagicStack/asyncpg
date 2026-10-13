@@ -127,9 +127,10 @@ cdef class PreparedStatementState:
                 raise exceptions.InternalClientError(
                     f'Bind: expected a sequence, got {type(args).__name__}')
 
-        if len(args) > 32767:
+        # PostgreSQL reads the 16-bit parameter count as unsigned
+        if len(args) > 65535:
             raise exceptions.InterfaceError(
-                'the number of query arguments cannot exceed 32767')
+                'the number of query arguments cannot exceed 65535')
 
         writer = WriteBuffer.new()
 
@@ -155,7 +156,7 @@ cdef class PreparedStatementState:
                 hint=hint)
 
         if self.have_text_args:
-            writer.write_int16(self.args_num)
+            writer.write_int16(<int16_t>self.args_num)
             for idx in range(self.args_num):
                 codec = <Codec>(self.args_codecs[idx])
                 writer.write_int16(<int16_t>codec.format)
@@ -163,7 +164,7 @@ cdef class PreparedStatementState:
             # All arguments are in binary format
             writer.write_int32(0x00010001)
 
-        writer.write_int16(self.args_num)
+        writer.write_int16(<int16_t>self.args_num)
 
         for idx in range(self.args_num):
             arg = args[idx]
@@ -286,7 +287,7 @@ cdef class PreparedStatementState:
 
     cdef _set_args_desc(self, object desc):
         self.parameters_desc = _decode_parameters_desc(desc)
-        self.args_num = <int16_t>(len(self.parameters_desc))
+        self.args_num = <uint16_t>(len(self.parameters_desc))
 
     cdef _decode_row(self, const char* cbuf, ssize_t buf_len):
         cdef:
@@ -345,12 +346,12 @@ cdef class PreparedStatementState:
 cdef _decode_parameters_desc(object desc):
     cdef:
         ReadBuffer reader
-        int16_t nparams
+        uint16_t nparams
         uint32_t p_oid
         list result = []
 
     reader = ReadBuffer.new_message_parser(desc)
-    nparams = reader.read_int16()
+    nparams = <uint16_t>reader.read_int16()
 
     for i from 0 <= i < nparams:
         p_oid = <uint32_t>reader.read_int32()

@@ -536,13 +536,18 @@ class TestPrepare(tb.ConnectedTestCase):
         self.assertEqual(len(cache), 2)
 
     async def test_prepare_28_max_args(self):
-        N = 32768
+        N = 65535
+        args = ','.join('${}::int4'.format(i) for i in range(1, N + 1))
+        query = 'SELECT cardinality(ARRAY[{}])'.format(args)
+        self.assertEqual(await self.con.fetchval(query, *range(1, N + 1)), N)
+
+        N = 65536
         args = ','.join('${}'.format(i) for i in range(1, N + 1))
         query = 'SELECT ARRAY[{}]'.format(args)
 
         with self.assertRaisesRegex(
                 exceptions.InterfaceError,
-                'the number of query arguments cannot exceed 32767'):
+                'the number of query arguments cannot exceed 65535'):
             await self.con.fetchval(query, *range(1, N + 1))
 
     async def test_prepare_29_duplicates(self):
