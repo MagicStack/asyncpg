@@ -25,6 +25,15 @@ class SlowIntrospectionConnection(apg_con.Connection):
         return await super()._introspect_types(*args, **kwargs)
 
 
+class CountingIntrospectionConnection(apg_con.Connection):
+    """Connection class to assert when type introspection is skipped."""
+    introspect_count = 0
+
+    async def _introspect_types(self, *args, **kwargs):
+        self.introspect_count += 1
+        return await super()._introspect_types(*args, **kwargs)
+
+
 class TestIntrospection(tb.ConnectedTestCase):
     @classmethod
     def setUpClass(cls):
@@ -77,6 +86,112 @@ class TestIntrospection(tb.ConnectedTestCase):
 
         with self.assertRunUnder(MAX_RUNTIME):
             await self.con.fetchval('SELECT $1::int[]', [1, 2])
+
+    async def test_varchar_array_does_not_introspect(self):
+        conn = await self.connect(
+            connection_class=CountingIntrospectionConnection)
+        try:
+            cases = [
+                ['a', 'b'],
+                [None, 'b'],
+                [],
+                [['a', 'b'], ['c', 'd']],
+            ]
+
+            for case in cases:
+                result = await conn.fetchval('SELECT $1::varchar[]', case)
+                self.assertEqual(result, case)
+
+            result = await conn.fetchval(
+                "SELECT ARRAY['a', 'b']::varchar[]")
+            self.assertEqual(result, ['a', 'b'])
+
+            self.assertEqual(conn.introspect_count, 0)
+        finally:
+            await conn.close()
+
+    async def test_varchar_array_custom_codec(self):
+        query = 'SELECT $1::varchar[]'
+        result_query = "SELECT ARRAY['7']::varchar[]"
+        formats = [
+            ('text', str),
+            ('binary', lambda value: str(value).encode('utf-8')),
+        ]
+
+        for format, encoder in formats:
+            for warm in (False, True):
+                with self.subTest(format=format, warm=warm):
+                    conn = await self.connect(
+                        connection_class=CountingIntrospectionConnection)
+                    try:
+                        if warm:
+                            self.assertEqual(
+                                await conn.fetchval(query, ['7']), ['7'])
+                            self.assertEqual(
+                                await conn.fetchval(result_query), ['7'])
+                            original_stmt = await conn.prepare(query)
+
+                        await conn.set_type_codec(
+                            'varchar', schema='pg_catalog',
+                            encoder=encoder, decoder=int, format=format)
+
+                        self.assertEqual(conn.introspect_count, 0)
+
+                        self.assertEqual(
+                            await conn.fetchval(result_query), [7])
+                        cases = [
+                            [7],
+                            [None, 7],
+                            [],
+                            [[7, None], [8, 9]],
+                            None,
+                        ]
+                        for case in cases:
+                            self.assertEqual(
+                                await conn.fetchval(query, case), case)
+                        self.assertEqual(conn.introspect_count, 1)
+                        custom_stmt = await conn.prepare(query)
+
+                        if warm:
+                            self.assertEqual(
+                                await original_stmt.fetchval(['7']), ['7'])
+
+                        # Ignore custom codecs even after array derivation.
+                        result = await conn._execute(
+                            query, (['7'],), 0, None,
+                            ignore_custom_codec=True)
+                        self.assertEqual(result, [(['7'],)])
+
+                        # The override must not affect other connections.
+                        self.assertEqual(
+                            await self.con.fetchval(query, ['7']), ['7'])
+
+                        await conn.reset_type_codec(
+                            'varchar', schema='pg_catalog')
+                        self.assertEqual(
+                            await conn.fetchval(query, ['7']), ['7'])
+                        self.assertEqual(
+                            await conn.fetchval(result_query), ['7'])
+                        self.assertEqual(
+                            await custom_stmt.fetchval([7]), [7])
+                        self.assertEqual(conn.introspect_count, 1)
+                    finally:
+                        await conn.close()
+
+    async def test_varchar_array_builtin_codec_override(self):
+        conn = await self.connect(
+            connection_class=CountingIntrospectionConnection)
+        try:
+            await conn.set_builtin_type_codec(
+                'varchar', schema='pg_catalog', codec_name='bytea',
+                format='binary')
+            self.assertEqual(
+                await conn.fetchval("SELECT ARRAY['7']::varchar[]"), [b'7'])
+            self.assertEqual(
+                await conn.fetchval('SELECT $1::varchar[]', [b'7']), [b'7'])
+            self.assertEqual(conn.introspect_count, 1)
+        finally:
+            await conn.close()
 
     @tb.with_connection_options(statement_cache_size=0)
     async def test_introspection_no_stmt_cache_01(self):

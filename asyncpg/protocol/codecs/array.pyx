@@ -858,8 +858,17 @@ cdef arraytext_decode(ConnectionSettings settings, FRBuffer *buf):
     return array_decode(settings, buf, <decode_func_ex>&text_decode_ex, NULL)
 
 
+cdef arrayvarchar_encode(ConnectionSettings settings, WriteBuffer buf, items):
+    array_encode(settings, buf, items, VARCHAROID,
+                 <encode_func_ex>&text_encode_ex, NULL)
+
+
+cdef arrayvarchar_decode(ConnectionSettings settings, FRBuffer *buf):
+    return array_decode(settings, buf, <decode_func_ex>&text_decode_ex, NULL)
+
+
 cdef init_array_codecs():
-    # oid[] and text[] are registered as core codecs
+    # oid[], text[], and varchar[] are registered as core codecs
     # to make type introspection query work
     #
     register_core_codec(_OIDOID,
@@ -870,6 +879,11 @@ cdef init_array_codecs():
     register_core_codec(_TEXTOID,
                         <encode_func>&arraytext_encode,
                         <decode_func>&arraytext_decode,
+                        PG_FORMAT_BINARY)
+
+    register_core_codec(_VARCHAROID,
+                        <encode_func>&arrayvarchar_encode,
+                        <decode_func>&arrayvarchar_decode,
                         PG_FORMAT_BINARY)
 
 init_array_codecs()

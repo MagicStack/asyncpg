@@ -800,6 +800,13 @@ cdef class DataCodecConfig:
                     else:
                         return codec
 
+                if (oid == _VARCHAROID and
+                        self.get_custom_codec(VARCHAROID, PG_FORMAT_ANY)
+                        is not None):
+                    # Derive varchar[] from the custom element codec instead
+                    # of using the core codec, which always encodes strings.
+                    return self._derived_type_codecs.get((oid, format))
+
             codec = get_core_codec(oid, format)
             if codec is not None:
                 return codec
