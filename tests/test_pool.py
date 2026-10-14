@@ -605,6 +605,24 @@ class TestPool(tb.ConnectedTestCase):
                 id3 = await get_xact_id(con)
                 self.assertNotEqual(id2, id3)
 
+    async def test_pool_release_drops_temp_tables(self):
+        """Test that Connection.reset() drops temporary tables."""
+        async with self.create_pool(database='postgres',
+                                    init_size=1,
+                                    min_size=1,
+                                    max_size=1) as pool:
+            async with pool.acquire() as con:
+                real_con = con._con  # unwrap PoolConnectionProxy
+                await con.execute('CREATE TEMPORARY TABLE tmp_t (a int)')
+                await con.execute('INSERT INTO tmp_t VALUES (1)')
+
+            async with pool.acquire() as con:
+                self.assertIs(con._con, real_con)
+                self.assertIsNone(
+                    await con.fetchval("SELECT to_regclass('tmp_t')"))
+                # the name is free for the next user
+                await con.execute('CREATE TEMPORARY TABLE tmp_t (a int)')
+
     async def test_pool_connection_methods(self):
         async def test_fetch(pool):
             i = random.randint(0, 20)

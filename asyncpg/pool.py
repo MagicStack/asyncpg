@@ -1329,6 +1329,7 @@ def create_pool(dsn=None, *,
             SELECT pg_advisory_unlock_all();
             CLOSE ALL;
             UNLISTEN *;
+            DISCARD TEMP;
             RESET ALL;
 
         The exact reset query is determined by detected server capabilities,
