@@ -1571,9 +1571,9 @@ class Connection(metaclass=ConnectionMeta):
         resembling that of a newly obtained connection.  Namely, an open
         transaction (if any) is rolled back, open cursors are closed,
         all `LISTEN <https://www.postgresql.org/docs/current/sql-listen.html>`_
-        registrations are removed, all session configuration
-        variables are reset to their default values, and all advisory locks
-        are released.
+        registrations are removed, all temporary tables are dropped,
+        all session configuration variables are reset to their default
+        values, and all advisory locks are released.
 
         Note that the above describes the default query returned by
         :meth:`Connection.get_reset_query`.  If one overloads the method
@@ -1781,6 +1781,8 @@ class Connection(metaclass=ConnectionMeta):
             _reset_query.append('CLOSE ALL;')
         if caps.notifications and caps.plpgsql:
             _reset_query.append('UNLISTEN *;')
+        if caps.sql_discard_temp:
+            _reset_query.append('DISCARD TEMP;')
         if caps.sql_reset:
             _reset_query.append('RESET ALL;')
 
@@ -2724,7 +2726,8 @@ LoggedQuery.__doc__ = 'Log record of an executed query.'
 ServerCapabilities = collections.namedtuple(
     'ServerCapabilities',
     ['advisory_locks', 'notifications', 'plpgsql', 'sql_reset',
-     'sql_close_all', 'sql_copy_from_where', 'jit'])
+     'sql_close_all', 'sql_copy_from_where', 'jit', 'sql_discard_temp'],
+    defaults=[False])
 ServerCapabilities.__doc__ = 'PostgreSQL server capabilities.'
 
 
@@ -2738,6 +2741,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_close_all = False
         jit = False
         sql_copy_from_where = False
+        sql_discard_temp = False
     elif hasattr(connection_settings, 'crdb_version'):
         # CockroachDB detected.
         advisory_locks = False
@@ -2747,6 +2751,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_close_all = False
         jit = False
         sql_copy_from_where = False
+        sql_discard_temp = False
     elif hasattr(connection_settings, 'crate_version'):
         # CrateDB detected.
         advisory_locks = False
@@ -2756,6 +2761,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_close_all = False
         jit = False
         sql_copy_from_where = False
+        sql_discard_temp = False
     else:
         # Standard PostgreSQL server assumed.
         advisory_locks = True
@@ -2765,6 +2771,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_close_all = True
         jit = server_version >= (11, 0)
         sql_copy_from_where = server_version.major >= 12
+        sql_discard_temp = True
 
     return ServerCapabilities(
         advisory_locks=advisory_locks,
@@ -2774,6 +2781,7 @@ def _detect_server_capabilities(server_version, connection_settings):
         sql_close_all=sql_close_all,
         sql_copy_from_where=sql_copy_from_where,
         jit=jit,
+        sql_discard_temp=sql_discard_temp,
     )
 
 
