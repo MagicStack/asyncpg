@@ -752,6 +752,69 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'load_balance_hosts_default',
+            'dsn': 'postgresql://user@host1,host2/db',
+            'result': ([('host1', 5432), ('host2', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'load_balance_hosts': 'disable',
+            })
+        },
+
+        {
+            'name': 'load_balance_hosts_dsn',
+            'dsn': 'postgresql://user@host1,host2/db'
+                   '?load_balance_hosts=random',
+            'env': {
+                'PGLOADBALANCEHOSTS': 'disable',
+            },
+            'result': ([('host1', 5432), ('host2', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'load_balance_hosts': 'random',
+            })
+        },
+
+        {
+            'name': 'load_balance_hosts_kwarg',
+            'dsn': 'postgresql://user@host1,host2/db'
+                   '?load_balance_hosts=random',
+            'load_balance_hosts': 'disable',
+            'result': ([('host1', 5432), ('host2', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'load_balance_hosts': 'disable',
+            })
+        },
+
+        {
+            'name': 'load_balance_hosts_env',
+            'dsn': 'postgresql://user@host1,host2/db',
+            'env': {
+                'PGLOADBALANCEHOSTS': 'random',
+            },
+            'result': ([('host1', 5432), ('host2', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'load_balance_hosts': 'random',
+            })
+        },
+
+        {
+            'name': 'load_balance_hosts_invalid',
+            'dsn': 'postgresql://user@host1,host2/db'
+                   '?load_balance_hosts=round-robin',
+            'error': (
+                exceptions.ClientConfigurationError,
+                'load_balance_hosts is expected to be one of'
+            )
+        },
+
+        {
             'name': 'krbsrvname',
             'dsn': 'postgresql://user@host/db?krbsrvname=srv_qs',
             'env': {
@@ -1144,7 +1207,7 @@ class TestConnectParams(tb.TestCase):
         test_env = {'PGHOST': None, 'PGPORT': None,
                     'PGUSER': None, 'PGPASSWORD': None,
                     'PGDATABASE': None, 'PGSSLMODE': None,
-                    'PGSERVICE': None, }
+                    'PGSERVICE': None, 'PGLOADBALANCEHOSTS': None, }
         test_env.update(env)
 
         dsn = testcase.get('dsn')
@@ -1158,6 +1221,7 @@ class TestConnectParams(tb.TestCase):
         direct_tls = testcase.get('direct_tls')
         server_settings = testcase.get('server_settings')
         target_session_attrs = testcase.get('target_session_attrs')
+        load_balance_hosts = testcase.get('load_balance_hosts')
         krbsrvname = testcase.get('krbsrvname')
         gsslib = testcase.get('gsslib')
         service = testcase.get('service')
@@ -1187,6 +1251,7 @@ class TestConnectParams(tb.TestCase):
                 direct_tls=direct_tls,
                 server_settings=server_settings,
                 target_session_attrs=target_session_attrs,
+                load_balance_hosts=load_balance_hosts,
                 krbsrvname=krbsrvname, gsslib=gsslib,
                 service=service, servicefile=servicefile)
 
@@ -1218,6 +1283,8 @@ class TestConnectParams(tb.TestCase):
                 # Avoid the hassle of specifying gsslib
                 # unless explicitly tested for
                 params.pop('gsslib', None)
+            if 'load_balance_hosts' not in expected[1]:
+                params.pop('load_balance_hosts', None)
 
             self.assertEqual(expected, result, 'Testcase: {}'.format(testcase))
 
@@ -1290,6 +1357,12 @@ password=test_password
 target_session_attrs=primary
 krbsrvname=fakekrbsrvname
 gsslib=sspi
+
+[test_service_load_balance_hosts]
+host=somehost
+dbname=test_dbname
+user=admin
+load_balance_hosts=random
         '''))
         connection_service_file.close()
         os.chmod(connection_service_file.name, stat.S_IWUSR | stat.S_IRUSR)
@@ -1366,6 +1439,23 @@ gsslib=sspi
                         'target_session_attrs': 'primary',
                         'krbsrvname': 'fakekrbsrvname',
                         'gsslib': 'sspi',
+                    }
+                )
+            })
+            # Test load_balance_hosts from the service file
+            self.run_testcase({
+                'dsn': 'postgresql://?service=test_service_load_balance_hosts',
+                'env': {
+                    'PGSERVICEFILE': connection_service_file.name,
+                    'PGLOADBALANCEHOSTS': 'disable',
+                },
+                'result': (
+                    [('somehost', 5432)],
+                    {
+                        'user': 'admin',
+                        'database': 'test_dbname',
+                        'target_session_attrs': 'any',
+                        'load_balance_hosts': 'random',
                     }
                 )
             })
@@ -1756,6 +1846,49 @@ class TestConnectionCleanup(tb.TestCase):
             for task in pending:
                 task.cancel()
             await asyncio.gather(*pending, return_exceptions=True)
+
+
+class TestLoadBalanceHosts(tb.TestCase):
+
+    async def connect_order(self, **kwargs):
+        tried = []
+
+        async def connect_addr(*, addr, **_):
+            tried.append(addr[0])
+            raise ConnectionRefusedError
+
+        with unittest.mock.patch.object(
+            connect_utils, '_connect_addr', side_effect=connect_addr,
+        ):
+            with self.assertRaises(ConnectionRefusedError):
+                await asyncpg.connect(
+                    host=['first', 'second', 'third'], user='postgres',
+                    database='postgres', ssl=False, **kwargs)
+        return tried
+
+    async def test_load_balance_hosts_disable_keeps_order(self):
+        with unittest.mock.patch.object(
+            connect_utils.random, 'sample',
+            side_effect=lambda seq, k: list(reversed(seq)),
+        ):
+            self.assertEqual(await self.connect_order(),
+                             ['first', 'second', 'third'])
+            self.assertEqual(
+                await self.connect_order(load_balance_hosts='disable'),
+                ['first', 'second', 'third'])
+
+    async def test_load_balance_hosts_random_shuffles_each_connect(self):
+        orders = iter([[2, 0, 1], [1, 2, 0]])
+        with unittest.mock.patch.object(
+            connect_utils.random, 'sample',
+            side_effect=lambda seq, k: [seq[i] for i in next(orders)],
+        ):
+            self.assertEqual(
+                await self.connect_order(load_balance_hosts='random'),
+                ['third', 'first', 'second'])
+            self.assertEqual(
+                await self.connect_order(load_balance_hosts='random'),
+                ['second', 'third', 'first'])
 
 
 class TestConnection(tb.ConnectedTestCase):

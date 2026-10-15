@@ -59,6 +59,11 @@ class SSLNegotiation(compat.StrEnum):
     direct = "direct"
 
 
+class LoadBalanceHosts(compat.StrEnum):
+    disable = "disable"
+    random = "random"
+
+
 _ConnectionParameters = collections.namedtuple(
     'ConnectionParameters',
     [
@@ -70,6 +75,7 @@ _ConnectionParameters = collections.namedtuple(
         'ssl_negotiation',
         'server_settings',
         'target_session_attrs',
+        'load_balance_hosts',
         'krbsrvname',
         'gsslib',
     ])
@@ -283,7 +289,8 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                                 password, passfile, database, ssl,
                                 service, servicefile,
                                 direct_tls, server_settings,
-                                target_session_attrs, krbsrvname, gsslib):
+                                target_session_attrs, load_balance_hosts,
+                                krbsrvname, gsslib):
     # `auth_hosts` is the version of host information for the purposes
     # of reading the pgpass file.
     auth_hosts = None
@@ -431,6 +438,11 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 if target_session_attrs is None:
                     target_session_attrs = dsn_target_session_attrs
 
+            if 'load_balance_hosts' in query:
+                val = query.pop('load_balance_hosts')
+                if load_balance_hosts is None:
+                    load_balance_hosts = val
+
             if 'krbsrvname' in query:
                 val = query.pop('krbsrvname')
                 if krbsrvname is None:
@@ -547,6 +559,11 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     )
                     if target_session_attrs is None:
                         target_session_attrs = dsn_target_session_attrs
+
+                if 'load_balance_hosts' in service_params:
+                    val = service_params.pop('load_balance_hosts')
+                    if load_balance_hosts is None:
+                        load_balance_hosts = val
 
                 if 'krbsrvname' in service_params:
                     val = service_params.pop('krbsrvname')
@@ -854,6 +871,20 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             )
         ) from None
 
+    if load_balance_hosts is None:
+        load_balance_hosts = os.getenv(
+            'PGLOADBALANCEHOSTS', LoadBalanceHosts.disable
+        )
+    try:
+        load_balance_hosts = LoadBalanceHosts(load_balance_hosts)
+    except ValueError:
+        raise exceptions.ClientConfigurationError(
+            "load_balance_hosts is expected to be one of "
+            "{!r}, got {!r}".format(
+                [m.value for m in LoadBalanceHosts], load_balance_hosts
+            )
+        ) from None
+
     if krbsrvname is None:
         krbsrvname = os.getenv('PGKRBSRVNAME')
 
@@ -871,6 +902,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         sslmode=sslmode, ssl_negotiation=sslneg,
         server_settings=server_settings,
         target_session_attrs=target_session_attrs,
+        load_balance_hosts=load_balance_hosts,
         krbsrvname=krbsrvname, gsslib=gsslib)
 
     return addrs, params
@@ -882,8 +914,8 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
                              ssl, direct_tls, server_settings,
-                             target_session_attrs, krbsrvname, gsslib,
-                             service, servicefile):
+                             target_session_attrs, load_balance_hosts,
+                             krbsrvname, gsslib, service, servicefile):
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
                      'max_cached_statement_lifetime',
@@ -913,6 +945,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
         direct_tls=direct_tls, database=database,
         server_settings=server_settings,
         target_session_attrs=target_session_attrs,
+        load_balance_hosts=load_balance_hosts,
         krbsrvname=krbsrvname, gsslib=gsslib,
         service=service, servicefile=servicefile)
 
@@ -1268,6 +1301,8 @@ async def _connect(*, loop, connection_class, record_class, **kwargs):
 
     addrs, params, config = _parse_connect_arguments(**kwargs)
     target_attr = params.target_session_attrs
+    if params.load_balance_hosts is LoadBalanceHosts.random:
+        addrs = random.sample(addrs, len(addrs))
 
     candidates = []
     chosen_connection = None

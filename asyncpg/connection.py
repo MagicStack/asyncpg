@@ -2131,6 +2131,7 @@ async def connect(dsn=None, *,
                   record_class=protocol.Record,
                   server_settings=None,
                   target_session_attrs=None,
+                  load_balance_hosts=None,
                   krbsrvname=None,
                   gsslib=None):
     r"""A coroutine to establish a connection to a PostgreSQL server.
@@ -2382,6 +2383,18 @@ async def connect(dsn=None, *,
         or the value of the ``PGTARGETSESSIONATTRS`` environment variable,
         or ``"any"`` if neither is specified.
 
+    :param str load_balance_hosts:
+        The order in which the addresses in *host* are tried.  Can be one of:
+
+        - ``"disable"`` - in the order they are listed
+        - ``"random"`` - in a random order, chosen again on every
+          connection attempt, which spreads connections (for example,
+          those of a pool) across the hosts
+
+        If not specified, the value parsed from the *dsn* argument or the
+        service file is used, or the value of the ``PGLOADBALANCEHOSTS``
+        environment variable, or ``"disable"`` if neither is specified.
+
     :param str krbsrvname:
         Kerberos service name to use when authenticating with GSSAPI. This
         must match the server configuration. Defaults to 'postgres'.
@@ -2472,6 +2485,9 @@ async def connect(dsn=None, *,
        SSL contexts created by asyncpg now set the ``postgresql`` ALPN
        protocol, which PostgreSQL 17+ requires for direct SSL connections.
 
+    .. versionchanged:: 0.33.0
+       Added the *load_balance_hosts* parameter.
+
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
         https://docs.python.org/3/library/ssl.html#ssl.create_default_context
@@ -2516,6 +2532,7 @@ async def connect(dsn=None, *,
             max_cached_statement_lifetime=max_cached_statement_lifetime,
             max_cacheable_statement_size=max_cacheable_statement_size,
             target_session_attrs=target_session_attrs,
+            load_balance_hosts=load_balance_hosts,
             krbsrvname=krbsrvname,
             gsslib=gsslib,
         )
