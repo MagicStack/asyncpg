@@ -63,6 +63,19 @@ class TestExecuteScript(tb.ConnectedTestCase):
                 SELECT * FROM mytab
             ''')
 
+    async def test_execute_empty_script(self):
+        # Test executing a script with only comments (issue #1259)
+        result = await self.con.execute('-- hello')
+        self.assertIsNone(result)
+
+        # Test executing a script with only whitespace
+        result = await self.con.execute('   ')
+        self.assertIsNone(result)
+
+        # Test executing an empty script
+        result = await self.con.execute('')
+        self.assertIsNone(result)
+
     async def test_execute_exceptions_1(self):
         with self.assertRaisesRegex(asyncpg.PostgresError,
                                     'relation "__dne__" does not exist'):
