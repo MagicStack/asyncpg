@@ -2121,6 +2121,7 @@ async def connect(dsn=None, *,
                   database=None,
                   loop=None,
                   timeout=60,
+                  connect_timeout=None,
                   statement_cache_size=100,
                   max_cached_statement_lifetime=300,
                   max_cacheable_statement_size=1024 * 15,
@@ -2151,8 +2152,9 @@ async def connect(dsn=None, *,
         The following options are recognized by asyncpg: ``host``,
         ``port``, ``user``, ``database`` (or ``dbname``), ``password``,
         ``passfile``, ``sslmode``, ``sslcert``, ``sslkey``, ``sslrootcert``,
-        and ``sslcrl``.  Unlike libpq, asyncpg will treat unrecognized
-        options as `server settings`_ to be used for the connection.
+        ``sslcrl``, and ``connect_timeout``.  Unlike libpq, asyncpg will
+        treat unrecognized options as `server settings`_ to be used for the
+        connection.
 
         .. note::
 
@@ -2240,7 +2242,23 @@ async def connect(dsn=None, *,
         event loop will be used.
 
     :param float timeout:
-        Connection timeout in seconds.
+        Connection timeout in seconds.  This is the limit for the whole
+        call, including attempts on every host in *host*.
+
+    :param float connect_timeout:
+        Maximum time in seconds to wait for each host address to accept
+        the connection, finish TLS and authentication, and pass the
+        *target_session_attrs* check.  When it expires, the attempt is
+        abandoned and the next address is tried, as when the host refuses
+        the connection.  If every address times out,
+        :exc:`TimeoutError` is raised.  *timeout* still caps the whole
+        call, so the worst case is the smaller of *timeout* and the number
+        of addresses times *connect_timeout*.  Zero, a negative value or
+        ``None`` disables the per-host limit.
+
+        If not specified, the ``connect_timeout`` option from *dsn* or the
+        service file is used, or the value of the ``PGCONNECT_TIMEOUT``
+        environment variable.
 
     :param int statement_cache_size:
         The size of prepared statement LRU cache.  Pass ``0`` to
@@ -2472,6 +2490,9 @@ async def connect(dsn=None, *,
        SSL contexts created by asyncpg now set the ``postgresql`` ALPN
        protocol, which PostgreSQL 17+ requires for direct SSL connections.
 
+    .. versionchanged:: 0.33.0
+       Added the *connect_timeout* parameter.
+
     .. _SSLContext: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
     .. _create_default_context:
         https://docs.python.org/3/library/ssl.html#ssl.create_default_context
@@ -2516,6 +2537,7 @@ async def connect(dsn=None, *,
             max_cached_statement_lifetime=max_cached_statement_lifetime,
             max_cacheable_statement_size=max_cacheable_statement_size,
             target_session_attrs=target_session_attrs,
+            connect_timeout=connect_timeout,
             krbsrvname=krbsrvname,
             gsslib=gsslib,
         )

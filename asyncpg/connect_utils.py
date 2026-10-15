@@ -70,6 +70,7 @@ _ConnectionParameters = collections.namedtuple(
         'ssl_negotiation',
         'server_settings',
         'target_session_attrs',
+        'connect_timeout',
         'krbsrvname',
         'gsslib',
     ])
@@ -283,7 +284,8 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                                 password, passfile, database, ssl,
                                 service, servicefile,
                                 direct_tls, server_settings,
-                                target_session_attrs, krbsrvname, gsslib):
+                                target_session_attrs, connect_timeout,
+                                krbsrvname, gsslib):
     # `auth_hosts` is the version of host information for the purposes
     # of reading the pgpass file.
     auth_hosts = None
@@ -431,6 +433,11 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                 if target_session_attrs is None:
                     target_session_attrs = dsn_target_session_attrs
 
+            if 'connect_timeout' in query:
+                val = query.pop('connect_timeout')
+                if connect_timeout is None:
+                    connect_timeout = val
+
             if 'krbsrvname' in query:
                 val = query.pop('krbsrvname')
                 if krbsrvname is None:
@@ -547,6 +554,11 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     )
                     if target_session_attrs is None:
                         target_session_attrs = dsn_target_session_attrs
+
+                if 'connect_timeout' in service_params:
+                    val = service_params.pop('connect_timeout')
+                    if connect_timeout is None:
+                        connect_timeout = val
 
                 if 'krbsrvname' in service_params:
                     val = service_params.pop('krbsrvname')
@@ -854,6 +866,21 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             )
         ) from None
 
+    if connect_timeout is None:
+        connect_timeout = os.getenv('PGCONNECT_TIMEOUT')
+    if connect_timeout is not None:
+        try:
+            if isinstance(connect_timeout, bool):
+                raise ValueError
+            connect_timeout = float(connect_timeout)
+        except (TypeError, ValueError):
+            raise exceptions.ClientConfigurationError(
+                'invalid connect_timeout value: '
+                'expected a number of seconds, got {!r}'.format(
+                    connect_timeout)) from None
+        if not connect_timeout > 0:
+            connect_timeout = None
+
     if krbsrvname is None:
         krbsrvname = os.getenv('PGKRBSRVNAME')
 
@@ -871,6 +898,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
         sslmode=sslmode, ssl_negotiation=sslneg,
         server_settings=server_settings,
         target_session_attrs=target_session_attrs,
+        connect_timeout=connect_timeout,
         krbsrvname=krbsrvname, gsslib=gsslib)
 
     return addrs, params
@@ -882,8 +910,8 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
                              max_cached_statement_lifetime,
                              max_cacheable_statement_size,
                              ssl, direct_tls, server_settings,
-                             target_session_attrs, krbsrvname, gsslib,
-                             service, servicefile):
+                             target_session_attrs, connect_timeout,
+                             krbsrvname, gsslib, service, servicefile):
     local_vars = locals()
     for var_name in {'max_cacheable_statement_size',
                      'max_cached_statement_lifetime',
@@ -913,6 +941,7 @@ def _parse_connect_arguments(*, dsn, host, port, user, password, passfile,
         direct_tls=direct_tls, database=database,
         server_settings=server_settings,
         target_session_attrs=target_session_attrs,
+        connect_timeout=connect_timeout,
         krbsrvname=krbsrvname, gsslib=gsslib,
         service=service, servicefile=servicefile)
 
@@ -1270,30 +1299,38 @@ async def _connect(*, loop, connection_class, record_class, **kwargs):
     target_attr = params.target_session_attrs
 
     candidates = []
+    unmatched = []
     chosen_connection = None
     last_error = None
     try:
         for addr in addrs:
             try:
-                conn = await _connect_addr(
-                    addr=addr,
-                    loop=loop,
-                    params=params,
-                    config=config,
-                    connection_class=connection_class,
-                    record_class=record_class,
-                )
-                candidates.append(conn)
-                if await _can_use_connection(conn, target_attr):
-                    chosen_connection = conn
-                    break
+                async with compat.timeout(params.connect_timeout):
+                    conn = await _connect_addr(
+                        addr=addr,
+                        loop=loop,
+                        params=params,
+                        config=config,
+                        connection_class=connection_class,
+                        record_class=record_class,
+                    )
+                    candidates.append(conn)
+                    if await _can_use_connection(conn, target_attr):
+                        chosen_connection = conn
+                        break
+                    unmatched.append(conn)
             except OSError as ex:
+                last_error = ex
+            except asyncio.TimeoutError as ex:
+                # Python < 3.11, where TimeoutError is not an OSError.
+                if params.connect_timeout is None:
+                    raise
                 last_error = ex
             except _NextHostSignal as ex:
                 last_error = ex.__cause__
         else:
-            if target_attr == SessionAttribute.prefer_standby and candidates:
-                chosen_connection = random.choice(candidates)
+            if target_attr == SessionAttribute.prefer_standby and unmatched:
+                chosen_connection = random.choice(unmatched)
     finally:
         # Do not wait for rejected hosts to disconnect: their cleanup must
         # neither delay a successful connection nor outlive the event loop.

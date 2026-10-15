@@ -752,6 +752,91 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'connect_timeout_dsn',
+            'dsn': 'postgresql://user@host1,host2/db?connect_timeout=5',
+            'env': {
+                'PGCONNECT_TIMEOUT': '7',
+            },
+            'result': ([('host1', 5432), ('host2', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'connect_timeout': 5.0,
+            })
+        },
+
+        {
+            'name': 'connect_timeout_kwarg',
+            'dsn': 'postgresql://user@host/db?connect_timeout=5',
+            'connect_timeout': 2.5,
+            'result': ([('host', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'connect_timeout': 2.5,
+            })
+        },
+
+        {
+            'name': 'connect_timeout_env',
+            'dsn': 'postgresql://user@host/db',
+            'env': {
+                'PGCONNECT_TIMEOUT': '7',
+            },
+            'result': ([('host', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'connect_timeout': 7.0,
+            })
+        },
+
+        {
+            'name': 'connect_timeout_zero',
+            'dsn': 'postgresql://user@host/db?connect_timeout=0',
+            'env': {
+                'PGCONNECT_TIMEOUT': '7',
+            },
+            'result': ([('host', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'connect_timeout': None,
+            })
+        },
+
+        {
+            'name': 'connect_timeout_negative_kwarg',
+            'dsn': 'postgresql://user@host/db?connect_timeout=5',
+            'connect_timeout': -1,
+            'result': ([('host', 5432)], {
+                'database': 'db',
+                'user': 'user',
+                'target_session_attrs': 'any',
+                'connect_timeout': None,
+            })
+        },
+
+        {
+            'name': 'connect_timeout_invalid',
+            'dsn': 'postgresql://user@host/db?connect_timeout=soon',
+            'error': (
+                exceptions.ClientConfigurationError,
+                'invalid connect_timeout value'
+            )
+        },
+
+        {
+            'name': 'connect_timeout_invalid_kwarg',
+            'dsn': 'postgresql://user@host/db',
+            'connect_timeout': True,
+            'error': (
+                exceptions.ClientConfigurationError,
+                'invalid connect_timeout value'
+            )
+        },
+
+        {
             'name': 'krbsrvname',
             'dsn': 'postgresql://user@host/db?krbsrvname=srv_qs',
             'env': {
@@ -1144,7 +1229,7 @@ class TestConnectParams(tb.TestCase):
         test_env = {'PGHOST': None, 'PGPORT': None,
                     'PGUSER': None, 'PGPASSWORD': None,
                     'PGDATABASE': None, 'PGSSLMODE': None,
-                    'PGSERVICE': None, }
+                    'PGSERVICE': None, 'PGCONNECT_TIMEOUT': None, }
         test_env.update(env)
 
         dsn = testcase.get('dsn')
@@ -1158,6 +1243,7 @@ class TestConnectParams(tb.TestCase):
         direct_tls = testcase.get('direct_tls')
         server_settings = testcase.get('server_settings')
         target_session_attrs = testcase.get('target_session_attrs')
+        connect_timeout = testcase.get('connect_timeout')
         krbsrvname = testcase.get('krbsrvname')
         gsslib = testcase.get('gsslib')
         service = testcase.get('service')
@@ -1187,6 +1273,7 @@ class TestConnectParams(tb.TestCase):
                 direct_tls=direct_tls,
                 server_settings=server_settings,
                 target_session_attrs=target_session_attrs,
+                connect_timeout=connect_timeout,
                 krbsrvname=krbsrvname, gsslib=gsslib,
                 service=service, servicefile=servicefile)
 
@@ -1290,6 +1377,12 @@ password=test_password
 target_session_attrs=primary
 krbsrvname=fakekrbsrvname
 gsslib=sspi
+
+[test_service_connect_timeout]
+host=somehost
+dbname=test_dbname
+user=admin
+connect_timeout=3
         '''))
         connection_service_file.close()
         os.chmod(connection_service_file.name, stat.S_IWUSR | stat.S_IRUSR)
@@ -1366,6 +1459,40 @@ gsslib=sspi
                         'target_session_attrs': 'primary',
                         'krbsrvname': 'fakekrbsrvname',
                         'gsslib': 'sspi',
+                    }
+                )
+            })
+            # Test connect_timeout from the service file
+            self.run_testcase({
+                'dsn': 'postgresql://?service=test_service_connect_timeout',
+                'env': {
+                    'PGSERVICEFILE': connection_service_file.name,
+                    'PGCONNECT_TIMEOUT': '7',
+                },
+                'result': (
+                    [('somehost', 5432)],
+                    {
+                        'user': 'admin',
+                        'database': 'test_dbname',
+                        'target_session_attrs': 'any',
+                        'connect_timeout': 3.0,
+                    }
+                )
+            })
+            # Test that dsn connect_timeout overrides the service file
+            self.run_testcase({
+                'dsn': 'postgresql://?service=test_service_connect_timeout'
+                       '&connect_timeout=4',
+                'env': {
+                    'PGSERVICEFILE': connection_service_file.name
+                },
+                'result': (
+                    [('somehost', 5432)],
+                    {
+                        'user': 'admin',
+                        'database': 'test_dbname',
+                        'target_session_attrs': 'any',
+                        'connect_timeout': 4.0,
                     }
                 )
             })
@@ -1756,6 +1883,116 @@ class TestConnectionCleanup(tb.TestCase):
             for task in pending:
                 task.cancel()
             await asyncio.gather(*pending, return_exceptions=True)
+
+
+class TestConnectTimeout(tb.ClusterTestCase):
+
+    @contextlib.asynccontextmanager
+    async def silent_server(self):
+        stop = asyncio.Event()
+
+        async def handle(reader, writer):
+            await stop.wait()
+            writer.close()
+
+        server = await asyncio.start_server(handle, '127.0.0.1', 0)
+        try:
+            yield server.sockets[0].getsockname()[1]
+        finally:
+            stop.set()
+            server.close()
+            await server.wait_closed()
+
+    def connect_two_hosts(self, silent_port, **kwargs):
+        spec = self.get_connection_spec()
+        return pg_connection.connect(
+            host=['127.0.0.1', spec['host']],
+            port=[silent_port, spec['port']],
+            user=spec['user'], database=spec['database'],
+            loop=self.loop, **kwargs)
+
+    async def test_connect_timeout_tries_next_host(self):
+        async with self.silent_server() as silent_port:
+            with self.assertRunUnder(5):
+                con = await self.connect_two_hosts(
+                    silent_port, connect_timeout=0.5, timeout=30)
+            try:
+                self.assertEqual(await con.fetchval('SELECT 1'), 1)
+                self.assertFalse(_get_connected_host(con).endswith(
+                    str(silent_port)))
+            finally:
+                await con.close()
+
+    async def test_connect_timeout_unset_uses_whole_timeout(self):
+        async with self.silent_server() as silent_port:
+            with self.assertRaises(asyncio.TimeoutError):
+                await self.connect_two_hosts(silent_port, timeout=1)
+
+    async def test_connect_timeout_all_hosts_time_out(self):
+        async with self.silent_server() as port1, \
+                self.silent_server() as port2:
+            with self.assertRunUnder(5), \
+                    self.assertRaises(asyncio.TimeoutError):
+                await pg_connection.connect(
+                    host=['127.0.0.1', '127.0.0.1'], port=[port1, port2],
+                    user='postgres', connect_timeout=0.5, timeout=30,
+                    loop=self.loop)
+
+    async def test_connect_timeout_in_dsn_is_not_a_server_setting(self):
+        con = await self.connect(
+            dsn='postgresql:///postgres?connect_timeout=5',
+            host=self.get_connection_spec()['host'], user='postgres')
+        await con.close()
+
+    async def test_connect_timeout_covers_target_session_attrs_check(self):
+        hung = unittest.mock.Mock(spec=pg_connection.Connection)
+        selected = unittest.mock.Mock(spec=pg_connection.Connection)
+
+        async def can_use(con, attr):
+            if con is hung:
+                await asyncio.Future()
+            return True
+
+        with unittest.mock.patch.object(
+            connect_utils, '_connect_addr', side_effect=[hung, selected],
+        ), unittest.mock.patch.object(
+            connect_utils, '_can_use_connection', side_effect=can_use,
+        ):
+            with self.assertRunUnder(5):
+                con = await asyncpg.connect(
+                    host=['first', 'second'], user='postgres',
+                    database='postgres', ssl=False,
+                    target_session_attrs='primary',
+                    connect_timeout=0.5, timeout=30,
+                )
+        self.assertIs(con, selected)
+        hung.terminate.assert_called_once_with()
+        selected.terminate.assert_not_called()
+
+    async def test_connect_timeout_prefer_standby_skips_timed_out_host(self):
+        hung = unittest.mock.Mock(spec=pg_connection.Connection)
+        primary = unittest.mock.Mock(spec=pg_connection.Connection)
+
+        async def can_use(con, attr):
+            if con is hung:
+                await asyncio.Future()
+            return False
+
+        with unittest.mock.patch.object(
+            connect_utils, '_connect_addr', side_effect=[hung, primary],
+        ), unittest.mock.patch.object(
+            connect_utils, '_can_use_connection', side_effect=can_use,
+        ), unittest.mock.patch.object(
+            connect_utils.random, 'choice', side_effect=lambda seq: seq[0],
+        ):
+            con = await asyncpg.connect(
+                host=['first', 'second'], user='postgres',
+                database='postgres', ssl=False,
+                target_session_attrs='prefer-standby',
+                connect_timeout=0.5, timeout=30,
+            )
+        self.assertIs(con, primary)
+        hung.terminate.assert_called_once_with()
 
 
 class TestConnection(tb.ConnectedTestCase):
