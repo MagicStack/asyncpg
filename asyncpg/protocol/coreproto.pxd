@@ -81,6 +81,7 @@ cdef class CoreProtocol:
         ConnectionStatus con_status
         readonly bint _auth_received
         ProtocolState state
+        ProtocolState cancelled_from_state
         TransactionStatus xact_status
 
         str encoding
