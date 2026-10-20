@@ -850,7 +850,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
             "target_session_attrs is expected to be one of "
             "{!r}"
             ", got {!r}".format(
-                SessionAttribute.__members__.values, target_session_attrs
+                [a.value for a in SessionAttribute], target_session_attrs
             )
         ) from None
 

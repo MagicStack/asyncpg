@@ -752,6 +752,17 @@ class TestConnectParams(tb.TestCase):
         },
 
         {
+            'name': 'target_session_attrs_invalid',
+            'dsn': 'postgresql://user@host/db?target_session_attrs=bogus',
+            'error': (
+                exceptions.ClientConfigurationError,
+                r"target_session_attrs is expected to be one of "
+                r"\['any', 'primary', 'standby', 'prefer-standby', "
+                r"'read-write', 'read-only'\], got 'bogus'"
+            ),
+        },
+
+        {
             'name': 'krbsrvname',
             'dsn': 'postgresql://user@host/db?krbsrvname=srv_qs',
             'env': {
