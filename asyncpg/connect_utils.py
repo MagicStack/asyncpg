@@ -453,7 +453,7 @@ def _parse_connect_dsn_and_args(*, dsn, host, port, user,
                     server_settings = {**query, **server_settings}
 
         if connection_service_file is not None and service is not None:
-            pg_service = configparser.ConfigParser()
+            pg_service = configparser.ConfigParser(interpolation=None)
             pg_service.read(connection_service_file)
             if service in pg_service.sections():
                 service_params = pg_service[service]
