@@ -146,6 +146,12 @@ class Transaction(connresource.ConnectionResource):
             await self._connection.execute(query)
         except BaseException:
             self._state = TransactionState.FAILED
+            # A top-level transaction that failed to start must not remain
+            # current, or the next transaction would be treated as a nested
+            # savepoint.  Leave the outer transaction in place when a
+            # nested block fails.
+            if con._top_xact is self:
+                con._top_xact = None
             raise
         else:
             self._state = TransactionState.STARTED
