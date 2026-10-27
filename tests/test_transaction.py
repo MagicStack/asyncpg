@@ -159,6 +159,41 @@ class TestTransaction(tb.ConnectedTestCase):
                 async with tr:
                     pass
 
+    async def test_transaction_commit_rolled_back_by_server(self):
+        await self.con.execute('CREATE TABLE mytab (a int)')
+        try:
+            tr = self.con.transaction()
+            await tr.start()
+            await self.con.execute('INSERT INTO mytab (a) VALUES (1)')
+            with self.assertRaises(asyncpg.DivisionByZeroError):
+                await self.con.execute('SELECT 1 / 0')
+
+            with self.assertRaisesRegex(asyncpg.InFailedSQLTransactionError,
+                                        'rolled back by the server'):
+                await tr.commit()
+
+            self.assertTrue(repr(tr).startswith(
+                '<asyncpg.Transaction state:rolledback'))
+            self.assertIsNone(self.con._top_xact)
+            self.assertFalse(self.con.is_in_transaction())
+
+            with self.assertRaisesRegex(asyncpg.InterfaceError,
+                                        'cannot rollback; .* already rolled'):
+                await tr.rollback()
+
+            with self.assertRaises(asyncpg.InFailedSQLTransactionError):
+                async with self.con.transaction():
+                    await self.con.execute('INSERT INTO mytab (a) VALUES (2)')
+                    with self.assertRaises(asyncpg.DivisionByZeroError):
+                        await self.con.execute('SELECT 1 / 0')
+
+            self.assertIsNone(self.con._top_xact)
+            self.assertFalse(self.con.is_in_transaction())
+            self.assertEqual(
+                await self.con.fetchval('SELECT count(*) FROM mytab'), 0)
+        finally:
+            await self.con.execute('DROP TABLE mytab')
+
     async def test_transaction_within_manual_transaction(self):
         self.assertIsNone(self.con._top_xact)
         self.assertFalse(self.con.is_in_transaction())

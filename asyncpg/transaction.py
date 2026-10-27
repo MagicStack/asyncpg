@@ -184,12 +184,25 @@ class Transaction(connresource.ConnectionResource):
             query = 'COMMIT;'
 
         try:
-            await self._connection.execute(query)
+            status = await self._connection.execute(query)
         except BaseException:
             self._state = TransactionState.FAILED
             raise
-        else:
-            self._state = TransactionState.COMMITTED
+
+        if not self._nested and status == 'ROLLBACK':
+            # PostgreSQL answers COMMIT of an aborted transaction with
+            # a ROLLBACK, so the changes are lost and must not be reported
+            # as committed.
+            self._state = TransactionState.ROLLEDBACK
+            raise apg_errors.InFailedSQLTransactionError.new({
+                'C': '25P02',
+                'S': 'ERROR',
+                'M': 'the transaction was rolled back by the server '
+                     'instead of being committed',
+                'H': 'An earlier statement in the transaction failed.',
+            })
+
+        self._state = TransactionState.COMMITTED
 
     async def __rollback(self):
         self.__check_state('rollback')
