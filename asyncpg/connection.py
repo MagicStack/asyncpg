@@ -1571,9 +1571,11 @@ class Connection(metaclass=ConnectionMeta):
         resembling that of a newly obtained connection.  Namely, an open
         transaction (if any) is rolled back, open cursors are closed,
         all `LISTEN <https://www.postgresql.org/docs/current/sql-listen.html>`_
-        registrations are removed, all session configuration
-        variables are reset to their default values, and all advisory locks
-        are released.
+        registrations are removed, session configuration variables covered by
+        ``RESET ALL`` are reset to their default values, and all advisory locks
+        are released.  This does not reset all session state: for example,
+        a session-level ``SET ROLE`` is not undone by ``RESET ALL``.  Use
+        ``RESET ROLE`` explicitly if the role also needs to be reset.
 
         Note that the above describes the default query returned by
         :meth:`Connection.get_reset_query`.  If one overloads the method

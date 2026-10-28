@@ -1336,6 +1336,24 @@ def create_pool(dsn=None, *,
         by calling :meth:`Connection.get_reset_query() <\
         asyncpg.connection.Connection.get_reset_query>`.
 
+        The default reset does not undo a session-level ``SET ROLE``.
+        Applications that change roles must reset the role explicitly if it
+        should not be retained by the next acquirer.  For example, to keep
+        the default cleanup and also reset the role::
+
+            async def reset_connection(conn):
+                await conn.reset()
+                await conn.execute('RESET ROLE')
+
+            pool = await asyncpg.create_pool(..., reset=reset_connection)
+
+        Calling ``conn.reset()`` first also rolls back any open transaction,
+        so ``RESET ROLE`` can run even if the transaction was left aborted.
+        ``RESET ROLE`` restores the connection-time role setting, or the
+        session user if no such setting exists.
+        If a role must be applied on every acquisition, use *setup* rather
+        than *init*, which only runs when a connection is created.
+
     :param loop:
         An asyncio event loop instance.  If ``None``, the default
         event loop will be used.
