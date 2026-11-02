@@ -168,6 +168,63 @@ class TestCopyFrom(tb.ConnectedTestCase):
             ]
         )
 
+    async def test_copy_from_query_with_notices(self):
+        # NoticeResponse messages interleaved with CopyData messages must
+        # not cause already received CopyData to be dropped.
+        await self.con.execute('''
+            CREATE OR REPLACE FUNCTION pg_temp.copy_noisy(i int) RETURNS int
+            LANGUAGE plpgsql AS $$
+            BEGIN
+                RAISE NOTICE 'row %', i;
+                RETURN i;
+            END
+            $$
+        ''')
+
+        sink = io.BytesIO()
+        res = await self.con.copy_from_query(
+            '''
+                SELECT pg_temp.copy_noisy(i) AS a, 'x' AS b
+                FROM generate_series(1, 20) AS i
+            ''',
+            output=sink, format='csv', header=True)
+
+        expected = 'a,b\n' + ''.join(
+            '{},x\n'.format(i) for i in range(1, 21))
+
+        self.assertEqual(res, 'COPY 20')
+        self.assertEqual(sink.getvalue().decode(), expected)
+
+    async def test_copy_from_query_with_notice_at_stream_position(self):
+        # A single NoticeResponse at the start, middle or end of a stream
+        # that spans many network reads must not affect the output.
+        await self.con.execute('''
+            CREATE OR REPLACE FUNCTION pg_temp.copy_notice_at(i int, k int)
+            RETURNS int LANGUAGE plpgsql AS $$
+            BEGIN
+                IF i = k THEN
+                    RAISE NOTICE 'row %', i;
+                END IF;
+                RETURN i;
+            END
+            $$
+        ''')
+
+        expected = 'a,b\n' + ''.join(
+            '{},{}\n'.format(i, 'y' * 200) for i in range(1, 2001))
+
+        for pos in (1, 1000, 2000):
+            with self.subTest(notice_at=pos):
+                sink = io.BytesIO()
+                await self.con.copy_from_query(
+                    '''
+                        SELECT pg_temp.copy_notice_at(i, $1) AS a,
+                               repeat('y', 200) AS b
+                        FROM generate_series(1, 2000) AS i
+                    ''',
+                    pos, output=sink, format='csv', header=True)
+                self.assertEqual(sink.getvalue().decode(), expected)
+
     async def test_copy_from_query_to_path(self):
         with tempfile.NamedTemporaryFile() as f:
             f.close()
