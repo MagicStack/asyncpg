@@ -1761,8 +1761,12 @@ class TestConnectionCleanup(tb.TestCase):
 class TestConnection(tb.ConnectedTestCase):
 
     async def test_connection_cancelled_during_transport_setup(self):
-        for connection_lost_first in (False, True):
-            with self.subTest(connection_lost_first=connection_lost_first):
+        for sslmode, connection_lost_first in itertools.product(
+            (False, 'prefer'), (False, True),
+        ):
+            with self.subTest(
+                sslmode=sslmode, connection_lost_first=connection_lost_first,
+            ):
                 async def interrupted_connector(factory, *args, **kwargs):
                     proto = factory()
                     if connection_lost_first:
@@ -1775,10 +1779,41 @@ class TestConnection(tb.ConnectedTestCase):
                     self.loop, 'create_connection', interrupted_connector,
                 ):
                     with self.assertRaises(asyncio.CancelledError):
-                        await self.connect(host='127.0.0.1', ssl=False)
+                        await self.connect(host='127.0.0.1', ssl=sslmode)
 
-                # Authentication must not report an unobserved failure after
-                # cancellation, even if the transport closes afterwards.
+                # Neither authentication nor the SSL upgrade must report an
+                # unobserved failure after cancellation, even if the
+                # transport closes afterwards.
+                await asyncio.sleep(0)
+                gc.collect()
+
+    async def test_connection_failed_during_transport_setup(self):
+        for sslmode, protocol_state in itertools.product(
+            (False, 'prefer'), ('not created', 'lost first', 'lost later'),
+        ):
+            with self.subTest(sslmode=sslmode, protocol_state=protocol_state):
+                error = ConnectionRefusedError('connection refused')
+
+                async def failing_connector(factory, *args, **kwargs):
+                    if protocol_state != 'not created':
+                        proto = factory()
+                        if protocol_state == 'lost first':
+                            proto.connection_lost(None)
+                        else:
+                            self.loop.call_soon(proto.connection_lost, None)
+                    raise error
+
+                with unittest.mock.patch.object(
+                    self.loop, 'create_connection', failing_connector,
+                ):
+                    with self.assertRaises(ConnectionRefusedError) as cm:
+                        await self.connect(host='127.0.0.1', ssl=sslmode)
+                self.assertIs(cm.exception, error)
+
+                # The connection error must reach the caller unchanged, and
+                # neither authentication nor the SSL upgrade must report an
+                # unobserved failure after it, whether or not the protocol
+                # was created.
                 await asyncio.sleep(0)
                 gc.collect()
 

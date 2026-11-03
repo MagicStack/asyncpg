@@ -993,10 +993,26 @@ async def _create_ssl_connection(
     retry: bool = False,
 ) -> typing.Tuple[asyncio.Transport, _ProctolFactoryR]:
 
-    tr, pr = await loop.create_connection(
-        lambda: TLSUpgradeProto(loop, host, port,
-                                ssl_context, ssl_is_advisory),
-        host, port)
+    upgrade_proto: typing.Optional[TLSUpgradeProto] = None
+
+    def upgrade_protocol_factory() -> TLSUpgradeProto:
+        nonlocal upgrade_proto
+        upgrade_proto = TLSUpgradeProto(
+            loop, host, port, ssl_context, ssl_is_advisory)
+        return upgrade_proto
+
+    try:
+        tr, pr = await loop.create_connection(
+            upgrade_protocol_factory, host, port)
+    except (Exception, asyncio.CancelledError):
+        # The protocol can exist before create_connection() returns.  If
+        # that operation fails or is cancelled, nobody will await on_data.
+        if upgrade_proto is not None:
+            if not upgrade_proto.on_data.done():
+                upgrade_proto.on_data.cancel()
+            elif not upgrade_proto.on_data.cancelled():
+                upgrade_proto.on_data.exception()
+        raise
 
     tr.write(struct.pack('!ll', 8, _SSL_REQUEST_CODE))  # SSLRequest message.
 
