@@ -1267,6 +1267,30 @@ class TestConnectParams(tb.TestCase):
         for testcase in self.TESTS:
             self.run_testcase(testcase)
 
+    def test_connect_rejects_invalid_ipv6_host_suffix(self):
+        for host in (
+            '[::1]:5432trailing',
+            '[::1]:not-a-port',
+            '[::1]:5432:5433',
+        ):
+            self.run_testcase({
+                'dsn': f'postgresql://user@{host}/database',
+                'error': (
+                    exceptions.ClientConfigurationError,
+                    'invalid IPv6 address in the connection URI',
+                ),
+            })
+
+    def test_connect_ipv6_empty_port(self):
+        self.run_testcase({
+            'dsn': 'postgresql://user@[::1]:/database',
+            'result': (
+                [('::1', 5432)],
+                {'user': 'user', 'database': 'database',
+                 'target_session_attrs': 'any'},
+            ),
+        })
+
     def test_connect_connection_service_file(self):
         connection_service_file = tempfile.NamedTemporaryFile(
             'w+t', delete=False)

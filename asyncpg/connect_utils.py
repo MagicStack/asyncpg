@@ -225,7 +225,7 @@ def _parse_hostlist(hostlist, port, *, unquote=False):
             hostspec_port = ''
         elif hostspec[0] == '[':
             # IPv6 address
-            m = re.match(r'(?:\[([^\]]+)\])(?::([0-9]+))?', hostspec)
+            m = re.fullmatch(r'(?:\[([^\]]+)\])(?::([0-9]*))?', hostspec)
             if m:
                 addr = m.group(1)
                 hostspec_port = m.group(2)
