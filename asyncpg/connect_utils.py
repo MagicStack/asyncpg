@@ -974,6 +974,14 @@ class TLSUpgradeProto(asyncio.Protocol):
             self.on_data.set_exception(exc)
 
 
+def _discard_future(fut: asyncio.Future) -> None:
+    """Cancel a pending future, or mark its exception as retrieved."""
+    if not fut.done():
+        fut.cancel()
+    elif not fut.cancelled():
+        fut.exception()
+
+
 _ProctolFactoryR = typing.TypeVar(
     "_ProctolFactoryR", bound=asyncio.protocols.Protocol
 )
@@ -993,16 +1001,31 @@ async def _create_ssl_connection(
     retry: bool = False,
 ) -> typing.Tuple[asyncio.Transport, _ProctolFactoryR]:
 
-    tr, pr = await loop.create_connection(
-        lambda: TLSUpgradeProto(loop, host, port,
-                                ssl_context, ssl_is_advisory),
-        host, port)
+    upgrade_proto: typing.Optional[TLSUpgradeProto] = None
+
+    def upgrade_proto_factory() -> TLSUpgradeProto:
+        nonlocal upgrade_proto
+        upgrade_proto = TLSUpgradeProto(loop, host, port,
+                                        ssl_context, ssl_is_advisory)
+        return upgrade_proto
+
+    try:
+        tr, pr = await loop.create_connection(
+            upgrade_proto_factory, host, port)
+    except (Exception, asyncio.CancelledError):
+        # The protocol can exist before create_connection() returns.  If
+        # that operation is cancelled, nobody will await the SSL response.
+        if upgrade_proto is not None:
+            _discard_future(upgrade_proto.on_data)
+        raise
 
     tr.write(struct.pack('!ll', 8, _SSL_REQUEST_CODE))  # SSLRequest message.
 
     try:
         do_ssl_upgrade = await pr.on_data
     except (Exception, asyncio.CancelledError):
+        # A cancellation can arrive after on_data got its exception.
+        _discard_future(pr.on_data)
         tr.close()
         raise
 
@@ -1163,10 +1186,7 @@ async def __connect_addr(
     except (Exception, asyncio.CancelledError):
         # The protocol can exist before create_connection() returns.  If
         # that operation is cancelled, nobody will await authentication.
-        if not connected.done():
-            connected.cancel()
-        elif not connected.cancelled():
-            connected.exception()
+        _discard_future(connected)
         raise
 
     try:
