@@ -1724,6 +1724,42 @@ class TestConnectionCleanup(tb.TestCase):
                         task.cancel()
                     await asyncio.gather(*pending, return_exceptions=True)
 
+    async def test_cancelled_ssl_upgrade_leaves_no_orphan_future(self):
+        # A connect cancelled while create_connection() waits for its
+        # transport must not leave TLSUpgradeProto.on_data to be set by
+        # connection_lost() with nobody awaiting it.
+        async def hold(reader, writer):
+            await reader.read()
+            writer.close()
+
+        server = await asyncio.start_server(hold, '127.0.0.1', 0)
+        port = server.sockets[0].getsockname()[1]
+        reported = []
+        old_handler = self.loop.get_exception_handler()
+        self.loop.set_exception_handler(
+            lambda loop, context: reported.append(context))
+        try:
+            for direct_tls in (False, True):
+                for step in range(40):
+                    task = self.loop.create_task(asyncpg.connect(
+                        host='127.0.0.1', port=port, user='postgres',
+                        ssl=ssl.create_default_context(),
+                        direct_tls=direct_tls, timeout=5))
+                    for _ in range(step):
+                        await asyncio.sleep(0)
+                    task.cancel()
+                    with self.assertRaises(
+                            (asyncio.CancelledError, OSError)):
+                        await task
+                    for _ in range(5):
+                        await asyncio.sleep(0)
+                    gc.collect()
+        finally:
+            self.loop.set_exception_handler(old_handler)
+            server.close()
+            await server.wait_closed()
+        self.assertEqual(reported, [])
+
     async def test_rejected_host_cannot_time_out_selected_connection(self):
         async def close():
             await asyncio.Future()
