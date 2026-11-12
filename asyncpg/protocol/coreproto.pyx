@@ -444,7 +444,16 @@ cdef class CoreProtocol:
         cdef:
             ReadBuffer buf = self.buffer
 
-        self.result = buf.consume_messages(b'd')
+        data = buf.consume_messages(b'd')
+
+        # A non-CopyData message (e.g. NoticeResponse) may have been
+        # interleaved with CopyData, in which case the data consumed so
+        # far has not been pushed out yet.  Keep it instead of
+        # overwriting it.
+        if self.result is None:
+            self.result = data
+        elif data is not None:
+            self.result += data
 
         # By this point we have consumed all CopyData messages
         # in the inbound buffer.  If there are no messages left

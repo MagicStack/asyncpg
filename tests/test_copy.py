@@ -143,6 +143,31 @@ class TestCopyFrom(tb.ConnectedTestCase):
             ]
         )
 
+    async def test_copy_from_query_with_notices(self):
+        # NoticeResponse messages interleaved with CopyData must not
+        # make the already received data disappear.
+        await self.con.execute('''
+            CREATE OR REPLACE FUNCTION pg_temp.copy_noisy(i int)
+            RETURNS int LANGUAGE plpgsql AS $$
+            BEGIN
+                RAISE NOTICE 'noise %', i;
+                RETURN i;
+            END
+            $$
+        ''')
+
+        f = io.BytesIO()
+        res = await self.con.copy_from_query('''
+            SELECT pg_temp.copy_noisy(i) AS a, i + 1 AS b
+            FROM generate_series(1, 3) AS i
+        ''', output=f, format='csv', header=True)
+
+        self.assertEqual(res, 'COPY 3')
+        self.assertEqual(
+            f.getvalue().decode().split('\n'),
+            ['a,b', '1,2', '2,3', '3,4', '']
+        )
+
     async def test_copy_from_query_with_args(self):
         f = io.BytesIO()
 
