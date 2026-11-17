@@ -111,12 +111,19 @@ class PostgresMessage(metaclass=PostgresMessageMeta):
         # so we raise a custom subclass that is easier to handle
         # and identify.
         #
-        # Note that we specifically do not rely on the error
-        # message, as it is localizable.
+        # PostgreSQL's message is localizable, so its routine
+        # name identifies the error.  CockroachDB raises it from
+        # routines with other, version-dependent names, but does
+        # not localize the message, so the untranslated message
+        # identifies it as well.
         is_icse = (
             exccls.__name__ == 'FeatureNotSupportedError' and
             _is_asyncpg_class(exccls) and
-            dct.get('server_source_function') == 'RevalidateCachedQuery'
+            (
+                dct.get('server_source_function') ==
+                'RevalidateCachedQuery' or
+                message == 'cached plan must not change result type'
+            )
         )
 
         if is_icse:
