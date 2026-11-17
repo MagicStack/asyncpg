@@ -54,3 +54,38 @@ class TestExceptions(tb.ConnectedTestCase):
             self.assertIn('DETAIL:  Function', str(e))
         else:
             self.fail('InvalidFunctionDefinitionError not raised')
+
+
+class TestInvalidCachedStatementClassification(tb.TestCase):
+
+    def _new_error(self, **fields):
+        return asyncpg.PostgresError.new(
+            {'C': '0A000', 'S': 'ERROR', **fields})
+
+    def test_postgres_routine(self):
+        e = self._new_error(
+            M='cached plan must not change result type',
+            R='RevalidateCachedQuery')
+        self.assertIsInstance(e, asyncpg.InvalidCachedStatementError)
+
+    def test_postgres_routine_translated_message(self):
+        e = self._new_error(
+            M='<translated message>',
+            R='RevalidateCachedQuery')
+        self.assertIsInstance(e, asyncpg.InvalidCachedStatementError)
+
+    def test_cockroachdb_routines(self):
+        # CockroachDB names the Go function that raised the error.
+        for routine in ('runExecBuilder', 'execBind'):
+            with self.subTest(routine=routine):
+                e = self._new_error(
+                    M='cached plan must not change result type',
+                    R=routine)
+                self.assertIsInstance(
+                    e, asyncpg.InvalidCachedStatementError)
+                self.assertEqual(e.sqlstate, '0A000')
+
+    def test_other_feature_not_supported(self):
+        e = self._new_error(
+            M='unimplemented: this syntax', R='runExecBuilder')
+        self.assertIs(type(e), asyncpg.FeatureNotSupportedError)
